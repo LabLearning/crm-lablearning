@@ -53,6 +53,16 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
   const [dirigeantNom, setDirigeantNom] = useState('')
   const [dirigeantQualite, setDirigeantQualite] = useState('')
 
+  function handleCompanyClear() {
+    // Reset les champs auto-remplis quand l'user retape par-dessus la sélection
+    setSiret(''); setCodeNaf(''); setSecteurActivite(''); setCodeIdcc('')
+    setTailleEntreprise(''); setSigle(''); setFormeJuridique(''); setDateCreation('')
+    setEffectifLibelle(''); setTvaIntra('')
+    setEstQualiopi(false); setEstOrgFormation(false)
+    setAdresse(''); setCodePostal(''); setVille('')
+    setDirigeantPrenom(''); setDirigeantNom(''); setDirigeantQualite('')
+  }
+
   function handleCompanySelect(c: SireneCompany) {
     setRaisonSociale(c.raison_sociale)
     if (c.siret) setSiret(c.siret)
@@ -132,6 +142,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
             defaultValue={raisonSociale}
             error={fieldErrors.raison_sociale?.[0]}
             onSelect={handleCompanySelect}
+            onClear={handleCompanyClear}
           />
 
           {/* Badges Qualiopi / Organisme formation */}

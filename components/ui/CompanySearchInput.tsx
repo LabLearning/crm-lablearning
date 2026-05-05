@@ -14,10 +14,12 @@ interface CompanySearchInputProps {
   required?: boolean
   placeholder?: string
   onSelect: (company: SireneCompany) => void
+  /** Appelé quand l'user modifie le texte après avoir sélectionné — pour reset les champs auto-remplis */
+  onClear?: () => void
 }
 
 export function CompanySearchInput({
-  id, name, label, defaultValue = '', error, required, placeholder, onSelect,
+  id, name, label, defaultValue = '', error, required, placeholder, onSelect, onClear,
 }: CompanySearchInputProps) {
   const [value, setValue] = useState(defaultValue)
   const [results, setResults] = useState<SireneCompany[]>([])
@@ -39,6 +41,8 @@ export function CompanySearchInput({
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value
     setValue(v)
+    // Si on avait une sélection active et que le texte change → reset les champs auto-remplis
+    if (selectedSiret) onClear?.()
     setSelectedSiret(null)
     setApiError(false)
     if (debounceRef.current) clearTimeout(debounceRef.current)

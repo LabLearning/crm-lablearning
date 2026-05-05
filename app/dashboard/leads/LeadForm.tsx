@@ -81,6 +81,16 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
   const [contactNom, setContactNom] = useState(lead?.contact_nom || '')
   const [contactQualite, setContactQualite] = useState(lead?.contact_qualite || '')
 
+  function handleCompanyClear() {
+    // Reset tous les champs auto-remplis quand l'user retape par-dessus la sélection
+    setSiret(''); setSigle(''); setCodeNaf(''); setSecteurActivite('')
+    setCodeIdcc(''); setTailleEntreprise(''); setFormeJuridique(''); setDateCreation('')
+    setEffectifLibelle(''); setTvaIntra('')
+    setEstQualiopi(false); setEstOrgFormation(false)
+    setAdresse(''); setCodePostal(''); setVille('')
+    setContactCivilite(''); setContactPrenom(''); setContactNom(''); setContactQualite('')
+  }
+
   function handleCompanySelect(c: SireneCompany) {
     setEntreprise(c.raison_sociale)
     if (c.siret) setSiret(c.siret)
@@ -172,7 +182,7 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
 
           <CompanySearchInput
             id="entreprise" name="entreprise" label="Raison sociale"
-            defaultValue={entreprise} onSelect={handleCompanySelect}
+            defaultValue={entreprise} onSelect={handleCompanySelect} onClear={handleCompanyClear}
           />
 
           {(estQualiopi || estOrgFormation) && (
