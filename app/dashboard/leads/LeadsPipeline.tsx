@@ -71,7 +71,7 @@ function calcScore(lead: Lead): number {
 function scoreColor(s: number) { return s >= 70 ? 'text-success-600' : s >= 40 ? 'text-warning-600' : 'text-danger-600' }
 function scoreBg(s: number) { return s >= 70 ? 'bg-success-50' : s >= 40 ? 'bg-warning-50' : 'bg-danger-50' }
 
-type ViewMode = 'kanban' | 'list' | 'cards'
+type ViewMode = 'kanban' | 'list'
 type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score'
 
 export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], isApporteur }: LeadsPipelineProps) {
@@ -278,7 +278,6 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
           <Button variant="secondary" size="sm" onClick={exportCSV} icon={<Download className="h-3.5 w-3.5" />}>Export</Button>
           <div className="flex bg-surface-100 rounded-lg p-0.5">
             {([
-              { id: 'cards' as const, icon: <LayoutGrid className="h-4 w-4" /> },
               { id: 'kanban' as const, icon: <Columns3 className="h-4 w-4" /> },
               { id: 'list' as const, icon: <List className="h-4 w-4" /> },
             ]).map(v => (
@@ -317,13 +316,6 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
       </div>
 
       {/* ─── VUE CARTES ─── */}
-      {view === 'cards' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {filtered.sort((a, b) => calcScore(b) - calcScore(a)).map(lead => renderLeadCard(lead))}
-          {filtered.length === 0 && <div className="col-span-full text-center py-12 text-sm text-surface-500">Aucun lead trouve</div>}
-        </div>
-      )}
-
       {/* ─── VUE KANBAN ─── */}
       {view === 'kanban' && (
         <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 lg:-mx-6 lg:px-6">
@@ -357,25 +349,42 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
                   <th className="table-header">Statut</th>
                   <th className="table-header">Source</th>
                   <th className="table-header text-center">Score</th>
-                  <th className="table-header text-right">Montant</th>
                   <th className="table-header">Date</th>
+                  <th className="table-header text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100">
                 {filtered.map(lead => {
                   const score = calcScore(lead)
                   return (
-                    <tr key={lead.id} onClick={() => setDetailLead(lead)} className="hover:bg-surface-50/50 cursor-pointer transition-colors">
-                      <td className="px-6 py-3.5">
+                    <tr key={lead.id} className="hover:bg-surface-50/50 transition-colors">
+                      <td className="px-6 py-3.5 cursor-pointer" onClick={() => setDetailLead(lead)}>
                         <div className="text-sm font-medium text-surface-900">{lead.contact_prenom} {lead.contact_nom}</div>
                         <div className="text-xs text-surface-500">{lead.contact_email}</div>
                       </td>
-                      <td className="px-6 py-3.5 text-sm text-surface-600">{lead.entreprise || '--'}</td>
-                      <td className="px-6 py-3.5"><Badge variant={LEAD_STATUS_COLORS[lead.status]} dot>{LEAD_STATUS_LABELS[lead.status]}</Badge></td>
-                      <td className="px-6 py-3.5 text-sm text-surface-600">{LEAD_SOURCE_LABELS[lead.source]}</td>
-                      <td className="px-6 py-3.5 text-center"><span className={cn('text-xs font-bold px-1.5 py-0.5 rounded', scoreBg(score), scoreColor(score))}>{score}</span></td>
-                      <td className="px-6 py-3.5 text-sm text-right font-medium text-surface-800">{lead.montant_estime ? Number(lead.montant_estime).toLocaleString('fr-FR') + ' EUR' : '--'}</td>
-                      <td className="px-6 py-3.5 text-sm text-surface-500">{formatDate(lead.created_at, { day: 'numeric', month: 'short' })}</td>
+                      <td className="px-6 py-3.5 text-sm text-surface-600 cursor-pointer" onClick={() => setDetailLead(lead)}>{lead.entreprise || '--'}</td>
+                      <td className="px-6 py-3.5 cursor-pointer" onClick={() => setDetailLead(lead)}><Badge variant={LEAD_STATUS_COLORS[lead.status]} dot>{LEAD_STATUS_LABELS[lead.status]}</Badge></td>
+                      <td className="px-6 py-3.5 text-sm text-surface-600 cursor-pointer" onClick={() => setDetailLead(lead)}>{LEAD_SOURCE_LABELS[lead.source]}</td>
+                      <td className="px-6 py-3.5 text-center cursor-pointer" onClick={() => setDetailLead(lead)}><span className={cn('text-xs font-bold px-1.5 py-0.5 rounded', scoreBg(score), scoreColor(score))}>{score}</span></td>
+                      <td className="px-6 py-3.5 text-sm text-surface-500 cursor-pointer" onClick={() => setDetailLead(lead)}>{formatDate(lead.created_at, { day: 'numeric', month: 'short' })}</td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => setDetailLead(lead)} title="Voir le détail" className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 transition-colors">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setEditLead(lead)} title="Modifier" className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 transition-colors">
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          {!['gagne', 'perdu'].includes(lead.status) && (
+                            <button onClick={() => handleConvert(lead.id)} title="Convertir en client" className="p-1.5 rounded-lg text-success-500 hover:bg-success-50 transition-colors">
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(lead.id)} title="Supprimer" className="p-1.5 rounded-lg text-danger-500 hover:bg-danger-50 transition-colors">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
