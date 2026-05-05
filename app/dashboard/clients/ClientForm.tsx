@@ -142,6 +142,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
         <>
           <Input id="code_idcc" name="code_idcc" label="Code IDCC (convention collective)" defaultValue={client?.code_idcc || ''} placeholder="Ex: 1979 pour HCR" hint="Si renseigné, la convention collective prime sur le code NAF pour la détection OPCO" />
           <OpcoSelector
+            siret={siret}
             codeNaf={codeNaf}
             codeIdcc={client?.code_idcc || undefined}
             defaultOpcoId={client?.opco_id || undefined}

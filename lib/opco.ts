@@ -19,7 +19,7 @@ export interface Opco {
 
 export interface OpcoMatch {
   opco: Opco
-  matched_by: 'naf' | 'idcc'
+  matched_by: 'siret' | 'naf' | 'idcc'
   matched_code: string
   libelle: string | null
 }
@@ -76,8 +76,39 @@ export async function findOpcoByIdcc(codeIdcc: string): Promise<OpcoMatch | null
   return { opco: data.opco as unknown as Opco, matched_by: 'idcc', matched_code: normalized, libelle: data.libelle_convention }
 }
 
-/** Tente une détection : IDCC en priorité (plus précis), fallback NAF */
-export async function detectOpco(opts: { codeIdcc?: string | null; codeNaf?: string | null }): Promise<OpcoMatch | null> {
+/** Trouve l'OPCO directement par SIRET (lookup officiel data.gouv) */
+export async function findOpcoBySiret(siret: string): Promise<OpcoMatch | null> {
+  const clean = siret.replace(/\D/g, '')
+  if (clean.length !== 14) return null
+  const supabase = await createServiceRoleClient()
+  // Pas de FK contrainte (perf import), donc join manuel via opco_code
+  const { data: row } = await supabase
+    .from('siret_opco')
+    .select('opco_code, idcc')
+    .eq('siret', clean)
+    .maybeSingle()
+  if (!row) return null
+  const { data: opco } = await supabase.from('opco').select('*').eq('code', row.opco_code).maybeSingle()
+  if (!opco) return null
+  return {
+    opco: opco as Opco,
+    matched_by: 'siret',
+    matched_code: clean,
+    libelle: row.idcc ? `convention collective IDCC ${row.idcc}` : null,
+  }
+}
+
+/**
+ * Détection avec priorité décroissante :
+ * 1. SIRET (lookup officiel — fiable à 100% pour entreprises actives)
+ * 2. IDCC (convention collective)
+ * 3. NAF (code activité — fallback)
+ */
+export async function detectOpco(opts: { siret?: string | null; codeIdcc?: string | null; codeNaf?: string | null }): Promise<OpcoMatch | null> {
+  if (opts.siret) {
+    const m = await findOpcoBySiret(opts.siret)
+    if (m) return m
+  }
   if (opts.codeIdcc) {
     const m = await findOpcoByIdcc(opts.codeIdcc)
     if (m) return m

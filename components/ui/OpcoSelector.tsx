@@ -27,9 +27,11 @@ const STATUS_OPTIONS: { value: string; label: string; color: string }[] = [
 ]
 
 interface OpcoSelectorProps {
-  /** Code NAF de l'entreprise (auto-détection) */
+  /** SIRET de l'entreprise (lookup direct, le plus fiable) */
+  siret?: string
+  /** Code NAF de l'entreprise (fallback) */
   codeNaf?: string
-  /** Code IDCC (convention collective) — prioritaire sur NAF */
+  /** Code IDCC (convention collective) — prioritaire sur NAF si pas de SIRET match */
   codeIdcc?: string
   /** ID OPCO actuellement sélectionné (édition manuelle ou pré-rempli) */
   defaultOpcoId?: string | null
@@ -40,7 +42,7 @@ interface OpcoSelectorProps {
 }
 
 export function OpcoSelector({
-  codeNaf, codeIdcc, defaultOpcoId, defaultStatus = 'aucun', defaultNumeroOpco,
+  siret, codeNaf, codeIdcc, defaultOpcoId, defaultStatus = 'aucun', defaultNumeroOpco,
 }: OpcoSelectorProps) {
   const [opcos, setOpcos] = useState<Opco[]>([])
   const [selectedOpcoId, setSelectedOpcoId] = useState(defaultOpcoId || '')
@@ -55,11 +57,12 @@ export function OpcoSelector({
       .catch(() => {})
   }, [])
 
-  // Auto-détection quand le code NAF ou IDCC change
+  // Auto-détection quand SIRET, NAF ou IDCC change
   useEffect(() => {
-    if (!codeNaf && !codeIdcc) { setAutoMatch(null); return }
+    if (!siret && !codeNaf && !codeIdcc) { setAutoMatch(null); return }
     setIsDetecting(true)
     const params = new URLSearchParams()
+    if (siret) params.set('siret', siret)
     if (codeIdcc) params.set('idcc', codeIdcc)
     if (codeNaf) params.set('naf', codeNaf)
     fetch(`/api/opco/detect?${params}`)
@@ -71,7 +74,7 @@ export function OpcoSelector({
       })
       .catch(() => {})
       .finally(() => setIsDetecting(false))
-  }, [codeNaf, codeIdcc])
+  }, [siret, codeNaf, codeIdcc])
 
   const selectedOpco = opcos.find(o => o.id === selectedOpcoId)
 
@@ -95,7 +98,7 @@ export function OpcoSelector({
               Détecté automatiquement : <strong>{autoMatch.opco.nom}</strong>
             </div>
             <div className="text-xs text-brand-700 mt-0.5">
-              via {autoMatch.matched_by === 'idcc' ? 'convention collective' : 'code NAF'} {autoMatch.matched_code}
+              via {autoMatch.matched_by === 'siret' ? 'SIRET' : autoMatch.matched_by === 'idcc' ? 'convention collective' : 'code NAF'} {autoMatch.matched_code}
               {autoMatch.libelle && ` — ${autoMatch.libelle}`}
             </div>
           </div>
