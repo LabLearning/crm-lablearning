@@ -138,18 +138,16 @@ lib/
 - `PortalShell.tsx` detecte le type et affiche la navigation adaptee
 - Aucun login Supabase requis — acces par lien unique
 
-### Tokens de test existants
-| Type | Token | Email |
-|------|-------|-------|
-| Apprenant | test-apprenant-julien-fabre | julien.fabre@comptoir-sud.fr |
-| Apprenant | test-apprenant-lea-simon | lea.simon@meridien-lgm.fr |
-| Formateur | test-formateur-laurent-vasseur | l.vasseur@lablearning.fr |
-| Formateur | test-formateur-nathalie-riviere | n.riviere@lablearning.fr |
-| Client | test-client-comptoir-sud | marc.bertrand@comptoir-sud.fr |
-| Client | test-client-hotel-meridien | sophie.lamarche@meridien-lgm.fr |
-| Apporteur | test-apporteur-lucas-martin | lucas.martin@conseil-formation.fr |
-| Partenaire | test-partenaire-quick-sud | michel.delattre@quick-sud.fr |
-| Partenaire | test-partenaire-boucheries | c.bonnard@boucheries-tradition.fr |
+### Tokens reels en base (a interroger via portal_access_tokens)
+Les tokens sont des hashs SHA256, expirent en 2027, is_active=true. Pour les recuperer:
+`SELECT type, token, email FROM portal_access_tokens WHERE is_active = true;`
+
+| Type | Email associe | Note |
+|------|---------------|------|
+| Apprenant | emilie.bernard@mie-doree.fr | apprenant_id lie |
+| Formateur | l.vasseur@lablearning.fr | formateur_id lie |
+| Client | BRAHIMOCF@GMAIL.COM | recherche via contact ou client direct |
+| Apporteur | brahimouchrif@gmail.com | recherche par email |
 
 ## Donnees de test en base
 - 6 clients (entreprises: restaurant, boucherie, hotel, patisserie, fast-food, boulangerie)

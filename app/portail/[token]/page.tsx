@@ -476,7 +476,7 @@ export default async function PortalHomePage({ params }: { params: { token: stri
       )}
 
       {/* Expertise */}
-      {context.formateur.domaines_expertise.length > 0 && (
+      {context.formateur.domaines_expertise && context.formateur.domaines_expertise.length > 0 && (
         <div className="card p-6">
           <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-3">Domaines d'expertise</h2>
           <div className="flex flex-wrap gap-2">
