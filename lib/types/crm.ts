@@ -13,6 +13,15 @@ export type LeadStatus =
   | 'gagne'
   | 'perdu'
 
+export type LeadValidationStatus = 'draft' | 'pending' | 'approved' | 'rejected'
+
+export const LEAD_VALIDATION_STATUS_LABELS: Record<LeadValidationStatus, string> = {
+  draft: 'Brouillon',
+  pending: 'En attente de validation',
+  approved: 'Validé',
+  rejected: 'Refusé',
+}
+
 export type LeadSource =
   | 'site_web'
   | 'apporteur_affaires'
@@ -61,10 +70,21 @@ export interface Lead {
   tags: string[]
   next_action: string | null
   next_action_date: string | null
+  // Workflow validation
+  validation_status: LeadValidationStatus
+  submitted_at: string | null
+  submitted_by: string | null
+  validated_at: string | null
+  validated_by: string | null
+  validation_comment: string | null
+  gestionnaire_id: string | null
   created_at: string
   updated_at: string
   // Joined fields
   assigned_user?: { first_name: string; last_name: string }
+  submitted_user?: { first_name: string; last_name: string }
+  validated_user?: { first_name: string; last_name: string }
+  gestionnaire?: { first_name: string; last_name: string }
   apporteur?: { nom: string; prenom: string | null }
   _interactions_count?: number
 }

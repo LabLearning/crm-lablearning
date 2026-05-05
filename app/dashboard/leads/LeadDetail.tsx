@@ -17,10 +17,14 @@ import { formatDateTime } from '@/lib/utils'
 import type { Lead, LeadStatus, LeadInteraction } from '@/lib/types/crm'
 import type { User } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { LeadValidationCard } from './LeadValidationCard'
 
 interface LeadDetailProps {
   lead: Lead
   users: Pick<User, 'id' | 'first_name' | 'last_name'>[]
+  gestionnaires: Pick<User, 'id' | 'first_name' | 'last_name'>[]
+  currentUserRole: string
+  currentUserId: string
   onStatusChange: (status: LeadStatus) => void
   onClose: () => void
   interactions?: LeadInteraction[]
@@ -28,7 +32,7 @@ interface LeadDetailProps {
 
 const interactionOptions = Object.entries(INTERACTION_LABELS).map(([v, l]) => ({ value: v, label: l }))
 
-export function LeadDetail({ lead, users, onStatusChange, onClose, interactions = [] }: LeadDetailProps) {
+export function LeadDetail({ lead, users, gestionnaires, currentUserRole, currentUserId, onStatusChange, onClose, interactions = [] }: LeadDetailProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [addingInteraction, setAddingInteraction] = useState(false)
@@ -93,6 +97,14 @@ export function LeadDetail({ lead, users, onStatusChange, onClose, interactions 
 
   return (
     <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+      {/* Workflow validation */}
+      <LeadValidationCard
+        lead={lead}
+        currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
+        gestionnaires={gestionnaires}
+      />
+
       {/* Status progression */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
         {PIPELINE_COLUMNS.filter(s => s !== 'perdu').map((status, i) => {

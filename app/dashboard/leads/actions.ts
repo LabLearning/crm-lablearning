@@ -365,6 +365,196 @@ export async function addInteractionAction(formData: FormData): Promise<ActionRe
   return { success: true }
 }
 
+// ============================================================
+// Workflow validation : commercial → directeur commercial → gestionnaire
+// ============================================================
+
+export async function submitLeadForValidationAction(leadId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('id, validation_status, contact_nom, contact_prenom, entreprise, formation_souhaitee')
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+    .single()
+
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+  if (lead.validation_status === 'pending') return { success: false, error: 'Déjà soumis pour validation' }
+  if (lead.validation_status === 'approved') return { success: false, error: 'Déjà validé' }
+
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      validation_status: 'pending',
+      submitted_at: new Date().toISOString(),
+      submitted_by: session.user.id,
+    })
+    .eq('id', leadId)
+
+  if (error) return { success: false, error: 'Erreur lors de la soumission' }
+
+  // Notifier les directeurs commerciaux
+  const { createNotification } = await import('@/lib/email')
+  const { data: dircos } = await supabase
+    .from('users')
+    .select('id, email, first_name, last_name')
+    .eq('organization_id', session.organization.id)
+    .eq('status', 'active')
+    .in('role', ['directeur_commercial', 'super_admin'])
+
+  const submitter = `${session.user.first_name} ${session.user.last_name}`.trim()
+  const leadLabel = `${lead.contact_prenom || ''} ${lead.contact_nom}${lead.entreprise ? ` — ${lead.entreprise}` : ''}`.trim()
+
+  for (const dirco of dircos || []) {
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: dirco.id,
+      titre: 'Lead à valider',
+      message: `${submitter} a soumis un lead pour validation : ${leadLabel}`,
+      type: 'lead',
+      lienUrl: `/dashboard/leads?tab=validation`,
+      lienLabel: 'Voir le lead',
+      entityType: 'lead',
+      entityId: leadId,
+    })
+  }
+
+  await logAudit({ action: 'submit_for_validation', entity_type: 'lead', entity_id: leadId })
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
+export async function approveLeadAction(
+  leadId: string,
+  gestionnaireId: string,
+  comment?: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['directeur_commercial', 'super_admin'].includes(session.user.role)) {
+    return { success: false, error: 'Action réservée au directeur commercial' }
+  }
+
+  const supabase = await createServiceRoleClient()
+
+  // Vérifier que le gestionnaire existe et a le bon rôle
+  const { data: gestionnaire } = await supabase
+    .from('users')
+    .select('id, email, first_name, last_name, role')
+    .eq('id', gestionnaireId)
+    .eq('organization_id', session.organization.id)
+    .single()
+
+  if (!gestionnaire) return { success: false, error: 'Gestionnaire introuvable' }
+  if (!['gestionnaire', 'super_admin'].includes(gestionnaire.role)) {
+    return { success: false, error: 'L\'utilisateur sélectionné n\'a pas le rôle gestionnaire' }
+  }
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('contact_nom, contact_prenom, entreprise')
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+    .single()
+
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      validation_status: 'approved',
+      validated_at: new Date().toISOString(),
+      validated_by: session.user.id,
+      validation_comment: comment || null,
+      gestionnaire_id: gestionnaireId,
+    })
+    .eq('id', leadId)
+
+  if (error) return { success: false, error: 'Erreur lors de la validation' }
+
+  // Notifier le gestionnaire
+  const { createNotification } = await import('@/lib/email')
+  const leadLabel = `${lead.contact_prenom || ''} ${lead.contact_nom}${lead.entreprise ? ` — ${lead.entreprise}` : ''}`.trim()
+  await createNotification({
+    organizationId: session.organization.id,
+    userId: gestionnaireId,
+    titre: 'Nouveau dossier à traiter',
+    message: `Le lead "${leadLabel}" t'a été assigné par ${session.user.first_name} ${session.user.last_name}`,
+    type: 'lead',
+    lienUrl: `/dashboard/leads`,
+    lienLabel: 'Voir le dossier',
+    entityType: 'lead',
+    entityId: leadId,
+  })
+
+  await logAudit({
+    action: 'approve_lead',
+    entity_type: 'lead',
+    entity_id: leadId,
+    details: { gestionnaire_id: gestionnaireId, comment: comment || null },
+  })
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
+export async function rejectLeadAction(leadId: string, comment: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['directeur_commercial', 'super_admin'].includes(session.user.role)) {
+    return { success: false, error: 'Action réservée au directeur commercial' }
+  }
+  if (!comment.trim()) return { success: false, error: 'Un commentaire de refus est requis' }
+
+  const supabase = await createServiceRoleClient()
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('submitted_by, contact_nom, contact_prenom, entreprise')
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+    .single()
+
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      validation_status: 'rejected',
+      validated_at: new Date().toISOString(),
+      validated_by: session.user.id,
+      validation_comment: comment,
+    })
+    .eq('id', leadId)
+
+  if (error) return { success: false, error: 'Erreur lors du refus' }
+
+  // Notifier l'auteur de la soumission
+  if (lead.submitted_by) {
+    const { createNotification } = await import('@/lib/email')
+    const leadLabel = `${lead.contact_prenom || ''} ${lead.contact_nom}${lead.entreprise ? ` — ${lead.entreprise}` : ''}`.trim()
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: lead.submitted_by,
+      titre: 'Lead refusé',
+      message: `Ton lead "${leadLabel}" a été refusé : ${comment}`,
+      type: 'lead',
+      lienUrl: `/dashboard/leads`,
+      lienLabel: 'Voir le lead',
+      entityType: 'lead',
+      entityId: leadId,
+    })
+  }
+
+  await logAudit({
+    action: 'reject_lead',
+    entity_type: 'lead',
+    entity_id: leadId,
+    details: { comment },
+  })
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
 export async function bulkImportLeadsAction(leads: Array<{
   contact_nom: string; contact_prenom?: string; contact_email?: string
   contact_telephone?: string; entreprise?: string; source?: string

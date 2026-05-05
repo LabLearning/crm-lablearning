@@ -13,6 +13,9 @@ export default async function LeadsPage() {
     .select(`
       *,
       assigned_user:users!leads_assigned_to_fkey(first_name, last_name),
+      submitted_user:users!leads_submitted_by_fkey(first_name, last_name),
+      validated_user:users!leads_validated_by_fkey(first_name, last_name),
+      gestionnaire:users!leads_gestionnaire_id_fkey(first_name, last_name),
       apporteur:apporteurs_affaires(nom, prenom)
     `)
     .eq('organization_id', session.organization.id)
@@ -32,6 +35,9 @@ export default async function LeadsPage() {
     }
   } else if (session.user.role === 'commercial') {
     leadsQuery = leadsQuery.eq('assigned_to', session.user.id)
+  } else if (session.user.role === 'gestionnaire') {
+    // Gestionnaire ne voit que les dossiers qui lui sont assignés
+    leadsQuery = leadsQuery.eq('gestionnaire_id', session.user.id)
   }
 
   const { data: leads } = await leadsQuery
@@ -42,6 +48,14 @@ export default async function LeadsPage() {
     .eq('organization_id', session.organization.id)
     .eq('status', 'active')
     .in('role', ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'])
+
+  // Gestionnaires (pour assignation à la validation)
+  const { data: gestionnaires } = await supabase
+    .from('users')
+    .select('id, first_name, last_name')
+    .eq('organization_id', session.organization.id)
+    .eq('status', 'active')
+    .in('role', ['gestionnaire', 'super_admin'])
 
   // Formations pour le sélecteur (apporteur)
   const { data: formations } = await supabase
@@ -58,6 +72,9 @@ export default async function LeadsPage() {
       <LeadsPipeline
         leads={(leads || []) as Lead[]}
         users={users || []}
+        gestionnaires={gestionnaires || []}
+        currentUserRole={session.user.role}
+        currentUserId={session.user.id}
         formations={formations || []}
         isApporteur={isApporteur}
       />
