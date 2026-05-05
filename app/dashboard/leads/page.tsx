@@ -44,7 +44,7 @@ export default async function LeadsPage() {
 
   const { data: users } = await supabase
     .from('users')
-    .select('id, first_name, last_name')
+    .select('id, first_name, last_name, role')
     .eq('organization_id', session.organization.id)
     .eq('status', 'active')
     .in('role', ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'])

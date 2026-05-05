@@ -17,12 +17,23 @@ interface Formation {
 
 interface LeadFormProps {
   lead?: Lead
-  users: Pick<User, 'id' | 'first_name' | 'last_name'>[]
+  users: Pick<User, 'id' | 'first_name' | 'last_name' | 'role'>[]
   formations?: Formation[]
   isApporteur?: boolean
   hideAssign?: boolean
   onSuccess: () => void
   onCancel: () => void
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Admin',
+  directeur_commercial: 'Directeur commercial',
+  commercial: 'Commercial',
+  gestionnaire: 'Gestionnaire',
+  comptable: 'Comptable',
+  formateur: 'Formateur',
+  apporteur_affaires: 'Apporteur d\'affaires',
+  apprenant: 'Apprenant',
 }
 
 const sourceOptions = Object.entries(LEAD_SOURCE_LABELS).map(([value, label]) => ({ value, label }))
@@ -95,7 +106,10 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
     }
   }
 
-  const userOptions = users.map((u) => ({ value: u.id, label: `${u.first_name} ${u.last_name}` }))
+  const userOptions = users.map((u) => ({
+    value: u.id,
+    label: `${u.first_name} ${u.last_name} — ${ROLE_LABELS[u.role] || u.role}`,
+  }))
   const formationOptions = [
     ...formations.map((f) => ({ value: f.id, label: f.intitule })),
     { value: '__custom', label: 'Autre (formation spéciale)' },
@@ -281,10 +295,9 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
       ) : (
         <>
           <Input id="formation_souhaitee" name="formation_souhaitee" label="Formation souhaitée" defaultValue={lead?.formation_souhaitee || ''} />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Input id="nombre_stagiaires" name="nombre_stagiaires" type="number" label="Nombre de participants" defaultValue={lead?.nombre_stagiaires?.toString() || ''} />
             <Input id="date_souhaitee" name="date_souhaitee" type="date" label="Date souhaitée" defaultValue={lead?.date_souhaitee || ''} />
-            <Input id="montant_estime" name="montant_estime" type="number" label="Montant estimé (€)" defaultValue={lead?.montant_estime?.toString() || ''} />
           </div>
         </>
       )}

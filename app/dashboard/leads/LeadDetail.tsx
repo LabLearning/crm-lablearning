@@ -21,7 +21,7 @@ import { LeadValidationCard } from './LeadValidationCard'
 
 interface LeadDetailProps {
   lead: Lead
-  users: Pick<User, 'id' | 'first_name' | 'last_name'>[]
+  users: Pick<User, 'id' | 'first_name' | 'last_name' | 'role'>[]
   gestionnaires: Pick<User, 'id' | 'first_name' | 'last_name'>[]
   currentUserRole: string
   currentUserId: string
