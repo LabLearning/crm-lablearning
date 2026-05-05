@@ -65,6 +65,7 @@ type ViewMode = 'kanban' | 'list'
 type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score'
 
 export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], isApporteur }: LeadsPipelineProps) {
+  if (typeof window !== 'undefined') console.log('[LeadsPipeline] formations.length =', formations.length, formations)
   const { toast } = useToast()
   const [view, setView] = useState<ViewMode>('kanban')
   const [createOpen, setCreateOpen] = useState(false)
