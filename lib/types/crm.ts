@@ -47,21 +47,50 @@ export type InteractionType = 'appel' | 'email' | 'rdv' | 'note' | 'relance' | '
 export interface Lead {
   id: string
   organization_id: string
+  type: ClientType
+  // Entreprise (mirror clients)
   entreprise: string | null
   siret: string | null
+  sigle: string | null
+  code_naf: string | null
+  secteur_activite: string | null
+  taille_entreprise: string | null
+  forme_juridique: string | null
+  date_creation_entreprise: string | null
+  effectif_libelle: string | null
+  tva_intra: string | null
+  est_qualiopi: boolean
+  est_organisme_formation: boolean
+  adresse: string | null
+  code_postal: string | null
+  ville: string | null
+  site_web: string | null
+  // Contact principal
+  contact_civilite: string | null
   contact_nom: string
   contact_prenom: string | null
   contact_email: string | null
   contact_telephone: string | null
   contact_poste: string | null
+  contact_qualite: string | null
+  // Source & status
   source: LeadSource
   status: LeadStatus
   score: number
+  // Financement / OPCO
+  financeur_type: FinanceurType | null
+  opco_id: string | null
+  opco_compte_status: 'aucun' | 'courrier_envoye' | 'en_attente_validation' | 'actif' | 'inactif' | null
+  code_idcc: string | null
+  convention_collective: string | null
+  numero_opco: string | null
+  // Recueil du besoin
   montant_estime: number | null
   formation_souhaitee: string | null
   nombre_stagiaires: number | null
   date_souhaitee: string | null
   commentaire: string | null
+  // Suivi
   apporteur_id: string | null
   assigned_to: string | null
   converted_client_id: string | null

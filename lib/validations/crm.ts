@@ -3,23 +3,52 @@ import { z } from 'zod'
 // ---- Leads ----
 
 export const createLeadSchema = z.object({
+  type: z.enum(['entreprise', 'particulier']).optional().default('entreprise'),
+  // Contact
+  contact_civilite: z.string().optional(),
   contact_nom: z.string().min(2, 'Nom requis (min. 2 caractères)'),
   contact_prenom: z.string().optional(),
   contact_email: z.string().email('Email invalide').optional().or(z.literal('')),
   contact_telephone: z.string().optional(),
   contact_poste: z.string().optional(),
+  contact_qualite: z.string().optional(),
+  // Entreprise
   entreprise: z.string().optional(),
   siret: z.string().optional(),
+  sigle: z.string().optional(),
+  code_naf: z.string().optional(),
+  secteur_activite: z.string().optional(),
+  taille_entreprise: z.string().optional(),
+  forme_juridique: z.string().optional(),
+  date_creation_entreprise: z.string().optional().or(z.literal('')),
+  effectif_libelle: z.string().optional(),
+  tva_intra: z.string().optional(),
+  est_qualiopi: z.coerce.boolean().optional(),
+  est_organisme_formation: z.coerce.boolean().optional(),
+  adresse: z.string().optional(),
+  code_postal: z.string().optional(),
+  ville: z.string().optional(),
+  site_web: z.string().optional().or(z.literal('')),
+  // Source
   source: z.enum([
     'site_web', 'apporteur_affaires', 'phoning', 'salon',
     'bouche_a_oreille', 'reseaux_sociaux', 'email_entrant',
     'partenaire', 'ancien_client', 'autre',
   ]).optional().default('autre'),
+  // Financement / OPCO
+  financeur_type: z.enum(['opco', 'entreprise', 'france_travail', 'cpf', 'fonds_propres', 'region', 'autre']).optional().or(z.literal('')),
+  opco_id: z.string().uuid().optional().or(z.literal('')),
+  opco_compte_status: z.enum(['aucun', 'courrier_envoye', 'en_attente_validation', 'actif', 'inactif']).optional().or(z.literal('')),
+  code_idcc: z.string().optional(),
+  convention_collective: z.string().optional(),
+  numero_opco: z.string().optional(),
+  // Recueil du besoin
   montant_estime: z.coerce.number().min(0).optional(),
   formation_souhaitee: z.string().optional(),
   nombre_stagiaires: z.coerce.number().int().min(1).optional(),
   date_souhaitee: z.string().optional(),
   commentaire: z.string().optional(),
+  // Suivi
   apporteur_id: z.string().uuid().optional().or(z.literal('')),
   assigned_to: z.string().uuid().optional().or(z.literal('')),
 })

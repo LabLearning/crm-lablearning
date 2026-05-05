@@ -46,10 +46,18 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
   const insertData = {
     ...parsed.data,
     organization_id: session.organization.id,
+    type: parsed.data.type || 'entreprise',
     contact_email: parsed.data.contact_email || null,
     montant_estime: parsed.data.montant_estime || null,
     nombre_stagiaires: parsed.data.nombre_stagiaires || null,
     date_souhaitee: parsed.data.date_souhaitee || null,
+    date_creation_entreprise: parsed.data.date_creation_entreprise || null,
+    site_web: parsed.data.site_web || null,
+    opco_id: parsed.data.opco_id || null,
+    opco_compte_status: parsed.data.opco_compte_status || 'aucun',
+    financeur_type: parsed.data.financeur_type || null,
+    est_qualiopi: parsed.data.est_qualiopi === true,
+    est_organisme_formation: parsed.data.est_organisme_formation === true,
     apporteur_id: apporteurId,
     assigned_to: parsed.data.assigned_to || (session.user.role === 'apporteur_affaires' ? null : session.user.id),
     source: session.user.role === 'apporteur_affaires' ? 'apporteur_affaires' : (parsed.data.source || 'autre'),
@@ -151,10 +159,18 @@ export async function updateLeadAction(id: string, formData: FormData): Promise<
 
   const updateData = {
     ...parsed.data,
+    type: parsed.data.type || 'entreprise',
     contact_email: parsed.data.contact_email || null,
     montant_estime: parsed.data.montant_estime || null,
     nombre_stagiaires: parsed.data.nombre_stagiaires || null,
     date_souhaitee: parsed.data.date_souhaitee || null,
+    date_creation_entreprise: parsed.data.date_creation_entreprise || null,
+    site_web: parsed.data.site_web || null,
+    opco_id: parsed.data.opco_id || null,
+    opco_compte_status: parsed.data.opco_compte_status || 'aucun',
+    financeur_type: parsed.data.financeur_type || null,
+    est_qualiopi: parsed.data.est_qualiopi === true,
+    est_organisme_formation: parsed.data.est_organisme_formation === true,
     apporteur_id: parsed.data.apporteur_id || null,
     assigned_to: parsed.data.assigned_to || null,
   }
@@ -279,16 +295,36 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
     return { success: false, error: 'Lead introuvable' }
   }
 
-  // Create client from lead
+  // Create client from lead — propage toutes les infos enrichies
   const { data: client, error: clientError } = await supabase
     .from('clients')
     .insert({
       organization_id: session.organization.id,
-      type: 'entreprise',
+      type: lead.type || 'entreprise',
       raison_sociale: lead.entreprise,
       siret: lead.siret,
+      sigle: lead.sigle,
+      code_naf: lead.code_naf,
+      secteur_activite: lead.secteur_activite,
+      taille_entreprise: lead.taille_entreprise,
+      forme_juridique: lead.forme_juridique,
+      date_creation_entreprise: lead.date_creation_entreprise,
+      effectif_libelle: lead.effectif_libelle,
+      tva_intra: lead.tva_intra,
+      est_qualiopi: lead.est_qualiopi,
+      est_organisme_formation: lead.est_organisme_formation,
+      adresse: lead.adresse,
+      code_postal: lead.code_postal,
+      ville: lead.ville,
+      site_web: lead.site_web,
       telephone: lead.contact_telephone,
       email: lead.contact_email,
+      financeur_type: lead.financeur_type,
+      opco_id: lead.opco_id,
+      opco_compte_status: lead.opco_compte_status || 'aucun',
+      code_idcc: lead.code_idcc,
+      convention_collective: lead.convention_collective,
+      numero_opco: lead.numero_opco,
       created_by: session.user.id,
     })
     .select()
@@ -298,15 +334,16 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
     return { success: false, error: 'Erreur lors de la création du client' }
   }
 
-  // Create contact from lead info
+  // Create contact (= dirigeant) from lead info
   await supabase.from('contacts').insert({
     organization_id: session.organization.id,
     client_id: client.id,
+    civilite: lead.contact_civilite,
     prenom: lead.contact_prenom || '',
     nom: lead.contact_nom,
     email: lead.contact_email,
     telephone: lead.contact_telephone,
-    poste: lead.contact_poste,
+    poste: lead.contact_qualite || lead.contact_poste,
     est_principal: true,
   })
 
