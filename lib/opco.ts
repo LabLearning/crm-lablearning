@@ -55,18 +55,25 @@ export async function findOpcoByNaf(codeNaf: string): Promise<OpcoMatch | null> 
   return { opco: data.opco as unknown as Opco, matched_by: 'naf', matched_code: code, libelle: data.libelle }
 }
 
-/** Trouve l'OPCO depuis un code IDCC (ex: "1979" pour HCR) */
+/** Normalise un code IDCC sur 4 chiffres avec padding zéros (format officiel INSEE) */
+function normalizeIdcc(code: string): string {
+  const digits = code.replace(/\D/g, '')
+  if (!digits) return ''
+  return digits.padStart(4, '0')
+}
+
+/** Trouve l'OPCO depuis un code IDCC (ex: "1979" ou "843" pour HCR/boulangerie) */
 export async function findOpcoByIdcc(codeIdcc: string): Promise<OpcoMatch | null> {
-  const code = codeIdcc.trim()
-  if (!code) return null
+  const normalized = normalizeIdcc(codeIdcc.trim())
+  if (!normalized) return null
   const supabase = await createServiceRoleClient()
   const { data } = await supabase
     .from('opco_idcc_codes')
     .select('libelle_convention, opco:opco(*)')
-    .eq('code_idcc', code)
+    .eq('code_idcc', normalized)
     .maybeSingle()
   if (!data?.opco) return null
-  return { opco: data.opco as unknown as Opco, matched_by: 'idcc', matched_code: code, libelle: data.libelle_convention }
+  return { opco: data.opco as unknown as Opco, matched_by: 'idcc', matched_code: normalized, libelle: data.libelle_convention }
 }
 
 /** Tente une détection : IDCC en priorité (plus précis), fallback NAF */
