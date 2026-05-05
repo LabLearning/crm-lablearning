@@ -23,6 +23,7 @@ export function CompanySearchInput({
   const [results, setResults] = useState<SireneCompany[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [apiError, setApiError] = useState(false)
   const [selectedSiret, setSelectedSiret] = useState<string | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -39,6 +40,7 @@ export function CompanySearchInput({
     const v = e.target.value
     setValue(v)
     setSelectedSiret(null)
+    setApiError(false)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (v.trim().length < 2) {
       setResults([])
@@ -51,8 +53,10 @@ export function CompanySearchInput({
       try {
         const found = await searchCompanies(v, 8)
         setResults(found)
+        setApiError(false)
       } catch {
         setResults([])
+        setApiError(true)
       } finally {
         setIsLoading(false)
       }
@@ -102,7 +106,13 @@ export function CompanySearchInput({
 
         {isOpen && (results.length > 0 || (!isLoading && value.length >= 2)) && (
           <div className="absolute z-50 mt-1 w-full bg-white rounded-xl border border-surface-200 shadow-lg max-h-72 overflow-y-auto">
-            {results.length === 0 && !isLoading && (
+            {results.length === 0 && !isLoading && apiError && (
+              <div className="px-4 py-3 text-sm bg-amber-50 text-amber-800 border-b border-amber-100">
+                <strong>Service de recherche temporairement indisponible</strong>
+                <div className="text-xs mt-0.5">L'API publique data.gouv ne répond pas. Continuez en saisie manuelle — tous les champs sont éditables.</div>
+              </div>
+            )}
+            {results.length === 0 && !isLoading && !apiError && (
               <div className="px-4 py-3 text-sm text-surface-500">
                 Aucune entreprise trouvée. Vous pouvez saisir manuellement.
               </div>

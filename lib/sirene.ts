@@ -85,13 +85,22 @@ export async function searchCompanies(query: string, limit = 10): Promise<Sirene
   const q = query.trim()
   if (q.length < 2) return []
 
+  // Côté browser : passer par notre proxy Vercel (réseau plus stable que celui du user)
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams({ q, limit: String(limit) })
+    const res = await fetch(`/api/sirene/search?${params}`)
+    if (!res.ok) throw new Error('proxy error')
+    const data = await res.json()
+    return data.companies || []
+  }
+
+  // Côté serveur : appel direct à l'API publique
   const params = new URLSearchParams({
     q,
     page: '1',
     per_page: String(Math.min(limit, 25)),
     etat_administratif: 'A',
   })
-
   const res = await fetch(`${API_URL}?${params}`, { cache: 'no-store' })
   if (!res.ok) return []
   const data = await res.json()
