@@ -105,11 +105,15 @@ export function OpcoSelector({
         </div>
       )}
 
-      {!autoMatch && !isDetecting && (codeNaf || codeIdcc) && (
+      {!autoMatch && !isDetecting && (siret || codeNaf || codeIdcc) && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm flex items-start gap-3">
           <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
           <div className="text-amber-800">
-            Aucun OPCO trouvé pour ce code NAF/IDCC. Sélectionne manuellement ci-dessous.
+            <strong>Détection automatique impossible.</strong> Cette entreprise n'a pas de convention collective
+            officiellement déclarée dans la base SIRET-OPCO de data.gouv.
+            <div className="mt-1 text-xs text-amber-700">
+              Soit tu renseignes le code IDCC ci-dessus, soit tu sélectionnes l'OPCO manuellement.
+            </div>
           </div>
         </div>
       )}
