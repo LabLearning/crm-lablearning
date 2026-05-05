@@ -40,16 +40,6 @@ interface LeadsPipelineProps {
   isApporteur?: boolean
 }
 
-const COLUMN_BG: Record<LeadStatus, string> = {
-  nouveau: 'border-t-brand-400',
-  contacte: 'border-t-cyan-400',
-  qualification: 'border-t-warning-400',
-  proposition_envoyee: 'border-t-purple-400',
-  negociation: 'border-t-orange-400',
-  gagne: 'border-t-success-400',
-  perdu: 'border-t-danger-400',
-}
-
 // Score calculation (0-100)
 function calcScore(lead: Lead): number {
   let s = 0
@@ -318,15 +308,13 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
       {/* ─── VUE CARTES ─── */}
       {/* ─── VUE KANBAN ─── */}
       {view === 'kanban' && (
-        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 lg:-mx-6 lg:px-6">
+        <div className="grid grid-cols-7 gap-3 pb-4">
           {PIPELINE_COLUMNS.map(status => (
             <div key={status} onDragOver={handleDragOver} onDrop={e => handleDrop(e, status)}
-              className={cn('flex-shrink-0 w-[280px] rounded-2xl bg-surface-50 border-t-[3px]', COLUMN_BG[status])}>
-              <div className="px-3.5 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-surface-700">{LEAD_STATUS_LABELS[status]}</span>
-                  <span className="text-xs text-surface-400 bg-surface-200 rounded-full px-2 py-0.5">{leadsByStatus[status].length}</span>
-                </div>
+              className="rounded-2xl bg-surface-50 min-w-0">
+              <div className="px-3.5 py-3 flex items-center gap-2">
+                <span className="text-sm font-semibold text-surface-700 truncate">{LEAD_STATUS_LABELS[status]}</span>
+                <span className="text-xs text-surface-400 bg-surface-200 rounded-full px-2 py-0.5 shrink-0">{leadsByStatus[status].length}</span>
               </div>
               <div className="px-2.5 pb-3 space-y-2 min-h-[100px]">
                 {leadsByStatus[status].map(lead => renderLeadCard(lead, true))}
