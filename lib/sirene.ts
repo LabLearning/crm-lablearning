@@ -14,6 +14,8 @@ export interface SireneCompany {
   code_postal: string
   ville: string
   code_naf: string
+  libelle_naf: string | null  // Libellé du code NAF (= secteur d'activité)
+  code_idcc: string | null    // Code IDCC de la convention collective (depuis siret_opco)
   taille_entreprise: 'TPE' | 'PME' | 'ETI' | 'GE' | ''
   est_actif: boolean
   dirigeant: { prenom: string; nom: string; qualite: string } | null
@@ -69,6 +71,8 @@ function mapResult(r: ApiResult): SireneCompany {
     code_postal: siege.code_postal || '',
     ville: siege.libelle_commune || '',
     code_naf: siege.activite_principale || '',
+    libelle_naf: null,  // Rempli côté serveur dans le proxy via lookup DB
+    code_idcc: null,    // Idem
     taille_entreprise: mapTaille(r.categorie_entreprise, siege.tranche_effectif_salarie),
     est_actif: r.etat_administratif === 'A',
     dirigeant: firstDirigeant?.prenoms && firstDirigeant?.nom

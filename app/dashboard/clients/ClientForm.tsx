@@ -34,6 +34,8 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
   const [raisonSociale, setRaisonSociale] = useState(client?.raison_sociale || '')
   const [siret, setSiret] = useState(client?.siret || '')
   const [codeNaf, setCodeNaf] = useState(client?.code_naf || '')
+  const [secteurActivite, setSecteurActivite] = useState(client?.secteur_activite || '')
+  const [codeIdcc, setCodeIdcc] = useState(client?.code_idcc || '')
   const [tailleEntreprise, setTailleEntreprise] = useState(client?.taille_entreprise || '')
   const [adresse, setAdresse] = useState(client?.adresse || '')
   const [codePostal, setCodePostal] = useState(client?.code_postal || '')
@@ -43,6 +45,8 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
     setRaisonSociale(c.raison_sociale)
     if (c.siret) setSiret(c.siret)
     if (c.code_naf) setCodeNaf(c.code_naf)
+    if (c.libelle_naf) setSecteurActivite(c.libelle_naf)
+    if (c.code_idcc) setCodeIdcc(c.code_idcc)
     if (c.taille_entreprise) setTailleEntreprise(c.taille_entreprise)
     if (c.adresse) setAdresse(c.adresse)
     if (c.code_postal) setCodePostal(c.code_postal)
@@ -105,7 +109,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
             <Input id="code_naf" name="code_naf" label="Code NAF" value={codeNaf} onChange={(e) => setCodeNaf(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input id="secteur_activite" name="secteur_activite" label="Secteur d'activité" defaultValue={client?.secteur_activite || ''} />
+            <Input id="secteur_activite" name="secteur_activite" label="Secteur d'activité" value={secteurActivite} onChange={(e) => setSecteurActivite(e.target.value)} />
             <Select id="taille_entreprise" name="taille_entreprise" label="Taille" options={tailleOptions} value={tailleEntreprise} onChange={(e) => setTailleEntreprise(e.target.value)} />
           </div>
         </>
@@ -140,11 +144,19 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
 
       {clientType === 'entreprise' && (
         <>
-          <Input id="code_idcc" name="code_idcc" label="Code IDCC (convention collective)" defaultValue={client?.code_idcc || ''} placeholder="Ex: 1979 pour HCR" hint="Si renseigné, la convention collective prime sur le code NAF pour la détection OPCO" />
+          <Input
+            id="code_idcc"
+            name="code_idcc"
+            label="Code IDCC (convention collective)"
+            value={codeIdcc}
+            onChange={(e) => setCodeIdcc(e.target.value)}
+            placeholder="Ex: 1979 pour HCR"
+            hint="Si renseigné, la convention collective prime sur le code NAF pour la détection OPCO"
+          />
           <OpcoSelector
             siret={siret}
             codeNaf={codeNaf}
-            codeIdcc={client?.code_idcc || undefined}
+            codeIdcc={codeIdcc}
             defaultOpcoId={client?.opco_id || undefined}
             defaultStatus={client?.opco_compte_status || 'aucun'}
             defaultNumeroOpco={client?.numero_opco || undefined}
