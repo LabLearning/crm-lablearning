@@ -297,7 +297,12 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
       )}
 
       {/* ── Recueil du besoin ── */}
-      <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Recueil du besoin</div>
+      <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">
+        Recueil du besoin
+        <span className="ml-2 text-[10px] font-mono normal-case text-red-500 bg-red-50 px-1.5 py-0.5 rounded">
+          DEBUG: formations.length={formations.length}
+        </span>
+      </div>
 
       <div className="flex flex-col gap-1">
         <label htmlFor="formation_id" className="text-sm font-medium text-surface-700">
