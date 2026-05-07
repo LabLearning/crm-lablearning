@@ -175,28 +175,54 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setError(null); setErrors({})
+
+    // Validation côté client (messages clairs avant l'envoi)
+    if (formationIds.length === 0) {
+      setError('Veuillez sélectionner au moins une formation')
+      return
+    }
+    if (typeSession === 'intra' && !clientId) {
+      setError('En type "intra", vous devez sélectionner un client commanditaire')
+      return
+    }
     if (horairesJours.length === 0) {
       setError('Ajoutez au moins un jour de planning')
       return
     }
-    setIsLoading(true); setErrors({}); setError(null)
-    const fd = new FormData(e.currentTarget)
-    fd.set('formation_id', formationId)
-    fd.set('formation_ids', formationIds.join(','))
-    fd.set('type_session', typeSession)
-    fd.set('modalite', modalite)
-    fd.set('client_id', clientId)
-    fd.set('formateur_id', formateurId)
-    // date_debut / date_fin dérivés du planning (min / max)
-    fd.set('date_debut', dateDebut)
-    fd.set('date_fin', dateFin)
-    fd.set('horaires_jours', JSON.stringify(sortedJours))
-    fd.set('apprenant_ids', selectedApprenants.join(','))
-    const result = session ? await updateSessionAction(session.id, fd) : await createSessionAction(fd)
-    if (result.success) onSuccess()
-    else if (result.errors) setErrors(result.errors)
-    if (result.error) setError(result.error)
-    setIsLoading(false)
+
+    setIsLoading(true)
+    try {
+      const fd = new FormData(e.currentTarget)
+      fd.set('formation_id', formationId)
+      fd.set('formation_ids', formationIds.join(','))
+      fd.set('type_session', typeSession)
+      fd.set('modalite', modalite)
+      fd.set('client_id', clientId)
+      fd.set('formateur_id', formateurId)
+      fd.set('date_debut', dateDebut)
+      fd.set('date_fin', dateFin)
+      fd.set('horaires_jours', JSON.stringify(sortedJours))
+      fd.set('apprenant_ids', selectedApprenants.join(','))
+
+      const result = session ? await updateSessionAction(session.id, fd) : await createSessionAction(fd)
+      if (result.success) {
+        onSuccess()
+      } else {
+        if (result.errors) {
+          setErrors(result.errors)
+          // Récap les erreurs en haut
+          const firstError = Object.entries(result.errors)[0]
+          if (firstError) setError(`${firstError[0]} : ${(firstError[1] as string[])[0]}`)
+        }
+        if (result.error) setError(result.error)
+      }
+    } catch (e: any) {
+      console.error('[SessionForm submit]', e)
+      setError(e?.message || 'Erreur inattendue. Voir la console pour plus de détails.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
