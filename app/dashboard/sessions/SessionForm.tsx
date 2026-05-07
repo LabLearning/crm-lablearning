@@ -275,12 +275,9 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <Input id="lien_visio" name="lien_visio" label="Lien visioconférence" placeholder="https://zoom.us/j/..." defaultValue={session?.lien_visio || ''} error={errors.lien_visio?.[0]} />
       )}
 
-      {/* ── Capacité ── */}
-      <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Capacité</div>
-      <div className="grid grid-cols-2 gap-3">
-        <Input id="places_min" name="places_min" type="number" label="Places minimum" defaultValue={session?.places_min?.toString() || '1'} />
-        <Input id="places_max" name="places_max" type="number" label="Places maximum" defaultValue={session?.places_max?.toString() || '12'} />
-      </div>
+      {/* Capacité : valeurs par défaut envoyées en hidden (pas exposées dans l'UI) */}
+      <input type="hidden" name="places_min" value={session?.places_min?.toString() || '1'} />
+      <input type="hidden" name="places_max" value={session?.places_max?.toString() || '12'} />
 
       {/* ── Apprenants ── */}
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2 flex items-center gap-2">
