@@ -290,27 +290,29 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <div className="rounded-xl border border-surface-200 overflow-hidden">
           <div className="divide-y divide-surface-100">
             {sortedJours.map((h) => (
-              <div key={h.date} className="px-3 py-2.5 flex flex-wrap items-center gap-2 text-xs">
+              <div key={h.date} className="px-3 py-2.5 grid grid-cols-[auto_minmax(140px,160px)_1fr_auto] gap-3 items-center text-xs">
                 <button type="button" onClick={() => removeJour(h.date)} className="p-1 rounded text-danger-400 hover:bg-danger-50 hover:text-danger-600 transition-colors">
                   <X className="h-3.5 w-3.5" />
                 </button>
-                <div className="font-medium text-surface-900 w-36 shrink-0">
+                <div className="font-medium text-surface-900">
                   {new Date(h.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-surface-500">Matin</span>
-                  <input type="time" value={h.matin_debut} onChange={e => updateHoraire(h.date, 'matin_debut', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
-                  <span className="text-surface-300">→</span>
-                  <input type="time" value={h.matin_fin} onChange={e => updateHoraire(h.date, 'matin_fin', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-surface-500 w-12 shrink-0">Matin</span>
+                    <input type="time" value={h.matin_debut} onChange={e => updateHoraire(h.date, 'matin_debut', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
+                    <span className="text-surface-300">→</span>
+                    <input type="time" value={h.matin_fin} onChange={e => updateHoraire(h.date, 'matin_fin', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-surface-500 w-12 shrink-0">Aprem</span>
+                    <input type="time" value={h.aprem_debut} onChange={e => updateHoraire(h.date, 'aprem_debut', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
+                    <span className="text-surface-300">→</span>
+                    <input type="time" value={h.aprem_fin} onChange={e => updateHoraire(h.date, 'aprem_fin', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-surface-500">Aprem</span>
-                  <input type="time" value={h.aprem_debut} onChange={e => updateHoraire(h.date, 'aprem_debut', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
-                  <span className="text-surface-300">→</span>
-                  <input type="time" value={h.aprem_fin} onChange={e => updateHoraire(h.date, 'aprem_fin', e.target.value)} className="rounded border border-surface-200 px-1.5 py-0.5 text-xs" />
-                </div>
-                <div className="text-surface-400 ml-auto">
-                  <Clock className="h-3 w-3 inline mr-0.5" />
+                <div className="text-surface-500 flex items-center gap-1 whitespace-nowrap">
+                  <Clock className="h-3 w-3" />
                   {heuresJour(h).toFixed(1)}h
                 </div>
               </div>
