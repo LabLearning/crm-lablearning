@@ -144,8 +144,18 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
     ...clients.filter(c => c.raison_sociale).map(c => ({ value: c.id, label: c.raison_sociale! })),
   ]
 
-  const filteredApprenants = clientId
-    ? apprenants.filter(a => !a.client_id || a.client_id === clientId)
+  /**
+   * Règle métier : tous les apprenants d'une session doivent appartenir
+   * à la même entreprise. Le "client de référence" est déterminé par :
+   *  1. Le client_id choisi (en intra)
+   *  2. Sinon, le client du premier apprenant déjà sélectionné
+   */
+  const referenceClientId = clientId
+    || apprenants.find(a => selectedApprenants.includes(a.id))?.client_id
+    || ''
+
+  const filteredApprenants = referenceClientId
+    ? apprenants.filter(a => a.client_id === referenceClientId)
     : apprenants
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -284,9 +294,17 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <Users className="h-3.5 w-3.5" />
         Apprenants ({selectedApprenants.length} sélectionné{selectedApprenants.length > 1 ? 's' : ''})
       </div>
+      <div className="text-[11px] text-surface-500 -mt-1">
+        Tous les apprenants d'une session doivent appartenir à la même entreprise.
+        {referenceClientId && clients.find(c => c.id === referenceClientId) && (
+          <span className="ml-1 font-medium text-brand-700">
+            Filtré sur : {clients.find(c => c.id === referenceClientId)?.raison_sociale}
+          </span>
+        )}
+      </div>
       {filteredApprenants.length === 0 ? (
         <div className="rounded-xl bg-surface-50 border border-surface-200 px-4 py-3 text-xs text-surface-500">
-          Aucun apprenant disponible{clientId ? ' pour ce client' : ''}. Créez-les depuis la page Apprenants.
+          Aucun apprenant disponible{referenceClientId ? ' pour cette entreprise' : ''}. Créez-les depuis la page Apprenants en les liant à l'entreprise.
         </div>
       ) : (
         <div className="rounded-xl border border-surface-200 max-h-48 overflow-y-auto divide-y divide-surface-100">
