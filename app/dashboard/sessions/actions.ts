@@ -143,7 +143,7 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
   // Vérifier que le user est bien le formateur de la session
   const { data: sess } = await supabase
     .from('sessions')
-    .select('formateur_id, mission_status, organization_id, mission_proposed_by, formation:formations(intitule)')
+    .select('id, formateur_id, mission_status, organization_id, mission_proposed_by, formation_id, client_id, type_session, date_debut, date_fin, lieu, formation:formations(intitule, duree_heures, tarif_inter_ht, tarif_intra_ht)')
     .eq('id', sessionId).single()
   if (!sess) return { success: false, error: 'Session introuvable' }
 
@@ -160,17 +160,57 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
     .eq('id', sessionId)
   if (error) return { success: false, error: 'Erreur lors de l\'acceptation' }
 
+  // ── AUTO : créer une convention en brouillon pour cette session ──
+  const { count: existingConv } = await supabase
+    .from('conventions').select('*', { count: 'exact', head: true }).eq('session_id', sessionId)
+
+  if (!existingConv && sess.client_id) {
+    // Compter les apprenants inscrits
+    const { count: nbApprenants } = await supabase
+      .from('inscriptions').select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId).not('status', 'in', '("annule","abandonne")')
+
+    // Numéro de convention : CV-YYYY-NNN
+    const { count: convCount } = await supabase
+      .from('conventions').select('*', { count: 'exact', head: true })
+      .eq('organization_id', sess.organization_id)
+    const numero = `CV-${new Date().getFullYear()}-${String((convCount || 0) + 1).padStart(3, '0')}`
+
+    const formation = (sess as any).formation
+    const tarifBase = sess.type_session === 'intra' ? formation?.tarif_intra_ht : formation?.tarif_inter_ht
+    const montantHt = tarifBase ? tarifBase * (nbApprenants || 1) : null
+
+    await supabase.from('conventions').insert({
+      organization_id: sess.organization_id,
+      numero,
+      type: sess.type_session === 'intra' ? 'intra_entreprise' : 'inter_entreprise',
+      session_id: sessionId,
+      client_id: sess.client_id,
+      formation_id: sess.formation_id,
+      status: 'brouillon',
+      objet: `Convention de formation — ${formation?.intitule || 'Formation'}`,
+      nombre_stagiaires: nbApprenants || 0,
+      duree_heures: formation?.duree_heures || null,
+      lieu: sess.lieu || null,
+      dates_formation: `Du ${sess.date_debut} au ${sess.date_fin}`,
+      montant_ht: montantHt,
+      taux_tva: 20,
+      montant_ttc: montantHt ? montantHt * 1.2 : null,
+      created_by: sess.mission_proposed_by || session.user.id,
+    })
+  }
+
   // Notifier le gestionnaire qui a proposé
   if (sess.mission_proposed_by) {
     const { createNotification } = await import('@/lib/email')
     await createNotification({
       organizationId: sess.organization_id,
       userId: sess.mission_proposed_by,
-      titre: 'Mission acceptée',
-      message: `${session.user.first_name} ${session.user.last_name} a accepté la mission "${(sess as any).formation?.intitule || 'Formation'}".`,
+      titre: 'Mission acceptée — convention en brouillon',
+      message: `${session.user.first_name} ${session.user.last_name} a accepté la mission "${(sess as any).formation?.intitule || 'Formation'}". Une convention a été créée en brouillon, prête à être envoyée au client.`,
       type: 'session',
-      lienUrl: `/dashboard/sessions/${sessionId}`,
-      lienLabel: 'Voir la session',
+      lienUrl: `/dashboard/conventions`,
+      lienLabel: 'Voir la convention',
       entityType: 'session',
       entityId: sessionId,
     })
@@ -179,6 +219,7 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
   await logAudit({ action: 'accept_mission', entity_type: 'session', entity_id: sessionId })
   revalidatePath('/mon-espace')
   revalidatePath('/dashboard/sessions')
+  revalidatePath('/dashboard/conventions')
   return { success: true }
 }
 
