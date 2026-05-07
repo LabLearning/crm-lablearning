@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Save, Building2, Users, X, Plus, CalendarDays, Clock } from 'lucide-react'
-import { Button, Input, Select, FormateurDispoBadge } from '@/components/ui'
+import { Button, Input, Select, FormateurDispoBadge, CalendarPicker } from '@/components/ui'
 import { createSessionAction, updateSessionAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
 import type { Session, Formation, Formateur, HoraireJour } from '@/lib/types/formation'
@@ -74,7 +74,6 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
   const [clientId, setClientId] = useState(session?.client_id || '')
   const [formateurId, setFormateurId] = useState(session?.formateur_id || '')
   const [horairesJours, setHorairesJours] = useState<HoraireJour[]>(session?.horaires_jours || [])
-  const [newDayInput, setNewDayInput] = useState('')
   const [adresse, setAdresse] = useState(session?.adresse || '')
   const [codePostal, setCodePostal] = useState(session?.code_postal || '')
   const [ville, setVille] = useState(session?.ville || '')
@@ -120,13 +119,13 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
     }
   }, [formateurId, nbJours])
 
-  function addJour() {
-    if (!newDayInput) return
-    if (horairesJours.some(h => h.date === newDayInput)) {
-      setNewDayInput(''); return  // Déjà ajouté
-    }
-    setHorairesJours(prev => [...prev, { date: newDayInput, ...DEFAULT_HORAIRES }])
-    setNewDayInput('')
+  function toggleJour(date: string) {
+    setHorairesJours(prev => {
+      if (prev.some(h => h.date === date)) {
+        return prev.filter(h => h.date !== date)
+      }
+      return [...prev, { date, ...DEFAULT_HORAIRES }]
+    })
   }
 
   function removeJour(date: string) {
@@ -280,21 +279,13 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         </div>
       )}
 
-      {/* Ajouter un jour */}
-      <div className="flex gap-2">
-        <input
-          type="date"
-          value={newDayInput}
-          onChange={(e) => setNewDayInput(e.target.value)}
-          className="input-base flex-1"
-          placeholder="Choisir une date"
-        />
-        <Button type="button" onClick={addJour} disabled={!newDayInput} icon={<Plus className="h-3.5 w-3.5" />}>
-          Ajouter ce jour
-        </Button>
-      </div>
+      {/* Calendrier visuel : clic = ajout/retrait */}
+      <CalendarPicker
+        selectedDates={horairesJours.map(h => h.date)}
+        onToggle={toggleJour}
+      />
 
-      {/* Liste des jours planifiés avec horaires */}
+      {/* Liste des jours planifiés avec horaires détaillés */}
       {sortedJours.length > 0 && (
         <div className="rounded-xl border border-surface-200 overflow-hidden">
           <div className="divide-y divide-surface-100">
