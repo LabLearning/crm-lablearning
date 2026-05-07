@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Save } from 'lucide-react'
-import { Button, Input, Select } from '@/components/ui'
+import { Button, Input, Select, FormateurDispoBadge } from '@/components/ui'
 import { createSessionAction, updateSessionAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
 import type { Session, Formation, Formateur } from '@/lib/types/formation'
@@ -21,6 +21,11 @@ export function SessionForm({ session, formations, formateurs, onSuccess, onCanc
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
+
+  // Controlled : pour pouvoir vérifier la dispo en temps réel
+  const [formateurId, setFormateurId] = useState(session?.formateur_id || '')
+  const [dateDebut, setDateDebut] = useState(session?.date_debut || '')
+  const [dateFin, setDateFin] = useState(session?.date_fin || '')
 
   const formationOptions = formations.map((f) => ({
     value: f.id,
@@ -59,13 +64,28 @@ export function SessionForm({ session, formations, formateurs, onSuccess, onCanc
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Planning</div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Input id="date_debut" name="date_debut" type="date" label="Date de début *" defaultValue={session?.date_debut || ''} error={errors.date_debut?.[0]} />
-        <Input id="date_fin" name="date_fin" type="date" label="Date de fin *" defaultValue={session?.date_fin || ''} error={errors.date_fin?.[0]} />
+        <Input id="date_debut" name="date_debut" type="date" label="Date de début *" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} error={errors.date_debut?.[0]} />
+        <Input id="date_fin" name="date_fin" type="date" label="Date de fin *" value={dateFin} onChange={(e) => setDateFin(e.target.value)} error={errors.date_fin?.[0]} />
       </div>
 
       <Input id="horaires" name="horaires" label="Horaires" placeholder="09:00 - 12:30 / 14:00 - 17:30" defaultValue={session?.horaires || ''} />
 
-      <Select id="formateur_id" name="formateur_id" label="Formateur" options={formateurOptions} defaultValue={session?.formateur_id || ''} />
+      <Select
+        id="formateur_id" name="formateur_id" label="Formateur"
+        options={formateurOptions}
+        value={formateurId}
+        onChange={(e) => setFormateurId(e.target.value)}
+      />
+
+      {/* Badge de disponibilité — temps réel quand formateur + dates sont remplis */}
+      {formateurId && dateDebut && dateFin && (
+        <FormateurDispoBadge
+          formateurId={formateurId}
+          dateDebut={dateDebut}
+          dateFin={dateFin}
+          excludeSessionId={session?.id}
+        />
+      )}
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Lieu</div>
 

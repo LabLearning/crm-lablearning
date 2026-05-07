@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { AccountNotLinked } from '@/components/dashboard/AccountNotLinked'
+import { MissionPendingCard } from './MissionPendingCard'
 import Link from 'next/link'
 import {
   Calendar, Users, ClipboardCheck, Clock, ChevronRight, GraduationCap, FileText,
@@ -36,10 +37,23 @@ export default async function MonEspacePage() {
       return <AccountNotLinked roleName="Formateur" userName={userName} />
     }
 
+    // Missions à valider (proposées en attente de réponse)
+    const { data: pendingMissions } = await supabase
+      .from('sessions')
+      .select(`
+        id, reference, date_debut, date_fin, lieu, horaires, mission_proposed_at,
+        formation:formations(intitule),
+        proposer:users!sessions_mission_proposed_by_fkey(first_name, last_name)
+      `)
+      .eq('formateur_id', formateur.id)
+      .eq('mission_status', 'pending')
+      .order('date_debut', { ascending: true })
+
     const { data: sessions } = await supabase
       .from('sessions')
       .select('id, reference, status, date_debut, date_fin, lieu, formation:formations(intitule)')
       .eq('formateur_id', formateur.id)
+      .eq('mission_status', 'accepted')
       .in('status', ['planifiee', 'confirmee', 'en_cours'])
       .order('date_debut', { ascending: true })
       .limit(10)
@@ -59,6 +73,28 @@ export default async function MonEspacePage() {
           <h1 className="text-2xl font-heading font-bold text-surface-900">Bonjour, {userName}</h1>
           <p className="text-surface-500 mt-1 text-sm">{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
+
+        {/* Missions à valider — en haut, prioritaires */}
+        {(pendingMissions || []).length > 0 && (
+          <div className="space-y-3">
+            <div className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
+              {(pendingMissions || []).length} mission{(pendingMissions || []).length > 1 ? 's' : ''} en attente de votre réponse
+            </div>
+            {(pendingMissions || []).map((m: any) => (
+              <MissionPendingCard key={m.id} mission={{
+                id: m.id,
+                reference: m.reference,
+                date_debut: m.date_debut,
+                date_fin: m.date_fin,
+                lieu: m.lieu,
+                horaires: m.horaires,
+                formation_intitule: m.formation?.intitule || 'Formation',
+                proposed_at: m.mission_proposed_at,
+                proposed_by_name: m.proposer ? `${m.proposer.first_name} ${m.proposer.last_name}` : null,
+              }} />
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-2xl p-5 bg-blue-50">
