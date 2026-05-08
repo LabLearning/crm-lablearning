@@ -193,7 +193,6 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
                       {DOSSIER_STATUS_LABELS[nextStatus]}
                     </Button>
                   )}
-                  <ChevronRight className="h-5 w-5 text-surface-300" />
                   <div className="relative">
                     <button onClick={() => setActiveMenu(activeMenu === d.id ? null : d.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
                       <MoreHorizontal className="h-4 w-4" />
