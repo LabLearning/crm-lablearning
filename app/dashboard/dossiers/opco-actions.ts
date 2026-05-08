@@ -40,6 +40,19 @@ export async function updateDossierOpcoStatusAction(
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
+  // Validation : pour passer en mise_en_paiement, l'accord doit être uploadé
+  if (newStatus === 'mise_en_paiement') {
+    const { data: dossier } = await supabase
+      .from('dossiers_formation')
+      .select('accord_prise_en_charge_url')
+      .eq('id', dossierId)
+      .eq('organization_id', session.organization.id)
+      .single()
+    if (!dossier?.accord_prise_en_charge_url) {
+      return { success: false, error: 'Vous devez uploader l\'accord de prise en charge OPCO avant la mise en paiement.' }
+    }
+  }
+
   const updates: Record<string, unknown> = { opco_workflow_status: newStatus }
   const now = new Date().toISOString()
   if (newStatus === 'envoye_opco') updates.opco_envoye_at = now
@@ -68,6 +81,23 @@ export async function updateDossierOpcoStatusAction(
     details: data,
   })
   revalidatePath('/dashboard/dossiers')
+  return { success: true }
+}
+
+/** Met à jour le numéro de dossier OPCO à n'importe quel moment du workflow */
+export async function updateOpcoNumeroAction(dossierId: string, numero: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { error } = await supabase
+    .from('dossiers_formation')
+    .update({ opco_numero_dossier: numero.trim() || null })
+    .eq('id', dossierId)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: error.message }
+
+  await logAudit({ action: 'update_opco_numero', entity_type: 'dossier_formation', entity_id: dossierId, details: { numero } })
+  revalidatePath(`/dashboard/dossiers/${dossierId}`)
   return { success: true }
 }
 

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { DossierOpcoCard } from '../DossierOpcoCard'
+import { OpcoDetailsCard } from './OpcoDetailsCard'
 import { DOSSIER_STATUS_LABELS, DOSSIER_STATUS_COLORS } from '@/lib/types/dossier'
 import { formatDate, formatDateTime } from '@/lib/utils'
 
@@ -92,13 +93,23 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
 
       {/* Workflow OPCO en haut si applicable */}
       {d.opco_workflow_status && d.opco_id && (
-        <DossierOpcoCard
-          dossierId={d.id}
-          status={d.opco_workflow_status}
-          opcoNom={d.opco?.nom}
-          numeroDossier={d.opco_numero_dossier}
-          motifRefus={d.opco_motif_refus}
-        />
+        <>
+          <DossierOpcoCard
+            dossierId={d.id}
+            status={d.opco_workflow_status}
+            opcoNom={d.opco?.nom}
+            numeroDossier={d.opco_numero_dossier}
+            motifRefus={d.opco_motif_refus}
+          />
+          <OpcoDetailsCard
+            dossierId={d.id}
+            initialNumero={d.opco_numero_dossier}
+            accordUrl={d.accord_prise_en_charge_url}
+            accordFilename={d.accord_prise_en_charge_filename}
+            accordUploadedAt={d.accord_prise_en_charge_uploaded_at}
+            workflowStatus={d.opco_workflow_status}
+          />
+        </>
       )}
 
       {/* Client + Formation */}
