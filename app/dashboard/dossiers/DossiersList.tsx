@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus, Search, MoreHorizontal, Trash2, ArrowRight,
   Building2, Euro, Calendar, FolderOpen, CheckCircle2,
@@ -25,6 +26,7 @@ interface DossiersListProps {
 
 export function DossiersList({ dossiers, clients, formations, sessions }: DossiersListProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
@@ -122,7 +124,7 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
             <div
               key={d.id}
               className="card p-5 hover:shadow-card hover:border-brand-200 transition-all cursor-pointer"
-              onClick={() => setDetailDossier(d)}
+              onClick={() => router.push(`/dashboard/dossiers/${d.id}`)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
