@@ -91,13 +91,13 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
         </div>
       </div>
 
-      {/* Workflow OPCO en haut si applicable */}
-      {d.opco_workflow_status && d.opco_id && (
+      {/* Workflow OPCO — visible dès que le dossier est en financement OPCO */}
+      {(d.financeur_type === 'opco' || d.opco_workflow_status || d.opco_id) && (
         <>
           <DossierOpcoCard
             dossierId={d.id}
-            status={d.opco_workflow_status}
-            opcoNom={d.opco?.nom}
+            status={d.opco_workflow_status || 'a_constituer'}
+            opcoNom={d.opco?.nom || (d.client?.opco?.nom)}
             numeroDossier={d.opco_numero_dossier}
             motifRefus={d.opco_motif_refus}
           />
