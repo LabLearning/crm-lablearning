@@ -119,7 +119,11 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
           const nextStatus = currentIdx < DOSSIER_WORKFLOW.length - 1 ? DOSSIER_WORKFLOW[currentIdx + 1] : null
 
           return (
-            <div key={d.id} className="card p-5 hover:shadow-card transition-shadow">
+            <div
+              key={d.id}
+              className="card p-5 hover:shadow-card hover:border-brand-200 transition-all cursor-pointer"
+              onClick={() => setDetailDossier(d)}
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   {/* Header */}
@@ -168,28 +172,28 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
                     )}
                   </div>
 
-                  {/* Workflow OPCO (si dossier OPCO) */}
+                  {/* Workflow OPCO (si dossier OPCO) — clic ne propage pas vers la card */}
                   {(d as any).opco_workflow_status && (d as any).opco_id && (
-                    <DossierOpcoCard
-                      dossierId={d.id}
-                      status={(d as any).opco_workflow_status}
-                      opcoNom={(d as any).opco?.nom}
-                      numeroDossier={(d as any).opco_numero_dossier}
-                      motifRefus={(d as any).opco_motif_refus}
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DossierOpcoCard
+                        dossierId={d.id}
+                        status={(d as any).opco_workflow_status}
+                        opcoNom={(d as any).opco?.nom}
+                        numeroDossier={(d as any).opco_numero_dossier}
+                        motifRefus={(d as any).opco_motif_refus}
+                      />
+                    </div>
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* Actions — stopPropagation pour ne pas déclencher le clic sur la card */}
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {nextStatus && (
                     <Button size="sm" onClick={() => handleNextStatus(d)} icon={<ArrowRight className="h-3.5 w-3.5" />}>
                       {DOSSIER_STATUS_LABELS[nextStatus]}
                     </Button>
                   )}
-                  <Button size="sm" variant="secondary" onClick={() => setDetailDossier(d)}>
-                    Détail
-                  </Button>
+                  <ChevronRight className="h-5 w-5 text-surface-300" />
                   <div className="relative">
                     <button onClick={() => setActiveMenu(activeMenu === d.id ? null : d.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
                       <MoreHorizontal className="h-4 w-4" />
