@@ -56,6 +56,12 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     })
     .eq('id', sessionId)
 
+  // ── Seed des tâches formateur (check-list de fin de session) ──
+  if (sess.formateur_id) {
+    const { seedTachesFormateur } = await import('@/lib/taches-formateur')
+    await seedTachesFormateur(supabase, sessionId, sess.formateur_id, sess.organization_id)
+  }
+
   // ── 2. Convention : générer un token de signature si manquant ──
   const { data: convention } = await supabase
     .from('conventions')

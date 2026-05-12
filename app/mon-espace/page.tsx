@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { AccountNotLinked } from '@/components/dashboard/AccountNotLinked'
 import { MissionPendingCard } from './MissionPendingCard'
+import { TachesFormateurSection } from './TachesFormateurSection'
 import Link from 'next/link'
 import {
   Calendar, Users, ClipboardCheck, Clock, ChevronRight, GraduationCap, FileText,
@@ -58,6 +59,32 @@ export default async function MonEspacePage() {
       .order('date_debut', { ascending: true })
       .limit(10)
 
+    // Sessions avec leurs tâches pour check-list
+    const { data: sessionsAvecTaches } = await supabase
+      .from('sessions')
+      .select(`
+        id, reference, date_debut, date_fin,
+        formation:formation_id(intitule),
+        contrat:contrats_formateur(facturation_status),
+        taches:taches_formateur(id, type, libelle, description, bloque_facturation, complete, date_completion)
+      `)
+      .eq('formateur_id', formateur.id)
+      .in('status', ['en_attente_signatures', 'validee', 'en_cours', 'terminee'])
+      .order('date_debut', { ascending: false })
+      .limit(15)
+
+    const tachesSessions = (sessionsAvecTaches || [])
+      .filter((s: any) => s.taches && s.taches.length > 0)
+      .map((s: any) => ({
+        id: s.id,
+        reference: s.reference,
+        date_debut: s.date_debut,
+        date_fin: s.date_fin,
+        formation_intitule: s.formation?.intitule || 'Formation',
+        facturation_status: s.contrat?.[0]?.facturation_status || null,
+        taches: (s.taches || []).sort((a: any, b: any) => (a.bloque_facturation === b.bloque_facturation) ? 0 : a.bloque_facturation ? -1 : 1),
+      }))
+
     const allSessions = sessions || []
     const sessionIds = allSessions.map(s => s.id)
     let nbApprenants = 0
@@ -95,6 +122,9 @@ export default async function MonEspacePage() {
             ))}
           </div>
         )}
+
+        {/* Check-list des tâches de fin de session */}
+        <TachesFormateurSection sessions={tachesSessions} />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-2xl p-5 bg-blue-50">

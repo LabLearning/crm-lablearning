@@ -74,6 +74,11 @@ export async function updateDossierOpcoStatusAction(
     .eq('organization_id', session.organization.id)
   if (error) return { success: false, error: error.message }
 
+  // ── Auto-création facture client à la mise en paiement ──
+  if (newStatus === 'mise_en_paiement') {
+    await maybeCreateInvoiceFromDossier(supabase, dossierId, session.organization.id, session.user.id)
+  }
+
   await logAudit({
     action: `dossier_opco_${newStatus}`,
     entity_type: 'dossier_formation',
@@ -99,6 +104,49 @@ export async function updateOpcoNumeroAction(dossierId: string, numero: string):
   await logAudit({ action: 'update_opco_numero', entity_type: 'dossier_formation', entity_id: dossierId, details: { numero } })
   revalidatePath(`/dashboard/dossiers/${dossierId}`)
   return { success: true }
+}
+
+/** Crée auto une facture client (status brouillon) liée au dossier OPCO à la mise en paiement */
+async function maybeCreateInvoiceFromDossier(supabase: any, dossierId: string, organizationId: string, userId: string) {
+  // Vérifier qu'il n'y a pas déjà une facture pour ce dossier
+  const { data: existing } = await supabase
+    .from('factures').select('id').eq('dossier_id', dossierId).limit(1).maybeSingle()
+  if (existing) return
+
+  // Charger le dossier avec ses relations
+  const { data: dossier } = await supabase
+    .from('dossiers_formation')
+    .select('id, client_id, session_id, formation_id, montant_total_ht, montant_total_ttc')
+    .eq('id', dossierId).single()
+  if (!dossier?.client_id) return
+
+  // Numérotation facture : F-YYYY-NNN
+  const { count } = await supabase
+    .from('factures').select('*', { count: 'exact', head: true }).eq('organization_id', organizationId)
+  const numero = `F-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+
+  const ht = Number(dossier.montant_total_ht || 0)
+  const ttc = Number(dossier.montant_total_ttc || 0)
+  const tva = ttc - ht
+  const echeance = new Date(); echeance.setDate(echeance.getDate() + 30)
+
+  await supabase.from('factures').insert({
+    organization_id: organizationId,
+    numero,
+    type: 'facture',
+    client_id: dossier.client_id,
+    dossier_id: dossierId,
+    session_id: dossier.session_id,
+    status: 'brouillon',
+    date_emission: new Date().toISOString().split('T')[0],
+    date_echeance: echeance.toISOString().split('T')[0],
+    montant_ht: ht,
+    montant_tva: tva,
+    taux_tva: ht > 0 ? Number((tva / ht * 100).toFixed(2)) : 20,
+    montant_ttc: ttc,
+    montant_restant: ttc,
+    created_by: userId,
+  })
 }
 
 /** Quand session terminée + tout validé → bascule auto vers mise_en_paiement */
