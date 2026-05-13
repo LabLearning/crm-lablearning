@@ -116,7 +116,7 @@ export function ConventionsList({ conventions, clients, formations }: Convention
       </div>
 
       {/* Onglets de filtre */}
-      <div className="flex items-center gap-1 bg-surface-100 rounded-lg p-0.5 max-w-md mb-4">
+      <div className="inline-flex items-center gap-1 bg-surface-100 rounded-lg p-0.5 mb-4">
         {([
           { id: 'all' as const, label: 'Toutes', count: conventions.length },
           { id: 'pending' as const, label: 'En attente de signature', count: pendingCount },
@@ -125,7 +125,7 @@ export function ConventionsList({ conventions, clients, formations }: Convention
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               tab === t.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-500 hover:text-surface-800'
             }`}
           >
