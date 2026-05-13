@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus, Search, MoreHorizontal, Send, Check, Trash2,
   FileSignature, Building2, Euro, Clock, PenTool, Download, Link2, Copy,
@@ -25,6 +26,7 @@ const financeurOptions = [{ value: '', label: 'Aucun' }, ...Object.entries(FINAN
 
 export function ConventionsList({ conventions, clients, formations }: ConventionsListProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -142,7 +144,11 @@ export function ConventionsList({ conventions, clients, formations }: Convention
 
       <div className="space-y-3">
         {filtered.map((c) => (
-          <div key={c.id} className="card p-5 hover:shadow-card transition-shadow">
+          <div
+            key={c.id}
+            className="card p-5 hover:shadow-card hover:border-brand-200 transition-all cursor-pointer"
+            onClick={() => router.push(`/dashboard/conventions/${c.id}`)}
+          >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -175,14 +181,14 @@ export function ConventionsList({ conventions, clients, formations }: Convention
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => handleGenerateSignatureLink(c.id)}
+                  onClick={(e) => { e.stopPropagation(); handleGenerateSignatureLink(c.id) }}
                   icon={<Send className="h-3.5 w-3.5" />}
                   className="ml-3 shrink-0"
                 >
                   Renvoyer en signature
                 </Button>
               )}
-              <div className="relative ml-3">
+              <div className="relative ml-3" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => setActiveMenu(activeMenu === c.id ? null : c.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
