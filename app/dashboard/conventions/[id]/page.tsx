@@ -7,7 +7,7 @@ import {
   CheckCircle2, AlertCircle, MapPin, FilePenLine, Download, ExternalLink, Send,
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
-import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/convention'
+import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { ConventionSignatureBlock } from './ConventionSignatureBlock'
 
