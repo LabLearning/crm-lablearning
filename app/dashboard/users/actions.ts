@@ -317,7 +317,7 @@ export async function resendInvitationAction(invitationId: string): Promise<Acti
     .eq('id', invitationId)
 
   // Regenerate invite link
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm-formation-five.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 
   const { data: linkData } = await supabase.auth.admin.generateLink({
     type: 'invite',
