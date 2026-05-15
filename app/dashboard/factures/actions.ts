@@ -133,6 +133,7 @@ export async function updateFactureStatusAction(id: string, status: string): Pro
 
   const updateData: Record<string, unknown> = { status }
   if (status === 'envoyee') updateData.date_envoi = new Date().toISOString()
+  if (status === 'payee') updateData.date_paiement_complet = new Date().toISOString().split('T')[0]
 
   const { error } = await supabase
     .from('factures')
@@ -142,8 +143,28 @@ export async function updateFactureStatusAction(id: string, status: string): Pro
 
   if (error) return { success: false, error: 'Erreur' }
 
+  // Si manuel "marquée payée" → propager au dossier OPCO si lié
+  if (status === 'payee') {
+    const { data: facture } = await supabase
+      .from('factures').select('dossier_id, montant_ttc').eq('id', id).single()
+    if (facture?.dossier_id) {
+      // Update aussi montant_paye + restant à 0
+      await supabase.from('factures').update({
+        montant_paye: facture.montant_ttc,
+        montant_restant: 0,
+      }).eq('id', id)
+      await supabase
+        .from('dossiers_formation')
+        .update({ opco_workflow_status: 'paye', paye_at: new Date().toISOString() })
+        .eq('id', facture.dossier_id)
+        .eq('organization_id', session.organization.id)
+        .eq('opco_workflow_status', 'mise_en_paiement')
+    }
+  }
+
   await logAudit({ action: 'update_status', entity_type: 'facture', entity_id: id, details: { status } })
   revalidatePath('/dashboard/factures')
+  revalidatePath('/dashboard/dossiers')
   return { success: true }
 }
 
@@ -177,10 +198,57 @@ export async function createPaiementAction(formData: FormData): Promise<ActionRe
 
   if (error) return { success: false, error: 'Erreur lors de l\'enregistrement du paiement' }
 
+  // Recalculer montant_paye + restant + status de la facture
+  await recalculateFacturePaiement(supabase, parsed.data.facture_id, session.organization.id)
+
   await logAudit({ action: 'create', entity_type: 'paiement', entity_id: data.id, details: { facture_id: parsed.data.facture_id, montant: parsed.data.montant } })
   revalidatePath('/dashboard/factures')
   revalidatePath('/dashboard/paiements')
   return { success: true, data }
+}
+
+/**
+ * Recalcule le montant payé d'une facture (somme des paiements valides),
+ * ajuste le restant et le status, et propage au dossier OPCO si applicable.
+ */
+async function recalculateFacturePaiement(supabase: any, factureId: string, organizationId: string) {
+  // Total payé (paiements valides)
+  const { data: paiements } = await supabase
+    .from('paiements').select('montant')
+    .eq('facture_id', factureId).eq('status', 'valide')
+  const montantPaye = (paiements || []).reduce((s: number, p: any) => s + Number(p.montant || 0), 0)
+
+  const { data: facture } = await supabase
+    .from('factures').select('id, montant_ttc, dossier_id, status').eq('id', factureId).single()
+  if (!facture) return
+
+  const ttc = Number(facture.montant_ttc || 0)
+  const restant = Math.max(0, ttc - montantPaye)
+  let newStatus = facture.status
+  const update: Record<string, unknown> = { montant_paye: montantPaye, montant_restant: restant }
+
+  if (montantPaye >= ttc && ttc > 0) {
+    newStatus = 'payee'
+    update.status = 'payee'
+    update.date_paiement_complet = new Date().toISOString().split('T')[0]
+  } else if (montantPaye > 0) {
+    if (facture.status !== 'payee') {
+      newStatus = 'payee_partiellement'
+      update.status = 'payee_partiellement'
+    }
+  }
+
+  await supabase.from('factures').update(update).eq('id', factureId)
+
+  // Propagation au dossier OPCO : si facture payée intégralement → dossier 'paye'
+  if (newStatus === 'payee' && facture.dossier_id) {
+    await supabase
+      .from('dossiers_formation')
+      .update({ opco_workflow_status: 'paye', paye_at: new Date().toISOString() })
+      .eq('id', facture.dossier_id)
+      .eq('organization_id', organizationId)
+      .eq('opco_workflow_status', 'mise_en_paiement')  // sécurité : ne bascule que depuis mise_en_paiement
+  }
 }
 
 export async function deleteFactureAction(id: string): Promise<ActionResult> {
