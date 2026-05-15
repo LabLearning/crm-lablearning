@@ -3,13 +3,15 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import EmargementSheet from './EmargementSheet'
 
+export const dynamic = 'force-dynamic'
+
 export default async function PortalEmargementPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'formateur') redirect('/portail/expired')
 
   const supabase = await createServiceRoleClient()
 
-  // Active sessions for this formateur
+  // Sessions actives du formateur
   const { data: sessions } = await supabase
     .from('sessions')
     .select('id, reference, date_debut, date_fin, formation:formation_id(intitule)')
@@ -17,36 +19,72 @@ export default async function PortalEmargementPage({ params }: { params: { token
     .in('status', ['confirmee', 'en_cours'])
     .order('date_debut', { ascending: true })
 
-  // Emargements for these sessions
   const sessionIds = (sessions || []).map((s) => s.id)
   let emargements: any[] = []
+  let feuilles: any[] = []
+
   if (sessionIds.length > 0) {
-    const { data } = await supabase
-      .from('emargements')
-      .select('id, session_id, apprenant_id, date, creneau, est_present, apprenant:apprenants(prenom, nom)')
-      .in('session_id', sessionIds)
-      .order('date', { ascending: true })
-    emargements = data || []
+    const [emRes, fRes] = await Promise.all([
+      supabase
+        .from('emargements')
+        .select(
+          'id, session_id, apprenant_id, date, creneau, est_present, signature_data, signed_at, motif_absence, apprenant:apprenants(prenom, nom)',
+        )
+        .in('session_id', sessionIds)
+        .order('date', { ascending: true }),
+      supabase
+        .from('emargement_feuilles')
+        .select('id, session_id, date, creneau, formateur_signature_data, validated_at')
+        .in('session_id', sessionIds),
+    ])
+    emargements = emRes.data || []
+    feuilles = fRes.data || []
   }
 
-  // Group by session then date
+  // Groupement : session -> date -> creneau -> { emargements, feuille }
   const bySession = (sessions || []).map((s) => {
-    const sessionEmargements = emargements.filter((e) => e.session_id === s.id)
-    const dates = [...new Set(sessionEmargements.map((e) => e.date))].sort()
+    const sessionEm = emargements.filter((e) => e.session_id === s.id)
+    const sessionFeuilles = feuilles.filter((f) => f.session_id === s.id)
+
+    const dates = Array.from(new Set(sessionEm.map((e) => e.date))).sort()
+
     return {
       ...s,
-      dates: dates.map((date) => ({
-        date,
-        emargements: sessionEmargements.filter((e) => e.date === date),
-      })),
+      dates: dates.map((date) => {
+        const dateEm = sessionEm.filter((e) => e.date === date)
+        const creneaux = Array.from(new Set(dateEm.map((e) => e.creneau))).sort((a, b) => {
+          const order = { matin: 0, journee: 1, apres_midi: 2 } as Record<string, number>
+          return (order[a] ?? 9) - (order[b] ?? 9)
+        })
+
+        return {
+          date,
+          creneaux: creneaux.map((creneau) => ({
+            creneau,
+            emargements: dateEm
+              .filter((e) => e.creneau === creneau)
+              .sort((a, b) => {
+                const an = `${a.apprenant?.nom || ''} ${a.apprenant?.prenom || ''}`
+                const bn = `${b.apprenant?.nom || ''} ${b.apprenant?.prenom || ''}`
+                return an.localeCompare(bn)
+              }),
+            feuille:
+              sessionFeuilles.find((f) => f.date === date && f.creneau === creneau) || null,
+          })),
+        }
+      }),
     }
   })
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-xl md:text-2xl font-heading font-bold text-surface-900 tracking-heading">Émargement</h1>
-        <p className="text-surface-500 mt-1">Feuilles de présence de vos sessions</p>
+        <h1 className="text-xl md:text-2xl font-heading font-bold text-surface-900 tracking-heading">
+          Émargement numérique
+        </h1>
+        <p className="text-surface-500 mt-1">
+          Faites signer chaque apprenant sur votre tablette, puis validez la feuille avec votre propre signature.
+        </p>
       </div>
 
       <EmargementSheet token={params.token} sessions={bySession as any} />
