@@ -368,6 +368,15 @@ export async function updateSessionStatusAction(id: string, status: string): Pro
 
   if (error) return { success: false, error: 'Erreur' }
 
+  // À la fin de la session → seed QCM sortie + satisfaction à chaud
+  if (status === 'terminee') {
+    const { seedQcmReponsesForSession, notifyApprenantsForQcm } = await import('@/lib/qcm-auto-seed')
+    for (const t of ['sortie', 'satisfaction_chaud'] as const) {
+      const r = await seedQcmReponsesForSession(supabase, id, t)
+      if (r.created > 0) await notifyApprenantsForQcm(supabase, id, t)
+    }
+  }
+
   await logAudit({ action: 'update_status', entity_type: 'session', entity_id: id, details: { status } })
   revalidatePath('/dashboard/sessions')
   return { success: true }

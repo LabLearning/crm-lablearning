@@ -62,6 +62,13 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     await seedTachesFormateur(supabase, sessionId, sess.formateur_id, sess.organization_id)
   }
 
+  // ── Seed QCM positionnement + évaluation entrée pour les apprenants ──
+  const { seedQcmReponsesForSession, notifyApprenantsForQcm } = await import('@/lib/qcm-auto-seed')
+  for (const t of ['positionnement', 'entree'] as const) {
+    const r = await seedQcmReponsesForSession(supabase, sessionId, t)
+    if (r.created > 0) await notifyApprenantsForQcm(supabase, sessionId, t)
+  }
+
   // ── 2. Convention : générer un token de signature si manquant ──
   const { data: convention } = await supabase
     .from('conventions')
