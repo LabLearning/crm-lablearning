@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/convocations",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/satisfaction-froid",
+      "schedule": "0 9 * * *"
     }
   ]
 }
