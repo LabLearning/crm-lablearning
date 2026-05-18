@@ -10,7 +10,7 @@ import {
   ShieldCheck, MessageSquareWarning, BarChart3, Shield, Settings, Globe,
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers,
   ChevronDown, PanelLeftClose, PanelLeft, MapPin, Clock, CheckSquare,
-  Briefcase, UserCog,
+  Briefcase, UserCog, Banknote,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hasAnyPermission } from '@/lib/permissions'
@@ -23,7 +23,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   FolderOpen, PenTool, Receipt, CreditCard, ClipboardCheck, ListChecks,
   ShieldCheck, MessageSquareWarning, BarChart3, Shield, Settings, Globe,
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers, MapPin, Clock,
-  CheckSquare, Briefcase, UserCog,
+  CheckSquare, Briefcase, UserCog, Banknote,
 }
 
 // Couleurs Lab Learning uniformes pour toutes les sections

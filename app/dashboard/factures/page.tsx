@@ -24,11 +24,20 @@ export default async function FacturesPage() {
     .eq('organization_id', session.organization.id)
     .order('raison_sociale')
 
+  // Affactureurs actifs (pour modal Céder à l'affacturage)
+  const { data: affactureurs } = await supabase
+    .from('affactureurs')
+    .select('id, raison_sociale, taux_commission_default, taux_retenue_default')
+    .eq('organization_id', session.organization.id)
+    .eq('is_active', true)
+    .order('raison_sociale')
+
   return (
     <div className="animate-fade-in">
       <FacturesList
         factures={(factures || []) as Facture[]}
         clients={clients || []}
+        affactureurs={affactureurs || []}
       />
     </div>
   )

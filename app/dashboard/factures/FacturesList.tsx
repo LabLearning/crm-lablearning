@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import {
   Plus, Search, MoreHorizontal, Send, Trash2, Eye,
   Receipt, Building2, Euro, Calendar, AlertTriangle,
-  CreditCard, ArrowRight, FileX, Clock, Download,
+  CreditCard, ArrowRight, FileX, Clock, Download, Banknote, Loader2,
 } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
 import {
@@ -12,6 +12,7 @@ import {
   addFactureLigneAction, removeFactureLigneAction,
   createPaiementAction, createAvoirAction,
 } from './actions'
+import { cederFactureAction } from '../affacturage/actions'
 import { FACTURE_STATUS_LABELS, FACTURE_STATUS_COLORS, FACTURE_TYPE_LABELS, PAIEMENT_MODE_LABELS, PAIEMENT_STATUS_COLORS, PAIEMENT_STATUS_LABELS } from '@/lib/types/facture'
 import { FINANCEUR_LABELS } from '@/lib/types/crm'
 import { formatDate } from '@/lib/utils'
@@ -21,15 +22,17 @@ import type { Client } from '@/lib/types/crm'
 interface FacturesListProps {
   factures: Facture[]
   clients: Pick<Client, 'id' | 'raison_sociale' | 'nom' | 'prenom' | 'type'>[]
+  affactureurs?: { id: string; raison_sociale: string; taux_commission_default: number; taux_retenue_default: number }[]
 }
 
-export function FacturesList({ factures, clients }: FacturesListProps) {
+export function FacturesList({ factures, clients, affactureurs = [] }: FacturesListProps) {
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [detailFacture, setDetailFacture] = useState<Facture | null>(null)
   const [paiementFacture, setPaiementFacture] = useState<Facture | null>(null)
+  const [cessionFacture, setCessionFacture] = useState<Facture | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
@@ -180,9 +183,24 @@ export function FacturesList({ factures, clients }: FacturesListProps) {
                   <td className="px-6 py-3.5 text-sm text-surface-700">{getClientName(f)}</td>
                   <td className="px-6 py-3.5 hidden md:table-cell text-sm text-surface-600 truncate max-w-[180px]">{f.objet || '—'}</td>
                   <td className="px-6 py-3.5">
-                    <Badge variant={isOverdue(f) ? 'danger' : FACTURE_STATUS_COLORS[f.status]} dot>
-                      {isOverdue(f) ? 'En retard' : FACTURE_STATUS_LABELS[f.status]}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant={isOverdue(f) ? 'danger' : FACTURE_STATUS_COLORS[f.status]} dot>
+                        {isOverdue(f) ? 'En retard' : FACTURE_STATUS_LABELS[f.status]}
+                      </Badge>
+                      {f.affacturage_status && (
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          f.affacturage_status === 'soldee' ? 'bg-emerald-50 text-emerald-700' :
+                          f.affacturage_status === 'avancee' ? 'bg-blue-50 text-blue-700' :
+                          f.affacturage_status === 'impayee' ? 'bg-rose-50 text-rose-700' :
+                          'bg-amber-50 text-amber-700'
+                        }`}>
+                          <Banknote className="h-2.5 w-2.5" />
+                          {f.affacturage_status === 'cedee' ? 'Cédée' :
+                           f.affacturage_status === 'avancee' ? 'Avancée' :
+                           f.affacturage_status === 'soldee' ? 'Factor soldé' : 'Factor impayé'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-3.5 text-right text-sm font-medium text-surface-800">
                     {Number(f.montant_ttc).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
@@ -225,6 +243,23 @@ export function FacturesList({ factures, clients }: FacturesListProps) {
                           {['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && (
                             <button onClick={() => { setPaiementFacture(f); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
                               <CreditCard className="h-4 w-4" /> Enregistrer un paiement
+                            </button>
+                          )}
+                          {['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) &&
+                           !f.affacturage_status &&
+                           f.type !== 'avoir' && (
+                            <button
+                              onClick={() => {
+                                if (affactureurs.length === 0) {
+                                  toast('error', 'Ajoutez d\'abord un affactureur dans /dashboard/affacturage')
+                                  setActiveMenu(null)
+                                  return
+                                }
+                                setCessionFacture(f)
+                                setActiveMenu(null)
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50">
+                              <Banknote className="h-4 w-4" /> Céder à l'affacturage
                             </button>
                           )}
                           {!['brouillon', 'annulee'].includes(f.status) && f.type !== 'avoir' && (
@@ -286,6 +321,17 @@ export function FacturesList({ factures, clients }: FacturesListProps) {
       {/* Paiement Modal */}
       <Modal isOpen={!!paiementFacture} onClose={() => setPaiementFacture(null)} title={`Paiement — ${paiementFacture?.numero || ''}`}>
         {paiementFacture && <PaiementForm facture={paiementFacture} onDone={() => setPaiementFacture(null)} />}
+      </Modal>
+
+      {/* Cession Affacturage Modal */}
+      <Modal isOpen={!!cessionFacture} onClose={() => setCessionFacture(null)} title={`Céder à l'affacturage — ${cessionFacture?.numero || ''}`}>
+        {cessionFacture && (
+          <CessionForm
+            facture={cessionFacture}
+            affactureurs={affactureurs}
+            onDone={() => setCessionFacture(null)}
+          />
+        )}
       </Modal>
     </div>
   )
@@ -451,6 +497,171 @@ function PaiementForm({ facture, onDone }: { facture: Facture; onDone: () => voi
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onDone}>Annuler</Button>
         <Button type="submit" isLoading={isLoading} icon={<CreditCard className="h-4 w-4" />}>Enregistrer le paiement</Button>
+      </div>
+    </form>
+  )
+}
+
+// ════════════════════════════════════════════════════════════
+// CESSION FORM (affacturage)
+// ════════════════════════════════════════════════════════════
+function CessionForm({
+  facture,
+  affactureurs,
+  onDone,
+}: {
+  facture: Facture
+  affactureurs: { id: string; raison_sociale: string; taux_commission_default: number; taux_retenue_default: number }[]
+  onDone: () => void
+}) {
+  const { toast } = useToast()
+  const [factorId, setFactorId] = useState(affactureurs[0]?.id || '')
+  const factor = affactureurs.find((a) => a.id === factorId)
+  const [montantCede, setMontantCede] = useState(String(facture.montant_ttc))
+  const [tauxCommission, setTauxCommission] = useState(String(factor?.taux_commission_default ?? 1.5))
+  const [tauxRetenue, setTauxRetenue] = useState(String(factor?.taux_retenue_default ?? 10))
+  const [referenceFactor, setReferenceFactor] = useState('')
+  const [dateCession, setDateCession] = useState(new Date().toISOString().split('T')[0])
+  const [notes, setNotes] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Recalcule quand factor change
+  const handleFactorChange = (id: string) => {
+    setFactorId(id)
+    const f = affactureurs.find((a) => a.id === id)
+    if (f) {
+      setTauxCommission(String(f.taux_commission_default))
+      setTauxRetenue(String(f.taux_retenue_default))
+    }
+  }
+
+  const cede = parseFloat(montantCede) || 0
+  const com = (cede * (parseFloat(tauxCommission) || 0)) / 100
+  const ret = (cede * (parseFloat(tauxRetenue) || 0)) / 100
+  const avance = Math.max(0, cede - com - ret)
+
+  const fmt = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!factorId) return toast('error', 'Sélectionnez un affactureur')
+    setIsLoading(true)
+    const fd = new FormData()
+    fd.set('affactureur_id', factorId)
+    fd.set('montant_cede', String(cede))
+    fd.set('taux_commission', tauxCommission)
+    fd.set('taux_retenue', tauxRetenue)
+    fd.set('reference_factor', referenceFactor)
+    fd.set('date_cession', dateCession)
+    fd.set('notes', notes)
+    const r = await cederFactureAction(facture.id, fd)
+    setIsLoading(false)
+    if (r.success) {
+      toast('success', 'Facture cédée à l\'affacturage')
+      onDone()
+    } else {
+      toast('error', r.error || 'Erreur')
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex gap-2">
+        <Banknote className="h-4 w-4 shrink-0 mt-0.5" />
+        <div>
+          La facture sera cédée au factor. Vous recevrez l'avance sous quelques jours.
+          La cession sera soldée automatiquement quand l'OPCO paiera la facture.
+        </div>
+      </div>
+
+      <Select
+        id="affactureur_id"
+        name="affactureur_id"
+        label="Affactureur *"
+        options={affactureurs.map((a) => ({ value: a.id, label: a.raison_sociale }))}
+        value={factorId}
+        onChange={(e) => handleFactorChange(e.target.value)}
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          id="montant_cede"
+          name="montant_cede"
+          label="Montant cédé (TTC) *"
+          type="number"
+          step="0.01"
+          value={montantCede}
+          onChange={(e) => setMontantCede(e.target.value)}
+        />
+        <Input
+          id="date_cession"
+          name="date_cession"
+          label="Date de cession"
+          type="date"
+          value={dateCession}
+          onChange={(e) => setDateCession(e.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          id="taux_commission"
+          name="taux_commission"
+          label="Commission (%)"
+          type="number"
+          step="0.01"
+          value={tauxCommission}
+          onChange={(e) => setTauxCommission(e.target.value)}
+        />
+        <Input
+          id="taux_retenue"
+          name="taux_retenue"
+          label="Retenue garantie (%)"
+          type="number"
+          step="0.01"
+          value={tauxRetenue}
+          onChange={(e) => setTauxRetenue(e.target.value)}
+        />
+      </div>
+
+      {/* Récap */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-surface-50 rounded-lg p-3 text-center">
+          <div className="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">Commission</div>
+          <div className="text-sm font-bold text-rose-600 mt-0.5 tabular-nums">- {fmt(com)}</div>
+        </div>
+        <div className="bg-surface-50 rounded-lg p-3 text-center">
+          <div className="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">Retenue</div>
+          <div className="text-sm font-bold text-surface-600 mt-0.5 tabular-nums">- {fmt(ret)}</div>
+        </div>
+        <div className="bg-emerald-50 rounded-lg p-3 text-center border border-emerald-200">
+          <div className="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">Avance</div>
+          <div className="text-sm font-bold text-emerald-700 mt-0.5 tabular-nums">{fmt(avance)}</div>
+        </div>
+      </div>
+
+      <Input
+        id="reference_factor"
+        name="reference_factor"
+        label="Référence factor (optionnel)"
+        placeholder="Numéro de cession côté affactureur"
+        value={referenceFactor}
+        onChange={(e) => setReferenceFactor(e.target.value)}
+      />
+
+      <div>
+        <label className="text-xs font-semibold text-surface-600 uppercase tracking-wider">Notes</label>
+        <textarea
+          rows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="input-base w-full mt-1 text-sm resize-none"
+        />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-2">
+        <Button type="button" variant="secondary" onClick={onDone}>Annuler</Button>
+        <Button type="submit" isLoading={isLoading} icon={<Banknote className="h-4 w-4" />}>Confirmer la cession</Button>
       </div>
     </form>
   )

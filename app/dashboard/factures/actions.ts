@@ -249,6 +249,21 @@ async function recalculateFacturePaiement(supabase: any, factureId: string, orga
       .eq('organization_id', organizationId)
       .eq('opco_workflow_status', 'mise_en_paiement')  // sécurité : ne bascule que depuis mise_en_paiement
   }
+
+  // Propagation affacturage : si facture payée → cession active (avancée) soldée
+  if (newStatus === 'payee') {
+    await supabase
+      .from('cessions_creances')
+      .update({ status: 'soldee', date_soldee: new Date().toISOString().split('T')[0] })
+      .eq('facture_id', factureId)
+      .eq('organization_id', organizationId)
+      .in('status', ['en_attente_avance', 'avancee'])
+    await supabase
+      .from('factures')
+      .update({ affacturage_status: 'soldee' })
+      .eq('id', factureId)
+      .not('affacturage_status', 'is', null)
+  }
 }
 
 export async function deleteFactureAction(id: string): Promise<ActionResult> {

@@ -41,6 +41,7 @@ export interface Facture {
   financeur_nom: string | null
   subrogation: boolean
   relance_count: number
+  affacturage_status: 'cedee' | 'avancee' | 'soldee' | 'impayee' | null
   created_at: string
   updated_at: string
   // Joined
