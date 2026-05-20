@@ -589,7 +589,8 @@ export async function createNotification(params: {
   entityType?: string
   entityId?: string
 }) {
-  const supabase = await createServerSupabaseClient()
+  const { createServiceRoleClient } = await import('@/lib/supabase/server')
+  const supabase = await createServiceRoleClient()
 
   await supabase.from('notifications').insert({
     organization_id: params.organizationId,
@@ -602,4 +603,37 @@ export async function createNotification(params: {
     entity_type: params.entityType || null,
     entity_id: params.entityId || null,
   })
+}
+
+/**
+ * Crée plusieurs notifications en une seule requête (utile pour notifier toute une équipe).
+ * Skippe les user_id en doublon et le `excludeUserId` (typiquement l'auteur de l'action).
+ */
+export async function createNotifications(notifs: Array<{
+  organizationId: string
+  userId: string
+  titre: string
+  message: string
+  type?: string
+  lienUrl?: string
+  lienLabel?: string
+  entityType?: string
+  entityId?: string
+}>) {
+  if (notifs.length === 0) return
+  const { createServiceRoleClient } = await import('@/lib/supabase/server')
+  const supabase = await createServiceRoleClient()
+  await supabase.from('notifications').insert(
+    notifs.map((p) => ({
+      organization_id: p.organizationId,
+      user_id: p.userId,
+      titre: p.titre,
+      message: p.message,
+      type: p.type || 'info',
+      lien_url: p.lienUrl || null,
+      lien_label: p.lienLabel || null,
+      entity_type: p.entityType || null,
+      entity_id: p.entityId || null,
+    })),
+  )
 }

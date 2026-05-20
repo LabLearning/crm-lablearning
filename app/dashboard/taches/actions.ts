@@ -4,6 +4,44 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
+import { createNotification } from '@/lib/email'
+
+async function notifyAssignee(
+  organizationId: string,
+  assigneeId: string | null,
+  actorId: string,
+  titre: string,
+  message: string,
+  tacheId: string,
+  type: string = 'action',
+) {
+  if (!assigneeId || assigneeId === actorId) return
+  try {
+    await createNotification({
+      organizationId,
+      userId: assigneeId,
+      titre,
+      message,
+      type,
+      lienUrl: '/dashboard/taches',
+      lienLabel: 'Voir la tâche',
+      entityType: 'crm_tache',
+      entityId: tacheId,
+    })
+  } catch (e) {
+    console.error('[notify]', e)
+  }
+}
+
+async function getActorName(supabase: any, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from('users')
+    .select('first_name, last_name, email')
+    .eq('id', userId)
+    .single()
+  if (!data) return 'Un collaborateur'
+  return [data.first_name, data.last_name].filter(Boolean).join(' ') || data.email
+}
 
 export type TacheStatus = 'a_faire' | 'en_cours' | 'en_revue' | 'terminee'
 export type TachePriorite = 'basse' | 'moyenne' | 'haute' | 'urgente'
@@ -68,6 +106,19 @@ export async function createTacheAction(formData: FormData): Promise<ActionResul
     return { success: false, error: 'Erreur lors de la création' }
   }
 
+  // Notification à l'assignee (s'il n'est pas le créateur)
+  if (data.assignee_id) {
+    const actorName = await getActorName(supabase, session.user.id)
+    await notifyAssignee(
+      session.organization.id,
+      data.assignee_id,
+      session.user.id,
+      'Nouvelle tâche assignée',
+      `${actorName} vous a assigné « ${titre} »`,
+      data.id,
+    )
+  }
+
   await logAudit({ action: 'create', entity_type: 'crm_tache', entity_id: data.id })
   revalidatePath('/dashboard/taches')
   return { success: true, data }
@@ -102,6 +153,19 @@ export async function updateTacheAction(id: string, formData: FormData): Promise
     updates.labels = labels.length > 0 ? labels : null
   }
 
+  // Détecter changement d'assignee pour notifier
+  let oldAssigneeId: string | null = null
+  let oldTitre = ''
+  if (formData.has('assignee_id') || formData.has('titre')) {
+    const { data: before } = await supabase
+      .from('crm_taches')
+      .select('assignee_id, titre')
+      .eq('id', id)
+      .single()
+    oldAssigneeId = before?.assignee_id ?? null
+    oldTitre = before?.titre || ''
+  }
+
   const { error } = await supabase
     .from('crm_taches')
     .update(updates)
@@ -109,6 +173,24 @@ export async function updateTacheAction(id: string, formData: FormData): Promise
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  // Si nouvel assignee différent → notifier
+  if (
+    formData.has('assignee_id') &&
+    updates.assignee_id &&
+    updates.assignee_id !== oldAssigneeId
+  ) {
+    const actorName = await getActorName(supabase, session.user.id)
+    const titre = (updates.titre as string) || oldTitre
+    await notifyAssignee(
+      session.organization.id,
+      updates.assignee_id as string,
+      session.user.id,
+      'Tâche assignée',
+      `${actorName} vous a assigné « ${titre} »`,
+      id,
+    )
+  }
 
   await logAudit({ action: 'update', entity_type: 'crm_tache', entity_id: id })
   revalidatePath('/dashboard/taches')
@@ -245,7 +327,7 @@ export async function addCommentAction(tacheId: string, contenu: string): Promis
   // Vérifier que la tâche est de l'org
   const { data: tache } = await supabase
     .from('crm_taches')
-    .select('id')
+    .select('id, titre, assignee_id, created_by')
     .eq('id', tacheId)
     .eq('organization_id', session.organization.id)
     .single()
@@ -259,6 +341,39 @@ export async function addCommentAction(tacheId: string, contenu: string): Promis
   })
 
   if (error) return { success: false, error: 'Erreur' }
+
+  // Notifier toutes les personnes impliquées (assignee + créateur + commentateurs précédents)
+  // sauf l'auteur du commentaire
+  const { data: prevComments } = await supabase
+    .from('crm_taches_commentaires')
+    .select('author_id')
+    .eq('tache_id', tacheId)
+
+  const recipients = new Set<string>()
+  if (tache.assignee_id) recipients.add(tache.assignee_id)
+  if (tache.created_by) recipients.add(tache.created_by)
+  for (const c of prevComments || []) {
+    if (c.author_id) recipients.add(c.author_id)
+  }
+  recipients.delete(session.user.id)
+
+  if (recipients.size > 0) {
+    const actorName = await getActorName(supabase, session.user.id)
+    const { createNotifications } = await import('@/lib/email')
+    await createNotifications(
+      Array.from(recipients).map((userId) => ({
+        organizationId: session.organization.id,
+        userId,
+        titre: 'Nouveau commentaire',
+        message: `${actorName} a commenté « ${tache.titre} » : ${trimmed.slice(0, 80)}${trimmed.length > 80 ? '…' : ''}`,
+        type: 'info',
+        lienUrl: '/dashboard/taches',
+        lienLabel: 'Voir la discussion',
+        entityType: 'crm_tache',
+        entityId: tacheId,
+      })),
+    )
+  }
 
   revalidatePath('/dashboard/taches')
   return { success: true }
