@@ -21,14 +21,13 @@ export default async function UsersPage() {
     .is('accepted_at', null)
     .order('created_at', { ascending: false })
 
-  // Franchises (apporteurs partenaires) pour rattacher un compte franchise
+  // Franchises pour rattacher un compte franchiseur
   const { data: franchises } = await supabase
-    .from('apporteurs_affaires')
-    .select('id, nom_enseigne, raison_sociale')
+    .from('franchises')
+    .select('id, nom, raison_sociale')
     .eq('organization_id', session.organization.id)
-    .eq('categorie', 'partenaire')
     .eq('is_active', true)
-    .order('nom_enseigne', { nullsFirst: false })
+    .order('nom')
 
   return (
     <div className="animate-fade-in">

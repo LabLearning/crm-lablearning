@@ -97,7 +97,7 @@ export async function recalcDossierCommission(
 
   // Config commission de la franchise
   const { data: franchise } = await supabase
-    .from('apporteurs_affaires')
+    .from('franchises')
     .select('commission_type, taux_commission')
     .eq('id', franchiseId)
     .single()

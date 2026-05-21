@@ -4,10 +4,10 @@ import type { User, Organization } from '@/lib/types'
 
 export interface Franchise {
   id: string
+  nom: string
   raison_sociale: string | null
-  nom_enseigne: string | null
   secteur: string | null
-  nombre_points_vente: number | null
+  nombre_etablissements: number | null
   objectif_annuel_ca: number | null
   objectif_annuel_dossiers: number | null
   commission_type: string | null
@@ -44,8 +44,8 @@ export async function getFranchiseSession(): Promise<FranchiseSession> {
   const [{ data: organization }, { data: franchise }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', user.organization_id).single(),
     supabase
-      .from('apporteurs_affaires')
-      .select('id, raison_sociale, nom_enseigne, secteur, nombre_points_vente, objectif_annuel_ca, objectif_annuel_dossiers, commission_type, taux_commission')
+      .from('franchises')
+      .select('id, nom, raison_sociale, secteur, nombre_etablissements, objectif_annuel_ca, objectif_annuel_dossiers, commission_type, taux_commission')
       .eq('id', user.franchise_id)
       .single(),
   ])
@@ -60,5 +60,5 @@ export async function getFranchiseSession(): Promise<FranchiseSession> {
 }
 
 export function franchiseDisplayName(f: Franchise): string {
-  return f.nom_enseigne || f.raison_sociale || 'Ma franchise'
+  return f.nom || f.raison_sociale || 'Ma franchise'
 }

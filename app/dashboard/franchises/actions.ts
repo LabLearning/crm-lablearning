@@ -9,6 +9,127 @@ import { recalcDossierCommission, type CommissionType } from '@/lib/commission'
 
 type Result<T = unknown> = { success: true; data?: T } | { success: false; error: string }
 
+// ════════════════════════════════════════════════════════════
+// CRUD FRANCHISES
+// ════════════════════════════════════════════════════════════
+
+export async function createFranchiseAction(formData: FormData): Promise<Result> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  const nom = (formData.get('nom') as string || '').trim()
+  if (!nom) return { success: false, error: 'Le nom de l\'enseigne est requis' }
+
+  const num = (k: string) => {
+    const v = formData.get(k) as string
+    return v ? parseFloat(v) : null
+  }
+  const int = (k: string) => {
+    const v = formData.get(k) as string
+    return v ? parseInt(v) : null
+  }
+  const str = (k: string) => (formData.get(k) as string || '').trim() || null
+
+  const commissionType = (formData.get('commission_type') as string) || 'budget_debloque'
+  const tauxRaw = formData.get('taux_commission') as string
+  const taux = tauxRaw ? parseFloat(tauxRaw) : commissionType === 'budget_net' ? 40 : 10
+
+  const { data, error } = await supabase
+    .from('franchises')
+    .insert({
+      organization_id: session.organization.id,
+      nom,
+      raison_sociale: str('raison_sociale'),
+      siret: str('siret'),
+      secteur: str('secteur'),
+      nombre_etablissements: int('nombre_etablissements'),
+      zone_geographique: str('zone_geographique'),
+      contact_nom: str('contact_nom'),
+      contact_email: str('contact_email'),
+      contact_telephone: str('contact_telephone'),
+      objectif_annuel_ca: num('objectif_annuel_ca'),
+      commission_type: commissionType,
+      taux_commission: taux,
+      notes: str('notes'),
+      is_active: true,
+      created_by: session.user.id,
+    })
+    .select('id')
+    .single()
+
+  if (error) return { success: false, error: error.message }
+
+  await logAudit({ action: 'create', entity_type: 'franchise', entity_id: data.id })
+  revalidatePath('/dashboard/franchises')
+  return { success: true, data }
+}
+
+export async function updateFranchiseAction(id: string, formData: FormData): Promise<Result> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const str = (k: string) => (formData.get(k) as string || '').trim() || null
+  const updates: Record<string, unknown> = {}
+  if (formData.has('nom')) {
+    const nom = (formData.get('nom') as string || '').trim()
+    if (!nom) return { success: false, error: 'Nom requis' }
+    updates.nom = nom
+  }
+  for (const k of ['raison_sociale', 'siret', 'secteur', 'zone_geographique', 'contact_nom', 'contact_email', 'contact_telephone', 'notes']) {
+    if (formData.has(k)) updates[k] = str(k)
+  }
+  if (formData.has('nombre_etablissements')) {
+    const v = formData.get('nombre_etablissements') as string
+    updates.nombre_etablissements = v ? parseInt(v) : null
+  }
+  if (formData.has('objectif_annuel_ca')) {
+    const v = formData.get('objectif_annuel_ca') as string
+    updates.objectif_annuel_ca = v ? parseFloat(v) : null
+  }
+
+  const { error } = await supabase
+    .from('franchises')
+    .update(updates)
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/franchises')
+  revalidatePath(`/dashboard/franchises/${id}`)
+  return { success: true }
+}
+
+export async function deleteFranchiseAction(id: string): Promise<Result> {
+  const session = await getSession()
+  if (session.user.role !== 'super_admin') {
+    return { success: false, error: 'Seul le Super Admin peut supprimer une franchise' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  // Empêcher la suppression si des comptes franchise y sont rattachés
+  const { count } = await supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('franchise_id', id)
+    .eq('role', 'franchise')
+  if ((count || 0) > 0) {
+    return { success: false, error: 'Des comptes utilisateurs sont rattachés. Révoquez-les d\'abord.' }
+  }
+
+  const { error } = await supabase
+    .from('franchises')
+    .delete()
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: error.message }
+
+  revalidatePath('/dashboard/franchises')
+  return { success: true }
+}
+
 /**
  * Invite un utilisateur franchise (compte avec login, rôle 'franchise').
  * Crée l'auth user + la ligne users (role=franchise, franchise_id) + invitation + email brandé.
@@ -27,11 +148,10 @@ export async function inviteFranchiseUserAction(franchiseId: string, emailRaw: s
 
   // Vérifier que la franchise existe
   const { data: franchise } = await supabase
-    .from('apporteurs_affaires')
-    .select('id, nom_enseigne, raison_sociale')
+    .from('franchises')
+    .select('id, nom, raison_sociale')
     .eq('id', franchiseId)
     .eq('organization_id', session.organization.id)
-    .eq('categorie', 'partenaire')
     .single()
   if (!franchise) return { success: false, error: 'Franchise introuvable' }
 
@@ -134,11 +254,10 @@ export async function updateFranchiseCommissionConfigAction(
   const supabase = await createServiceRoleClient()
 
   const { error } = await supabase
-    .from('apporteurs_affaires')
-    .update({ commission_type: commissionType, taux_commission: taux, mode_calcul: 'pourcentage' })
+    .from('franchises')
+    .update({ commission_type: commissionType, taux_commission: taux })
     .eq('id', franchiseId)
     .eq('organization_id', session.organization.id)
-    .eq('categorie', 'partenaire')
   if (error) return { success: false, error: error.message }
 
   // Recalcul des dossiers non figés de cette franchise

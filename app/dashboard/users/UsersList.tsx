@@ -19,7 +19,7 @@ interface Invitation {
 
 interface Franchise {
   id: string
-  nom_enseigne: string | null
+  nom: string | null
   raison_sociale: string | null
 }
 
@@ -44,7 +44,7 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
 
   const franchiseOptions = franchises.map((f) => ({
     value: f.id,
-    label: f.nom_enseigne || f.raison_sociale || 'Franchise',
+    label: f.nom || f.raison_sociale || 'Franchise',
   }))
 
   async function handleInvite(e: React.FormEvent<HTMLFormElement>) {

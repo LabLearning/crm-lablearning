@@ -6,6 +6,7 @@ import { ArrowLeft, Store, Building2, Banknote, Target, ClipboardCheck, Star } f
 import { commissionTypeLabel } from '@/lib/commission'
 import FranchiseDetailClient from './FranchiseDetailClient'
 import FranchiseAccessClient from './FranchiseAccessClient'
+import LinkEtablissementClient, { UnlinkButton } from './LinkEtablissementClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +19,10 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
   const orgId = session.organization.id
 
   const { data: franchise } = await supabase
-    .from('apporteurs_affaires')
+    .from('franchises')
     .select('*')
     .eq('id', params.id)
     .eq('organization_id', orgId)
-    .eq('categorie', 'partenaire')
     .single()
 
   if (!franchise) notFound()
@@ -36,6 +36,13 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
     .order('raison_sociale')
 
   const clientIds = (etablissements || []).map((c) => c.id)
+
+  // Tous les clients de l'org (pour rattacher de nouveaux établissements)
+  const { data: allClients } = await supabase
+    .from('clients')
+    .select('id, raison_sociale, ville, franchise_id')
+    .eq('organization_id', orgId)
+    .order('raison_sociale')
 
   // Dossiers de la franchise (par franchise_id OU par client rattaché)
   const { data: dossiers } = await supabase
@@ -81,7 +88,7 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
     : null
 
   const ds = dossiers || []
-  const name = franchise.nom_enseigne || franchise.raison_sociale || `${franchise.prenom || ''} ${franchise.nom || ''}`.trim()
+  const name = franchise.nom || franchise.raison_sociale || 'Franchise'
 
   // Totaux financiers
   const caTotal = ds.reduce((s, d) => s + Number(d.montant_total_ttc || 0), 0)
@@ -108,7 +115,7 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
             <p className="text-surface-500 text-sm mt-0.5">
               {franchise.secteur && <span>{franchise.secteur} · </span>}
               {(etablissements || []).length} établissement{(etablissements || []).length > 1 ? 's' : ''}
-              {franchise.nombre_points_vente ? ` · ${franchise.nombre_points_vente} points de vente déclarés` : ''}
+              {franchise.nombre_etablissements ? ` · ${franchise.nombre_etablissements} déclarés` : ''}
             </p>
           </div>
         </div>
@@ -182,31 +189,36 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
 
       {/* Établissements */}
       <div>
-        <div className="text-sm font-heading font-semibold text-surface-900 mb-2">
-          Établissements ({(etablissements || []).length})
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm font-heading font-semibold text-surface-900">
+            Établissements ({(etablissements || []).length})
+          </div>
+          <LinkEtablissementClient franchiseId={franchise.id} allClients={(allClients || []) as any[]} />
         </div>
         {(etablissements || []).length === 0 ? (
           <div className="card p-6 text-center text-sm text-surface-400">
-            Aucun établissement rattaché à cette franchise pour le moment.
+            Aucun établissement rattaché. Utilisez « Rattacher un établissement » ci-dessus.
           </div>
         ) : (
           <div className="card divide-y divide-surface-100">
             {(etablissements || []).map((c) => {
               const cDossiers = ds.filter((d) => (d.client as any)?.id === c.id)
               return (
-                <Link key={c.id} href={`/dashboard/clients/${c.id}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50/60 transition-colors">
-                  <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
-                    <Building2 className="h-4 w-4 text-surface-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-surface-900 truncate">{c.raison_sociale}</div>
-                    <div className="text-xs text-surface-500">{[c.code_postal, c.ville].filter(Boolean).join(' ')}</div>
-                  </div>
-                  <div className="text-xs text-surface-500 shrink-0">
-                    {cDossiers.length} dossier{cDossiers.length > 1 ? 's' : ''}
-                  </div>
-                </Link>
+                <div key={c.id} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50/60 transition-colors">
+                  <Link href={`/dashboard/clients/${c.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
+                      <Building2 className="h-4 w-4 text-surface-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900 truncate">{c.raison_sociale}</div>
+                      <div className="text-xs text-surface-500">{[c.code_postal, c.ville].filter(Boolean).join(' ')}</div>
+                    </div>
+                    <div className="text-xs text-surface-500 shrink-0">
+                      {cDossiers.length} dossier{cDossiers.length > 1 ? 's' : ''}
+                    </div>
+                  </Link>
+                  <UnlinkButton clientId={c.id} />
+                </div>
               )
             })}
           </div>

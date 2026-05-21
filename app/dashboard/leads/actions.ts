@@ -7,17 +7,6 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 
-/** Retourne l'apporteur_id si c'est une franchise (categorie='partenaire'), sinon null. */
-async function resolveFranchiseId(supabase: any, apporteurId: string | null): Promise<string | null> {
-  if (!apporteurId) return null
-  const { data } = await supabase
-    .from('apporteurs_affaires')
-    .select('id, categorie')
-    .eq('id', apporteurId)
-    .single()
-  return data?.categorie === 'partenaire' ? data.id : null
-}
-
 export async function createLeadAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
 
@@ -336,7 +325,6 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
       code_idcc: lead.code_idcc,
       convention_collective: lead.convention_collective,
       numero_opco: lead.numero_opco,
-      franchise_id: await resolveFranchiseId(supabase, lead.apporteur_id),
       created_by: session.user.id,
     })
     .select()
