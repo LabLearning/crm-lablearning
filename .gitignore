@@ -7,3 +7,5 @@ supabase/.temp/
 
 # Données d'import client (réelles — ne pas versionner)
 chamas/
+
+.DS_Store
