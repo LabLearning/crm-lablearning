@@ -18,6 +18,7 @@ interface Franchise {
   objectif_annuel_ca: number | null
   commission_type: string | null
   taux_commission: number | null
+  logo_url: string | null
   is_active: boolean
 }
 interface Client { id: string; franchise_id: string | null }
@@ -83,8 +84,12 @@ export default function FranchisesClient({
                 className="card p-5 hover:border-brand-300 transition-colors group">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="h-9 w-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
-                      <Store className="h-4 w-4 text-brand-600" />
+                    <div className="h-9 w-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0 overflow-hidden">
+                      {f.logo_url ? (
+                        <img src={f.logo_url} alt={f.nom} className="h-full w-full object-contain p-0.5" />
+                      ) : (
+                        <Store className="h-4 w-4 text-brand-600" />
+                      )}
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-heading font-semibold text-surface-900 truncate">{f.nom}</h3>

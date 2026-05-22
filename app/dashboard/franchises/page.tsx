@@ -12,7 +12,7 @@ export default async function FranchisesPage() {
 
   const { data: franchises } = await supabase
     .from('franchises')
-    .select('id, nom, raison_sociale, secteur, nombre_etablissements, objectif_annuel_ca, commission_type, taux_commission, is_active')
+    .select('id, nom, raison_sociale, secteur, nombre_etablissements, objectif_annuel_ca, commission_type, taux_commission, logo_url, is_active')
     .eq('organization_id', orgId)
     .order('nom')
 
