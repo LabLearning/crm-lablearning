@@ -34,13 +34,12 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
 
   const { data: dossiers } = await supabase
     .from('dossiers_formation')
-    .select('id, numero, status, montant_total_ttc, montant_prise_en_charge, commission_montant, commission_status, date_creation, notes')
+    .select('id, numero, status, montant_prise_en_charge, commission_montant, commission_status, date_creation, notes')
     .eq('client_id', client.id)
     .eq('organization_id', orgId)
     .order('date_creation', { ascending: false })
 
   const ds = dossiers || []
-  const ca = ds.reduce((s, d) => s + Number(d.montant_total_ttc || 0), 0)
   const pec = ds.reduce((s, d) => s + Number(d.montant_prise_en_charge || 0), 0)
   const comm = ds.reduce((s, d) => s + Number(d.commission_montant || 0), 0)
 
@@ -95,10 +94,9 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
                 <tr className="text-[11px] uppercase tracking-wider text-surface-500 font-semibold">
                   <th className="px-4 py-3 text-left">Formation</th>
                   <th className="px-4 py-3 text-left">Date</th>
-                  <th className="px-4 py-3 text-right">Facturé</th>
                   <th className="px-4 py-3 text-right">Prise en charge</th>
-                  <th className="px-4 py-3 text-right">Commission</th>
-                  <th className="px-4 py-3 text-left">Statut comm.</th>
+                  <th className="px-4 py-3 text-right">Votre commission</th>
+                  <th className="px-4 py-3 text-left">Statut</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,7 +109,6 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
                     <td className="px-4 py-3 text-sm text-surface-600">
                       {d.date_creation ? new Date(d.date_creation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-700">{fmtEuro(d.montant_total_ttc)}</td>
                     <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-700">{fmtEuro(d.montant_prise_en_charge)}</td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-amber-600 tabular-nums">{fmtEuro(d.commission_montant)}</td>
                     <td className="px-4 py-3">

@@ -2,7 +2,7 @@ import { getFranchiseSession } from '@/lib/franchise-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getFranchiseStats } from '@/lib/franchise-data'
 import { ProgressRing } from '@/components/ui'
-import { Building2, TrendingUp, Banknote, Target, Sparkles } from 'lucide-react'
+import { Building2, Banknote, Target, Sparkles } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,15 +19,12 @@ export default async function FranchisePrevisionPage() {
   const restants = Math.max(0, totalDeclares - formes)
   const pctForme = totalDeclares > 0 ? Math.round((formes / totalDeclares) * 100) : null
 
-  // Moyennes par établissement formé
-  const pecMoyen = formes > 0 ? stats.priseEnChargeTotal / formes : 0
-  const caMoyen = formes > 0 ? stats.caGenere / formes : 0
+  // Moyennes par établissement formé (commission)
+  const commMoyenne = formes > 0 ? stats.commissionTotale / formes : 0
   const taux = Number(franchise.taux_commission || 10)
 
   // Potentiel sur les établissements restants
-  const pecPotentiel = restants * pecMoyen
-  const caPotentiel = restants * caMoyen
-  const commPotentielle = pecPotentiel * (taux / 100)
+  const commPotentielle = restants * commMoyenne
   const commActuelle = stats.commissionTotale
 
   return (
@@ -68,10 +65,9 @@ export default async function FranchisePrevisionPage() {
             <div className="text-sm font-heading font-semibold text-surface-900 mb-2 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-500" /> Potentiel restant ({restants} établissement{restants > 1 ? 's' : ''} à former)
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <PotCard icon={Building2} tint="blue" label="CA potentiel" value={fmtEuro(caPotentiel)} sub={`~${fmtEuro(caMoyen)} / établissement`} />
-              <PotCard icon={TrendingUp} tint="emerald" label="Prise en charge potentielle" value={fmtEuro(pecPotentiel)} sub={`~${fmtEuro(pecMoyen)} / établissement`} />
-              <PotCard icon={Banknote} tint="amber" label={`Commission potentielle (${taux}%)`} value={fmtEuro(commPotentielle)} sub="sur le réseau complet" highlight />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <PotCard icon={Building2} tint="blue" label="Établissements à former" value={String(restants)} sub={`sur ${total} au total`} />
+              <PotCard icon={Banknote} tint="amber" label="Commission potentielle" value={fmtEuro(commPotentielle)} sub={`~${fmtEuro(commMoyenne)} / établissement`} highlight />
             </div>
           </div>
 

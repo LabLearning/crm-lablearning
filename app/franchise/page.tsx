@@ -4,8 +4,8 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getFranchiseStats } from '@/lib/franchise-data'
 import { commissionTypeLabel } from '@/lib/commission'
 import {
-  Building2, GraduationCap, Users, UserCheck, Banknote, TrendingUp,
-  ClipboardCheck, Star, ArrowRight, Target, Percent,
+  Building2, GraduationCap, Users, UserCheck, Banknote,
+  ClipboardCheck, Star, ArrowRight, Percent,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -34,9 +34,6 @@ export default async function FranchiseDashboard() {
     ? auditsWithNote.reduce((s, a) => s + (Number(a.note_globale) / a.note_sur) * 20, 0) / auditsWithNote.length
     : null
 
-  // Objectif annuel CA
-  const objectifCa = Number(franchise.objectif_annuel_ca || 0)
-  const objectifPct = objectifCa > 0 ? Math.min(100, Math.round((stats.caGenere / objectifCa) * 100)) : null
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -82,23 +79,16 @@ export default async function FranchiseDashboard() {
           </Link>
         </div>
 
-        {/* Objectif annuel */}
-        <div className="card p-5">
+        {/* Total de vos commissions (hero) */}
+        <div className="card p-5 bg-amber-50/30 ring-1 ring-amber-100">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="h-4 w-4 text-brand-600" />
-            <h2 className="text-sm font-heading font-semibold text-surface-900">CA généré</h2>
+            <Banknote className="h-4 w-4 text-amber-600" />
+            <h2 className="text-sm font-heading font-semibold text-surface-900">Total de vos commissions</h2>
           </div>
-          <div className="text-2xl font-heading font-bold text-surface-900 tabular-nums">{fmtEuro(stats.caGenere)}</div>
-          {objectifPct != null ? (
-            <>
-              <div className="mt-3 h-2 bg-surface-100 rounded-full overflow-hidden">
-                <div className="h-full bg-brand-500 transition-all" style={{ width: `${objectifPct}%` }} />
-              </div>
-              <div className="text-xs text-surface-500 mt-1.5">{objectifPct}% de l'objectif {fmtEuro(objectifCa)}</div>
-            </>
-          ) : (
-            <div className="text-xs text-surface-400 mt-2">Prise en charge OPCO : {fmtEuro(stats.priseEnChargeTotal)}</div>
-          )}
+          <div className="text-3xl font-heading font-bold text-amber-600 tabular-nums">{fmtEuro(stats.commissionTotale)}</div>
+          <div className="text-xs text-surface-500 mt-2">
+            Sur {stats.nbDossiers} dossier{stats.nbDossiers > 1 ? 's' : ''} de formation de votre réseau.
+          </div>
         </div>
       </div>
 

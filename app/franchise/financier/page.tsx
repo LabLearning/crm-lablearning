@@ -34,7 +34,7 @@ export default async function FranchiseFinancierPage() {
   const { data: dossiers } = await supabase
     .from('dossiers_formation')
     .select(`
-      id, numero, date_creation, montant_total_ttc, montant_prise_en_charge, cout_formateur,
+      id, numero, date_creation, montant_prise_en_charge, cout_formateur,
       commission_montant, commission_taux, commission_type, commission_status,
       client:clients(raison_sociale), formation:formations(intitule)
     `)
