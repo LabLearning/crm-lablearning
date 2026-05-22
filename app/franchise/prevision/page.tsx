@@ -66,7 +66,7 @@ export default async function FranchisePrevisionPage() {
               <Sparkles className="h-4 w-4 text-amber-500" /> Potentiel restant ({restants} établissement{restants > 1 ? 's' : ''} à former)
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <PotCard icon={Building2} tint="blue" label="Établissements à former" value={String(restants)} sub={`sur ${total} au total`} />
+              <PotCard icon={Building2} tint="blue" label="Établissements à former" value={String(restants)} sub={`sur ${totalDeclares} au total`} />
               <PotCard icon={Banknote} tint="amber" label="Commission potentielle" value={fmtEuro(commPotentielle)} sub={`~${fmtEuro(commMoyenne)} / établissement`} highlight />
             </div>
           </div>
