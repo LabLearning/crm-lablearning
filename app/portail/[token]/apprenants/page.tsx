@@ -5,6 +5,7 @@ import { Badge, Avatar } from '@/components/ui'
 import { INSCRIPTION_STATUS_LABELS, INSCRIPTION_STATUS_COLORS } from '@/lib/types/formation'
 import { Accessibility, Mail, Building2 } from 'lucide-react'
 import type { InscriptionStatus } from '@/lib/types/formation'
+import { DeclareChangeButton } from './DeclareChangeButton'
 
 export default async function PortalApprenantsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
@@ -52,11 +53,21 @@ export default async function PortalApprenantsPage({ params }: { params: { token
 
       {bySession.filter((s) => s.inscriptions.length > 0).map((session) => (
         <div key={session.id} className="card overflow-hidden">
-          <div className="px-6 py-4 bg-surface-50 border-b border-surface-200">
-            <div className="text-sm font-semibold text-surface-900">
-              {(session.formation as any)?.intitule || session.reference || 'Session'}
+          <div className="px-6 py-4 bg-surface-50 border-b border-surface-200 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-sm font-semibold text-surface-900">
+                {(session.formation as any)?.intitule || session.reference || 'Session'}
+              </div>
+              <div className="text-xs text-surface-500">{session.reference} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}</div>
             </div>
-            <div className="text-xs text-surface-500">{session.reference} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}</div>
+            <DeclareChangeButton
+              token={params.token}
+              sessionId={session.id}
+              participants={session.inscriptions.map((i: any) => ({
+                apprenant_id: i.apprenant_id,
+                nom: `${i.apprenant?.prenom || ''} ${i.apprenant?.nom || ''}`.trim() || 'Apprenant',
+              }))}
+            />
           </div>
           <div className="divide-y divide-surface-100">
             {session.inscriptions.map((ins: any) => (
