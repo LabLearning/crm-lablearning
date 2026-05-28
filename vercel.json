@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/satisfaction-froid",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/relances-factures",
+      "schedule": "0 10 * * 1"
     }
   ]
 }
