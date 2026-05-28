@@ -69,6 +69,8 @@ export const createFormateurSchema = z.object({
   nom: z.string().min(2, 'Nom requis'),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
   telephone: z.string().optional(),
+  whatsapp: z.string().optional(),
+  whatsapp_opt_in: z.coerce.boolean().optional(),
   qualifications: z.string().optional(),
   domaines_expertise: z.string().optional(), // Sera splitté
   certifications: z.string().optional(),

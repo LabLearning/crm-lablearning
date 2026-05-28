@@ -29,8 +29,8 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
       id, organization_id, status, formateur_id, mission_status, client_id,
       date_debut, date_fin, lieu, cout_formateur,
       formation:formation_id(intitule, duree_jours, duree_heures),
-      formateur:formateurs(prenom, nom, email, tarif_journalier),
-      client:clients(raison_sociale, email)
+      formateur:formateurs(prenom, nom, email, tarif_journalier, whatsapp, whatsapp_opt_in),
+      client:clients(raison_sociale, email, whatsapp, whatsapp_opt_in)
     `)
     .eq('id', sessionId)
     .eq('organization_id', session.organization.id)
@@ -139,11 +139,43 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     contratId = contrat?.id
   }
 
-  // ── 4. Envoyer les 2 emails ──
+  // ── 4. Envoyer les 2 emails (+ WhatsApp si opt-in) ──
   try {
     const { sendTemplateEmail, createNotification } = await import('@/lib/email')
+    const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
     const formationName = (sess as any).formation?.intitule || 'Formation'
     const dateRange = `du ${new Date(sess.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sess.date_fin).toLocaleDateString('fr-FR')}`
+
+    // WhatsApp convention → client (si opt-in)
+    const cli = (sess as any).client
+    if (cli?.whatsapp_opt_in && cli?.whatsapp && convToken) {
+      await sendWhatsAppTemplate({
+        organizationId: sess.organization_id,
+        to: cli.whatsapp,
+        toName: cli.raison_sociale || '',
+        template: 'signature_convention',
+        languageCode: 'fr',
+        bodyParams: [cli.raison_sociale || 'Madame, Monsieur', formationName],
+        buttonUrlParam: convToken,
+        entityType: 'convention',
+        entityId: sessionId,
+      })
+    }
+    // WhatsApp contrat → formateur (si opt-in)
+    const f = (sess as any).formateur
+    if (f?.whatsapp_opt_in && f?.whatsapp && contratToken) {
+      await sendWhatsAppTemplate({
+        organizationId: sess.organization_id,
+        to: f.whatsapp,
+        toName: `${f.prenom || ''} ${f.nom || ''}`.trim(),
+        template: 'signature_contrat_formateur',
+        languageCode: 'fr',
+        bodyParams: [`${f.prenom || ''} ${f.nom || ''}`.trim() || 'Bonjour', formationName, dateRange],
+        buttonUrlParam: contratToken,
+        entityType: 'contrat_formateur',
+        entityId: sessionId,
+      })
+    }
 
     // Email au client → convention
     const clientEmail = (sess as any).client?.email

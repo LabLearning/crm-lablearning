@@ -42,6 +42,8 @@ interface SendTemplateParams {
   languageCode?: string              // défaut 'fr'
   // Paramètres positionnels du corps ({{1}}, {{2}}…)
   bodyParams?: string[]
+  // Paramètre du bouton URL dynamique (suffixe ajouté à l'URL, ex: token de signature)
+  buttonUrlParam?: string
   entityType?: string
   entityId?: string
 }
@@ -99,11 +101,19 @@ export async function sendWhatsAppTemplate(params: SendTemplateParams): Promise<
       language: { code: lang },
     },
   }
+  const components: any[] = []
   if (params.bodyParams && params.bodyParams.length > 0) {
-    body.template.components = [
-      { type: 'body', parameters: params.bodyParams.map((t) => ({ type: 'text', text: t })) },
-    ]
+    components.push({ type: 'body', parameters: params.bodyParams.map((t) => ({ type: 'text', text: t })) })
   }
+  if (params.buttonUrlParam) {
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [{ type: 'text', text: params.buttonUrlParam }],
+    })
+  }
+  if (components.length > 0) body.template.components = components
 
   try {
     const res = await fetch(`${GRAPH}/${version}/${phoneNumberId}/messages`, {

@@ -54,6 +54,14 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
         <Input id="email" name="email" type="email" label="Email" defaultValue={formateur?.email || ''} error={errors.email?.[0]} />
         <Input id="telephone" name="telephone" label="Téléphone" defaultValue={formateur?.telephone || ''} />
       </div>
+      <div className="grid grid-cols-2 gap-3 items-end">
+        <Input id="whatsapp" name="whatsapp" label="WhatsApp" placeholder="06 12 34 56 78" defaultValue={(formateur as any)?.whatsapp || ''} />
+        <label className="flex items-center gap-2 text-sm text-surface-700 pb-2.5 cursor-pointer">
+          <input type="checkbox" name="whatsapp_opt_in" value="true" defaultChecked={(formateur as any)?.whatsapp_opt_in || false}
+            className="h-4 w-4 rounded border-surface-300 text-emerald-600 focus:ring-emerald-500" />
+          Reçoit les liens de signature par WhatsApp
+        </label>
+      </div>
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Qualifications (Qualiopi C5)</div>
       <textarea id="qualifications" name="qualifications" rows={3} className="input-base resize-none" placeholder="Diplômes, formations, expériences..." defaultValue={formateur?.qualifications || ''} />
