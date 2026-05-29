@@ -398,3 +398,156 @@ export async function deleteSessionAction(id: string): Promise<ActionResult> {
   revalidatePath('/dashboard/sessions')
   return { success: true }
 }
+
+/**
+ * Émet l'attestation de fin de formation ou le certificat de réalisation d'un
+ * apprenant : génère le PDF, le stocke (visible dans son portail) et l'envoie
+ * par WhatsApp (lien portail) + notification interne.
+ */
+export async function sendDocumentToApprenantAction(
+  sessionId: string,
+  apprenantId: string,
+  docType: 'attestation' | 'certificat',
+): Promise<ActionResult & { whatsapp?: string }> {
+  const session = await getSession()
+  if (session.user.role === 'formateur') {
+    return { success: false, error: 'Action réservée aux gestionnaires' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  const { data: apprenant } = await supabase.from('apprenants').select('*').eq('id', apprenantId).single()
+  if (!apprenant) return { success: false, error: 'Apprenant introuvable' }
+  if (apprenant.organization_id !== session.organization.id) {
+    return { success: false, error: 'Apprenant hors organisation' }
+  }
+
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('*, formateur:formateurs(prenom, nom)')
+    .eq('id', sessionId).single()
+  if (!sess) return { success: false, error: 'Session introuvable' }
+
+  const { data: formation } = await supabase.from('formations').select('*').eq('id', sess.formation_id).single()
+  const { data: org } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
+
+  // Assiduité (émargements)
+  const { data: emargements } = await supabase
+    .from('emargements').select('est_present').eq('session_id', sessionId).eq('apprenant_id', apprenantId)
+  const totalEm = (emargements || []).length
+  const present = (emargements || []).filter((e: any) => e.est_present).length
+  const assiduite = totalEm > 0 ? Math.round((present / totalEm) * 100) : undefined
+  const heuresPresence = formation?.duree_heures && assiduite ? Math.round(formation.duree_heures * assiduite / 100) : undefined
+
+  // Rendu du PDF
+  const { createElement } = await import('react')
+  const { renderToBuffer } = await import('@react-pdf/renderer')
+  const formationNom = formation?.intitule || 'votre formation'
+  let buffer: Buffer
+  let docDbType: string
+  let docNom: string
+  try {
+    if (docType === 'attestation') {
+      const { AttestationFormationPDF } = await import('@/lib/pdf/attestation-formation-pdf')
+      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: sess, formation, org, assiduite }) as any)
+      docDbType = 'attestation_fin'
+      docNom = `Attestation de formation — ${formationNom}`
+    } else {
+      const { CertificatRealisationPDF } = await import('@/lib/pdf/certificat-realisation-pdf')
+      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: sess, formation, org, assiduite, heuresPresence }) as any)
+      docDbType = 'certificat_realisation'
+      docNom = `Certificat de réalisation — ${formationNom}`
+    }
+  } catch (e: any) {
+    return { success: false, error: 'Erreur de génération du PDF' }
+  }
+
+  // Upload dans le bucket privé "dossiers" (chemin stable → écrase à chaque renvoi)
+  const path = `attestations/${sessionId}/${docType}-${apprenantId}.pdf`
+  const { error: upErr } = await supabase.storage
+    .from('dossiers')
+    .upload(path, buffer, { contentType: 'application/pdf', upsert: true })
+  if (upErr) return { success: false, error: 'Erreur de stockage du document' }
+
+  // Documents row (visible dans le portail apprenant). On stocke le chemin storage.
+  const fileName = `${docType}-${apprenant.nom}-${apprenant.prenom}.pdf`
+  const { data: existingDoc } = await supabase
+    .from('documents')
+    .select('id')
+    .eq('apprenant_id', apprenantId)
+    .eq('session_id', sessionId)
+    .eq('type', docDbType)
+    .maybeSingle()
+  const docPayload = {
+    organization_id: apprenant.organization_id,
+    nom: docNom,
+    type: docDbType,
+    file_url: path,
+    file_name: fileName,
+    file_size: buffer.length,
+    mime_type: 'application/pdf',
+    apprenant_id: apprenantId,
+    session_id: sessionId,
+    formation_id: sess.formation_id,
+    created_by: session.user.id,
+  }
+  if (existingDoc) {
+    await supabase.from('documents').update(docPayload).eq('id', existingDoc.id)
+  } else {
+    await supabase.from('documents').insert(docPayload)
+  }
+
+  // Token portail apprenant (pour le bouton WhatsApp)
+  const { getOrCreateApprenantToken } = await import('@/lib/portal-token')
+  const token = await getOrCreateApprenantToken(supabase, apprenantId, apprenant.organization_id, apprenant.email)
+
+  // Notification interne
+  const { createNotification } = await import('@/lib/email')
+  if (apprenant.user_id) {
+    await createNotification({
+      organizationId: apprenant.organization_id,
+      userId: apprenant.user_id,
+      titre: docType === 'attestation' ? 'Votre attestation de formation' : 'Votre certificat de réalisation',
+      message: `${docNom} est disponible dans votre espace.`,
+      type: 'document',
+      lienUrl: token ? `/portail/${token}/documents` : '/mon-espace',
+      lienLabel: 'Voir le document',
+      entityType: 'session',
+      entityId: sessionId,
+    })
+  }
+
+  // WhatsApp (si opt-in + numéro) — templates approuvés, bouton → portail
+  let whatsappStatus = 'skipped'
+  if (apprenant.whatsapp_opt_in && apprenant.whatsapp && token) {
+    const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
+    const prenom = apprenant.prenom || apprenant.nom || 'bonjour'
+    const r = docType === 'attestation'
+      ? await sendWhatsAppTemplate({
+          organizationId: apprenant.organization_id,
+          to: apprenant.whatsapp,
+          toName: `${apprenant.prenom || ''} ${apprenant.nom || ''}`.trim(),
+          template: 'attestation_dispo',
+          languageCode: 'fr',
+          bodyParams: [prenom, formationNom],
+          buttonUrlParam: token,
+          entityType: 'session',
+          entityId: sessionId,
+        })
+      : await sendWhatsAppTemplate({
+          organizationId: apprenant.organization_id,
+          to: apprenant.whatsapp,
+          toName: `${apprenant.prenom || ''} ${apprenant.nom || ''}`.trim(),
+          template: 'document_disponible',
+          languageCode: 'fr',
+          bodyParams: [prenom, 'certificat de réalisation', formationNom],
+          buttonUrlParam: token,
+          entityType: 'session',
+          entityId: sessionId,
+        })
+    whatsappStatus = r.status
+  }
+
+  await logAudit({ action: `send_${docType}`, entity_type: 'apprenant', entity_id: apprenantId })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true, whatsapp: whatsappStatus }
+}

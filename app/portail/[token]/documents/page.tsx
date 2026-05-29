@@ -24,6 +24,18 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
 
   const allDocs = documents || []
 
+  // URL de téléchargement par document : lien direct si http(s), sinon URL signée (bucket privé "dossiers")
+  const downloadUrls: Record<string, string> = {}
+  for (const doc of allDocs) {
+    if (!doc.file_url) continue
+    if (/^https?:\/\//.test(doc.file_url)) {
+      downloadUrls[doc.id] = doc.file_url
+    } else {
+      const { data: signed } = await supabase.storage.from('dossiers').createSignedUrl(doc.file_url, 60 * 60)
+      if (signed?.signedUrl) downloadUrls[doc.id] = signed.signedUrl
+    }
+  }
+
   // Also get pending signatures
   const email = context.type === 'apprenant' ? context.apprenant.email : context.type === 'formateur' ? (context as any).formateur.email : null
   let pendingSignatures: { id: string; signataire_nom: string; status: string; token: string; document: { nom: string; type: string } }[] = []
@@ -73,6 +85,7 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
                 <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-3">Document</th>
                 <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-3">Type</th>
                 <th className="text-left text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-3 hidden md:table-cell">Date</th>
+                <th className="text-right text-xs font-semibold text-surface-500 uppercase tracking-wider px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
@@ -86,6 +99,14 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
                   </td>
                   <td className="px-6 py-3.5"><Badge variant="default">{(DOCUMENT_TYPE_LABELS as any)[doc.type || 'autre']}</Badge></td>
                   <td className="px-6 py-3.5 hidden md:table-cell text-sm text-surface-500">{formatDate(doc.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="px-6 py-3.5 text-right">
+                    {downloadUrls[doc.id] && (
+                      <a href={downloadUrls[doc.id]} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-900 text-white text-xs font-medium hover:bg-surface-800 transition-colors">
+                        <Download className="h-3.5 w-3.5" /> Télécharger
+                      </a>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

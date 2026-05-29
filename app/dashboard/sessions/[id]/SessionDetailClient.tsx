@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction } from './actions'
 import { SignaturePad } from './SignaturePad'
+import { SendDocButton } from './SendDocButton'
 
 interface Props {
   session: any
@@ -491,17 +492,19 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                         {ins.status === 'confirme' ? 'Confirmé' : ins.status === 'inscrit' ? 'Inscrit' : ins.status}
                       </Badge>
                     </div>
-                    {/* Boutons PDF */}
+                    {/* Documents : télécharger (admin) + envoyer à l'apprenant */}
                     {!isFormateur && (
-                      <div className="flex items-center gap-1 mt-2 sm:mt-0">
+                      <div className="flex items-center gap-1 mt-2 sm:mt-0 flex-wrap justify-end">
                         <a href={`/api/pdf/attestation/${a?.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-50 text-surface-500 text-[10px] font-medium hover:bg-surface-100 transition-colors">
                           <Download className="h-3 w-3" /> Attestation
                         </a>
+                        <SendDocButton sessionId={session.id} apprenantId={a?.id} docType="attestation" label="Envoyer" />
                         <a href={`/api/pdf/certificat-realisation/${a?.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-50 text-surface-500 text-[10px] font-medium hover:bg-surface-100 transition-colors">
                           <Download className="h-3 w-3" /> Certificat
                         </a>
+                        <SendDocButton sessionId={session.id} apprenantId={a?.id} docType="certificat" label="Envoyer" />
                       </div>
                     )}
                   </div>
