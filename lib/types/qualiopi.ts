@@ -41,6 +41,7 @@ export interface QualiopiPreuve {
   date_preuve: string
   est_valide: boolean
   created_at: string
+  signed_url?: string | null
 }
 
 export interface Reclamation {

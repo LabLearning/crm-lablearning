@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ShieldCheck, ChevronDown, ChevronRight, Plus, Trash2,
   FileText, Link as LinkIcon, Save, AlertTriangle, CheckCircle2,
-  XCircle, HelpCircle, Minus, Download, RefreshCw,
+  XCircle, HelpCircle, Minus, Download, Upload, Loader2, ExternalLink, Database,
 } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
 import { initQualiopiAction, updateIndicateurAction, addPreuveAction, removePreuveAction } from './actions'
@@ -13,10 +14,12 @@ import {
 } from '@/lib/types/qualiopi'
 import { formatDate } from '@/lib/utils'
 import type { QualiopiIndicateur, QualiopiPreuve, ConformiteNiveau } from '@/lib/types/qualiopi'
+import type { CrmEvidence } from './page'
 
 interface QualiopiDashboardProps {
   indicateurs: QualiopiIndicateur[]
   initialized: boolean
+  crmEvidence?: Record<number, CrmEvidence[]>
 }
 
 const niveauOptions = Object.entries(CONFORMITE_LABELS).map(([v, l]) => ({ value: v, label: l }))
@@ -35,7 +38,7 @@ const niveauIcons: Record<ConformiteNiveau, React.ReactNode> = {
   non_evalue: <HelpCircle className="h-4 w-4 text-surface-300" />,
 }
 
-export function QualiopiDashboard({ indicateurs, initialized }: QualiopiDashboardProps) {
+export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: QualiopiDashboardProps) {
   const { toast } = useToast()
   const [expandedCritere, setExpandedCritere] = useState<number | null>(1)
   const [editIndicateur, setEditIndicateur] = useState<QualiopiIndicateur | null>(null)
@@ -204,6 +207,14 @@ export function QualiopiDashboard({ indicateurs, initialized }: QualiopiDashboar
                             </span>
                           )}
                         </div>
+                        {/* Preuves vivantes produites par le CRM */}
+                        {(crmEvidence?.[ind.indicateur] || []).map((ev) => (
+                          <a key={ev.href + ev.label} href={ev.href}
+                            className="inline-flex items-center gap-1.5 mt-1.5 mr-2 px-2 py-1 rounded-lg bg-brand-50 text-brand-700 text-2xs font-medium hover:bg-brand-100 transition-colors">
+                            <Database className="h-3 w-3" /> {ev.label}
+                            {ev.count > 0 && <span className="font-bold">· {ev.count}</span>}
+                          </a>
+                        ))}
                       </div>
                       <div className="flex gap-1 shrink-0">
                         <button
@@ -237,7 +248,7 @@ export function QualiopiDashboard({ indicateurs, initialized }: QualiopiDashboar
 
       {/* Preuves modal */}
       <Modal isOpen={!!preuveIndicateur} onClose={() => setPreuveIndicateur(null)} title={preuveIndicateur ? `Preuves — Indicateur ${preuveIndicateur.indicateur}` : ''} size="lg">
-        {preuveIndicateur && <PreuvesManager indicateur={preuveIndicateur} />}
+        {preuveIndicateur && <PreuvesManager indicateur={preuveIndicateur} crmEvidence={crmEvidence?.[preuveIndicateur.indicateur]} />}
       </Modal>
     </div>
   )
@@ -300,10 +311,13 @@ function IndicateurEvalForm({ indicateur, onDone }: { indicateur: QualiopiIndica
 
 // ---- Preuves Manager ----
 
-function PreuvesManager({ indicateur }: { indicateur: QualiopiIndicateur }) {
+function PreuvesManager({ indicateur, crmEvidence }: { indicateur: QualiopiIndicateur; crmEvidence?: CrmEvidence[] }) {
   const { toast } = useToast()
+  const router = useRouter()
   const [addingPreuve, setAddingPreuve] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const preuves = indicateur.preuves || []
 
@@ -311,15 +325,34 @@ function PreuvesManager({ indicateur }: { indicateur: QualiopiIndicateur }) {
     e.preventDefault()
     setIsSaving(true)
     const result = await addPreuveAction(indicateur.id, new FormData(e.currentTarget))
-    if (result.success) { toast('success', 'Preuve ajoutée'); setAddingPreuve(false) }
+    if (result.success) { toast('success', 'Preuve ajoutée'); setAddingPreuve(false); router.refresh() }
     else toast('error', result.error || 'Erreur')
     setIsSaving(false)
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) { toast('error', 'Fichier trop lourd (max 20 Mo)'); return }
+    setUploading(true)
+    const fd = new FormData()
+    fd.set('file', file)
+    fd.set('indicateur_id', indicateur.id)
+    fd.set('titre', file.name)
+    try {
+      const res = await fetch('/api/qualiopi/upload-preuve', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (res.ok && data.success) { toast('success', 'Document ajouté au classeur'); router.refresh() }
+      else toast('error', data.error || 'Erreur upload')
+    } catch { toast('error', 'Erreur réseau') }
+    setUploading(false)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   async function handleRemove(id: string) {
     if (!confirm('Supprimer cette preuve ?')) return
     const result = await removePreuveAction(id)
-    if (result.success) toast('success', 'Preuve supprimée')
+    if (result.success) { toast('success', 'Preuve supprimée'); router.refresh() }
     else toast('error', result.error || 'Erreur')
   }
 
@@ -332,16 +365,38 @@ function PreuvesManager({ indicateur }: { indicateur: QualiopiIndicateur }) {
         )}
       </div>
 
-      <div className="flex items-center justify-between">
+      {/* Preuves vivantes du CRM */}
+      {(crmEvidence || []).length > 0 && (
+        <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-3">
+          <div className="text-2xs font-semibold text-brand-700 uppercase tracking-wider mb-2">Déjà dans le CRM</div>
+          <div className="flex flex-wrap gap-2">
+            {(crmEvidence || []).map((ev) => (
+              <a key={ev.href + ev.label} href={ev.href}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-brand-100 text-brand-700 text-xs font-medium hover:bg-brand-50 transition-colors">
+                <Database className="h-3.5 w-3.5" /> {ev.label}{ev.count > 0 && <span className="font-bold">· {ev.count}</span>}
+                <ExternalLink className="h-3 w-3 opacity-60" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-surface-700">{preuves.length} preuve{preuves.length > 1 ? 's' : ''}</span>
-        <Button size="sm" onClick={() => setAddingPreuve(true)} icon={<Plus className="h-3.5 w-3.5" />}>Ajouter</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()} isLoading={uploading}
+            icon={<Upload className="h-3.5 w-3.5" />}>Uploader un fichier</Button>
+          <Button size="sm" onClick={() => setAddingPreuve(true)} icon={<LinkIcon className="h-3.5 w-3.5" />}>Lien / note</Button>
+        </div>
       </div>
+      <input ref={fileRef} type="file" className="hidden"
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx" onChange={handleUpload} />
 
       {addingPreuve && (
         <form onSubmit={handleAdd} className="card p-4 space-y-3 border-brand-200 border">
           <Input name="titre" label="Titre de la preuve *" placeholder="Convention de formation signée" />
           <div className="grid grid-cols-2 gap-3">
-            <Select name="type" label="Type" options={preuveTypeOptions} defaultValue="document" />
+            <Select name="type" label="Type" options={preuveTypeOptions} defaultValue="lien" />
             <Input name="lien_externe" label="Lien (optionnel)" placeholder="https://..." />
           </div>
           <textarea name="description" rows={2} className="input-base resize-none" placeholder="Description..." />
@@ -354,22 +409,30 @@ function PreuvesManager({ indicateur }: { indicateur: QualiopiIndicateur }) {
 
       {preuves.length > 0 ? (
         <div className="space-y-2">
-          {preuves.map((p) => (
+          {preuves.map((p) => {
+            const url = p.signed_url || p.lien_externe
+            return (
             <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-50">
-              <div className={`shrink-0 p-2 rounded-lg ${p.type === 'document' ? 'bg-brand-50' : p.type === 'lien' ? 'bg-purple-50' : 'bg-surface-100'}`}>
-                {p.type === 'lien' ? <LinkIcon className="h-4 w-4 text-purple-600" /> : <FileText className="h-4 w-4 text-brand-600" />}
+              <div className={`shrink-0 p-2 rounded-lg ${p.document_url ? 'bg-brand-50' : p.lien_externe ? 'bg-purple-50' : 'bg-surface-100'}`}>
+                {p.document_url ? <FileText className="h-4 w-4 text-brand-600" /> : <LinkIcon className="h-4 w-4 text-purple-600" />}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-surface-800">{p.titre}</div>
+                <div className="text-sm font-medium text-surface-800 truncate">{p.titre}</div>
                 {p.description && <div className="text-xs text-surface-500 truncate">{p.description}</div>}
                 <div className="text-2xs text-surface-400 mt-0.5">{formatDate(p.date_preuve, { day: 'numeric', month: 'short', year: 'numeric' })}</div>
               </div>
+              {url && (
+                <a href={url} target="_blank" rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 shrink-0" title="Ouvrir / télécharger">
+                  <Download className="h-4 w-4" />
+                </a>
+              )}
               {p.est_valide && <CheckCircle2 className="h-4 w-4 text-success-500 shrink-0" />}
               <button onClick={() => handleRemove(p.id)} className="p-1 text-surface-400 hover:text-danger-500 shrink-0">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
-          ))}
+          )})}
         </div>
       ) : (
         <div className="text-center py-6 text-xs text-surface-400">Aucune preuve enregistrée</div>

@@ -83,6 +83,15 @@ export async function addPreuveAction(indicateurId: string, formData: FormData):
 
 export async function removePreuveAction(preuveId: string): Promise<ActionResult> {
   const supabase = await createServiceRoleClient()
+  // Récupérer le fichier stocké pour le supprimer du bucket
+  const { data: preuve } = await supabase
+    .from('qualiopi_preuves')
+    .select('document_url')
+    .eq('id', preuveId)
+    .single()
+  if (preuve?.document_url && !/^https?:\/\//.test(preuve.document_url)) {
+    await supabase.storage.from('dossiers').remove([preuve.document_url])
+  }
   const { error } = await supabase.from('qualiopi_preuves').delete().eq('id', preuveId)
   if (error) return { success: false, error: 'Erreur' }
   revalidatePath('/dashboard/qualiopi')
