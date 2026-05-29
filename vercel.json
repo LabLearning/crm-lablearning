@@ -5,6 +5,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/cron/livret-accueil",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/satisfaction-froid",
       "schedule": "0 9 * * *"
     },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Save, Building2, ShieldCheck, UserCircle, Landmark, Stamp, Upload, ExternalLink, X } from 'lucide-react'
+import { Save, Building2, ShieldCheck, UserCircle, Landmark, Stamp, Upload, ExternalLink, X, BookOpen, FileText } from 'lucide-react'
 import { Button, Input, useToast } from '@/components/ui'
 import { updateOrganizationAction } from './actions'
 import type { Organization } from '@/lib/types'
@@ -19,6 +19,8 @@ interface ExtendedOrganization extends Organization {
   representant_legal_fonction?: string | null
   tampon_signature_url?: string | null
   tampon_signature_filename?: string | null
+  livret_accueil_url?: string | null
+  livret_accueil_filename?: string | null
   qualiopi_certificateur?: string | null
   qualiopi_certificat_numero?: string | null
   qualiopi_date_obtention?: string | null
@@ -46,6 +48,10 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
   const [tamponFilename, setTamponFilename] = useState(organization.tampon_signature_filename || '')
   const [uploadingTampon, setUploadingTampon] = useState(false)
   const tamponRef = useRef<HTMLInputElement>(null)
+  const [livretUrl, setLivretUrl] = useState(organization.livret_accueil_url || '')
+  const [livretFilename, setLivretFilename] = useState(organization.livret_accueil_filename || '')
+  const [uploadingLivret, setUploadingLivret] = useState(false)
+  const livretRef = useRef<HTMLInputElement>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -87,6 +93,34 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
     setTamponUrl('')
     setTamponFilename('')
     toast('success', 'Tampon supprimé')
+  }
+
+  async function handleUploadLivret(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) { toast('error', 'Fichier trop lourd (max 10 Mo)'); return }
+    setUploadingLivret(true)
+    const fd = new FormData()
+    fd.set('file', file)
+    try {
+      const res = await fetch('/api/organization/upload-livret', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setLivretUrl(data.url)
+        setLivretFilename(data.filename)
+        toast('success', "Livret d'accueil enregistré")
+      } else toast('error', data.error || 'Erreur upload')
+    } catch { toast('error', 'Erreur réseau') }
+    setUploadingLivret(false)
+    if (livretRef.current) livretRef.current.value = ''
+  }
+
+  async function removeLivret() {
+    if (!confirm("Supprimer le livret d'accueil ?")) return
+    await fetch('/api/organization/upload-livret', { method: 'DELETE' })
+    setLivretUrl('')
+    setLivretFilename('')
+    toast('success', 'Livret supprimé')
   }
 
   const SectionHeader = ({ icon: Icon, title, subtitle }: any) => (
@@ -192,6 +226,63 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
           accept="image/png,image/jpeg"
           className="hidden"
           onChange={handleUploadTampon}
+        />
+      </section>
+
+      {/* Livret d'accueil */}
+      <section className="card p-6">
+        <SectionHeader icon={BookOpen} title="Livret d'accueil" subtitle="PDF envoyé automatiquement aux apprenants la veille de leur formation (J-1), par WhatsApp et notification." />
+
+        {livretUrl ? (
+          <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+            <div className="bg-white p-3 rounded-lg border border-surface-200 shrink-0">
+              <FileText className="h-10 w-10 text-rose-500" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-surface-900">{livretFilename || 'livret-accueil.pdf'}</div>
+              <div className="text-xs text-surface-500 mt-1">
+                Joint au message WhatsApp et accessible dans la notification de l'apprenant, J-1 avant la session.
+              </div>
+              <div className="flex gap-3 mt-3">
+                <a href={livretUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" /> Ouvrir le PDF
+                </a>
+                {canEdit && (
+                  <>
+                    <button type="button" onClick={() => livretRef.current?.click()} className="text-xs text-surface-500 hover:text-surface-800 flex items-center gap-1">
+                      <Upload className="h-3 w-3" /> Remplacer
+                    </button>
+                    <button type="button" onClick={removeLivret} className="text-xs text-danger-500 hover:text-danger-700 flex items-center gap-1">
+                      <X className="h-3 w-3" /> Supprimer
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : canEdit ? (
+          <button
+            type="button"
+            onClick={() => livretRef.current?.click()}
+            disabled={uploadingLivret}
+            className="w-full p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+          >
+            <BookOpen className="h-6 w-6 text-surface-400" />
+            <div className="text-sm font-medium text-surface-700">
+              {uploadingLivret ? 'Upload en cours…' : "Uploader le livret d'accueil (PDF)"}
+            </div>
+            <div className="text-xs text-surface-500">Document unique pour toutes les formations · 10 Mo max</div>
+          </button>
+        ) : (
+          <div className="text-sm text-surface-500">Aucun livret configuré</div>
+        )}
+
+        <input
+          ref={livretRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={handleUploadLivret}
         />
       </section>
 

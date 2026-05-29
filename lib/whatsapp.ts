@@ -44,6 +44,8 @@ interface SendTemplateParams {
   bodyParams?: string[]
   // Paramètre du bouton URL dynamique (suffixe ajouté à l'URL, ex: token de signature)
   buttonUrlParam?: string
+  // Document joint en en-tête (template avec header DOCUMENT, ex: livret d'accueil PDF)
+  headerDocument?: { link: string; filename?: string }
   entityType?: string
   entityId?: string
 }
@@ -102,6 +104,18 @@ export async function sendWhatsAppTemplate(params: SendTemplateParams): Promise<
     },
   }
   const components: any[] = []
+  if (params.headerDocument?.link) {
+    components.push({
+      type: 'header',
+      parameters: [{
+        type: 'document',
+        document: {
+          link: params.headerDocument.link,
+          ...(params.headerDocument.filename ? { filename: params.headerDocument.filename } : {}),
+        },
+      }],
+    })
+  }
   if (params.bodyParams && params.bodyParams.length > 0) {
     components.push({ type: 'body', parameters: params.bodyParams.map((t) => ({ type: 'text', text: t })) })
   }
