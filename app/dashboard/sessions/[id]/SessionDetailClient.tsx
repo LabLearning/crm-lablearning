@@ -279,6 +279,14 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ═══════════════════════════════════════════════ */}
       {tab === 'presences' && (
         <div className="space-y-4">
+          {!isFormateur && (
+            <div className="flex justify-end">
+              <a href={`/api/pdf/emargement/${session.id}`} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 text-xs font-medium hover:bg-brand-100 transition-colors">
+                <Download className="h-3.5 w-3.5" /> Feuille d'émargement (PDF)
+              </a>
+            </div>
+          )}
           {/* Stats émargement */}
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-2xl p-4 bg-blue-50 text-center">
@@ -495,6 +503,10 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     {/* Documents : télécharger (admin) + envoyer à l'apprenant */}
                     {!isFormateur && (
                       <div className="flex items-center gap-1 mt-2 sm:mt-0 flex-wrap justify-end">
+                        <a href={`/api/pdf/convocation/${a?.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-50 text-surface-500 text-[10px] font-medium hover:bg-surface-100 transition-colors">
+                          <Download className="h-3 w-3" /> Convocation
+                        </a>
                         <a href={`/api/pdf/attestation/${a?.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-50 text-surface-500 text-[10px] font-medium hover:bg-surface-100 transition-colors">
                           <Download className="h-3 w-3" /> Attestation

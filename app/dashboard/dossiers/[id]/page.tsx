@@ -264,7 +264,17 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
               </div>
             </div>
           )}
-          {!convention && !contrat && <div className="text-sm text-surface-400">Aucun document généré pour le moment.</div>}
+          {/* Contrat de formation (financement individuel — particulier) */}
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-50 border border-surface-100">
+            <FilePenLine className="h-4 w-4 text-brand-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-surface-900">Contrat de formation (particulier)</div>
+              <div className="text-xs text-surface-500">À utiliser si le stagiaire finance lui-même (mentions L.6353-3, rétractation 10 jours).</div>
+            </div>
+            <a href={`/api/pdf/contrat-formation/${d.id}`} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1 shrink-0">
+              <Download className="h-3 w-3" /> PDF
+            </a>
+          </div>
         </div>
       </div>
 
