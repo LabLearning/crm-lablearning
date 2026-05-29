@@ -110,9 +110,36 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
           {formation.tarif_intra_ht && <View style={shared.row}><Text style={shared.label}>Intra-entreprise :</Text><Text style={shared.value}>{Number(formation.tarif_intra_ht).toLocaleString('fr-FR')} EUR HT / groupe</Text></View>}
         </View>
 
+        {/* Accessibilité & informations pratiques (Qualiopi Ind. 1) */}
+        <View style={shared.section}>
+          <Text style={shared.sectionTitle}>Accessibilité et informations pratiques</Text>
+          <View style={shared.row}>
+            <Text style={shared.label}>Délais d'accès :</Text>
+            <Text style={shared.value}>{org.delai_acces || formation.delai_acces || 'Inscription jusqu\'à quelques jours avant le démarrage, selon les places disponibles.'}</Text>
+          </View>
+          <View style={shared.row}>
+            <Text style={shared.label}>Accessibilité PSH :</Text>
+            <Text style={shared.value}>
+              {formation.accessibilite_handicap || 'Formation accessible aux personnes en situation de handicap. Pour tout besoin d\'adaptation, contactez notre référent handicap.'}
+            </Text>
+          </View>
+          {(org.referent_handicap_nom || org.referent_handicap_email || org.referent_handicap_telephone) && (
+            <View style={shared.row}>
+              <Text style={shared.label}>Référent handicap :</Text>
+              <Text style={shared.value}>
+                {[org.referent_handicap_nom, org.referent_handicap_email, org.referent_handicap_telephone].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
+          )}
+          <View style={shared.row}>
+            <Text style={shared.label}>Contact :</Text>
+            <Text style={shared.value}>{[org.email_contact || org.email, org.telephone_contact || org.phone].filter(Boolean).join(' · ') || '—'}</Text>
+          </View>
+        </View>
+
         <View style={shared.infoBox}>
           <Text style={shared.infoBoxText}>
-            {org.name} — Organisme de formation certifié Qualiopi{'\n'}
+            {org.name} — Organisme de formation{org.is_qualiopi !== false ? ' certifié Qualiopi' : ''}{'\n'}
             N° de déclaration d'activité : {org.numero_da || 'En cours'}
           </Text>
         </View>

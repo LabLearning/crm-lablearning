@@ -28,8 +28,14 @@ export async function GET(
     return NextResponse.json({ error: 'Convention introuvable' }, { status: 404 })
   }
 
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', (convention as any).organization_id)
+    .single()
+
   const buffer = await renderToBuffer(
-    createElement(ConventionPDF, { convention: convention as Convention }) as any
+    createElement(ConventionPDF, { convention: convention as Convention, org }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {

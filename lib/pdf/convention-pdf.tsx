@@ -27,10 +27,13 @@ const FINANCEUR_LABELS: Record<string, string> = {
   autre: 'Autre organisme',
 }
 
-export function ConventionPDF({ convention }: { convention: Convention }) {
+export function ConventionPDF({ convention, org }: { convention: Convention; org?: any }) {
   const clientName = convention.client?.raison_sociale || '—'
   const formationTitle = convention.formation?.intitule || convention.objet || '—'
   const isSignedComplete = convention.status === 'signee_complete'
+  const ofName = org?.name || 'Lab Learning'
+  const ofEmail = org?.email_contact || org?.email || 'digital@lab-learning.fr'
+  const refHandicap = [org?.referent_handicap_nom, org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
 
   return (
     <Document title={`Convention ${convention.numero}`} author="Lab Learning">
@@ -49,7 +52,7 @@ export function ConventionPDF({ convention }: { convention: Convention }) {
           </Text>
           <Text style={shared.infoBoxText}>
             Établie conformément aux articles L.6353-1 et suivants du Code du travail.
-            Organisme de formation certifié Qualiopi (certificat n° XXXXXXXX).
+            {org?.is_qualiopi !== false ? ` Organisme de formation certifié Qualiopi${org?.qualiopi_certificat_numero ? ` (certificat n° ${org.qualiopi_certificat_numero})` : ''}.` : ''}
           </Text>
         </View>
 
@@ -57,15 +60,11 @@ export function ConventionPDF({ convention }: { convention: Convention }) {
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Organisme de formation</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>Lab Learning</Text>
-            <View style={shared.row}>
-              <Text style={shared.label}>Email</Text>
-              <Text style={shared.value}>digital@lab-learning.fr</Text>
-            </View>
-            <View style={shared.row}>
-              <Text style={shared.label}>Certification</Text>
-              <Text style={shared.value}>Qualiopi</Text>
-            </View>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{org?.legal_name || ofName}</Text>
+            {org?.address && <Text style={{ fontSize: 8, color: '#57534e', marginBottom: 2 }}>{org.address}{org.postal_code || org.city ? `, ${org.postal_code || ''} ${org.city || ''}` : ''}</Text>}
+            {org?.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{org.siret}</Text></View>}
+            <View style={shared.row}><Text style={shared.label}>N° déclaration</Text><Text style={shared.value}>{org?.numero_da || '—'}</Text></View>
+            <View style={shared.row}><Text style={shared.label}>Email</Text><Text style={shared.value}>{ofEmail}</Text></View>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Bénéficiaire / Employeur</Text>
@@ -142,6 +141,23 @@ export function ConventionPDF({ convention }: { convention: Convention }) {
           )}
         </View>
 
+        {/* Modalités de suivi et d'évaluation (R6353-1) */}
+        <View style={shared.section}>
+          <Text style={shared.sectionTitle}>Modalités de déroulement, de suivi et d'évaluation</Text>
+          <Text style={{ fontSize: 8, color: '#57534e', lineHeight: 1.6 }}>
+            {(convention as any).modalites_evaluation
+              || "L'exécution de l'action est suivie au moyen de feuilles d'émargement signées par les stagiaires et le formateur. Les acquis sont évalués en cours et en fin de formation (QCM, mise en situation). Une attestation de fin de formation et un certificat de réalisation sont remis à l'issue."}
+          </Text>
+        </View>
+
+        {/* Accessibilité handicap (Qualiopi) */}
+        <View style={shared.section}>
+          <Text style={shared.sectionTitle}>Accessibilité — situation de handicap</Text>
+          <Text style={{ fontSize: 8, color: '#57534e', lineHeight: 1.6 }}>
+            Les formations sont accessibles aux personnes en situation de handicap. Pour étudier les adaptations nécessaires, contacter {refHandicap || ofEmail}.
+          </Text>
+        </View>
+
         {/* Regulatory clauses */}
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Clauses réglementaires</Text>
@@ -178,14 +194,14 @@ Les évaluations de satisfaction seront recueillies à l'issue de la formation c
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Signature de l'organisme</Text>
             <Text style={{ fontSize: 8, color: '#78716C', marginBottom: 8 }}>
-              Lab Learning — Représentant légal
+              {ofName} — Représentant légal
             </Text>
             {convention.signature_of_date ? (
               <View style={{ backgroundColor: BRAND_LIGHT, padding: 8, borderRadius: 4 }}>
                 <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Helvetica-Bold' }}>
                   Signé électroniquement
                 </Text>
-                <Text style={{ fontSize: 8, color: '#78716C' }}>Lab Learning</Text>
+                <Text style={{ fontSize: 8, color: '#78716C' }}>{ofName}</Text>
                 <Text style={{ fontSize: 7, color: '#a8a29e' }}>Le {fmtDate(convention.signature_of_date)}</Text>
               </View>
             ) : (

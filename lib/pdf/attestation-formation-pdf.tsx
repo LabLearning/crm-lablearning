@@ -77,6 +77,15 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
           </Text>
         </View>
 
+        <View style={shared.section}>
+          <Text style={shared.sectionTitle}>Résultats de l'évaluation des acquis</Text>
+          <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
+            {assiduite != null
+              ? `Les objectifs pédagogiques de la formation ont été évalués. Acquis validés au regard des objectifs visés. Assiduité constatée : ${assiduite}%.`
+              : 'Les objectifs pédagogiques de la formation ont été évalués. Acquis validés au regard des objectifs visés.'}
+          </Text>
+        </View>
+
         <View style={{ marginTop: 30 }}>
           <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}</Text>
           <View style={{ marginTop: 15 }}>

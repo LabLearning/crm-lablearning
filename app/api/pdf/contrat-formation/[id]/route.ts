@@ -24,12 +24,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     ? await supabase.from('formations').select('*').eq('id', dossier.formation_id).single()
     : { data: null }
   const { data: session } = dossier.session_id
-    ? await supabase.from('sessions').select('*').eq('id', dossier.session_id).single()
+    ? await supabase.from('sessions').select('*, formateur:formateurs(prenom, nom, qualifications, diplomes, certifications)').eq('id', dossier.session_id).single()
     : { data: null }
   const { data: org } = await supabase.from('organizations').select('*').eq('id', dossier.organization_id).single()
 
   const buffer = await renderToBuffer(
-    createElement(ContratFormationPDF, { dossier, client, formation, session, org }) as any
+    createElement(ContratFormationPDF, { dossier, client, formation, session, org, formateur: (session as any)?.formateur }) as any
   )
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

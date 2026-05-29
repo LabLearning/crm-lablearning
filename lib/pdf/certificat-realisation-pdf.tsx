@@ -14,6 +14,9 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const numero = `CR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
   const duree = formation.duree_heures || 0
+  const heuresRealisees = heuresPresence != null ? heuresPresence : duree
+  const enTotalite = !duree || heuresRealisees >= duree
+  const representant = [org?.representant_legal_civilite, org?.representant_legal_prenom, org?.representant_legal_nom].filter(Boolean).join(' ').trim() || `le représentant légal de ${org?.name || 'l\'organisme'}`
 
   return (
     <Document>
@@ -40,43 +43,33 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Action de formation</Text>
+          <Text style={shared.sectionTitle}>Caractéristiques de l'action</Text>
           <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formation.intitule}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Durée prévue :</Text><Text style={shared.value}>{duree} heures</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Durée réalisée :</Text><Text style={shared.value}>{heuresPresence || duree} heures</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Modalité :</Text><Text style={shared.value}>{formation.modalite === 'presentiel' ? 'Présentiel' : formation.modalite === 'distanciel' ? 'Distanciel' : 'Mixte'}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Nature :</Text><Text style={shared.value}>Action de formation</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Modalité :</Text><Text style={shared.value}>{formation.modalite === 'distanciel' ? 'À distance' : formation.modalite === 'mixte' ? 'Mixte (présentiel + à distance)' : 'Présentiel'}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Dates :</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR')} au {new Date(session.date_fin).toLocaleDateString('fr-FR')}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Nombre total d'heures :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{heuresRealisees} heures réalisées{duree && heuresRealisees < duree ? ` (sur ${duree} h prévues)` : ''}</Text></View>
           {session.lieu && <View style={shared.row}><Text style={shared.label}>Lieu :</Text><Text style={shared.value}>{session.lieu}</Text></View>}
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Réalisation</Text>
+          <Text style={shared.sectionTitle}>Attestation</Text>
           <Text style={{ fontSize: 9, color: SURFACE_900, lineHeight: 1.8 }}>
-            Je soussigné(e), représentant(e) de {org.name}, atteste que l'action de formation mentionnée ci-dessus a été réalisée{assiduite != null ? ` avec un taux d'assiduité de ${assiduite}%` : ''}.
+            Je soussigné(e) {representant}, atteste que {apprenant.prenom} {apprenant.nom} a réalisé {enTotalite ? 'en totalité' : 'partiellement'} une action concourant au développement des compétences (action de formation au sens de l'article L.6313-1 du Code du travail), dont les caractéristiques figurent ci-dessus.
           </Text>
-          {assiduite != null && assiduite < 100 && (
+          {assiduite != null && (
             <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
-              Note : Le stagiaire a été absent sur une partie de la formation. Le taux d'assiduité est calculé sur la base des feuilles d'émargement signées.
+              Taux d'assiduité : {assiduite}% (calculé sur la base des feuilles d'émargement signées).
             </Text>
           )}
         </View>
 
-        <View style={{ marginTop: 30, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View style={{ width: '45%' }}>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}</Text>
-            <View style={{ marginTop: 10 }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>L'organisme de formation</Text>
-              <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1' }} />
-              <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
-            </View>
-          </View>
-          <View style={{ width: '45%' }}>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}> </Text>
-            <View style={{ marginTop: 10 }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>Le stagiaire</Text>
-              <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1' }} />
-              <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature</Text>
-            </View>
+        <View style={{ marginTop: 30 }}>
+          <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}, pour faire valoir ce que de droit.</Text>
+          <View style={{ marginTop: 12 }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name} — {representant}</Text>
+            <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 220 }} />
+            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet du dispensateur</Text>
           </View>
         </View>
 

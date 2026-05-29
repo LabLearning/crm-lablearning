@@ -7,6 +7,7 @@ interface ContratFormationProps {
   formation: any
   session: any
   org: any
+  formateur?: any
 }
 
 const euro = (n: number | null | undefined) =>
@@ -25,7 +26,15 @@ const P = ({ children }: { children: React.ReactNode }) => (
   <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6, marginBottom: 3 }}>{children}</Text>
 )
 
-export function ContratFormationPDF({ dossier, client, formation, session, org }: ContratFormationProps) {
+export function ContratFormationPDF({ dossier, client, formation, session, org, formateur }: ContratFormationProps) {
+  const formateurNom = formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : ''
+  const formateurRefs = formateur
+    ? [
+        Array.isArray(formateur.diplomes) ? formateur.diplomes.join(', ') : formateur.diplomes,
+        Array.isArray(formateur.qualifications) ? formateur.qualifications.join(', ') : formateur.qualifications,
+        Array.isArray(formateur.certifications) ? formateur.certifications.join(', ') : formateur.certifications,
+      ].filter(Boolean).join(' · ')
+    : ''
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const numero = dossier?.numero ? `CF-${dossier.numero}` : `CF-${new Date().getFullYear()}`
   const stagiaire = [client?.civilite, client?.prenom, client?.nom].filter(Boolean).join(' ').trim()
@@ -83,12 +92,19 @@ export function ContratFormationPDF({ dossier, client, formation, session, org }
           <P>{formation?.prerequis || "Aucun prérequis particulier n'est exigé pour suivre cette formation."}</P>
         </Article>
 
-        <Article titre="Article 4 — Modalités d'évaluation et sanction">
+        <Article titre="Article 4 — Encadrement pédagogique">
+          <P>
+            La formation est assurée par {formateurNom || 'un formateur qualifié de l\'organisme'}.
+            {formateurRefs ? ` Diplômes, titres et références : ${formateurRefs}.` : ' Les diplômes, titres et références du formateur sont disponibles sur demande.'}
+          </P>
+        </Article>
+
+        <Article titre="Article 5 — Modalités d'évaluation et sanction">
           <P>{formation?.modalites_evaluation || "Évaluation des acquis en cours et en fin de formation (QCM et/ou mise en situation pratique)."}</P>
           <P>À l'issue de la formation, une attestation de fin de formation et/ou un certificat de réalisation est remis au stagiaire.</P>
         </Article>
 
-        <Article titre="Article 5 — Dispositions financières">
+        <Article titre="Article 6 — Dispositions financières">
           <P>
             Le prix de la formation est fixé à {euro(ttc)} TTC{ht != null ? ` (${euro(ht)} HT)` : ''}, pour la totalité de la prestation.
           </P>
@@ -100,7 +116,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org }
           </P>
         </Article>
 
-        <Article titre="Article 6 — Délai de rétractation">
+        <Article titre="Article 7 — Délai de rétractation">
           <P>
             À compter de la date de signature du présent contrat, le stagiaire dispose d'un délai de <Text style={{ fontFamily: 'Helvetica-Bold' }}>10 jours</Text> pour se rétracter.
             Il en informe l'organisme par lettre recommandée avec accusé de réception. Aucune somme ne peut être exigée ni retenue
@@ -108,7 +124,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org }
           </P>
         </Article>
 
-        <Article titre="Article 7 — Interruption ou abandon de la formation">
+        <Article titre="Article 8 — Interruption ou abandon de la formation">
           <P>
             En cas de cessation anticipée de la formation du fait de l'organisme, ou d'abandon par le stagiaire pour un autre motif
             que la force majeure dûment reconnue, le présent contrat est résilié. Seules les prestations effectivement dispensées
@@ -117,7 +133,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org }
           </P>
         </Article>
 
-        <Article titre="Article 8 — Litiges">
+        <Article titre="Article 9 — Litiges">
           <P>
             Si une contestation ou un différend ne peuvent être réglés à l'amiable, le tribunal compétent du ressort du siège de
             l'organisme sera seul compétent.

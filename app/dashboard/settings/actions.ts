@@ -52,6 +52,10 @@ export async function updateOrganizationAction(formData: FormData): Promise<Acti
     banque_titulaire: get('banque_titulaire'),
     email_contact: get('email_contact'),
     telephone_contact: get('telephone_contact'),
+    referent_handicap_nom: get('referent_handicap_nom'),
+    referent_handicap_email: get('referent_handicap_email'),
+    referent_handicap_telephone: get('referent_handicap_telephone'),
+    delai_acces: get('delai_acces'),
   }
 
   const supabase = await createServiceRoleClient()

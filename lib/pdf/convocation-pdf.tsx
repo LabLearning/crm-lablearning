@@ -16,7 +16,11 @@ export function ConvocationPDF({ apprenant, session, formation, org, formateur }
   const lieu = session.lieu || session.adresse || [session.adresse, session.code_postal, session.ville].filter(Boolean).join(', ') || 'le lieu communiqué par l\'organisme'
   const dDebut = new Date(session.date_debut).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const dFin = new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const refHandicap = org?.referent_handicap_nom || org?.email_contact || org?.email || 'le référent handicap de l\'organisme'
+  const refContact = [org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
+    || org?.email_contact || org?.email || ''
+  const refHandicap = org?.referent_handicap_nom
+    ? `${org.referent_handicap_nom}${refContact ? ` (${refContact})` : ''}`
+    : refContact ? `notre référent handicap (${refContact})` : 'le référent handicap de l\'organisme'
 
   return (
     <Document>

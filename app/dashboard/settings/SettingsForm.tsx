@@ -32,6 +32,10 @@ interface ExtendedOrganization extends Organization {
   banque_titulaire?: string | null
   email_contact?: string | null
   telephone_contact?: string | null
+  referent_handicap_nom?: string | null
+  referent_handicap_email?: string | null
+  referent_handicap_telephone?: string | null
+  delai_acces?: string | null
 }
 
 interface SettingsFormProps {
@@ -284,6 +288,19 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
           className="hidden"
           onChange={handleUploadLivret}
         />
+      </section>
+
+      {/* Accessibilité handicap (Qualiopi) */}
+      <section className="card p-6">
+        <SectionHeader icon={ShieldCheck} title="Accessibilité — référent handicap" subtitle="Exigence Qualiopi : coordonnées affichées sur le programme, la convocation et la convention" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Input id="referent_handicap_nom" name="referent_handicap_nom" label="Référent handicap (nom)" defaultValue={organization.referent_handicap_nom || ''} disabled={!canEdit} />
+          <Input id="referent_handicap_email" name="referent_handicap_email" type="email" label="Email du référent" defaultValue={organization.referent_handicap_email || ''} disabled={!canEdit} />
+          <Input id="referent_handicap_telephone" name="referent_handicap_telephone" label="Téléphone du référent" defaultValue={organization.referent_handicap_telephone || ''} disabled={!canEdit} />
+        </div>
+        <div className="mt-4">
+          <Input id="delai_acces" name="delai_acces" label="Délai d'accès aux formations" placeholder="Ex : inscription possible jusqu'à 7 jours avant le démarrage" defaultValue={organization.delai_acces || ''} disabled={!canEdit} />
+        </div>
       </section>
 
       {/* Qualifications */}
