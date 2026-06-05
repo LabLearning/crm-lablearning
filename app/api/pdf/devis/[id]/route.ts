@@ -20,8 +20,8 @@ export async function GET(
     .from('devis')
     .select(`
       *,
-      client:clients(raison_sociale, nom, prenom, type),
-      contact:contacts(prenom, nom),
+      client:clients(raison_sociale, nom, prenom, type, email, adresse, code_postal, ville, siret, tva_intra),
+      contact:contacts(prenom, nom, email),
       formation:formations(intitule, reference),
       lignes:devis_lignes(*)
     `)
@@ -32,8 +32,14 @@ export async function GET(
     return NextResponse.json({ error: 'Devis introuvable' }, { status: 404 })
   }
 
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', (devis as any).organization_id)
+    .single()
+
   const buffer = await renderToBuffer(
-    createElement(DevisPDF, { devis: devis as Devis }) as any
+    createElement(DevisPDF, { devis: devis as Devis, org }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {

@@ -18,7 +18,7 @@ export async function GET(
     .from('factures')
     .select(`
       *,
-      client:clients(raison_sociale, nom, prenom, type, email),
+      client:clients(raison_sociale, nom, prenom, type, email, adresse, code_postal, ville, siret, tva_intra),
       formation:formations(intitule),
       lignes:facture_lignes(*),
       paiements(*)
@@ -30,8 +30,14 @@ export async function GET(
     return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 })
   }
 
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', (facture as any).organization_id)
+    .single()
+
   const buffer = await renderToBuffer(
-    createElement(FacturePDF, { facture: facture as Facture }) as any
+    createElement(FacturePDF, { facture: facture as Facture, org }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {

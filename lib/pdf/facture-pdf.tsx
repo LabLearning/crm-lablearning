@@ -31,13 +31,22 @@ const PAIEMENT_LABELS: Record<string, string> = {
   autre: 'Autre',
 }
 
-export function FacturePDF({ facture }: { facture: Facture }) {
+export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
   const clientName = facture.client?.raison_sociale
     || (facture.client?.nom ? `${facture.client.prenom || ''} ${facture.client.nom}`.trim() : '—')
+  const client: any = facture.client || {}
 
   const lignes = facture.lignes || []
   const paiements = facture.paiements || []
   const docTitle = TYPE_LABELS[facture.type] || 'FACTURE'
+
+  // OF identité — exonération TVA conditionnelle (formation pro continue + N° DA = art. 261-4-4° a CGI)
+  const ofNom = org?.legal_name || org?.name || 'Lab Learning'
+  const ofExonereTVA = !!org?.numero_da && (!facture.taux_tva || Number(facture.taux_tva) === 0)
+  const iban = org?.banque_iban || ''
+  const bic = org?.banque_bic || ''
+  const banque = org?.banque_nom || ''
+  const titulaire = org?.banque_titulaire || ofNom
 
   return (
     <Document title={`${docTitle} ${facture.numero}`} author="Lab Learning">
@@ -49,29 +58,31 @@ export function FacturePDF({ facture }: { facture: Facture }) {
           statut={`Échéance : ${fmtDate(facture.date_echeance)}`}
         />
 
-        {/* Client + RIB */}
-        <View style={{ flexDirection: 'row', gap: 20, marginBottom: 20 }}>
+        {/* Émetteur (OF) + Facturer à */}
+        <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Facturer à</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>{clientName}</Text>
-            {facture.client?.email && (
-              <Text style={{ fontSize: 8, color: '#78716C' }}>{facture.client.email}</Text>
+            <Text style={shared.sectionTitle}>Émetteur</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{ofNom}</Text>
+            {org?.address && <Text style={{ fontSize: 8, color: '#57534e' }}>{org.address}</Text>}
+            {(org?.postal_code || org?.city) && <Text style={{ fontSize: 8, color: '#57534e' }}>{org?.postal_code || ''} {org?.city || ''}</Text>}
+            {org?.siret && <Text style={{ fontSize: 8, color: '#57534e', marginTop: 2 }}>SIRET : {org.siret}</Text>}
+            {org?.rcs && <Text style={{ fontSize: 8, color: '#57534e' }}>{org.rcs}</Text>}
+            {org?.numero_tva_intra && <Text style={{ fontSize: 8, color: '#57534e' }}>TVA : {org.numero_tva_intra}</Text>}
+            {(org?.forme_juridique || org?.capital_social) && (
+              <Text style={{ fontSize: 8, color: '#57534e' }}>
+                {org.forme_juridique || ''}{org.capital_social ? ` au capital de ${Number(org.capital_social).toLocaleString('fr-FR')} €` : ''}
+              </Text>
             )}
+            {org?.numero_da && <Text style={{ fontSize: 8, color: '#57534e' }}>N° déclaration d'activité : {org.numero_da}</Text>}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Coordonnées bancaires</Text>
-            <View style={shared.row}>
-              <Text style={shared.label}>Banque</Text>
-              <Text style={shared.value}>CIC — Paris</Text>
-            </View>
-            <View style={shared.row}>
-              <Text style={shared.label}>IBAN</Text>
-              <Text style={shared.value}>FR76 3000 6000 0112 3456 7890 189</Text>
-            </View>
-            <View style={shared.row}>
-              <Text style={shared.label}>BIC</Text>
-              <Text style={shared.value}>CMCIFRPP</Text>
-            </View>
+            <Text style={shared.sectionTitle}>Facturer à</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{clientName}</Text>
+            {client.adresse && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.adresse}</Text>}
+            {(client.code_postal || client.ville) && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.code_postal || ''} {client.ville || ''}</Text>}
+            {client.siret && <Text style={{ fontSize: 8, color: '#57534e', marginTop: 2 }}>SIRET : {client.siret}</Text>}
+            {client.tva_intra && <Text style={{ fontSize: 8, color: '#57534e' }}>TVA : {client.tva_intra}</Text>}
+            {client.email && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.email}</Text>}
           </View>
         </View>
 
@@ -196,10 +207,26 @@ export function FacturePDF({ facture }: { facture: Facture }) {
           </View>
         )}
 
-        {/* Legal */}
+        {/* Coordonnées bancaires (paiement par virement) */}
+        {iban && (
+          <View style={shared.section}>
+            <Text style={shared.sectionTitle}>Règlement par virement</Text>
+            <View style={shared.row}><Text style={shared.label}>Bénéficiaire</Text><Text style={shared.value}>{titulaire}</Text></View>
+            {banque && <View style={shared.row}><Text style={shared.label}>Banque</Text><Text style={shared.value}>{banque}</Text></View>}
+            <View style={shared.row}><Text style={shared.label}>IBAN</Text><Text style={shared.value}>{iban}</Text></View>
+            {bic && <View style={shared.row}><Text style={shared.label}>BIC</Text><Text style={shared.value}>{bic}</Text></View>}
+            <Text style={{ fontSize: 7, color: '#78716c', marginTop: 4 }}>Merci d'indiquer le numéro de facture {facture.numero} en référence du virement.</Text>
+          </View>
+        )}
+
+        {/* Mentions légales (art. L441-9, L441-10, D441-5) */}
         <View style={{ ...shared.infoBox, marginTop: 8 }}>
-          <Text style={{ fontSize: 7, color: '#78716c' }}>
-            TVA non applicable selon l'article 261.4.4° du CGI. En cas de retard de paiement, des pénalités de 3× le taux légal s'appliquent (art. L.441-10 C. com.).
+          <Text style={{ fontSize: 7, color: '#78716c', lineHeight: 1.5 }}>
+            {ofExonereTVA
+              ? `TVA non applicable, art. 261-4-4° a du Code général des impôts (action de formation professionnelle continue dispensée par un organisme déclaré sous le n° ${org?.numero_da || '—'}).\n`
+              : 'TVA acquittée sur les encaissements (prestations de services).\n'}
+            En cas de retard de paiement : pénalités au taux de 3 fois le taux d'intérêt légal en vigueur, exigibles sans rappel, et indemnité forfaitaire pour frais de recouvrement de 40 € (art. L.441-10 et D.441-5 du Code de commerce).{'\n'}
+            Aucun escompte n'est accordé pour règlement anticipé.
           </Text>
         </View>
 
