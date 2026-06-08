@@ -377,6 +377,88 @@ export async function sendBrandedEmail(params: {
   return { success: false, error: err.message || 'Erreur Resend' }
 }
 
+/**
+ * Email "document disponible" : layout brandé standardisé pour tous les envois
+ * de pièces (convocation, livret, attestation, certificat, facture, devis...).
+ * - intro + tableau metadata (couples label/valeur)
+ * - CTA optionnel (vers le portail)
+ * - PDF attaché si pdfBuffer fourni
+ */
+export async function sendDocumentEmail(params: {
+  to: string | string[]
+  orgName: string
+  orgEmail?: string
+  orgLogoUrl?: string | null
+  qualiopiCertified?: boolean
+  fromAddress?: string
+  recipientName: string
+  subject: string
+  docTitle: string            // "Votre convocation à la formation"
+  intro: string               // "Vous êtes attendu pour la formation suivante."
+  metadata?: Array<[string, string]>
+  ctaLabel?: string
+  ctaUrl?: string
+  footerNote?: string
+  pdfBuffer?: Buffer | Uint8Array
+  pdfFilename?: string
+}): Promise<{ success: boolean; error?: string }> {
+  const metaRows = (params.metadata || [])
+    .map(([k, v]) => `<tr><td style="padding:6px 0;color:#71717a;font-size:12px;width:130px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">${k}</td><td style="padding:6px 0;color:#18181b;font-size:14px;">${v}</td></tr>`)
+    .join('')
+
+  const body = `
+    <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">${params.docTitle}</h1>
+    <p style="margin:0 0 24px;color:#71717a;font-size:15px;line-height:1.6;">
+      Bonjour <strong style="color:#18181b;">${params.recipientName}</strong>,<br>
+      ${params.intro}
+    </p>
+    ${metaRows ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+      <tr><td style="background-color:#f4f4f5;border-radius:10px;padding:14px 22px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" width="100%">${metaRows}</table>
+      </td></tr>
+    </table>` : ''}
+    ${params.pdfFilename ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:16px;">
+      <tr><td style="background-color:#eef7f3;border:1px solid #cfe3db;border-radius:8px;padding:12px 16px;">
+        <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+          <td style="vertical-align:middle;padding-right:10px;">
+            <div style="width:28px;height:28px;background-color:#195144;border-radius:6px;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:800;">PDF</div>
+          </td>
+          <td><span style="color:#195144;font-size:13px;font-weight:600;">${params.pdfFilename}</span><br><span style="color:#71717a;font-size:11px;">Document joint à cet email</span></td>
+        </tr></table>
+      </td></tr>
+    </table>` : ''}
+    ${params.ctaUrl && params.ctaLabel ? ctaButton(params.ctaUrl, params.ctaLabel) : ''}
+    ${params.footerNote ? `<p style="margin:8px 0 0;color:#a1a1aa;font-size:12px;text-align:center;line-height:1.6;">${params.footerNote}</p>` : ''}`
+
+  const html = emailShell({
+    body,
+    orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    orgLogoUrl: params.orgLogoUrl || undefined,
+    qualiopiCertified: params.qualiopiCertified,
+  })
+
+  const attachments = params.pdfBuffer && params.pdfFilename
+    ? [{
+        filename: params.pdfFilename,
+        content: Buffer.from(params.pdfBuffer).toString('base64'),
+        contentType: 'application/pdf',
+      }]
+    : undefined
+
+  return sendBrandedEmail({
+    to: params.to,
+    orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    fromAddress: params.fromAddress,
+    subject: params.subject,
+    html,
+    attachments,
+  })
+}
+
 export async function sendInvitationEmail(params: {
   toEmail: string
   role: string

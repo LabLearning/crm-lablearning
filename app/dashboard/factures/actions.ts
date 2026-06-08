@@ -143,17 +143,23 @@ export async function updateFactureStatusAction(id: string, status: string): Pro
 
   if (error) return { success: false, error: 'Erreur' }
 
-  // WhatsApp "facture émise" au client quand la facture est envoyée
+  // Envoi WhatsApp + email avec facture PDF jointe au client
   if (status === 'envoyee') {
     const { data: f } = await supabase
       .from('factures')
-      .select('numero, montant_ttc, client:clients(raison_sociale, whatsapp, whatsapp_opt_in)')
+      .select(`
+        numero, montant_ttc, date_echeance,
+        client:clients(raison_sociale, email, whatsapp, whatsapp_opt_in)
+      `)
       .eq('id', id)
       .single()
     const cli = (f as any)?.client
+    const fmtEuro = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
+    const montant = fmtEuro(Number(f!.montant_ttc || 0))
+
+    // WhatsApp
     if (cli?.whatsapp_opt_in && cli?.whatsapp) {
       const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
-      const montant = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(Number(f!.montant_ttc || 0))
       await sendWhatsAppTemplate({
         organizationId: session.organization.id,
         to: cli.whatsapp,
@@ -164,6 +170,44 @@ export async function updateFactureStatusAction(id: string, status: string): Pro
         entityType: 'facture',
         entityId: id,
       })
+    }
+
+    // Email brandé avec facture PDF jointe
+    if (cli?.email) {
+      try {
+        const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+        const { renderToBuffer } = await import('@react-pdf/renderer')
+        const { createElement } = await import('react')
+        const { FacturePDF } = await import('@/lib/pdf/facture-pdf')
+
+        // On recharge la facture complète pour le rendu PDF
+        const { data: factureFull } = await supabase
+          .from('factures')
+          .select('*, client:clients(*), formation:formations(intitule), lignes:facture_lignes(*), paiements(*)')
+          .eq('id', id).single()
+        const buffer = await renderToBuffer(createElement(FacturePDF, { facture: factureFull as any, org }) as any)
+
+        const { sendDocumentEmail } = await import('@/lib/email')
+        await sendDocumentEmail({
+          to: cli.email,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: (org as any)?.email_contact || org?.email,
+          orgLogoUrl: org?.logo_url,
+          qualiopiCertified: (org as any)?.is_qualiopi !== false,
+          recipientName: cli.raison_sociale || 'Madame, Monsieur',
+          subject: `Votre facture ${f!.numero} — ${montant}`,
+          docTitle: `Votre facture ${f!.numero}`,
+          intro: `Veuillez trouver ci-joint votre facture pour la prestation de formation.`,
+          metadata: [
+            ['Montant TTC', montant],
+            ['Échéance', f!.date_echeance ? new Date(f!.date_echeance).toLocaleDateString('fr-FR') : '—'],
+            ['Référence', f!.numero || ''],
+          ],
+          pdfBuffer: Buffer.from(buffer),
+          pdfFilename: `facture-${f!.numero}.pdf`,
+          footerNote: 'Merci d\'indiquer le numéro de facture en référence de votre virement.',
+        })
+      } catch (e) { console.error('[email facture]', e) }
     }
   }
 

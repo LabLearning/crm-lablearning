@@ -46,12 +46,25 @@ export async function GET(req: Request) {
     .neq('status', 'annulee')
     .neq('status', 'terminee')
 
-  const { createNotification } = await import('@/lib/email')
+  const { createNotification, sendDocumentEmail } = await import('@/lib/email')
   const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
+  const { renderToBuffer } = await import('@react-pdf/renderer')
+  const { createElement } = await import('react')
+  const { ConvocationPDF } = await import('@/lib/pdf/convocation-pdf')
 
   let processed = 0
   let totalApprenants = 0
   let totalWhatsApp = 0
+  let totalEmails = 0
+
+  // Cache des org pour éviter de re-fetcher à chaque apprenant
+  const orgCache: Record<string, any> = {}
+  const getOrg = async (id: string) => {
+    if (orgCache[id]) return orgCache[id]
+    const { data } = await supabase.from('organizations').select('*').eq('id', id).single()
+    orgCache[id] = data
+    return data
+  }
 
   const fmtDateLong = (d: string | null) =>
     d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
@@ -110,6 +123,42 @@ export async function GET(req: Request) {
         })
         if (r.ok) totalWhatsApp++
       }
+
+      // Email convocation (PDF joint, brandé)
+      if (a?.email) {
+        try {
+          const org = await getOrg(sess.organization_id)
+          const formation = await supabase.from('formations').select('*').eq('id', (sess as any).formation_id).single()
+          const buffer = await renderToBuffer(createElement(ConvocationPDF, {
+            apprenant: a,
+            session: sess,
+            formation: formation.data,
+            org,
+            formateur: (sess as any).formateur,
+          }) as any)
+          await sendDocumentEmail({
+            to: a.email,
+            orgName: org?.name || 'Lab Learning',
+            orgEmail: org?.email_contact || org?.email,
+            orgLogoUrl: org?.logo_url,
+            qualiopiCertified: org?.is_qualiopi !== false,
+            recipientName: [a.civilite, a.prenom, a.nom].filter(Boolean).join(' ').trim() || 'Madame, Monsieur',
+            subject: `Convocation — ${formationNom} (${dateStr})`,
+            docTitle: 'Convocation à votre formation',
+            intro: `Nous avons le plaisir de vous convoquer à la session de formation suivante. Vous trouverez votre convocation détaillée en pièce jointe.`,
+            metadata: [
+              ['Formation', formationNom],
+              ['Début', dateDebutLong],
+              ['Fin', dateFinLong],
+              ['Lieu', lieuStr],
+            ],
+            pdfBuffer: Buffer.from(buffer),
+            pdfFilename: `convocation-${a.nom || 'stagiaire'}.pdf`,
+            footerNote: 'Merci de vous présenter 15 minutes avant le début de la session avec une pièce d\'identité.',
+          })
+          totalEmails++
+        } catch (e) { console.error('[email convoc]', e) }
+      }
     }
 
     // Notifier le formateur (fiche mission récap)
@@ -142,5 +191,6 @@ export async function GET(req: Request) {
     sessions_processed: processed,
     apprenants_notifies: totalApprenants,
     whatsapp_envoyes: totalWhatsApp,
+    emails_envoyes: totalEmails,
   })
 }

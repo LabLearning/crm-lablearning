@@ -45,8 +45,22 @@ export async function GET(req: Request) {
     .neq('status', 'annulee')
     .neq('status', 'terminee')
 
-  const { createNotification } = await import('@/lib/email')
+  const { createNotification, sendDocumentEmail } = await import('@/lib/email')
   const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
+
+  // Cache du PDF du livret par org (téléchargé une fois)
+  const livretBufferCache: Record<string, Buffer | null> = {}
+  const getLivretBuffer = async (orgId: string, url: string): Promise<Buffer | null> => {
+    if (livretBufferCache[orgId] !== undefined) return livretBufferCache[orgId]
+    try {
+      const res = await fetch(url)
+      if (!res.ok) { livretBufferCache[orgId] = null; return null }
+      const buf = Buffer.from(await res.arrayBuffer())
+      livretBufferCache[orgId] = buf
+      return buf
+    } catch { livretBufferCache[orgId] = null; return null }
+  }
+  let totalEmails = 0
 
   // Cache des livrets par organisation (URL + nom de l'OF)
   const orgCache: Record<string, { livretUrl: string | null; filename: string | null; name: string } | undefined> = {}
@@ -128,6 +142,35 @@ export async function GET(req: Request) {
         })
         if (r.ok) totalWhatsApp++
       }
+
+      // Email avec livret PDF joint
+      if (a?.email) {
+        try {
+          const { data: orgFull } = await supabase.from('organizations').select('*').eq('id', sess.organization_id).single()
+          const livretBuf = await getLivretBuffer(sess.organization_id, org.livretUrl!)
+          if (livretBuf) {
+            await sendDocumentEmail({
+              to: a.email,
+              orgName: orgFull?.name || 'Lab Learning',
+              orgEmail: (orgFull as any)?.email_contact || orgFull?.email,
+              orgLogoUrl: (orgFull as any)?.logo_url,
+              qualiopiCertified: (orgFull as any)?.is_qualiopi !== false,
+              recipientName: [a.civilite, a.prenom, a.nom].filter(Boolean).join(' ').trim() || 'Madame, Monsieur',
+              subject: `Votre livret d'accueil — ${formationNom}`,
+              docTitle: "Votre livret d'accueil",
+              intro: `Votre formation débute demain. Vous trouverez ci-joint le livret d'accueil de ${orgFull?.name || 'notre organisme'}, à parcourir avant votre arrivée.`,
+              metadata: [
+                ['Formation', formationNom],
+                ['Début', dateDebutLong],
+              ],
+              pdfBuffer: livretBuf,
+              pdfFilename: livretFilename,
+              footerNote: 'À très bientôt !',
+            })
+            totalEmails++
+          }
+        } catch (e) { console.error('[email livret]', e) }
+      }
     }
 
     await supabase
@@ -144,5 +187,6 @@ export async function GET(req: Request) {
     sessions_sans_livret: skippedNoLivret,
     apprenants_notifies: totalApprenants,
     whatsapp_envoyes: totalWhatsApp,
+    emails_envoyes: totalEmails,
   })
 }

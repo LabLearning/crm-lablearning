@@ -547,6 +547,43 @@ export async function sendDocumentToApprenantAction(
     whatsappStatus = r.status
   }
 
+  // Email brandé avec PDF joint (envoi best-effort, ne bloque pas si Resend down)
+  if (apprenant.email) {
+    try {
+      const { sendDocumentEmail } = await import('@/lib/email')
+      const formationDates = sess.date_debut
+        ? `Du ${new Date(sess.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sess.date_fin || sess.date_debut).toLocaleDateString('fr-FR')}`
+        : '—'
+      const portalUrl = token ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'}/portail/${token}/documents` : undefined
+      const isAtt = docType === 'attestation'
+      await sendDocumentEmail({
+        to: apprenant.email,
+        orgName: org?.name || 'Lab Learning',
+        orgEmail: org?.email_contact || org?.email,
+        orgLogoUrl: org?.logo_url,
+        qualiopiCertified: org?.is_qualiopi !== false,
+        recipientName: `${apprenant.prenom || ''} ${apprenant.nom || ''}`.trim() || 'Madame, Monsieur',
+        subject: isAtt
+          ? `Votre attestation de formation — ${formationNom}`
+          : `Votre certificat de réalisation — ${formationNom}`,
+        docTitle: isAtt ? 'Votre attestation de fin de formation' : 'Votre certificat de réalisation',
+        intro: isAtt
+          ? `Votre formation est terminée. Voici votre attestation de fin de formation, à conserver précieusement.`
+          : `Votre formation est terminée. Voici votre certificat de réalisation, justificatif officiel auprès de votre employeur ou financeur.`,
+        metadata: [
+          ['Formation', formationNom],
+          ['Période', formationDates],
+          ['Durée', formation?.duree_heures ? `${formation.duree_heures} h` : '—'],
+        ],
+        pdfBuffer: buffer,
+        pdfFilename: fileName,
+        ctaLabel: portalUrl ? 'Voir tous mes documents' : undefined,
+        ctaUrl: portalUrl,
+        footerNote: 'Document également disponible dans votre espace personnel.',
+      })
+    } catch (e) { console.error('[email doc]', e) }
+  }
+
   await logAudit({ action: `send_${docType}`, entity_type: 'apprenant', entity_id: apprenantId })
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true, whatsapp: whatsappStatus }
