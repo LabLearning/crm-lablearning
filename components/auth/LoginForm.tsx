@@ -95,6 +95,11 @@ export function LoginForm() {
           autoComplete="current-password"
           error={fieldErrors.password?.[0]}
         />
+        <div className="text-right -mt-2">
+          <a href="/forgot-password" className="text-xs text-brand-600 hover:text-brand-700 hover:underline">
+            Mot de passe oublié ?
+          </a>
+        </div>
       </div>
 
       <button

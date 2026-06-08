@@ -82,3 +82,59 @@ export async function logoutAction(): Promise<void> {
   await supabase.auth.signOut()
   redirect('/login')
 }
+
+/**
+ * Demande de réinitialisation du mot de passe — envoie un email brandé Lab Learning
+ * (au lieu de l'email Supabase par défaut). Toujours renvoie success même si l'email
+ * n'existe pas, pour ne pas révéler quels comptes existent (best practice sécurité).
+ */
+export async function requestPasswordResetAction(formData: FormData): Promise<ActionResult> {
+  const email = (formData.get('email') as string || '').trim().toLowerCase()
+  if (!email || !email.includes('@')) {
+    return { success: false, error: 'Email invalide' }
+  }
+
+  const { createServiceRoleClient } = await import('@/lib/supabase/server')
+  const supabase = await createServiceRoleClient()
+
+  // Récupérer le user + son organisation (multi-OF)
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, email, first_name, last_name, organization_id')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (user) {
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+      // Génère un lien de récupération via l'admin API Supabase (le user clique → page reset-password)
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: `${appUrl}/reset-password` },
+      })
+      const recoveryUrl = (linkData as any)?.properties?.action_link || `${appUrl}/reset-password`
+
+      // Email brandé
+      const { data: org } = await supabase.from('organizations').select('*').eq('id', user.organization_id).single()
+      const { sendDocumentEmail } = await import('@/lib/email')
+      await sendDocumentEmail({
+        to: email,
+        orgName: org?.name || 'Lab Learning',
+        orgEmail: (org as any)?.email_contact || org?.email,
+        orgLogoUrl: (org as any)?.logo_url,
+        qualiopiCertified: (org as any)?.is_qualiopi !== false,
+        recipientName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Madame, Monsieur',
+        subject: 'Réinitialisation de votre mot de passe',
+        docTitle: 'Réinitialisation du mot de passe',
+        intro: `Vous avez demandé à réinitialiser votre mot de passe sur ${org?.name || 'Lab Learning'}. Cliquez sur le bouton ci-dessous pour en définir un nouveau.`,
+        ctaLabel: 'Réinitialiser mon mot de passe',
+        ctaUrl: recoveryUrl,
+        footerNote: 'Ce lien est valable 1 heure. Si vous n\'êtes pas à l\'origine de cette demande, ignorez cet email — votre mot de passe restera inchangé.',
+      })
+    } catch (e) { console.error('[reset password]', e) }
+  }
+
+  // Toujours success même si user inconnu (anti-enumeration)
+  return { success: true }
+}
