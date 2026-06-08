@@ -173,19 +173,20 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   franchise: 'Tableau de bord de votre réseau : établissements, audits, formations et commissions',
 }
 
-// Icônes Lucide hébergées via Iconify CDN — PNG blanc 64x64 (rendu HD sur le badge vert)
-const iconUrl = (name: string) =>
-  `https://api.iconify.design/lucide/${name}.png?color=%23ffffff&width=64&height=64`
+// Icônes Lucide pré-rendues en PNG blanc 128×128, self-hostées dans le bucket
+// 'organisation' (public). Construits une fois par scripts/email-icons.mjs.
+// Self-host = pas de dépendance externe → 100% fiable dans tous les clients mail.
+const ICONS_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL || ''}/storage/v1/object/public/organisation/icons`
 
 const ROLE_ICON_URLS: Record<string, string> = {
-  super_admin: iconUrl('shield-check'),
-  gestionnaire: iconUrl('settings-2'),
-  directeur_commercial: iconUrl('trending-up'),
-  commercial: iconUrl('target'),
-  apporteur_affaires: iconUrl('handshake'),
-  formateur: iconUrl('graduation-cap'),
-  apprenant: iconUrl('book-open'),
-  franchise: iconUrl('building-2'),
+  super_admin: `${ICONS_BASE}/shield-check.png`,
+  gestionnaire: `${ICONS_BASE}/settings-2.png`,
+  directeur_commercial: `${ICONS_BASE}/trending-up.png`,
+  commercial: `${ICONS_BASE}/target.png`,
+  apporteur_affaires: `${ICONS_BASE}/handshake.png`,
+  formateur: `${ICONS_BASE}/graduation-cap.png`,
+  apprenant: `${ICONS_BASE}/book-open.png`,
+  franchise: `${ICONS_BASE}/building-2.png`,
 }
 
 // ── Shared email shell ──────────────────────────────────────
@@ -278,7 +279,7 @@ function buildInvitationHtml(params: {
 }): string {
   const roleLabel = ROLE_LABELS[params.role] || params.role
   const roleDesc = ROLE_DESCRIPTIONS[params.role] || ''
-  const roleIconUrl = ROLE_ICON_URLS[params.role] || iconUrl('shield-check')
+  const roleIconUrl = ROLE_ICON_URLS[params.role] || `${ICONS_BASE}/shield-check.png`
 
   const body = `
     <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">Vous êtes invité(e)</h1>
