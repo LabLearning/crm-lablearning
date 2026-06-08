@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { UserPlus, MoreHorizontal, ShieldAlert, ShieldOff, Mail, UserCog, Clock, RefreshCw, X, Send } from 'lucide-react'
 import { Button, Input, Select, Badge, Avatar, Modal, useToast } from '@/components/ui'
-import { inviteUserAction, updateUserRoleAction, toggleUserStatusAction, startImpersonationAction, resendInvitationAction, cancelInvitationAction } from './actions'
+import { inviteUserAction, updateUserRoleAction, toggleUserStatusAction, startImpersonationAction, resendInvitationAction, cancelInvitationAction, sendTestInvitationAction } from './actions'
 import { ROLE_LABELS, ROLE_COLORS, STATUS_LABELS, STATUS_COLORS } from '@/lib/types'
 import { formatDateTime } from '@/lib/utils'
 import type { User, UserRole } from '@/lib/types'
@@ -41,6 +41,15 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [inviteRole, setInviteRole] = useState('gestionnaire')
+  const [isTesting, setIsTesting] = useState(false)
+
+  async function handleSendTest() {
+    setIsTesting(true)
+    const r = await sendTestInvitationAction(inviteRole)
+    if (r.success) toast('success', `Email de test envoyé à ${(r.data as { email: string })?.email}`)
+    else toast('error', r.error || 'Erreur')
+    setIsTesting(false)
+  }
 
   const franchiseOptions = franchises.map((f) => ({
     value: f.id,
@@ -414,21 +423,33 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
             )
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <button
               type="button"
-              variant="secondary"
-              onClick={() => { setInviteOpen(false); setFieldErrors({}) }}
+              onClick={handleSendTest}
+              disabled={isTesting || !inviteRole}
+              className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline disabled:opacity-50 inline-flex items-center gap-1 self-start"
+              title="Reçois un email de test sur ta propre adresse avec le visuel exact du rôle sélectionné"
             >
-              Annuler
-            </Button>
-            <Button
-              type="submit"
-              isLoading={isInviting}
-              icon={<Mail className="h-4 w-4" />}
-            >
-              Envoyer l&apos;invitation
-            </Button>
+              <Send className="h-3 w-3" />
+              {isTesting ? 'Envoi du test…' : 'Tester sur mon email'}
+            </button>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => { setInviteOpen(false); setFieldErrors({}) }}
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                isLoading={isInviting}
+                icon={<Mail className="h-4 w-4" />}
+              >
+                Envoyer l&apos;invitation
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

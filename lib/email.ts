@@ -185,7 +185,15 @@ const ROLE_ICONS: Record<string, string> = {
 }
 
 // ── Shared email shell ──────────────────────────────────────
-function emailShell(opts: { body: string; orgName: string; badge?: string; badgeColor?: string }): string {
+function emailShell(opts: {
+  body: string
+  orgName: string
+  orgEmail?: string
+  orgLogoUrl?: string
+  qualiopiCertified?: boolean
+  badge?: string
+  badgeColor?: string
+}): string {
   const badge = opts.badge
     ? `<td align="right" style="vertical-align:top;">
         <div style="background-color:${opts.badgeColor || 'rgba(255,255,255,0.18)'};border-radius:20px;padding:5px 14px;display:inline-block;">
@@ -193,6 +201,20 @@ function emailShell(opts: { body: string; orgName: string; badge?: string; badge
         </div>
       </td>`
     : ''
+
+  // Logo en image si fourni, sinon nom de l'OF en texte
+  const brandMark = opts.orgLogoUrl
+    ? `<img src="${opts.orgLogoUrl}" alt="${opts.orgName}" height="32" style="display:block;height:32px;width:auto;border:0;outline:none;text-decoration:none;">`
+    : `<span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">${opts.orgName}</span>`
+
+  const taglineText = opts.qualiopiCertified === false
+    ? 'Organisme de formation'
+    : 'Formation professionnelle certifiee Qualiopi'
+  const footerSuffix = opts.qualiopiCertified === false
+    ? ' &mdash; Organisme de formation'
+    : ' &mdash; Organisme de formation certifie Qualiopi'
+  const orgEmail = opts.orgEmail || ''
+
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -205,8 +227,8 @@ function emailShell(opts: { body: string; orgName: string; badge?: string; badge
   <tr><td style="background-color:#195144;border-radius:12px 12px 0 0;padding:24px 32px;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
       <td>
-        <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px;">Lab Learning</span>
-        <div style="margin-top:4px;color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:0.3px;">Formation professionnelle certifiee Qualiopi</div>
+        ${brandMark}
+        <div style="margin-top:4px;color:rgba(255,255,255,0.6);font-size:11px;letter-spacing:0.3px;">${taglineText}</div>
       </td>
       ${badge}
     </tr></table>
@@ -218,10 +240,10 @@ function emailShell(opts: { body: string; orgName: string; badge?: string; badge
   <!-- Footer -->
   <tr><td style="background-color:#fafafa;border-radius:0 0 12px 12px;border-top:1px solid #e4e4e7;padding:20px 32px;text-align:center;">
     <span style="color:#71717a;font-size:12px;font-weight:600;">${opts.orgName}</span>
-    <span style="color:#a1a1aa;font-size:11px;"> &mdash; Organisme de formation certifie Qualiopi</span>
-    <div style="margin-top:6px;color:#a1a1aa;font-size:11px;">
-      <a href="mailto:digital@lab-learning.fr" style="color:#195144;text-decoration:none;">digital@lab-learning.fr</a>
-    </div>
+    <span style="color:#a1a1aa;font-size:11px;">${footerSuffix}</span>
+    ${orgEmail ? `<div style="margin-top:6px;color:#a1a1aa;font-size:11px;">
+      <a href="mailto:${orgEmail}" style="color:#195144;text-decoration:none;">${orgEmail}</a>
+    </div>` : ''}
   </td></tr>
 
 </table>
@@ -246,6 +268,9 @@ function buildInvitationHtml(params: {
   role: string
   orgName: string
   invitedByName: string
+  orgEmail?: string
+  orgLogoUrl?: string
+  qualiopiCertified?: boolean
 }): string {
   const roleLabel = ROLE_LABELS[params.role] || params.role
   const roleDesc = ROLE_DESCRIPTIONS[params.role] || ''
@@ -298,7 +323,13 @@ function buildInvitationHtml(params: {
       Ce lien est valable 7 jours. Si vous n'attendiez pas cette invitation, ignorez cet email.
     </p>`
 
-  return emailShell({ body, orgName: params.orgName })
+  return emailShell({
+    body,
+    orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    orgLogoUrl: params.orgLogoUrl,
+    qualiopiCertified: params.qualiopiCertified,
+  })
 }
 
 export async function sendInvitationEmail(params: {
@@ -308,6 +339,9 @@ export async function sendInvitationEmail(params: {
   orgEmail: string
   invitedByName: string
   inviteUrl: string
+  orgLogoUrl?: string | null
+  qualiopiCertified?: boolean
+  fromAddress?: string  // adresse d'envoi (doit être sur un domaine vérifié dans Resend)
 }): Promise<{ success: boolean; error?: string }> {
   const subject = `Invitation à rejoindre ${params.orgName}`
   const html = buildInvitationHtml({
@@ -315,6 +349,9 @@ export async function sendInvitationEmail(params: {
     role: params.role,
     orgName: params.orgName,
     invitedByName: params.invitedByName,
+    orgEmail: params.orgEmail,
+    orgLogoUrl: params.orgLogoUrl || undefined,
+    qualiopiCertified: params.qualiopiCertified,
   })
 
   const resendApiKey = process.env.RESEND_API_KEY
@@ -324,6 +361,10 @@ export async function sendInvitationEmail(params: {
     return { success: true }
   }
 
+  // L'expéditeur DOIT être sur un domaine vérifié dans Resend.
+  // Par défaut on utilise noreply@lab-learning.fr (vérifié) ; fromAddress permet d'override pour les futurs OF.
+  const from = `${params.orgName} <${params.fromAddress || 'noreply@lab-learning.fr'}>`
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -331,10 +372,11 @@ export async function sendInvitationEmail(params: {
       'Authorization': `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: `${params.orgName} <${params.orgEmail}>`,
+      from,
       to: [params.toEmail],
       subject,
       html,
+      reply_to: params.orgEmail || undefined,
     }),
   })
 

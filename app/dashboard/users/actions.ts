@@ -160,7 +160,9 @@ export async function inviteUserAction(formData: FormData): Promise<ActionResult
     toEmail: parsed.data.email,
     role: parsed.data.role,
     orgName: session.organization.name,
-    orgEmail: 'noreply@lab-learning.fr',
+    orgEmail: (session.organization as any).email_contact || (session.organization as any).email || '',
+    orgLogoUrl: (session.organization as any).logo_url || null,
+    qualiopiCertified: (session.organization as any).is_qualiopi !== false,
     invitedByName: inviterName,
     inviteUrl,
   })
@@ -297,6 +299,36 @@ export async function stopImpersonationAction(): Promise<ActionResult> {
   return { success: true }
 }
 
+/**
+ * Envoie un email d'invitation de test à l'admin connecté pour prévisualiser
+ * le rendu avec sa propre boîte mail. Le lien dans le mail pointe vers le
+ * dashboard (pas un vrai setup-account, c'est juste pour voir le visuel).
+ */
+export async function sendTestInvitationAction(role: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+    return { success: false, error: 'Acces non autorise' }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+  const inviteUrl = `${appUrl}/dashboard` // lien de preview — pas une vraie invitation
+  const inviterName = `${session.user.first_name} ${session.user.last_name}`.trim() || session.user.email
+
+  const result = await sendInvitationEmail({
+    toEmail: session.user.email,
+    role,
+    orgName: session.organization.name,
+    orgEmail: (session.organization as any).email_contact || (session.organization as any).email || '',
+    orgLogoUrl: (session.organization as any).logo_url || null,
+    qualiopiCertified: (session.organization as any).is_qualiopi !== false,
+    invitedByName: `${inviterName} (test)`,
+    inviteUrl,
+  })
+
+  if (!result.success) return { success: false, error: result.error || 'Erreur d\'envoi' }
+  return { success: true, data: { email: session.user.email } }
+}
+
 export async function resendInvitationAction(invitationId: string): Promise<ActionResult> {
   const session = await getSession()
 
@@ -346,7 +378,9 @@ export async function resendInvitationAction(invitationId: string): Promise<Acti
     toEmail: invitation.email,
     role: invitation.role,
     orgName: session.organization.name,
-    orgEmail: 'noreply@lab-learning.fr',
+    orgEmail: (session.organization as any).email_contact || (session.organization as any).email || '',
+    orgLogoUrl: (session.organization as any).logo_url || null,
+    qualiopiCertified: (session.organization as any).is_qualiopi !== false,
     invitedByName: inviterName,
     inviteUrl,
   })

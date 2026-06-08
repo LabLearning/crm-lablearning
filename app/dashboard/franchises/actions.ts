@@ -217,7 +217,9 @@ export async function inviteFranchiseUserAction(franchiseId: string, emailRaw: s
     toEmail: email,
     role: 'franchise',
     orgName: session.organization.name,
-    orgEmail: 'noreply@lab-learning.fr',
+    orgEmail: (session.organization as any).email_contact || (session.organization as any).email || '',
+    orgLogoUrl: (session.organization as any).logo_url || null,
+    qualiopiCertified: (session.organization as any).is_qualiopi !== false,
     invitedByName: inviterName,
     inviteUrl,
   })
