@@ -163,14 +163,14 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
-  super_admin: 'Accès complet a toutes les fonctionnalites du CRM',
+  super_admin: 'Accès complet à toutes les fonctionnalités du CRM',
   gestionnaire: 'Gestion des formations, apprenants, dossiers et conventions',
-  directeur_commercial: 'Pilotage equipe commerciale, pipeline, reporting et apporteurs',
+  directeur_commercial: 'Pilotage équipe commerciale, pipeline, reporting et apporteurs',
   commercial: 'Pipeline commercial, leads, outils de prospection et simulateur OPCO',
   apporteur_affaires: 'Soumission de leads, suivi de vos commissions et dossiers',
-  formateur: 'Gestion de vos sessions, emargement et suivi des apprenants',
-  apprenant: 'Acces a vos formations, documents et questionnaires',
-  franchise: 'Tableau de bord de votre reseau : etablissements, audits, formations et commissions',
+  formateur: 'Gestion de vos sessions, émargement et suivi des apprenants',
+  apprenant: 'Accès à vos formations, documents et questionnaires',
+  franchise: 'Tableau de bord de votre réseau : établissements, audits, formations et commissions',
 }
 
 const ROLE_ICONS: Record<string, string> = {
@@ -185,7 +185,7 @@ const ROLE_ICONS: Record<string, string> = {
 }
 
 // ── Shared email shell ──────────────────────────────────────
-function emailShell(opts: {
+export function emailShell(opts: {
   body: string
   orgName: string
   orgEmail?: string
@@ -209,10 +209,10 @@ function emailShell(opts: {
 
   const taglineText = opts.qualiopiCertified === false
     ? 'Organisme de formation'
-    : 'Formation professionnelle certifiee Qualiopi'
+    : 'Formation professionnelle certifiée Qualiopi'
   const footerSuffix = opts.qualiopiCertified === false
     ? ' &mdash; Organisme de formation'
-    : ' &mdash; Organisme de formation certifie Qualiopi'
+    : ' &mdash; Organisme de formation certifié Qualiopi'
   const orgEmail = opts.orgEmail || ''
 
   return `<!DOCTYPE html>
@@ -253,7 +253,7 @@ function emailShell(opts: {
 </html>`
 }
 
-function ctaButton(href: string, label: string, color?: string): string {
+export function ctaButton(href: string, label: string, color?: string): string {
   return `<table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="margin:28px 0;">
   <tr><td align="center">
     <a href="${href}" target="_blank" style="display:inline-block;padding:14px 48px;background-color:${color || '#195144'};color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:-0.2px;">
@@ -277,9 +277,9 @@ function buildInvitationHtml(params: {
   const roleIcon = ROLE_ICONS[params.role] || '&#9733;'
 
   const body = `
-    <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">Vous etes invite</h1>
+    <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">Vous êtes invité(e)</h1>
     <p style="margin:0 0 24px;color:#71717a;font-size:15px;line-height:1.6;">
-      <strong style="color:#18181b;">${params.invitedByName}</strong> vous invite a rejoindre
+      <strong style="color:#18181b;">${params.invitedByName}</strong> vous invite à rejoindre
       <strong style="color:#195144;">${params.orgName}</strong>.
     </p>
 
@@ -304,8 +304,8 @@ function buildInvitationHtml(params: {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:4px;">
       ${[
         ['1', 'Cliquez sur le bouton ci-dessous'],
-        ['2', 'Definissez votre mot de passe'],
-        ['3', 'Accedez a votre tableau de bord'],
+        ['2', 'Définissez votre mot de passe'],
+        ['3', 'Accédez à votre tableau de bord'],
       ].map(([n, text]) => `
       <tr><td style="padding:5px 0;">
         <table role="presentation" cellspacing="0" cellpadding="0"><tr>
@@ -317,7 +317,7 @@ function buildInvitationHtml(params: {
       </td></tr>`).join('')}
     </table>
 
-    ${ctaButton(params.inviteUrl, 'Creer mon compte')}
+    ${ctaButton(params.inviteUrl, 'Créer mon compte')}
 
     <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;line-height:1.6;">
       Ce lien est valable 7 jours. Si vous n'attendiez pas cette invitation, ignorez cet email.
@@ -330,6 +330,46 @@ function buildInvitationHtml(params: {
     orgLogoUrl: params.orgLogoUrl,
     qualiopiCertified: params.qualiopiCertified,
   })
+}
+
+/**
+ * Envoi générique d'un email branded (HTML déjà rendu via emailShell).
+ * Utiliser pour : signatures, convocations, attestations, factures, etc.
+ * Supporte les pièces jointes (PDF) via attachments[].
+ */
+export async function sendBrandedEmail(params: {
+  to: string | string[]
+  subject: string
+  html: string
+  orgName: string
+  orgEmail?: string  // adresse reply-to (mail de l'OF)
+  fromAddress?: string  // expéditeur (doit être sur domaine vérifié dans Resend)
+  attachments?: Array<{ filename: string; content: string; contentType?: string }>  // base64
+}): Promise<{ success: boolean; error?: string }> {
+  const resendApiKey = process.env.RESEND_API_KEY
+  const recipients = Array.isArray(params.to) ? params.to : [params.to]
+  if (!resendApiKey) {
+    console.log(`[Branded Email] DEV MODE — To: ${recipients.join(',')} · Subject: ${params.subject}`)
+    return { success: true }
+  }
+  const from = `${params.orgName} <${params.fromAddress || 'noreply@lab-learning.fr'}>`
+  const body: any = {
+    from,
+    to: recipients,
+    subject: params.subject,
+    html: params.html,
+    reply_to: params.orgEmail || undefined,
+  }
+  if (params.attachments && params.attachments.length > 0) body.attachments = params.attachments
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${resendApiKey}` },
+    body: JSON.stringify(body),
+  })
+  if (response.ok) return { success: true }
+  const err = await response.json().catch(() => ({}))
+  return { success: false, error: err.message || 'Erreur Resend' }
 }
 
 export async function sendInvitationEmail(params: {
@@ -394,9 +434,9 @@ const PORTAL_CONFIG: Record<PortalType, { title: string; subtitle: string; acces
     subtitle: 'Votre espace de formation personnel',
     accesses: [
       'Consulter vos formations et votre planning',
-      'Acceder a vos documents et attestations',
+      'Accéder à vos documents et attestations',
       'Passer vos questionnaires et QCM',
-      'Voir vos evaluations de satisfaction',
+      'Voir vos évaluations de satisfaction',
     ],
   },
   formateur: {
@@ -404,27 +444,27 @@ const PORTAL_CONFIG: Record<PortalType, { title: string; subtitle: string; acces
     subtitle: 'Votre interface de gestion des sessions',
     accesses: [
       'Consulter votre planning de sessions',
-      'Gerer l\'emargement numerique',
+      'Gérer l\'émargement numérique',
       'Suivre vos apprenants par session',
-      'Acceder a vos documents de formation',
+      'Accéder à vos documents de formation',
     ],
   },
   client: {
     title: 'Client',
-    subtitle: 'L\'espace dedie a votre entreprise',
+    subtitle: 'L\'espace dédié à votre entreprise',
     accesses: [
       'Suivre le planning de vos formations',
       'Consulter et signer vos conventions',
-      'Acceder a vos factures',
-      'Gerer vos documents',
+      'Accéder à vos factures',
+      'Gérer vos documents',
     ],
   },
   apporteur: {
     title: 'Apporteur',
     subtitle: 'Votre tableau de bord apporteur d\'affaires',
     accesses: [
-      'Suivre vos leads apportes et leur avancement',
-      'Consulter le detail de vos commissions',
+      'Suivre vos leads apportés et leur avancement',
+      'Consulter le détail de vos commissions',
       'Voir le statut de chaque dossier',
     ],
   },
@@ -432,10 +472,10 @@ const PORTAL_CONFIG: Record<PortalType, { title: string; subtitle: string; acces
     title: 'Partenaire',
     subtitle: 'Votre tableau de bord franchise',
     accesses: [
-      'Tableau de bord avec CA et indicateurs cles',
+      'Tableau de bord avec CA et indicateurs clés',
       'Suivre vos sessions de formation',
-      'Consulter vos commissions en temps reel',
-      'Gerer vos dossiers de formation',
+      'Consulter vos commissions en temps réel',
+      'Gérer vos dossiers de formation',
     ],
   },
 }
@@ -445,6 +485,9 @@ function buildPortalAccessHtml(params: {
   portalType: PortalType
   firstName: string
   orgName: string
+  orgEmail?: string
+  orgLogoUrl?: string
+  qualiopiCertified?: boolean
 }): string {
   const config = PORTAL_CONFIG[params.portalType]
 
@@ -453,7 +496,7 @@ function buildPortalAccessHtml(params: {
       Bonjour ${params.firstName},
     </h1>
     <p style="margin:0 0 24px;color:#71717a;font-size:15px;line-height:1.6;">
-      <strong style="color:#195144;">${params.orgName}</strong> vous ouvre l'acces a votre espace personnel.
+      <strong style="color:#195144;">${params.orgName}</strong> vous ouvre l'accès à votre espace personnel.
       ${config.subtitle}.
     </p>
 
@@ -477,18 +520,25 @@ function buildPortalAccessHtml(params: {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:4px;">
       <tr><td style="background-color:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;">
         <span style="color:#854d0e;font-size:13px;line-height:1.5;">
-          <strong>Acces simplifie</strong> &mdash; Aucun mot de passe requis. Cliquez sur le bouton pour acceder directement.
+          <strong>Accès simplifié</strong> &mdash; Aucun mot de passe requis. Cliquez sur le bouton pour accéder directement.
         </span>
       </td></tr>
     </table>
 
-    ${ctaButton(params.portalUrl, 'Acceder a mon espace')}
+    ${ctaButton(params.portalUrl, 'Accéder à mon espace')}
 
     <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;line-height:1.6;">
-      Ce lien est personnel et securise. Ne le partagez pas.
+      Ce lien est personnel et sécurisé. Ne le partagez pas.
     </p>`
 
-  return emailShell({ body, orgName: params.orgName, badge: config.title })
+  return emailShell({
+    body,
+    orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    orgLogoUrl: params.orgLogoUrl,
+    qualiopiCertified: params.qualiopiCertified,
+    badge: config.title,
+  })
 }
 
 export async function sendPortalAccessEmail(params: {
@@ -498,14 +548,20 @@ export async function sendPortalAccessEmail(params: {
   portalUrl: string
   orgName: string
   orgEmail: string
+  orgLogoUrl?: string | null
+  qualiopiCertified?: boolean
+  fromAddress?: string
 }): Promise<{ success: boolean; error?: string }> {
   const config = PORTAL_CONFIG[params.portalType]
-  const subject = `Votre ${config.title} est prêt — ${params.orgName}`
+  const subject = `Votre espace ${config.title} est prêt — ${params.orgName}`
   const html = buildPortalAccessHtml({
     portalUrl: params.portalUrl,
     portalType: params.portalType,
     firstName: params.firstName,
     orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    orgLogoUrl: params.orgLogoUrl || undefined,
+    qualiopiCertified: params.qualiopiCertified,
   })
 
   const resendApiKey = process.env.RESEND_API_KEY
@@ -515,6 +571,7 @@ export async function sendPortalAccessEmail(params: {
     return { success: true }
   }
 
+  const from = `${params.orgName} <${params.fromAddress || 'noreply@lab-learning.fr'}>`
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -522,10 +579,11 @@ export async function sendPortalAccessEmail(params: {
       'Authorization': `Bearer ${resendApiKey}`,
     },
     body: JSON.stringify({
-      from: `${params.orgName} <${params.orgEmail}>`,
+      from,
       to: [params.toEmail],
       subject,
       html,
+      reply_to: params.orgEmail || undefined,
     }),
   })
 

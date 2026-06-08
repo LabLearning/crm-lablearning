@@ -6,6 +6,7 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import { randomBytes, createHash } from 'crypto'
 import type { ActionResult } from '@/lib/types'
+import { emailShell, ctaButton } from '@/lib/email'
 
 function newToken() {
   return createHash('sha256').update(randomBytes(32)).digest('hex')
@@ -141,7 +142,7 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
 
   // ── 4. Envoyer les 2 emails (+ WhatsApp si opt-in) ──
   try {
-    const { sendTemplateEmail, createNotification } = await import('@/lib/email')
+    const { sendBrandedEmail, createNotification } = await import('@/lib/email')
     const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
     const formationName = (sess as any).formation?.intitule || 'Formation'
     const dateRange = `du ${new Date(sess.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sess.date_fin).toLocaleDateString('fr-FR')}`
@@ -180,8 +181,10 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     // Email au client → convention
     const clientEmail = (sess as any).client?.email
     if (clientEmail && convToken) {
-      await sendTemplateEmail({
+      await sendBrandedEmail({
         to: clientEmail,
+        orgName: session.organization.name,
+        orgEmail: (session.organization as any).email_contact || (session.organization as any).email,
         subject: `Convention de formation à signer — ${formationName}`,
         html: emailConventionHtml({
           orgName: session.organization.name,
@@ -189,6 +192,9 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
           formationName,
           dateRange,
           signUrl: `${appUrl}/convention/${convToken}/signer`,
+          orgEmail: (session.organization as any).email_contact || (session.organization as any).email,
+          orgLogoUrl: (session.organization as any).logo_url || undefined,
+          qualiopiCertified: (session.organization as any).is_qualiopi !== false,
         }),
       })
     }
@@ -196,8 +202,10 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     // Email au formateur → contrat
     const formateur = (sess as any).formateur
     if (formateur?.email && contratToken) {
-      await sendTemplateEmail({
+      await sendBrandedEmail({
         to: formateur.email,
+        orgName: session.organization.name,
+        orgEmail: (session.organization as any).email_contact || (session.organization as any).email,
         subject: `Contrat de prestation à signer — ${formationName}`,
         html: emailContratFormateurHtml({
           orgName: session.organization.name,
@@ -205,6 +213,9 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
           formationName,
           dateRange,
           signUrl: `${appUrl}/contrat-formateur/${contratToken}/signer`,
+          orgEmail: (session.organization as any).email_contact || (session.organization as any).email,
+          orgLogoUrl: (session.organization as any).logo_url || undefined,
+          qualiopiCertified: (session.organization as any).is_qualiopi !== false,
         }),
       })
 
@@ -239,42 +250,54 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
 // Templates email simples (HTML inline, branding Lab Learning)
 // ─────────────────────────────────────────────────────────────────────
 
-function emailConventionHtml(p: { orgName: string; clientName: string; formationName: string; dateRange: string; signUrl: string }): string {
-  return `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C1917">
-  <div style="background:#195144;color:white;padding:20px;border-radius:12px;margin-bottom:24px">
-    <h1 style="margin:0;font-size:20px">Convention de formation à signer</h1>
-  </div>
-  <p>Bonjour <strong>${p.clientName}</strong>,</p>
-  <p>${p.orgName} vous transmet la convention de formation pour la session :</p>
-  <ul>
-    <li><strong>${p.formationName}</strong></li>
-    <li>Période : ${p.dateRange}</li>
-  </ul>
-  <p>Merci de cliquer sur le bouton ci-dessous pour consulter et signer la convention. Le lien est valable 30 jours.</p>
-  <p style="text-align:center;margin:32px 0">
-    <a href="${p.signUrl}" style="background:#195144;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">Signer la convention</a>
-  </p>
-  <p style="font-size:12px;color:#888">Si le bouton ne fonctionne pas, copiez ce lien :<br><span style="word-break:break-all">${p.signUrl}</span></p>
-  </body></html>`
+function buildSignBody(p: { recipientName: string; orgName: string; introLine: string; formationName: string; dateRange: string; ctaLabel: string; signUrl: string }): string {
+  return `
+    <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">${p.ctaLabel}</h1>
+    <p style="margin:0 0 18px;color:#71717a;font-size:15px;line-height:1.6;">
+      Bonjour <strong style="color:#18181b;">${p.recipientName}</strong>,<br>
+      ${p.introLine}
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:24px;">
+      <tr><td style="background-color:#f4f4f5;border-radius:10px;padding:18px 22px;">
+        <div style="color:#3f3f46;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Session concernée</div>
+        <div style="color:#18181b;font-size:15px;font-weight:600;margin-bottom:4px;">${p.formationName}</div>
+        <div style="color:#71717a;font-size:13px;">Période : ${p.dateRange}</div>
+      </td></tr>
+    </table>
+    <p style="margin:0 0 6px;color:#3f3f46;font-size:14px;line-height:1.6;">
+      Merci de cliquer sur le bouton ci-dessous pour signer électroniquement. Le lien est valable 30 jours.
+    </p>
+    ${ctaButton(p.signUrl, p.ctaLabel)}
+    <p style="margin:0;color:#a1a1aa;font-size:11px;text-align:center;line-height:1.6;">
+      Si le bouton ne fonctionne pas, copiez ce lien :<br>
+      <span style="word-break:break-all;color:#71717a;">${p.signUrl}</span>
+    </p>`
 }
 
-function emailContratFormateurHtml(p: { orgName: string; formateurName: string; formationName: string; dateRange: string; signUrl: string }): string {
-  return `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1C1917">
-  <div style="background:#195144;color:white;padding:20px;border-radius:12px;margin-bottom:24px">
-    <h1 style="margin:0;font-size:20px">Contrat de prestation à signer</h1>
-  </div>
-  <p>Bonjour <strong>${p.formateurName}</strong>,</p>
-  <p>${p.orgName} vous transmet le contrat de prestation pour la mission que vous avez acceptée :</p>
-  <ul>
-    <li><strong>${p.formationName}</strong></li>
-    <li>Période : ${p.dateRange}</li>
-  </ul>
-  <p>Merci de signer électroniquement votre contrat en cliquant ci-dessous (valable 30 jours) :</p>
-  <p style="text-align:center;margin:32px 0">
-    <a href="${p.signUrl}" style="background:#195144;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">Signer le contrat</a>
-  </p>
-  <p style="font-size:12px;color:#888">Si le bouton ne fonctionne pas, copiez ce lien :<br><span style="word-break:break-all">${p.signUrl}</span></p>
-  </body></html>`
+function emailConventionHtml(p: { orgName: string; clientName: string; formationName: string; dateRange: string; signUrl: string; orgEmail?: string; orgLogoUrl?: string; qualiopiCertified?: boolean }): string {
+  const body = buildSignBody({
+    recipientName: p.clientName,
+    orgName: p.orgName,
+    introLine: `${p.orgName} vous transmet la convention de formation à signer.`,
+    formationName: p.formationName,
+    dateRange: p.dateRange,
+    ctaLabel: 'Signer la convention',
+    signUrl: p.signUrl,
+  })
+  return emailShell({ body, orgName: p.orgName, orgEmail: p.orgEmail, orgLogoUrl: p.orgLogoUrl, qualiopiCertified: p.qualiopiCertified })
+}
+
+function emailContratFormateurHtml(p: { orgName: string; formateurName: string; formationName: string; dateRange: string; signUrl: string; orgEmail?: string; orgLogoUrl?: string; qualiopiCertified?: boolean }): string {
+  const body = buildSignBody({
+    recipientName: p.formateurName,
+    orgName: p.orgName,
+    introLine: `${p.orgName} vous transmet votre contrat de prestation pour la mission acceptée.`,
+    formationName: p.formationName,
+    dateRange: p.dateRange,
+    ctaLabel: 'Signer le contrat',
+    signUrl: p.signUrl,
+  })
+  return emailShell({ body, orgName: p.orgName, orgEmail: p.orgEmail, orgLogoUrl: p.orgLogoUrl, qualiopiCertified: p.qualiopiCertified })
 }
 
 // ─────────────────────────────────────────────────────────────────────

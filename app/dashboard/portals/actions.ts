@@ -105,7 +105,9 @@ export async function generatePortalTokenAction(
       portalType: portalType as any,
       portalUrl,
       orgName: session.organization.name,
-      orgEmail: session.organization.email || 'digital@lab-learning.fr',
+      orgEmail: (session.organization as any).email_contact || session.organization.email || 'digital@lab-learning.fr',
+      orgLogoUrl: (session.organization as any).logo_url || null,
+      qualiopiCertified: (session.organization as any).is_qualiopi !== false,
     })
   }
 

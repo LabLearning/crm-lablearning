@@ -52,6 +52,9 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
   const [tamponFilename, setTamponFilename] = useState(organization.tampon_signature_filename || '')
   const [uploadingTampon, setUploadingTampon] = useState(false)
   const tamponRef = useRef<HTMLInputElement>(null)
+  const [logoUrl, setLogoUrl] = useState((organization as any).logo_url || '')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const logoRef = useRef<HTMLInputElement>(null)
   const [livretUrl, setLivretUrl] = useState(organization.livret_accueil_url || '')
   const [livretFilename, setLivretFilename] = useState(organization.livret_accueil_filename || '')
   const [uploadingLivret, setUploadingLivret] = useState(false)
@@ -97,6 +100,30 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
     setTamponUrl('')
     setTamponFilename('')
     toast('success', 'Tampon supprimé')
+  }
+
+  async function handleUploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { toast('error', 'Fichier trop lourd (max 5 Mo)'); return }
+    setUploadingLogo(true)
+    const fd = new FormData()
+    fd.set('file', file)
+    try {
+      const res = await fetch('/api/organization/upload-logo', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (res.ok && data.success) { setLogoUrl(data.url); toast('success', 'Logo enregistré') }
+      else toast('error', data.error || 'Erreur upload')
+    } catch { toast('error', 'Erreur réseau') }
+    setUploadingLogo(false)
+    if (logoRef.current) logoRef.current.value = ''
+  }
+
+  async function removeLogo() {
+    if (!confirm('Supprimer le logo ?')) return
+    await fetch('/api/organization/upload-logo', { method: 'DELETE' })
+    setLogoUrl('')
+    toast('success', 'Logo supprimé')
   }
 
   async function handleUploadLivret(e: React.ChangeEvent<HTMLInputElement>) {
@@ -174,6 +201,63 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
           <Input id="representant_legal_nom" name="representant_legal_nom" label="Nom" defaultValue={organization.representant_legal_nom || ''} disabled={!canEdit} />
           <Input id="representant_legal_fonction" name="representant_legal_fonction" label="Fonction" placeholder="Président, Gérant..." defaultValue={organization.representant_legal_fonction || ''} disabled={!canEdit} />
         </div>
+      </section>
+
+      {/* Logo de l'organisme */}
+      <section className="card p-6">
+        <SectionHeader icon={Building2} title="Logo de l'organisme" subtitle="Affiché dans le header des emails (invitations, accès portails, signatures) et sur les documents." />
+
+        {logoUrl ? (
+          <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+            <div className="bg-[#195144] p-3 rounded-lg shrink-0">
+              <img src={logoUrl} alt="Logo" className="h-12 w-auto max-w-40 object-contain" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-surface-900">Logo enregistré</div>
+              <div className="text-xs text-surface-500 mt-1">
+                Apparaît sur fond vert dans le header des emails — privilégier un PNG blanc/clair sur fond transparent.
+              </div>
+              <div className="flex gap-3 mt-3">
+                <a href={logoUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" /> Voir en plein
+                </a>
+                {canEdit && (
+                  <>
+                    <button type="button" onClick={() => logoRef.current?.click()} className="text-xs text-surface-500 hover:text-surface-800 flex items-center gap-1">
+                      <Upload className="h-3 w-3" /> Remplacer
+                    </button>
+                    <button type="button" onClick={removeLogo} className="text-xs text-danger-500 hover:text-danger-700 flex items-center gap-1">
+                      <X className="h-3 w-3" /> Supprimer
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : canEdit ? (
+          <button
+            type="button"
+            onClick={() => logoRef.current?.click()}
+            disabled={uploadingLogo}
+            className="w-full p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+          >
+            <Building2 className="h-6 w-6 text-surface-400" />
+            <div className="text-sm font-medium text-surface-700">
+              {uploadingLogo ? 'Upload en cours…' : 'Uploader le logo (PNG / SVG)'}
+            </div>
+            <div className="text-xs text-surface-500">PNG transparent recommandé · hauteur ~128 px · 5 Mo max</div>
+          </button>
+        ) : (
+          <div className="text-sm text-surface-500">Aucun logo configuré</div>
+        )}
+
+        <input
+          ref={logoRef}
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+          className="hidden"
+          onChange={handleUploadLogo}
+        />
       </section>
 
       {/* Tampon + Signature */}
