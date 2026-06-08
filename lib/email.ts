@@ -173,15 +173,19 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   franchise: 'Tableau de bord de votre réseau : établissements, audits, formations et commissions',
 }
 
-const ROLE_ICONS: Record<string, string> = {
-  super_admin: '&#9733;',
-  gestionnaire: '&#9881;',
-  directeur_commercial: '&#9670;',
-  commercial: '&#10148;',
-  apporteur_affaires: '&#10070;',
-  formateur: '&#9998;',
-  apprenant: '&#9734;',
-  franchise: '&#9750;',
+// Icônes Lucide hébergées via Iconify CDN — PNG blanc 64x64 (rendu HD sur le badge vert)
+const iconUrl = (name: string) =>
+  `https://api.iconify.design/lucide/${name}.png?color=%23ffffff&width=64&height=64`
+
+const ROLE_ICON_URLS: Record<string, string> = {
+  super_admin: iconUrl('shield-check'),
+  gestionnaire: iconUrl('settings-2'),
+  directeur_commercial: iconUrl('trending-up'),
+  commercial: iconUrl('target'),
+  apporteur_affaires: iconUrl('handshake'),
+  formateur: iconUrl('graduation-cap'),
+  apprenant: iconUrl('book-open'),
+  franchise: iconUrl('building-2'),
 }
 
 // ── Shared email shell ──────────────────────────────────────
@@ -274,7 +278,7 @@ function buildInvitationHtml(params: {
 }): string {
   const roleLabel = ROLE_LABELS[params.role] || params.role
   const roleDesc = ROLE_DESCRIPTIONS[params.role] || ''
-  const roleIcon = ROLE_ICONS[params.role] || '&#9733;'
+  const roleIconUrl = ROLE_ICON_URLS[params.role] || iconUrl('shield-check')
 
   const body = `
     <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">Vous êtes invité(e)</h1>
@@ -288,8 +292,8 @@ function buildInvitationHtml(params: {
       <tr><td style="background-color:#f4f4f5;border-radius:10px;padding:20px;">
         <table role="presentation" cellspacing="0" cellpadding="0"><tr>
           <td style="vertical-align:top;padding-right:14px;">
-            <div style="width:40px;height:40px;background-color:#195144;border-radius:10px;text-align:center;line-height:40px;">
-              <span style="color:#fff;font-size:18px;">${roleIcon}</span>
+            <div style="width:44px;height:44px;background-color:#195144;border-radius:10px;text-align:center;padding:10px;box-sizing:border-box;">
+              <img src="${roleIconUrl}" alt="" width="24" height="24" style="display:block;width:24px;height:24px;border:0;outline:none;text-decoration:none;">
             </div>
           </td>
           <td>
