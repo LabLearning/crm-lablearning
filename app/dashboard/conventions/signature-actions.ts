@@ -128,6 +128,52 @@ export async function signConventionPublicAction(
     })
   }
 
+  // Email avec convention signée (copie PDF) → client + équipe (si signature complète des deux côtés)
+  if (newStatus === 'signee_complete') {
+    try {
+      const { data: convFull } = await supabase
+        .from('conventions')
+        .select('*, client:clients(raison_sociale, email), formation:formations(intitule)')
+        .eq('id', conv.id).single()
+      const cli: any = (convFull as any)?.client
+      const toEmails: string[] = []
+      if (cli?.email) toEmails.push(cli.email)
+      // copie OF (créateur ou email contact)
+      const { data: orgFull } = await supabase.from('organizations').select('*').eq('id', conv.organization_id).single()
+      const orgEmail = (orgFull as any)?.email_contact || orgFull?.email
+      if (orgEmail && !toEmails.includes(orgEmail)) toEmails.push(orgEmail)
+
+      if (convFull && toEmails.length > 0) {
+        const { renderToBuffer } = await import('@react-pdf/renderer')
+        const { createElement } = await import('react')
+        const { ConventionPDF } = await import('@/lib/pdf/convention-pdf')
+        const buffer = await renderToBuffer(createElement(ConventionPDF, { convention: convFull as any, org: orgFull }) as any)
+
+        const { sendDocumentEmail } = await import('@/lib/email')
+        const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString('fr-FR') : '—'
+        await sendDocumentEmail({
+          to: toEmails,
+          orgName: orgFull?.name || 'Lab Learning',
+          orgEmail,
+          orgLogoUrl: (orgFull as any)?.logo_url,
+          qualiopiCertified: (orgFull as any)?.is_qualiopi !== false,
+          recipientName: cli?.raison_sociale || 'Madame, Monsieur',
+          subject: `Convention ${(convFull as any).numero} signée — copie exécutée`,
+          docTitle: 'Convention signée — copie pour vos dossiers',
+          intro: `La convention de formation a été signée par les deux parties. Vous trouverez ci-joint l'exemplaire signé exécutoire.`,
+          metadata: [
+            ['Référence', (convFull as any).numero || ''],
+            ['Formation', (convFull as any).formation?.intitule || '—'],
+            ['Signée le', fmtDate((convFull as any).signature_client_date)],
+          ],
+          pdfBuffer: Buffer.from(buffer),
+          pdfFilename: `convention-${(convFull as any).numero}-signee.pdf`,
+          footerNote: 'Cet exemplaire fait foi entre les parties. Conservez-le pour vos archives.',
+        })
+      }
+    } catch (e) { console.error('[email conv signee]', e) }
+  }
+
   await logAudit({ action: 'sign_convention', entity_type: 'convention', entity_id: conv.id, details: { signataire: data.nom } })
   return { success: true, data: { conventionId: conv.id } }
 }

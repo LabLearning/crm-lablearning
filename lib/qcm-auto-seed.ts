@@ -95,10 +95,11 @@ export async function notifyApprenantsForQcm(
 
   const { data: inscriptions } = await supabase
     .from('inscriptions')
-    .select('apprenant:apprenants(id, user_id, prenom, email, whatsapp, whatsapp_opt_in)')
+    .select('apprenant:apprenants(id, user_id, civilite, prenom, nom, email, whatsapp, whatsapp_opt_in)')
     .eq('session_id', sessionId)
     .not('status', 'in', '("annule","abandonne")')
 
+  const { data: org } = await supabase.from('organizations').select('*').eq('id', sess.organization_id).single()
   const formationName = (sess as any).formation?.intitule || 'Formation'
 
   // QCM type → template WhatsApp (les types sans template restent en notif seule)
@@ -108,8 +109,38 @@ export async function notifyApprenantsForQcm(
     satisfaction_chaud: 'satisfaction_chaud',
     satisfaction_froid: 'satisfaction_froid',
   }
+
+  // Email config par type — sujet + intro + CTA
+  const emailConfig: Partial<Record<QcmType, { subject: string; docTitle: string; intro: string; cta: string }>> = {
+    positionnement: {
+      subject: `Test de positionnement — ${formationName}`,
+      docTitle: 'Test de positionnement à compléter',
+      intro: `Avant le démarrage de votre formation "${formationName}", merci de compléter ce court questionnaire de positionnement. Il nous permet d'adapter le contenu à vos besoins et à votre niveau.`,
+      cta: 'Compléter le questionnaire',
+    },
+    sortie: {
+      subject: `Évaluation des acquis — ${formationName}`,
+      docTitle: 'Évaluation des acquis',
+      intro: `Votre formation "${formationName}" touche à sa fin. Merci de compléter ce questionnaire pour valider les acquis et obtenir votre attestation.`,
+      cta: 'Évaluer mes acquis',
+    },
+    satisfaction_chaud: {
+      subject: `Donnez-nous votre avis — ${formationName}`,
+      docTitle: 'Évaluation à chaud',
+      intro: `Votre avis nous est précieux pour améliorer nos formations. Quelques minutes suffisent pour répondre à ce questionnaire de satisfaction.`,
+      cta: 'Donner mon avis',
+    },
+    satisfaction_froid: {
+      subject: `Trois mois après votre formation — ${formationName}`,
+      docTitle: 'Évaluation à froid',
+      intro: `Trois mois après votre formation "${formationName}", merci de nous dire comment vous avez mis en pratique les acquis. C'est un indicateur clé pour la qualité de nos formations (Qualiopi).`,
+      cta: 'Répondre au questionnaire',
+    },
+  }
   const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
   const { getOrCreateApprenantToken } = await import('@/lib/portal-token')
+  const { sendDocumentEmail } = await import('@/lib/email')
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 
   for (const ins of inscriptions || []) {
     const a = (ins as any).apprenant
@@ -127,23 +158,45 @@ export async function notifyApprenantsForQcm(
       })
     }
 
+    // Token portail (réutilisé pour WhatsApp + email)
+    const token = (a?.id) ? await getOrCreateApprenantToken(supabase, a.id, sess.organization_id, a?.email) : null
+
     // WhatsApp si opt-in + numéro + template existant pour ce type
     const tpl = waTemplate[qcmType]
-    if (tpl && a?.whatsapp_opt_in && a?.whatsapp && a?.id) {
-      const token = await getOrCreateApprenantToken(supabase, a.id, sess.organization_id, a.email)
-      if (token) {
-        await sendWhatsAppTemplate({
-          organizationId: sess.organization_id,
-          to: a.whatsapp,
-          toName: a.prenom || '',
-          template: tpl,
-          languageCode: 'fr',
-          bodyParams: [a.prenom || 'Bonjour', formationName],
-          buttonUrlParam: token,
-          entityType: 'session',
-          entityId: sessionId,
+    if (tpl && a?.whatsapp_opt_in && a?.whatsapp && token) {
+      await sendWhatsAppTemplate({
+        organizationId: sess.organization_id,
+        to: a.whatsapp,
+        toName: a.prenom || '',
+        template: tpl,
+        languageCode: 'fr',
+        bodyParams: [a.prenom || 'Bonjour', formationName],
+        buttonUrlParam: token,
+        entityType: 'session',
+        entityId: sessionId,
+      })
+    }
+
+    // Email brandé avec CTA → portail questionnaires
+    const eCfg = emailConfig[qcmType]
+    if (eCfg && a?.email && token) {
+      try {
+        await sendDocumentEmail({
+          to: a.email,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: (org as any)?.email_contact || org?.email,
+          orgLogoUrl: (org as any)?.logo_url,
+          qualiopiCertified: (org as any)?.is_qualiopi !== false,
+          recipientName: [a.civilite, a.prenom, a.nom].filter(Boolean).join(' ').trim() || 'Madame, Monsieur',
+          subject: eCfg.subject,
+          docTitle: eCfg.docTitle,
+          intro: eCfg.intro,
+          metadata: [['Formation', formationName]],
+          ctaLabel: eCfg.cta,
+          ctaUrl: `${appUrl}/portail/${token}/questionnaires`,
+          footerNote: 'Aucun mot de passe requis — le lien est personnel et sécurisé.',
         })
-      }
+      } catch (e) { console.error('[email qcm]', e) }
     }
   }
 }

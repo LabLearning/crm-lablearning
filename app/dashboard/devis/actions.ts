@@ -153,6 +153,53 @@ export async function updateDevisStatusAction(id: string, status: string): Promi
 
   if (error) return { success: false, error: 'Erreur' }
 
+  // Email brandé avec devis PDF joint quand le devis est marqué envoyé
+  if (status === 'envoye') {
+    try {
+      const { data: devis } = await supabase
+        .from('devis')
+        .select('*, client:clients(*), contact:contacts(prenom, nom, email), formation:formations(intitule, reference), lignes:devis_lignes(*)')
+        .eq('id', id).single()
+      const cli: any = (devis as any)?.client
+      const ct: any = (devis as any)?.contact
+      const toEmail = ct?.email || cli?.email
+      if (devis && toEmail) {
+        const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+        const { renderToBuffer } = await import('@react-pdf/renderer')
+        const { createElement } = await import('react')
+        const { DevisPDF } = await import('@/lib/pdf/devis-pdf')
+        const buffer = await renderToBuffer(createElement(DevisPDF, { devis: devis as any, org }) as any)
+        const fmtEuro = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
+        const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString('fr-FR') : '—'
+        const recipientName = ct?.prenom || ct?.nom
+          ? `${ct.prenom || ''} ${ct.nom || ''}`.trim()
+          : cli?.raison_sociale || 'Madame, Monsieur'
+
+        const { sendDocumentEmail } = await import('@/lib/email')
+        await sendDocumentEmail({
+          to: toEmail,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: (org as any)?.email_contact || org?.email,
+          orgLogoUrl: (org as any)?.logo_url,
+          qualiopiCertified: (org as any)?.is_qualiopi !== false,
+          recipientName,
+          subject: `Votre devis ${(devis as any).numero} — ${fmtEuro(Number((devis as any).montant_ttc || 0))} TTC`,
+          docTitle: `Votre devis ${(devis as any).numero}`,
+          intro: `Veuillez trouver ci-joint votre devis pour la prestation de formation${(devis as any).formation?.intitule ? ` "${(devis as any).formation.intitule}"` : ''}.`,
+          metadata: [
+            ['Montant HT', fmtEuro(Number((devis as any).montant_ht || 0))],
+            ['Montant TTC', fmtEuro(Number((devis as any).montant_ttc || 0))],
+            ['Valide jusqu\'au', fmtDate((devis as any).date_validite)],
+            ['Référence', (devis as any).numero || ''],
+          ],
+          pdfBuffer: Buffer.from(buffer),
+          pdfFilename: `devis-${(devis as any).numero}.pdf`,
+          footerNote: 'Pour accepter ce devis, retournez-le signé avec la mention « Bon pour accord ».',
+        })
+      }
+    } catch (e) { console.error('[email devis]', e) }
+  }
+
   await logAudit({ action: 'update_status', entity_type: 'devis', entity_id: id, details: { status } })
   revalidatePath('/dashboard/devis')
   return { success: true }
