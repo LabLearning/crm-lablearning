@@ -337,6 +337,19 @@ export async function updateCommissionStatusAction(
         lienLabel: 'Voir mes commissions',
         entityType: 'dossier_formation',
         entityId: dossierId,
+        email: {
+          subject: status === 'payee' ? `Versement de commission — ${montant}` : `Commission validée — ${montant}`,
+          docTitle: status === 'payee' ? 'Votre commission a été versée' : 'Votre commission a été validée',
+          intro: status === 'payee'
+            ? `Bonne nouvelle : votre commission liée à la formation chez ${etab} vient d'être versée.`
+            : `Votre commission liée à la formation chez ${etab} est validée et sera versée prochainement.`,
+          metadata: [
+            ['Établissement', etab],
+            ['Montant', montant],
+            [status === 'payee' ? 'Date de versement' : 'Validée le', new Date().toLocaleDateString('fr-FR')],
+          ],
+          ctaLabel: 'Voir mes commissions',
+        },
       })
     }
   }
@@ -405,6 +418,16 @@ export async function payAllValidatedAction(franchiseId: string): Promise<Result
       type: 'success',
       lienUrl: '/franchise/financier',
       lienLabel: 'Voir mes commissions',
+      email: {
+        subject: `Versement groupé — ${fmtEuro(total)}`,
+        docTitle: 'Versement de commissions',
+        intro: `Un versement groupé vient d'être effectué pour l'ensemble de vos commissions validées.`,
+        metadata: [
+          ['Montant total', fmtEuro(total)],
+          ['Date de versement', new Date().toLocaleDateString('fr-FR')],
+        ],
+        ctaLabel: 'Voir le détail',
+      },
     })
   }
 

@@ -39,6 +39,31 @@ export async function createReclamationAction(formData: FormData): Promise<Actio
 
   if (error) return { success: false, error: 'Erreur lors de la création' }
 
+  // Accusé de réception au plaignant (Qualiopi Ind. 29)
+  if (emetteur_email) {
+    try {
+      const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+      const { sendDocumentEmail } = await import('@/lib/email')
+      await sendDocumentEmail({
+        to: emetteur_email,
+        orgName: org?.name || 'Lab Learning',
+        orgEmail: (org as any)?.email_contact || org?.email,
+        orgLogoUrl: (org as any)?.logo_url,
+        qualiopiCertified: (org as any)?.is_qualiopi !== false,
+        recipientName: emetteur_nom || 'Madame, Monsieur',
+        subject: `Accusé de réception de votre réclamation — ${data.numero || ''}`,
+        docTitle: 'Nous avons bien reçu votre réclamation',
+        intro: `Nous accusons réception de votre réclamation et vous remercions de nous avoir fait part de votre retour. Conformément à notre engagement qualité, nous allons l'analyser et vous tenir informé(e) des suites données.`,
+        metadata: [
+          ['Référence', data.numero || ''],
+          ['Objet', objet],
+          ['Date de réception', new Date().toLocaleDateString('fr-FR')],
+        ],
+        footerNote: 'Vous serez recontacté(e) dans les meilleurs délais. Pour toute question, vous pouvez répondre directement à cet email.',
+      })
+    } catch (e) { console.error('[email reclamation accuse]', e) }
+  }
+
   await logAudit({ action: 'create', entity_type: 'reclamation', entity_id: data.id })
   revalidatePath('/dashboard/reclamations')
   return { success: true, data }
@@ -68,6 +93,47 @@ export async function updateReclamationStatusAction(id: string, status: string, 
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Erreur' }
+
+  // Email réponse + plan d'action quand on clôture (Qualiopi Ind. 29-31)
+  if (status === 'cloturee' || status === 'action_corrective') {
+    try {
+      const { data: rec } = await supabase
+        .from('reclamations')
+        .select('numero, objet, emetteur_nom, emetteur_email, action_corrective, commentaire_cloture')
+        .eq('id', id).single()
+      if (rec?.emetteur_email) {
+        const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+        const { sendDocumentEmail } = await import('@/lib/email')
+        const isClosed = status === 'cloturee'
+        const action = (rec as any).action_corrective || details?.action_corrective || ''
+        const closure = (rec as any).commentaire_cloture || details?.commentaire_cloture || ''
+        await sendDocumentEmail({
+          to: rec.emetteur_email,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: (org as any)?.email_contact || org?.email,
+          orgLogoUrl: (org as any)?.logo_url,
+          qualiopiCertified: (org as any)?.is_qualiopi !== false,
+          recipientName: rec.emetteur_nom || 'Madame, Monsieur',
+          subject: isClosed
+            ? `Réclamation ${rec.numero} — clôturée`
+            : `Réclamation ${rec.numero} — action corrective`,
+          docTitle: isClosed
+            ? 'Votre réclamation a été clôturée'
+            : 'Action corrective mise en place suite à votre réclamation',
+          intro: isClosed
+            ? `Suite à votre réclamation, nous avons mis en œuvre les mesures nécessaires et clôturons votre dossier. Merci d'avoir contribué à l'amélioration continue de nos prestations.`
+            : `Suite à l'analyse de votre réclamation, voici les mesures correctives que nous mettons en place.`,
+          metadata: [
+            ['Référence', rec.numero || ''],
+            ['Objet', rec.objet || ''],
+            ...(action ? [['Action corrective', action] as [string, string]] : []),
+            ...(isClosed && closure ? [['Conclusion', closure] as [string, string]] : []),
+          ],
+          footerNote: 'Si la résolution ne vous satisfait pas, vous pouvez nous répondre directement à cet email.',
+        })
+      }
+    } catch (e) { console.error('[email reclamation reponse]', e) }
+  }
 
   await logAudit({ action: 'update_status', entity_type: 'reclamation', entity_id: id, details: { status } })
   revalidatePath('/dashboard/reclamations')

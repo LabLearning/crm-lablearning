@@ -189,6 +189,18 @@ export async function POST(req: Request) {
       lienLabel: 'Voir l\'audit',
       entityType: 'audit_etablissement',
       entityId: audit.id,
+      email: {
+        subject: `Nouvel audit — ${client.raison_sociale}`,
+        docTitle: `Nouvel audit enregistré`,
+        intro: `Un audit ${body.type_audit || 'hygiène'} vient d'être enregistré pour l'établissement ${client.raison_sociale}.`,
+        metadata: [
+          ['Établissement', client.raison_sociale],
+          ['Type', body.type_audit || 'hygiène'],
+          ...(noteGlobale != null ? [['Note', `${noteGlobale}/${noteSur}`] as [string, string]] : []),
+          ['Date', new Date().toLocaleDateString('fr-FR')],
+        ],
+        ctaLabel: "Consulter l'audit",
+      },
     })
   }
 

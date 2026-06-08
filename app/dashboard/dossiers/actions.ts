@@ -73,6 +73,16 @@ export async function createDossierAction(formData: FormData): Promise<ActionRes
       lienLabel: 'Voir mes établissements',
       entityType: 'dossier_formation',
       entityId: data.id,
+      email: {
+        subject: `Nouveau dossier — ${cl.raison_sociale}`,
+        docTitle: 'Nouveau dossier de formation',
+        intro: `Un dossier de formation vient d'être ouvert pour l'établissement ${cl.raison_sociale} de votre réseau.`,
+        metadata: [
+          ['Établissement', cl.raison_sociale],
+          ['Date d\'ouverture', new Date().toLocaleDateString('fr-FR')],
+        ],
+        ctaLabel: 'Voir le dossier',
+      },
     })
   }
 

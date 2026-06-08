@@ -17,6 +17,49 @@ export async function updateSessionStatusAction(sessionId: string, newStatus: st
 
   if (error) return { success: false, error: error.message }
 
+  // Quand la session est marquée terminée : email d'évaluation au commanditaire (Qualiopi Ind. 28)
+  if (newStatus === 'terminee') {
+    try {
+      const { data: sess } = await supabase
+        .from('sessions')
+        .select(`
+          id, date_debut, date_fin,
+          formation:formation_id(intitule),
+          client:client_id(raison_sociale, email)
+        `)
+        .eq('id', sessionId)
+        .single()
+      const cli: any = (sess as any)?.client
+      if (cli?.email) {
+        const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+        const { sendDocumentEmail } = await import('@/lib/email')
+        const formationNom = (sess as any).formation?.intitule || 'Formation'
+        const periode = sess?.date_debut
+          ? `Du ${new Date(sess.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sess.date_fin || sess.date_debut).toLocaleDateString('fr-FR')}`
+          : '—'
+        const replyEmail = (org as any)?.email_contact || org?.email
+        await sendDocumentEmail({
+          to: cli.email,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: replyEmail,
+          orgLogoUrl: (org as any)?.logo_url,
+          qualiopiCertified: (org as any)?.is_qualiopi !== false,
+          recipientName: cli.raison_sociale || 'Madame, Monsieur',
+          subject: `Votre avis sur la formation — ${formationNom}`,
+          docTitle: 'Donnez-nous votre avis (commanditaire)',
+          intro: `La formation que vous nous avez confiée pour vos collaborateurs vient de se terminer. Votre retour en tant que commanditaire est essentiel à notre démarche qualité (indicateur Qualiopi 28).`,
+          metadata: [
+            ['Formation', formationNom],
+            ['Période', periode],
+          ],
+          ctaLabel: 'Répondre par email',
+          ctaUrl: replyEmail ? `mailto:${replyEmail}?subject=${encodeURIComponent('Retour formation — ' + formationNom)}` : undefined,
+          footerNote: 'Vos remarques nous aident à améliorer continuellement nos prestations.',
+        })
+      }
+    } catch (e) { console.error('[email eval client]', e) }
+  }
+
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true }
 }
