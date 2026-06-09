@@ -21,7 +21,7 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Certificat de réalisation" numero={numero} date={today} />
+        <PdfDocHeader docTitle="Certificat de réalisation" numero={numero} date={today} org={org} />
 
         <View style={shared.infoBox}>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
@@ -73,7 +73,7 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
           </View>
         </View>
 
-        <PdfDocFooter numero={numero} />
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )

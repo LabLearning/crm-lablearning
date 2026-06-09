@@ -50,7 +50,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Contrat de formation" numero={numero} date={today} />
+        <PdfDocHeader docTitle="Contrat de formation" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
           <Text style={{ fontSize: 8, color: SURFACE_500, lineHeight: 1.6 }}>
@@ -155,7 +155,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
           </View>
         </View>
 
-        <PdfDocFooter numero={numero} />
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )

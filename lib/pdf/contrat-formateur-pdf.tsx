@@ -14,7 +14,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Contrat de prestation" numero={numero} date={today} statut="Formation" />
+        <PdfDocHeader docTitle="Contrat de prestation" numero={numero} date={today} statut="Formation" org={org} />
 
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Entre les parties</Text>
@@ -136,7 +136,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
           </View>
         </View>
 
-        <PdfDocFooter numero={numero} />
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )

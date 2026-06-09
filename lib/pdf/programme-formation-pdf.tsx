@@ -12,7 +12,7 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Programme de formation" numero={formation.reference || ''} date={today} />
+        <PdfDocHeader docTitle="Programme de formation" numero={formation.reference || ''} date={today} org={org} />
 
         {/* Titre formation */}
         <View style={{ marginBottom: 20, backgroundColor: BRAND_LIGHT, padding: 14, borderRadius: 4 }}>
@@ -144,7 +144,7 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
           </Text>
         </View>
 
-        <PdfDocFooter numero={formation.reference || 'PROG'} />
+        <PdfDocFooter numero={formation.reference || 'PROG'} org={org} />
       </Page>
     </Document>
   )

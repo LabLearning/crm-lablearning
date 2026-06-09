@@ -25,7 +25,7 @@ export function ConvocationPDF({ apprenant, session, formation, org, formateur }
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Convocation" numero={numero} date={today} />
+        <PdfDocHeader docTitle="Convocation" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
           <Text style={{ fontSize: 10, color: SURFACE_900, fontFamily: 'Helvetica-Bold' }}>
@@ -88,7 +88,7 @@ export function ConvocationPDF({ apprenant, session, formation, org, formateur }
           </View>
         </View>
 
-        <PdfDocFooter numero={numero} />
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )

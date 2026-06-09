@@ -52,10 +52,11 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
     <Document title={`${docTitle} ${facture.numero}`} author="Lab Learning">
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
-          docTitle={docTitle}
+          docTitle={docTitle === 'FACTURE' ? 'Facture' : docTitle === 'AVOIR' ? 'Avoir' : docTitle === 'FACTURE D\'ACOMPTE' ? 'Facture d\'acompte' : docTitle === 'FACTURE DE SOLDE' ? 'Facture de solde' : docTitle}
           numero={facture.numero}
           date={`Émise le ${fmtDate(facture.date_emission)}`}
-          statut={`Échéance : ${fmtDate(facture.date_echeance)}`}
+          statut={`Échéance ${fmtDate(facture.date_echeance)}`}
+          org={org}
         />
 
         {/* Émetteur (OF) + Facturer à */}
@@ -230,7 +231,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
           </Text>
         </View>
 
-        <PdfDocFooter numero={facture.numero} />
+        <PdfDocFooter numero={facture.numero} org={org} />
       </Page>
     </Document>
   )

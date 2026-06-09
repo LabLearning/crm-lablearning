@@ -13,7 +13,7 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Contrat d'apporteur d'affaires" numero={numero} date={today} />
+        <PdfDocHeader docTitle="Contrat d'apporteur d'affaires" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Entre les parties</Text>
@@ -115,7 +115,7 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
           </View>
         </View>
 
-        <PdfDocFooter numero={numero} />
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )

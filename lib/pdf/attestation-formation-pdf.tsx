@@ -16,7 +16,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Attestation de fin de formation" numero={numero} date={today} />
+        <PdfDocHeader docTitle="Attestation de fin de formation" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
           <Text style={{ fontSize: 10, color: SURFACE_700, lineHeight: 1.8, marginBottom: 10 }}>
@@ -95,7 +95,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
           </View>
         </View>
 
-        <PdfDocFooter numero={numero} />
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )

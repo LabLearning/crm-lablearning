@@ -33,10 +33,11 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
     <Document title={`Devis ${devis.numero}`} author="Lab Learning">
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
-          docTitle="DEVIS"
+          docTitle="Devis"
           numero={devis.numero}
           date={`Émis le ${fmtDate(devis.date_emission)}`}
           statut={STATUS_LABELS[devis.status] || devis.status}
+          org={org}
         />
 
         {/* Émetteur + Destinataire */}
@@ -190,7 +191,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
           </View>
         </View>
 
-        <PdfDocFooter numero={devis.numero} />
+        <PdfDocFooter numero={devis.numero} org={org} />
       </Page>
     </Document>
   )

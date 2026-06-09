@@ -39,10 +39,11 @@ export function ConventionPDF({ convention, org }: { convention: Convention; org
     <Document title={`Convention ${convention.numero}`} author="Lab Learning">
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
-          docTitle="CONVENTION DE FORMATION"
+          docTitle="Convention de formation"
           numero={convention.numero}
           date={`Émise le ${fmtDate(convention.date_emission)}`}
           statut={TYPE_LABELS[convention.type] || convention.type}
+          org={org}
         />
 
         {/* Legal intro */}
@@ -210,7 +211,7 @@ Les évaluations de satisfaction seront recueillies à l'issue de la formation c
           </View>
         </View>
 
-        <PdfDocFooter numero={convention.numero} />
+        <PdfDocFooter numero={convention.numero} org={org} />
       </Page>
     </Document>
   )
