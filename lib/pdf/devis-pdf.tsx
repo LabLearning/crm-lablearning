@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN } from './components'
 import type { Devis } from '@/lib/types/dossier'

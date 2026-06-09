@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700 } from './components'
 
