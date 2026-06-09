@@ -1,5 +1,6 @@
+import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, BRAND_GREEN, BRAND_LIGHT, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_LIGHT, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface EmargementProps {
   session: any
@@ -9,7 +10,6 @@ interface EmargementProps {
   apprenants: any[]
 }
 
-// Liste des demi-journées entre date_debut et date_fin (max raisonnable)
 function buildCreneaux(dateDebut: string, dateFin: string) {
   const out: { jour: string; creneau: string }[] = []
   const start = new Date(dateDebut)
@@ -28,92 +28,96 @@ function buildCreneaux(dateDebut: string, dateFin: string) {
 
 export function EmargementPDF({ session, formation, org, formateur, apprenants }: EmargementProps) {
   const creneaux = buildCreneaux(session.date_debut, session.date_fin)
-  const nameW = 150
+  const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const lieu = session.lieu || session.adresse || [session.code_postal, session.ville].filter(Boolean).join(' ') || '—'
-  const numero = session.reference || `SESS-${String(session.id).slice(0, 8)}`
+  const numero = session.reference || `SESS-${String(session.id || '').slice(0, 8)}`
+
+  // Portrait A4 : 595 - 90 = 505 pt utiles
+  const nameW = 140
+  const creneauW = creneaux.length > 0 ? (505 - nameW) / creneaux.length : 60
 
   return (
     <Document>
-      <Page size="A4" orientation="landscape" style={shared.page}>
-        {/* En-tête */}
-        <View style={{ ...shared.header, marginBottom: 16 }}>
-          <View>
-            <Text style={shared.orgName}>{org?.name || 'Lab Learning'}</Text>
-            <Text style={shared.orgTagline}>Organisme de formation professionnelle</Text>
-            {org?.numero_da && <Text style={shared.orgTagline}>N° déclaration d'activité : {org.numero_da}</Text>}
-            <Text style={shared.qualiopiTag}>Certifié Qualiopi</Text>
-          </View>
-          <View>
-            <Text style={shared.docTitle}>Feuille d'émargement</Text>
-            <Text style={shared.docMeta}>{numero}</Text>
-          </View>
+      <Page size="A4" orientation="portrait" style={shared.page}>
+        <PdfDocHeader
+          docTitle="Feuille d'émargement"
+          numero={numero}
+          date={`Éditée le ${today}`}
+          org={org}
+        />
+
+        {/* Carte récap session */}
+        <View style={shared.card}>
+          <Text style={shared.sectionTitle}>Action de formation</Text>
+          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: SURFACE_900 }}>{formation?.intitule || '—'}</Text></View>
+          {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
+          <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} au {new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</Text></View>
+          {session.horaires && <View style={shared.row}><Text style={shared.label}>Horaires</Text><Text style={shared.value}>{session.horaires}</Text></View>}
+          <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{lieu}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
         </View>
 
-        {/* Infos formation */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
-          <View style={{ width: '50%', marginBottom: 3 }}><Text style={shared.label}>Formation :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formation?.intitule || '—'}</Text></View>
-          <View style={{ width: '50%', marginBottom: 3 }}><Text style={shared.label}>Formateur :</Text><Text style={shared.value}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
-          <View style={{ width: '50%', marginBottom: 3 }}><Text style={shared.label}>Dates :</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR')} au {new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR')}</Text></View>
-          <View style={{ width: '50%', marginBottom: 3 }}><Text style={shared.label}>Lieu :</Text><Text style={shared.value}>{lieu}</Text></View>
-          {(formation?.duree_heures || session.horaires) && (
-            <View style={{ width: '50%', marginBottom: 3 }}><Text style={shared.label}>Durée / horaires :</Text><Text style={shared.value}>{formation?.duree_heures ? `${formation.duree_heures} h` : ''} {session.horaires || ''}</Text></View>
-          )}
-        </View>
-
-        {/* Tableau d'émargement */}
-        <View style={{ borderWidth: 0.5, borderColor: '#d6d3d1' }}>
-          {/* Ligne jours */}
+        {/* Tableau d'émargement — moderne, coins arrondis, header propre */}
+        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+          {/* En-tête colonnes */}
           <View style={{ flexDirection: 'row', backgroundColor: BRAND_GREEN }}>
-            <View style={{ width: nameW, padding: 5, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#fff' }}>Stagiaire</Text>
+            <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>Stagiaire</Text>
             </View>
             {creneaux.map((c, i) => (
-              <View key={i} style={{ flex: 1, padding: 4, borderLeftWidth: 0.5, borderLeftColor: '#3a6f60', alignItems: 'center' }}>
-                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#fff' }}>{c.jour}</Text>
-                <Text style={{ fontSize: 6, color: '#c9e2d9' }}>{c.creneau}</Text>
+              <View key={i} style={{ width: creneauW, paddingVertical: 7, paddingHorizontal: 3, borderLeftWidth: 0.5, borderLeftColor: '#2a6555', alignItems: 'center' }}>
+                <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff' }}>{c.jour}</Text>
+                <Text style={{ fontSize: 6, color: '#c9e2d9', marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>{c.creneau}</Text>
               </View>
             ))}
           </View>
 
-          {/* Lignes stagiaires */}
-          {(apprenants.length > 0 ? apprenants : [null, null, null, null, null]).map((a, idx) => (
-            <View key={idx} style={{ flexDirection: 'row', minHeight: 32, borderTopWidth: 0.5, borderTopColor: '#e7e5e4', backgroundColor: idx % 2 ? '#fafaf9' : '#fff' }}>
-              <View style={{ width: nameW, padding: 5, justifyContent: 'center' }}>
-                <Text style={{ fontSize: 8, color: SURFACE_900 }}>{a ? `${a.prenom || ''} ${a.nom || ''}`.trim() : ''}</Text>
-                {a?.entreprise && <Text style={{ fontSize: 6, color: SURFACE_500 }}>{a.entreprise}</Text>}
+          {/* Lignes stagiaires (signature) */}
+          {(apprenants.length > 0 ? apprenants : Array(5).fill(null)).map((a, idx) => (
+            <View key={idx} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
+              <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
+                <Text style={{ fontSize: 8, color: SURFACE_900, fontFamily: 'Helvetica-Bold' }}>{a ? `${a.nom || ''}`.toUpperCase().trim() : ''}</Text>
+                <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 1 }}>{a?.prenom || ''}</Text>
+                {a?.entreprise && <Text style={{ fontSize: 6, color: SURFACE_500, marginTop: 2 }}>{a.entreprise}</Text>}
               </View>
               {creneaux.map((_, i) => (
-                <View key={i} style={{ flex: 1, borderLeftWidth: 0.5, borderLeftColor: '#e7e5e4' }} />
+                <View key={i} style={{ width: creneauW, borderLeftWidth: 0.5, borderLeftColor: SURFACE_200 }} />
               ))}
             </View>
           ))}
 
-          {/* Ligne formateur */}
-          <View style={{ flexDirection: 'row', minHeight: 32, borderTopWidth: 1, borderTopColor: BRAND_GREEN, backgroundColor: BRAND_LIGHT }}>
-            <View style={{ width: nameW, padding: 5, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN }}>Formateur</Text>
+          {/* Ligne formateur (mise en avant) */}
+          <View style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 1.2, borderTopColor: BRAND_GREEN, backgroundColor: BRAND_ULTRA_LIGHT }}>
+            <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6 }}>Formateur</Text>
+              {formateur && <Text style={{ fontSize: 7.5, color: SURFACE_700, marginTop: 3 }}>{formateur.prenom} {formateur.nom}</Text>}
             </View>
             {creneaux.map((_, i) => (
-              <View key={i} style={{ flex: 1, borderLeftWidth: 0.5, borderLeftColor: '#cfe3db' }} />
+              <View key={i} style={{ width: creneauW, borderLeftWidth: 0.5, borderLeftColor: '#cfe3db' }} />
             ))}
           </View>
         </View>
 
-        <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 10, lineHeight: 1.5 }}>
-          Chaque stagiaire et le formateur signent dans la case correspondant à la demi-journée de présence.
-          Cette feuille d'émargement atteste de la réalité de l'action de formation (art. L6353-1 du Code du travail).
+        {/* Mention légale */}
+        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 18, lineHeight: 1.55 }}>
+          Chaque stagiaire et le formateur signent dans la case correspondant à la demi-journée de présence. Cette feuille atteste de la réalité de l'action de formation (art. L.6353-1 du Code du travail) et fait foi des présences enregistrées.
         </Text>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 24 }}>
-          <View>
-            <Text style={{ fontSize: 8, color: SURFACE_700 }}>Cachet de l'organisme</Text>
-            <View style={{ height: 50, width: 180, borderWidth: 0.5, borderColor: '#d6d3d1', marginTop: 4 }} />
+        {/* Signatures finales — cartes neutres */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14 }}>
+          <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
+            <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Cachet de l'organisme</Text>
+            <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 6 }}>{org?.name || 'Lab Learning'}</Text>
+            <View style={{ height: 62, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
           </View>
-          <View>
-            <Text style={{ fontSize: 8, color: SURFACE_700 }}>Signature du formateur</Text>
-            <View style={{ height: 50, width: 180, borderWidth: 0.5, borderColor: '#d6d3d1', marginTop: 4 }} />
+          <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
+            <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Signature du formateur</Text>
+            {formateur && <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 6 }}>{formateur.prenom} {formateur.nom}</Text>}
+            <View style={{ height: 62, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
           </View>
         </View>
+
+        <PdfDocFooter numero={numero} org={org} />
       </Page>
     </Document>
   )
