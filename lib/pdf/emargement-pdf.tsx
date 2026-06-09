@@ -32,17 +32,15 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
   const lieu = session.lieu || session.adresse || [session.code_postal, session.ville].filter(Boolean).join(' ') || '—'
   const numero = session.reference || `SESS-${String(session.id || '').slice(0, 8)}`
 
-  // Auto-switch format selon la durée
-  const nbJours = Math.ceil(allCreneaux.length / 2)
-  const orientation: 'portrait' | 'landscape' = nbJours <= 3 ? 'portrait' : 'landscape'
-  const maxCreneauxParPage = nbJours <= 3 ? allCreneaux.length : 14  // ≤ 7 jours/page en paysage
+  // 1 page = 1 jour (2 créneaux : matin + après-midi). Toujours portrait.
+  // Lisibilité maximale : 2 colonnes signatures larges + carte récap complète sur chaque page.
   const pages: typeof allCreneaux[] = []
-  for (let i = 0; i < allCreneaux.length; i += maxCreneauxParPage) {
-    pages.push(allCreneaux.slice(i, i + maxCreneauxParPage))
+  for (let i = 0; i < allCreneaux.length; i += 2) {
+    pages.push(allCreneaux.slice(i, i + 2))
   }
 
-  // Largeur utile : portrait 505 pt / paysage 752 pt
-  const pageWidth = orientation === 'portrait' ? 505 : 752
+  // Portrait A4 : 595 - 90 = 505 pt utiles ; nom 140 → 365 / 2 = 182 pt par créneau
+  const pageWidth = 505
   const nameW = 140
 
   return (
@@ -50,21 +48,32 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
       {pages.map((creneaux, pageIdx) => {
       const creneauW = creneaux.length > 0 ? (pageWidth - nameW) / creneaux.length : 60
       const isMultiPage = pages.length > 1
+      // Date de cette page (= 1 jour) pour le bandeau
+      const startDateForPage = new Date(session.date_debut)
+      startDateForPage.setDate(startDateForPage.getDate() + pageIdx)
+      const jourLabel = startDateForPage.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       return (
-      <Page key={pageIdx} size="A4" orientation={orientation} style={shared.page}>
+      <Page key={pageIdx} size="A4" orientation="portrait" style={shared.page}>
         <PdfDocHeader
           docTitle="Feuille d'émargement"
           numero={numero}
-          date={isMultiPage ? `Éditée le ${today} · Page ${pageIdx + 1}/${pages.length}` : `Éditée le ${today}`}
+          date={isMultiPage ? `Jour ${pageIdx + 1} / ${pages.length}` : `Éditée le ${today}`}
           org={org}
         />
 
-        {/* Carte récap session */}
+        {/* Carte récap session — jour mis en avant si multi-jours */}
         <View style={shared.card}>
           <Text style={shared.sectionTitle}>Action de formation</Text>
           <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: SURFACE_900 }}>{formation?.intitule || '—'}</Text></View>
-          {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
-          <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} au {new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</Text></View>
+          {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
+          {isMultiPage ? (
+            <>
+              <View style={shared.row}><Text style={shared.label}>Période</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} au {new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</Text></View>
+              <View style={shared.row}><Text style={shared.label}>Jour de cette feuille</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN }}>{jourLabel}</Text></View>
+            </>
+          ) : (
+            <View style={shared.row}><Text style={shared.label}>Date</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: SURFACE_900 }}>{jourLabel}</Text></View>
+          )}
           {session.horaires && <View style={shared.row}><Text style={shared.label}>Horaires</Text><Text style={shared.value}>{session.horaires}</Text></View>}
           <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{lieu}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
