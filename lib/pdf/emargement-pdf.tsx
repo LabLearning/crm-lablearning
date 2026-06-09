@@ -27,22 +27,35 @@ function buildCreneaux(dateDebut: string, dateFin: string) {
 }
 
 export function EmargementPDF({ session, formation, org, formateur, apprenants }: EmargementProps) {
-  const creneaux = buildCreneaux(session.date_debut, session.date_fin)
+  const allCreneaux = buildCreneaux(session.date_debut, session.date_fin)
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const lieu = session.lieu || session.adresse || [session.code_postal, session.ville].filter(Boolean).join(' ') || '—'
   const numero = session.reference || `SESS-${String(session.id || '').slice(0, 8)}`
 
-  // Portrait A4 : 595 - 90 = 505 pt utiles
+  // Auto-switch format selon la durée
+  const nbJours = Math.ceil(allCreneaux.length / 2)
+  const orientation: 'portrait' | 'landscape' = nbJours <= 3 ? 'portrait' : 'landscape'
+  const maxCreneauxParPage = nbJours <= 3 ? allCreneaux.length : 14  // ≤ 7 jours/page en paysage
+  const pages: typeof allCreneaux[] = []
+  for (let i = 0; i < allCreneaux.length; i += maxCreneauxParPage) {
+    pages.push(allCreneaux.slice(i, i + maxCreneauxParPage))
+  }
+
+  // Largeur utile : portrait 505 pt / paysage 752 pt
+  const pageWidth = orientation === 'portrait' ? 505 : 752
   const nameW = 140
-  const creneauW = creneaux.length > 0 ? (505 - nameW) / creneaux.length : 60
 
   return (
     <Document>
-      <Page size="A4" orientation="portrait" style={shared.page}>
+      {pages.map((creneaux, pageIdx) => {
+      const creneauW = creneaux.length > 0 ? (pageWidth - nameW) / creneaux.length : 60
+      const isMultiPage = pages.length > 1
+      return (
+      <Page key={pageIdx} size="A4" orientation={orientation} style={shared.page}>
         <PdfDocHeader
           docTitle="Feuille d'émargement"
           numero={numero}
-          date={`Éditée le ${today}`}
+          date={isMultiPage ? `Éditée le ${today} · Page ${pageIdx + 1}/${pages.length}` : `Éditée le ${today}`}
           org={org}
         />
 
@@ -119,6 +132,8 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
 
         <PdfDocFooter numero={numero} org={org} />
       </Page>
+      )
+      })}
     </Document>
   )
 }
