@@ -11,8 +11,8 @@
 - **Base de donnees** : Supabase (PostgreSQL) — projet `igfmlzyxufgywxkneese` (West EU Paris)
 - **Auth** : Supabase Auth
 - **Styling** : Tailwind CSS + design system custom
-- **Deploiement** : Vercel (auto-deploy sur push `main`) — URL: `https://crm-formation-five.vercel.app`
-- **Repo** : `github.com/LabLearning/crm-formation`
+- **Deploiement** : Vercel (auto-deploy sur push `main`) — URL prod: `https://crm.lab-learning.fr`
+- **Repo** : `github.com/LabLearning/crm-lablearning`
 
 ## Identifiants Supabase
 - org_id: `ff747dfe-c034-44d8-98d7-e53892263fb5`

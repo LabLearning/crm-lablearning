@@ -38,7 +38,7 @@
 cd votre-dossier-projets
 
 # Installer les dépendances
-cd crm-formation
+cd crm-lablearning
 npm install
 
 # Créer le fichier de configuration
