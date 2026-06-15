@@ -156,7 +156,7 @@ export async function inviteUserAction(formData: FormData): Promise<ActionResult
   const inviteUrl = `${appUrl}/setup-account?token=${invitation.token}&uid=${authUserId}`
   const inviterName = `${session.user.first_name} ${session.user.last_name}`.trim() || session.user.email
 
-  await sendInvitationEmail({
+  const emailResult = await sendInvitationEmail({
     toEmail: parsed.data.email,
     role: parsed.data.role,
     orgName: session.organization.name,
@@ -171,10 +171,21 @@ export async function inviteUserAction(formData: FormData): Promise<ActionResult
     action: 'invite',
     entity_type: 'user',
     entity_id: invitation.id,
-    details: { email: parsed.data.email, role: parsed.data.role },
+    details: { email: parsed.data.email, role: parsed.data.role, email_sent: emailResult.success },
   })
 
   revalidatePath('/dashboard/users')
+
+  // Le compte/invitation existent même si l'email n'est pas parti : on remonte
+  // l'échec d'envoi en avertissement pour ne pas afficher un faux "envoyé".
+  if (!emailResult.success) {
+    return {
+      success: true,
+      data: { email: parsed.data.email },
+      warning: `Compte créé, mais l'email n'a pas pu être envoyé : ${emailResult.error || 'erreur Resend'}`,
+    }
+  }
+
   return { success: true, data: { email: parsed.data.email } }
 }
 
@@ -358,7 +369,9 @@ export async function resendInvitationAction(invitationId: string): Promise<Acti
   // Regenerate invite link
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 
-  const { data: linkData } = await supabase.auth.admin.generateLink({
+  // Garantit l'existence de l'identité auth (la crée si besoin) ; le lien
+  // renvoyé n'est pas utilisé, on construit notre propre URL setup-account.
+  await supabase.auth.admin.generateLink({
     type: 'invite',
     email: invitation.email,
     options: {
@@ -374,7 +387,7 @@ export async function resendInvitationAction(invitationId: string): Promise<Acti
 
   const inviterName = `${session.user.first_name} ${session.user.last_name}`.trim() || session.user.email
 
-  await sendInvitationEmail({
+  const emailResult = await sendInvitationEmail({
     toEmail: invitation.email,
     role: invitation.role,
     orgName: session.organization.name,
@@ -386,6 +399,11 @@ export async function resendInvitationAction(invitationId: string): Promise<Acti
   })
 
   revalidatePath('/dashboard/users')
+
+  if (!emailResult.success) {
+    return { success: false, error: emailResult.error || 'Erreur lors de l\'envoi de l\'email' }
+  }
+
   return { success: true }
 }
 

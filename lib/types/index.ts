@@ -129,6 +129,7 @@ export interface ActionResult<T = unknown> {
   data?: T
   error?: string
   errors?: Record<string, string[]>
+  warning?: string
 }
 
 // ---- UI ----

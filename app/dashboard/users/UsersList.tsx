@@ -65,7 +65,11 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
     const result = await inviteUserAction(formData)
 
     if (result.success) {
-      toast('success', `Invitation envoyée à ${(result.data as { email: string })?.email}`)
+      if (result.warning) {
+        toast('warning', result.warning)
+      } else {
+        toast('success', `Invitation envoyée à ${(result.data as { email: string })?.email}`)
+      }
       setInviteOpen(false)
       setInviteRole('gestionnaire')
       ;(e.target as HTMLFormElement).reset()

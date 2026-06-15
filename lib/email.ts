@@ -507,10 +507,37 @@ export async function sendInvitationEmail(params: {
     }),
   })
 
-  if (response.ok) return { success: true }
+  const body = await response.json().catch(() => ({} as any))
 
-  const err = await response.json()
-  return { success: false, error: err.message || 'Erreur Resend' }
+  if (!response.ok) {
+    return { success: false, error: body.message || `Erreur Resend (${response.status})` }
+  }
+
+  // Resend accepte l'envoi (200 + id) même si l'adresse est sur sa liste de
+  // suppression : l'email est alors marqué "suppressed" et jamais délivré.
+  // On relit le statut pour détecter ce cas et le remonter à l'appelant.
+  const emailId = body.id as string | undefined
+  if (emailId) {
+    try {
+      const check = await fetch(`https://api.resend.com/emails/${emailId}`, {
+        headers: { 'Authorization': `Bearer ${resendApiKey}` },
+      })
+      if (check.ok) {
+        const detail = await check.json().catch(() => ({} as any))
+        const event = detail.last_event as string | undefined
+        if (event && ['suppressed', 'bounced', 'failed'].includes(event)) {
+          const reason = event === 'suppressed'
+            ? `l'adresse ${params.toEmail} est sur la liste de suppression Resend (bounce ou plainte antérieurs). Retirez-la dans Resend → Suppressions avant de réessayer.`
+            : `l'adresse ${params.toEmail} a rejeté l'envoi (${event}).`
+          return { success: false, error: `Email non délivré : ${reason}` }
+        }
+      }
+    } catch {
+      // best-effort : si la relecture échoue, on considère l'envoi accepté
+    }
+  }
+
+  return { success: true }
 }
 
 type PortalType = 'apprenant' | 'formateur' | 'client' | 'apporteur' | 'partenaire'
