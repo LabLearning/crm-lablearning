@@ -3,9 +3,9 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { FileText, Download } from 'lucide-react'
 import { Badge } from '@/components/ui'
-import { DOCUMENT_TYPE_LABELS, SIGNATURE_STATUS_LABELS, SIGNATURE_STATUS_COLORS } from '@/lib/types/document'
+import { DOCUMENT_TYPE_LABELS } from '@/lib/types/document'
 import { formatDate } from '@/lib/utils'
-import type { SignatureStatus } from '@/lib/types/document'
+import { PendingSignatures } from './PendingSignatures'
 
 export default async function PortalDocumentsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
@@ -43,6 +43,7 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
     const { data: sigs } = await supabase
       .from('signatures')
       .select('id, signataire_nom, status, token, document:documents(nom, type)')
+      .eq('organization_id', context.organization.id)
       .eq('signataire_email', email)
       .eq('status', 'en_attente')
     pendingSignatures = (sigs || []) as any
@@ -55,26 +56,8 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
         <p className="text-surface-500 mt-1">Documents et attestations</p>
       </div>
 
-      {/* Pending signatures */}
-      {pendingSignatures.length > 0 && (
-        <div className="card p-6 border-warning-200 border">
-          <h2 className="text-base font-heading font-semibold text-warning-700 mb-3">Documents à signer</h2>
-          <div className="space-y-2">
-            {pendingSignatures.map((sig) => (
-              <div key={sig.id} className="flex items-center justify-between p-3 rounded-xl bg-warning-50">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-warning-600" />
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-surface-800 truncate">{sig.document?.nom || 'Document'}</div>
-                    <div className="text-xs text-surface-500">{(DOCUMENT_TYPE_LABELS as any)[sig.document?.type || 'autre']}</div>
-                  </div>
-                </div>
-                <Badge variant="warning">En attente de signature</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Pending signatures — signature dessinée en ligne */}
+      <PendingSignatures token={params.token} signatures={pendingSignatures} />
 
       {/* Documents list */}
       <div className="card overflow-hidden">
