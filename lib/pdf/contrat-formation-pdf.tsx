@@ -17,7 +17,7 @@ const euro = (n: number | null | undefined) =>
 function Article({ titre, children }: { titre: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: 12 }} wrap={false}>
-      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 4 }}>{titre}</Text>
+      <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 4 }}>{titre}</Text>
       {children}
     </View>
   )
@@ -62,21 +62,21 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
 
         <Article titre="Entre les soussignés">
           <P>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>{org?.name || 'Lab Learning'}</Text>, organisme de formation
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>{org?.name || 'Lab Learning'}</Text>, organisme de formation
             {org?.address ? `, ${org.address}` : ''}{org?.city ? ` ${org.postal_code || ''} ${org.city}` : ''},
             {org?.numero_da ? ` enregistré sous le numéro de déclaration d'activité ${org.numero_da}` : ''}
             {org?.siret ? `, SIRET ${org.siret}` : ''}, représenté par son représentant légal, ci-après « l'organisme »,
           </P>
           <P>et</P>
           <P>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>{stagiaire}</Text>, demeurant {adresseStagiaire}
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>{stagiaire}</Text>, demeurant {adresseStagiaire}
             {client?.email ? `, ${client.email}` : ''}{client?.telephone ? `, ${client.telephone}` : ''}, ci-après « le stagiaire ».
           </P>
         </Article>
 
         <Article titre="Article 1 — Objet et nature de la formation">
           <P>
-            L'organisme dispense au stagiaire l'action de formation suivante : <Text style={{ fontFamily: 'Helvetica-Bold' }}>{formation?.intitule || '—'}</Text>.
+            L'organisme dispense au stagiaire l'action de formation suivante : <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>{formation?.intitule || '—'}</Text>.
             Action de formation au sens de l'article L.6313-1 du Code du travail.
           </P>
           {formation?.objectifs_pedagogiques?.length ? (
@@ -119,7 +119,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
 
         <Article titre="Article 7 — Délai de rétractation">
           <P>
-            À compter de la date de signature du présent contrat, le stagiaire dispose d'un délai de <Text style={{ fontFamily: 'Helvetica-Bold' }}>10 jours</Text> pour se rétracter.
+            À compter de la date de signature du présent contrat, le stagiaire dispose d'un délai de <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>10 jours</Text> pour se rétracter.
             Il en informe l'organisme par lettre recommandée avec accusé de réception. Aucune somme ne peut être exigée ni retenue
             de ce fait (art. L.6353-5 du Code du travail).
           </P>
@@ -144,7 +144,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
         <View style={{ marginTop: 16, flexDirection: 'row', justifyContent: 'space-between' }} wrap={false}>
           <View style={{ width: 230 }}>
             <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org?.city || '___________'}, le {today}, en deux exemplaires.</Text>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginTop: 10 }}>Pour l'organisme</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginTop: 10 }}>Pour l'organisme</Text>
             <View style={{ height: 46, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 200, marginTop: 4 }} />
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
           </View>

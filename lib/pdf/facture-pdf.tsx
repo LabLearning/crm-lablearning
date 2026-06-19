@@ -64,7 +64,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Émetteur</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{ofNom}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{ofNom}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: '#57534e' }}>{org.address}</Text>}
             {(org?.postal_code || org?.city) && <Text style={{ fontSize: 8, color: '#57534e' }}>{org?.postal_code || ''} {org?.city || ''}</Text>}
             {org?.siret && <Text style={{ fontSize: 8, color: '#57534e', marginTop: 2 }}>SIRET : {org.siret}</Text>}
@@ -79,7 +79,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Facturer à</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{clientName}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.adresse}</Text>}
             {(client.code_postal || client.ville) && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.code_postal || ''} {client.ville || ''}</Text>}
             {client.siret && <Text style={{ fontSize: 8, color: '#57534e', marginTop: 2 }}>SIRET : {client.siret}</Text>}
@@ -91,7 +91,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         {/* Object */}
         {facture.objet && (
           <View style={{ ...shared.infoBox, marginBottom: 16 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', marginBottom: 2 }}>Objet</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 2 }}>Objet</Text>
             <Text style={shared.infoBoxText}>{facture.objet}</Text>
           </View>
         )}
@@ -202,7 +202,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         {/* OPCO / Subrogation */}
         {facture.subrogation && facture.financeur_nom && (
           <View style={{ ...shared.infoBox, marginTop: 8 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', marginBottom: 2 }}>Subrogation de paiement</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 2 }}>Subrogation de paiement</Text>
             <Text style={shared.infoBoxText}>
               Paiement attendu de {facture.financeur_nom} par subrogation de paiement.
             </Text>

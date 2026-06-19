@@ -101,14 +101,14 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
 
         <View style={{ marginTop: 30, flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ width: '45%' }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>L'Organisme</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>L'Organisme</Text>
             <Text style={{ fontSize: 8, color: SURFACE_500 }}>{org.name}</Text>
             <Text style={{ fontSize: 8, color: SURFACE_500 }}>Date : {today}</Text>
             <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', marginTop: 8 }} />
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
           </View>
           <View style={{ width: '45%' }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>L'Apporteur</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>L'Apporteur</Text>
             <Text style={{ fontSize: 8, color: SURFACE_500 }}>{apporteur.prenom} {apporteur.nom}</Text>
             <Text style={{ fontSize: 8, color: SURFACE_500 }}>Date : {today}</Text>
             <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', marginTop: 8 }} />

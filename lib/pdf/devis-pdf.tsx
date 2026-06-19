@@ -45,7 +45,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Émetteur</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{ofNom}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{ofNom}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: '#57534e' }}>{org.address}</Text>}
             {(org?.postal_code || org?.city) && <Text style={{ fontSize: 8, color: '#57534e' }}>{org?.postal_code || ''} {org?.city || ''}</Text>}
             {org?.siret && <Text style={{ fontSize: 8, color: '#57534e', marginTop: 2 }}>SIRET : {org.siret}</Text>}
@@ -54,7 +54,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Destinataire</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{clientName}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {devis.contact && (
               <Text style={{ fontSize: 8, color: '#78716C' }}>{devis.contact.prenom} {devis.contact.nom}</Text>
             )}
@@ -86,7 +86,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
         {/* Object */}
         {devis.objet && (
           <View style={{ ...shared.infoBox, marginBottom: 18 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', marginBottom: 2 }}>Objet</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 2 }}>Objet</Text>
             <Text style={shared.infoBoxText}>{devis.objet}</Text>
           </View>
         )}

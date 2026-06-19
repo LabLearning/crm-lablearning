@@ -17,7 +17,7 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
 
         {/* Titre formation */}
         <View style={{ marginBottom: 20, backgroundColor: BRAND_LIGHT, padding: 14, borderRadius: 4 }}>
-          <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN }}>{formation.intitule}</Text>
+          <Text style={{ fontSize: 14, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{formation.intitule}</Text>
           {formation.sous_titre && <Text style={{ fontSize: 9, color: SURFACE_700, marginTop: 4 }}>{formation.sous_titre}</Text>}
         </View>
 
@@ -74,13 +74,13 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
           <Text style={shared.sectionTitle}>Moyens pédagogiques et techniques</Text>
           {formation.methodes_pedagogiques && (
             <View style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: SURFACE_700, marginBottom: 3 }}>Méthodes pédagogiques :</Text>
+              <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_700, marginBottom: 3 }}>Méthodes pédagogiques :</Text>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>{formation.methodes_pedagogiques}</Text>
             </View>
           )}
           {formation.moyens_techniques && (
             <View style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: SURFACE_700, marginBottom: 3 }}>Moyens techniques :</Text>
+              <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_700, marginBottom: 3 }}>Moyens techniques :</Text>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>{formation.moyens_techniques}</Text>
             </View>
           )}

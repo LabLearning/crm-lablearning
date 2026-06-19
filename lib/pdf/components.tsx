@@ -3,6 +3,24 @@ import {
   Document, Page, View, Text, Image, StyleSheet, Font,
 } from '@react-pdf/renderer'
 
+// ─── Polices plateforme (Satoshi titres + General Sans corps, via Fontshare) ──
+// Mêmes familles que l'UI (cf. app/globals.css) pour des PDF cohérents.
+const CDN = 'https://cdn.fontshare.com/wf'
+Font.register({
+  family: 'Satoshi',
+  fonts: [
+    { src: `${CDN}/TTX2Z3BF3P6Y5BQT3IV2VNOK6FL22KUT/7QYRJOI3JIMYHGY6CH7SOIFRQLZOLNJ6/KFIAZD4RUMEZIYV6FQ3T3GP5PDBDB6JY.ttf`, fontWeight: 400 },
+    { src: `${CDN}/P2LQKHE6KA6ZP4AAGN72KDWMHH6ZH3TA/ZC32TK2P7FPS5GFTL46EU6KQJA24ZYDB/7AHDUZ4A7LFLVFUIFSARGIWCRQJHISQP.ttf`, fontWeight: 500 },
+    { src: `${CDN}/LAFFD4SDUCDVQEXFPDC7C53EQ4ZELWQI/PXCT3G6LO6ICM5I3NTYENYPWJAECAWDD/GHM6WVH6MILNYOOCXHXB5GTSGNTMGXZR.ttf`, fontWeight: 700 },
+    { src: `${CDN}/NHPGVFYUXYXE33DZ75OIT4JFGHITX5PE/PSUTMASCDJTVPERDYJZPN23BVUFUCQIF/J64QX5IPOHK56I2KYUNBQ5M2XWZEYKYX.ttf`, fontWeight: 900 },
+  ],
+})
+// NB : on utilise Satoshi pour titres ET corps. Le webfont TTF de General Sans
+// (Fontshare) est mal décodé par react-pdf (glyphes brouillés) ; Satoshi rend
+// parfaitement et reste une police de la plateforme → PDF nets et cohérents.
+// Évite les coupures de mots disgracieuses dans les PDF
+Font.registerHyphenationCallback((word) => [word])
+
 // ─── Branding ────────────────────────────────────────────────────────────────
 export const BRAND_GREEN = '#195144'
 export const BRAND_GREEN_DARK = '#103a30'
@@ -19,7 +37,7 @@ export const SURFACE_900 = '#1C1917'
 // ─── Shared Styles ────────────────────────────────────────────────────────────
 export const shared = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Satoshi',
     fontSize: 9,
     color: SURFACE_900,
     paddingTop: 50,
@@ -38,7 +56,7 @@ export const shared = StyleSheet.create({
   },
   orgName: {
     fontSize: 17,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Satoshi', fontWeight: 700,
     color: BRAND_GREEN,
     letterSpacing: -0.3,
   },
@@ -49,7 +67,7 @@ export const shared = StyleSheet.create({
   },
   qualiopiTag: {
     fontSize: 7,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Satoshi', fontWeight: 700,
     color: BRAND_GREEN,
     backgroundColor: BRAND_LIGHT,
     paddingHorizontal: 8,
@@ -60,7 +78,7 @@ export const shared = StyleSheet.create({
   },
   docTitle: {
     fontSize: 22,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Satoshi', fontWeight: 700,
     color: SURFACE_900,
     textAlign: 'right',
     letterSpacing: -0.4,
@@ -75,13 +93,13 @@ export const shared = StyleSheet.create({
   section: {
     marginBottom: 18,
   },
+  // Titre de section moderne : Satoshi bold, casse normale, sans lettres espacées
   sectionTitle: {
-    fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
-    color: BRAND_GREEN,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 10,
+    fontSize: 10.5,
+    fontFamily: 'Satoshi', fontWeight: 700,
+    color: SURFACE_900,
+    letterSpacing: -0.2,
+    marginBottom: 9,
   },
   row: {
     flexDirection: 'row',
@@ -111,11 +129,10 @@ export const shared = StyleSheet.create({
     paddingHorizontal: 10,
   },
   tableHeaderCell: {
-    fontSize: 7.5,
-    fontFamily: 'Helvetica-Bold',
+    fontSize: 8,
+    fontFamily: 'Satoshi', fontWeight: 600,
     color: '#ffffff',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.1,
   },
   tableRow: {
     flexDirection: 'row',
@@ -156,7 +173,7 @@ export const shared = StyleSheet.create({
   },
   totalTTCLabel: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Satoshi', fontWeight: 700,
     color: BRAND_GREEN,
     width: 120,
     textAlign: 'right',
@@ -164,7 +181,7 @@ export const shared = StyleSheet.create({
   },
   totalTTCValue: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Satoshi', fontWeight: 700,
     color: BRAND_GREEN,
     width: 80,
     textAlign: 'right',
@@ -211,7 +228,7 @@ export const shared = StyleSheet.create({
   // Nouveau : pill / badge pour statuts
   pill: {
     fontSize: 7,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Satoshi', fontWeight: 700,
     backgroundColor: BRAND_LIGHT,
     color: BRAND_GREEN,
     paddingHorizontal: 8,

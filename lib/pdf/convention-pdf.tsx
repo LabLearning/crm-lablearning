@@ -186,7 +186,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
 
         {/* Intro légale */}
         <View style={{ ...shared.infoBox, marginBottom: 18 }}>
-          <Text style={{ ...shared.infoBoxText, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>
+          <Text style={{ ...shared.infoBoxText, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>
             Convention de formation professionnelle (articles L. 6353-2 et R. 6353-1 du Code du travail)
           </Text>
           <Text style={shared.infoBoxText}>
@@ -199,7 +199,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Organisme de formation</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{org?.legal_name || ofName}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{org?.legal_name || ofName}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{org.address}{org.postal_code || org.city ? `, ${org.postal_code || ''} ${org.city || ''}` : ''}</Text>}
             {org?.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{org.siret}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>N° déclaration</Text><Text style={shared.value}>{org?.numero_da || '—'}</Text></View>
@@ -208,7 +208,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </View>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Bénéficiaire / Employeur</Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 }}>{clientName}</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{client.adresse}{clientCpVille ? `, ${clientCpVille}` : ''}</Text>}
             {client.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{client.siret}</Text></View>}
             {clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}</Text></View>}
@@ -219,7 +219,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Objet et durée */}
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Objet, nature et durée de la formation</Text>
-          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formationTitle}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formationTitle}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Nature</Text><Text style={shared.value}>Action de formation (article L. 6313-1 CT)</Text></View>
           <View style={shared.row}><Text style={shared.label}>Date(s)</Text><Text style={shared.value}>{datesSession}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{dureeHeures ? `${dureeHeures} heures` : '—'} sur {nbJours} jour{nbJours > 1 ? 's' : ''}</Text></View>
@@ -276,10 +276,10 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             </>
           ) : null}
           <View style={{ ...shared.row, marginTop: 4 }}>
-            <Text style={{ ...shared.label, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN }}>{hasTva ? 'Montant TTC' : 'Coût total'}</Text>
-            <Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN }}>{fmt(cout)} €</Text>
+            <Text style={{ ...shared.label, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{hasTva ? 'Montant TTC' : 'Coût total'}</Text>
+            <Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{fmt(cout)} €</Text>
           </View>
-          <Text style={{ fontSize: 8, color: SURFACE_500, fontStyle: 'italic', marginTop: 4 }}>
+          <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 4 }}>
             Soit {eurosEnLettres(cout)}.
           </Text>
         </View>
@@ -323,15 +323,15 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Clauses réglementaires</Text>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginBottom: 6 }}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Non-réalisation — </Text>
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Non-réalisation — </Text>
             En application de l'article L. 6354-1 du Code du travail, faute de réalisation totale ou partielle de la prestation, l'organisme prestataire doit rembourser au cocontractant les sommes indûment perçues.
           </Text>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginBottom: 6 }}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Dédommagement — </Text>
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Dédommagement — </Text>
             En cas de renoncement par le bénéficiaire au moins 10 jours avant le démarrage, il s'engage au versement de 30 % du prix à titre de dédit ; à moins de 10 jours, 100 % du prix. Ces sommes ne sont pas imputables sur l'obligation de participation à la formation professionnelle continue et ne peuvent faire l'objet d'une prise en charge par l'OPCO. En cas de renoncement de l'organisme à moins de 10 jours, celui-ci s'engage au remboursement de la formation.
           </Text>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
-            <Text style={{ fontFamily: 'Helvetica-Bold' }}>Litiges — </Text>
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Litiges — </Text>
             À défaut de règlement amiable (le cas échéant via un conciliateur désigné par les parties), le tribunal de {ville} sera seul compétent.
           </Text>
         </View>
@@ -343,7 +343,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 8 }}>{clientRep ? `${clientRep} — ` : ''}Lu et approuvé, bon pour accord</Text>
             {convention.signature_client_nom ? (
               <View style={{ backgroundColor: BRAND_LIGHT, padding: 8, borderRadius: 4 }}>
-                <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Helvetica-Bold' }}>Signé électroniquement</Text>
+                <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
                 <Text style={{ fontSize: 8, color: SURFACE_500 }}>{convention.signature_client_nom}</Text>
                 <Text style={{ fontSize: 7, color: '#a8a29e' }}>Le {fmtDate(convention.signature_client_date)}</Text>
               </View>
@@ -356,7 +356,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 8 }}>{repOfLine || `${ofName} — Représentant légal`}</Text>
             {convention.signature_of_date ? (
               <View style={{ backgroundColor: BRAND_LIGHT, padding: 8, borderRadius: 4 }}>
-                <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Helvetica-Bold' }}>Signé électroniquement</Text>
+                <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
                 <Text style={{ fontSize: 8, color: SURFACE_500 }}>{ofName}</Text>
                 <Text style={{ fontSize: 7, color: '#a8a29e' }}>Le {fmtDate(convention.signature_of_date)}</Text>
               </View>

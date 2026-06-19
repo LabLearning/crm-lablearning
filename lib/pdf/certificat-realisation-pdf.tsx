@@ -45,11 +45,11 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
 
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Caractéristiques de l'action</Text>
-          <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formation.intitule}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formation.intitule}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Nature :</Text><Text style={shared.value}>Action de formation</Text></View>
           <View style={shared.row}><Text style={shared.label}>Modalité :</Text><Text style={shared.value}>{formation.modalite === 'distanciel' ? 'À distance' : formation.modalite === 'mixte' ? 'Mixte (présentiel + à distance)' : 'Présentiel'}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Dates :</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR')} au {new Date(session.date_fin).toLocaleDateString('fr-FR')}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Nombre total d'heures :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{heuresRealisees} heures réalisées{duree && heuresRealisees < duree ? ` (sur ${duree} h prévues)` : ''}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Nombre total d'heures :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{heuresRealisees} heures réalisées{duree && heuresRealisees < duree ? ` (sur ${duree} h prévues)` : ''}</Text></View>
           {session.lieu && <View style={shared.row}><Text style={shared.label}>Lieu :</Text><Text style={shared.value}>{session.lieu}</Text></View>}
         </View>
 
@@ -68,7 +68,7 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
         <View style={{ marginTop: 30 }}>
           <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}, pour faire valoir ce que de droit.</Text>
           <View style={{ marginTop: 12 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name} — {representant}</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name} — {representant}</Text>
             <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 220 }} />
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet du dispensateur</Text>
           </View>

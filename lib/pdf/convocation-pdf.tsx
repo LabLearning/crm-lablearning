@@ -29,7 +29,7 @@ export function ConvocationPDF({ apprenant, session, formation, org, formateur }
         <PdfDocHeader docTitle="Convocation" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
-          <Text style={{ fontSize: 10, color: SURFACE_900, fontFamily: 'Helvetica-Bold' }}>
+          <Text style={{ fontSize: 10, color: SURFACE_900, fontFamily: 'Satoshi', fontWeight: 700 }}>
             {[civilite, apprenant.prenom, apprenant.nom].filter(Boolean).join(' ')}
           </Text>
           {apprenant.entreprise && <Text style={{ fontSize: 9, color: SURFACE_500, marginTop: 2 }}>{apprenant.entreprise}</Text>}
@@ -47,7 +47,7 @@ export function ConvocationPDF({ apprenant, session, formation, org, formateur }
 
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Détails de la formation</Text>
-          <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formation?.intitule || '—'}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formation?.intitule || '—'}</Text></View>
           {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée :</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
           <View style={shared.row}><Text style={shared.label}>Début :</Text><Text style={shared.value}>{dDebut}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Fin :</Text><Text style={shared.value}>{dFin}</Text></View>
@@ -83,7 +83,7 @@ export function ConvocationPDF({ apprenant, session, formation, org, formateur }
         <View style={{ marginTop: 24 }}>
           <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org?.city || org?.ville || '___________'}, le {today}</Text>
           <View style={{ marginTop: 12 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>Pour {org?.name || 'Lab Learning'}</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>Pour {org?.name || 'Lab Learning'}</Text>
             <View style={{ height: 46, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 200 }} />
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
           </View>

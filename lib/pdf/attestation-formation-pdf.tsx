@@ -26,7 +26,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
         </View>
 
         <View style={shared.infoBox}>
-          <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: SURFACE_900, marginBottom: 4 }}>
+          <Text style={{ fontSize: 10, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, marginBottom: 4 }}>
             {apprenant.prenom} {apprenant.nom}
           </Text>
           {apprenant.entreprise && <Text style={shared.infoBoxText}>Entreprise : {apprenant.entreprise}</Text>}
@@ -40,7 +40,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
 
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Formation suivie</Text>
-          <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formation.intitule}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formation.intitule}</Text></View>
           {formation.reference && <View style={shared.row}><Text style={shared.label}>Référence :</Text><Text style={shared.value}>{formation.reference}</Text></View>}
           <View style={shared.row}><Text style={shared.label}>Durée :</Text><Text style={shared.value}>{formation.duree_heures || 0} heures</Text></View>
           <View style={shared.row}><Text style={shared.label}>Dates :</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR')} au {new Date(session.date_fin).toLocaleDateString('fr-FR')}</Text></View>
@@ -90,7 +90,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
         <View style={{ marginTop: 30 }}>
           <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}</Text>
           <View style={{ marginTop: 15 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name}</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name}</Text>
             <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 200 }} />
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
           </View>

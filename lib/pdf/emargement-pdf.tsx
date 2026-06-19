@@ -64,19 +64,19 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
         {/* Carte récap session — jour mis en avant si multi-jours */}
         <View style={shared.card}>
           <Text style={shared.sectionTitle}>Action de formation</Text>
-          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: SURFACE_900 }}>{formation?.intitule || '—'}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{formation?.intitule || '—'}</Text></View>
           {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
           {isMultiPage ? (
             <>
               <View style={shared.row}><Text style={shared.label}>Période</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} au {new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</Text></View>
-              <View style={shared.row}><Text style={shared.label}>Jour de cette feuille</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN }}>{jourLabel}</Text></View>
+              <View style={shared.row}><Text style={shared.label}>Jour de cette feuille</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{jourLabel}</Text></View>
             </>
           ) : (
-            <View style={shared.row}><Text style={shared.label}>Date</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold', color: SURFACE_900 }}>{jourLabel}</Text></View>
+            <View style={shared.row}><Text style={shared.label}>Date</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{jourLabel}</Text></View>
           )}
           {session.horaires && <View style={shared.row}><Text style={shared.label}>Horaires</Text><Text style={shared.value}>{session.horaires}</Text></View>}
           <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{lieu}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={{ ...shared.value, fontFamily: 'Helvetica-Bold' }}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
         </View>
 
         {/* Tableau d'émargement — moderne, coins arrondis, header propre */}
@@ -84,11 +84,11 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
           {/* En-tête colonnes */}
           <View style={{ flexDirection: 'row', backgroundColor: BRAND_GREEN }}>
             <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>Stagiaire</Text>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>Stagiaire</Text>
             </View>
             {creneaux.map((c, i) => (
               <View key={i} style={{ width: creneauW, paddingVertical: 7, paddingHorizontal: 3, borderLeftWidth: 0.5, borderLeftColor: '#2a6555', alignItems: 'center' }}>
-                <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff' }}>{c.jour}</Text>
+                <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#fff' }}>{c.jour}</Text>
                 <Text style={{ fontSize: 6, color: '#c9e2d9', marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>{c.creneau}</Text>
               </View>
             ))}
@@ -98,7 +98,7 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
           {(apprenants.length > 0 ? apprenants : Array(5).fill(null)).map((a, idx) => (
             <View key={idx} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
               <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
-                <Text style={{ fontSize: 8, color: SURFACE_900, fontFamily: 'Helvetica-Bold' }}>{a ? `${a.nom || ''}`.toUpperCase().trim() : ''}</Text>
+                <Text style={{ fontSize: 8, color: SURFACE_900, fontFamily: 'Satoshi', fontWeight: 700 }}>{a ? `${a.nom || ''}`.toUpperCase().trim() : ''}</Text>
                 <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 1 }}>{a?.prenom || ''}</Text>
                 {a?.entreprise && <Text style={{ fontSize: 6, color: SURFACE_500, marginTop: 2 }}>{a.entreprise}</Text>}
               </View>
@@ -111,7 +111,7 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
           {/* Ligne formateur (mise en avant) */}
           <View style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 1.2, borderTopColor: BRAND_GREEN, backgroundColor: BRAND_ULTRA_LIGHT }}>
             <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6 }}>Formateur</Text>
+              <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6 }}>Formateur</Text>
               {formateur && <Text style={{ fontSize: 7.5, color: SURFACE_700, marginTop: 3 }}>{formateur.prenom} {formateur.nom}</Text>}
             </View>
             {creneaux.map((_, i) => (
@@ -128,12 +128,12 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
         {/* Signatures finales — cartes neutres */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14 }}>
           <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
-            <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Cachet de l'organisme</Text>
+            <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Cachet de l'organisme</Text>
             <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 6 }}>{org?.name || 'Lab Learning'}</Text>
             <View style={{ height: 62, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
           </View>
           <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
-            <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Signature du formateur</Text>
+            <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Signature du formateur</Text>
             {formateur && <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 6 }}>{formateur.prenom} {formateur.nom}</Text>}
             <View style={{ height: 62, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
           </View>
