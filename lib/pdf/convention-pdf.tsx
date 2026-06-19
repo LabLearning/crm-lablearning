@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -144,6 +144,33 @@ function InfoRow({ label, value, bold }: { label: string; value: string; bold?: 
     <View style={{ flexDirection: 'row', marginBottom: 4 }}>
       <Text style={{ fontSize: 8.5, color: SURFACE_500, width: 130 }}>{label}</Text>
       <Text style={{ fontSize: 8.5, color: SURFACE_900, flex: 1, lineHeight: 1.45, fontFamily: 'Satoshi', fontWeight: bold ? 700 : 400 }}>{value}</Text>
+    </View>
+  )
+}
+
+// Carte de signature (bénéficiaire / organisme)
+function SignatureCard({ title, name, mention, signed, signedBy, signedDate }: {
+  title: string; name: string; mention: string
+  signed?: boolean; signedBy?: string | null; signedDate?: string | null
+}) {
+  return (
+    <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, overflow: 'hidden' }}>
+      <View style={{ backgroundColor: SURFACE_50, paddingVertical: 6, paddingHorizontal: 10, borderBottomWidth: 0.5, borderBottomColor: SURFACE_200 }}>
+        <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{title}</Text>
+      </View>
+      <View style={{ padding: 10, minHeight: 96 }}>
+        <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{name}</Text>
+        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 8 }}>{mention}</Text>
+        {signed ? (
+          <View style={{ backgroundColor: BRAND_LIGHT, padding: 7, borderRadius: 4 }}>
+            <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
+            {signedBy ? <Text style={{ fontSize: 7.5, color: SURFACE_700 }}>{signedBy}</Text> : null}
+            {signedDate ? <Text style={{ fontSize: 7, color: SURFACE_400 }}>Le {signedDate}</Text> : null}
+          </View>
+        ) : (
+          <Text style={{ fontSize: 7, color: SURFACE_400 }}>Signature et cachet :</Text>
+        )}
+      </View>
     </View>
   )
 }
@@ -430,33 +457,23 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         </Text>
 
         {/* Signatures */}
-        <View style={{ flexDirection: 'row', gap: 20 }} wrap={false}>
-          <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Signature du bénéficiaire</Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 8 }}>{clientRep ? `${clientRep} — ` : ''}Lu et approuvé, bon pour accord</Text>
-            {convention.signature_client_nom ? (
-              <View style={{ backgroundColor: BRAND_LIGHT, padding: 8, borderRadius: 4 }}>
-                <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
-                <Text style={{ fontSize: 8, color: SURFACE_500 }}>{convention.signature_client_nom}</Text>
-                <Text style={{ fontSize: 7, color: '#a8a29e' }}>Le {fmtDate(convention.signature_client_date)}</Text>
-              </View>
-            ) : (
-              <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1' }} />
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Signature de l'organisme</Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 8 }}>{repOfLine || `${ofName} — Représentant légal`}</Text>
-            {convention.signature_of_date ? (
-              <View style={{ backgroundColor: BRAND_LIGHT, padding: 8, borderRadius: 4 }}>
-                <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
-                <Text style={{ fontSize: 8, color: SURFACE_500 }}>{ofName}</Text>
-                <Text style={{ fontSize: 7, color: '#a8a29e' }}>Le {fmtDate(convention.signature_of_date)}</Text>
-              </View>
-            ) : (
-              <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1' }} />
-            )}
-          </View>
+        <View style={{ flexDirection: 'row', gap: 16 }} wrap={false}>
+          <SignatureCard
+            title={`Pour le bénéficiaire — ${clientName}`}
+            name={clientRep || '—'}
+            mention="Lu et approuvé, bon pour accord"
+            signed={!!convention.signature_client_nom}
+            signedBy={convention.signature_client_nom}
+            signedDate={convention.signature_client_date ? fmtDate(convention.signature_client_date) : null}
+          />
+          <SignatureCard
+            title={`Pour l'organisme — ${ofName}`}
+            name={repOfLine || `${ofName} — Représentant légal`}
+            mention="Représentant légal"
+            signed={!!convention.signature_of_date}
+            signedBy={ofName}
+            signedDate={convention.signature_of_date ? fmtDate(convention.signature_of_date) : null}
+          />
         </View>
 
         <PdfDocFooter numero={convention.numero} org={org} />
