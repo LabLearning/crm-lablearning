@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -128,6 +128,26 @@ function Bullets({ items }: { items: string[] }) {
   )
 }
 
+// Ligne montant : libellé à gauche, montant aligné à droite (bloc largeur fixe)
+function MoneyRow({ label, amount, bold, top }: { label: string; amount: string; bold?: boolean; top?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3, marginTop: top ? 4 : 0, paddingTop: top ? 4 : 0, borderTopWidth: top ? 0.5 : 0, borderTopColor: SURFACE_200 }}>
+      <Text style={{ fontSize: bold ? 9 : 8.5, color: bold ? BRAND_GREEN : SURFACE_500, fontFamily: 'Satoshi', fontWeight: bold ? 700 : 400 }}>{label}</Text>
+      <Text style={{ fontSize: bold ? 10.5 : 9, color: bold ? BRAND_GREEN : SURFACE_900, fontFamily: 'Satoshi', fontWeight: bold ? 700 : 500 }}>{amount}</Text>
+    </View>
+  )
+}
+
+// Ligne libellé / valeur alignée (libellé largeur fixe, valeur qui prend le reste)
+function InfoRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+      <Text style={{ fontSize: 8.5, color: SURFACE_500, width: 130 }}>{label}</Text>
+      <Text style={{ fontSize: 8.5, color: SURFACE_900, flex: 1, lineHeight: 1.45, fontFamily: 'Satoshi', fontWeight: bold ? 700 : 400 }}>{value}</Text>
+    </View>
+  )
+}
+
 // ─── Composant principal ─────────────────────────────────────────────────────
 
 export function ConventionPDF({ convention, org }: { convention: any; org?: any }) {
@@ -199,6 +219,15 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   const publicVise = (typeof formation.public_vise === 'string' && formation.public_vise.trim()) ? formation.public_vise.trim() : (toList(formation.public_vise)?.join(' ') || null)
   const programme = toList(formation.programme_detaille)
 
+  // Texte d'intro (construit en JS pour garantir les espaces)
+  const qualiopiPhrase = org?.is_qualiopi !== false
+    ? ` Organisme de formation certifié Qualiopi${org?.qualiopi_certificat_numero ? ` (certificat n° ${org.qualiopi_certificat_numero})` : ''}.`
+    : ''
+  const introText = `Établie entre l'organisme de formation et le bénéficiaire désignés ci-dessous.${qualiopiPhrase}`
+
+  // « Fait à … le … » avant signatures
+  const dateFait = convention.signature_of_date || convention.signature_client_date || dateFin || convention.date_emission
+
   return (
     <Document title={`Convention ${convention.numero || ''}`} author={ofName}>
       <Page size="A4" style={shared.page}>
@@ -215,10 +244,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           <Text style={{ ...shared.infoBoxText, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>
             Convention de formation professionnelle (articles L. 6353-2 et R. 6353-1 du Code du travail)
           </Text>
-          <Text style={shared.infoBoxText}>
-            Établie entre l'organisme de formation et le bénéficiaire désignés ci-dessous.
-            {org?.is_qualiopi !== false ? ` Organisme de formation certifié Qualiopi${org?.qualiopi_certificat_numero ? ` (certificat n° ${org.qualiopi_certificat_numero})` : ''}.` : ''}
-          </Text>
+          <Text style={shared.infoBoxText}>{introText}</Text>
         </View>
 
         {/* Parties */}
@@ -245,12 +271,12 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Objet et durée */}
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Objet, nature et durée de la formation</Text>
-          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formationTitle}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Nature</Text><Text style={shared.value}>Action de formation (article L. 6313-1 CT)</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Date(s)</Text><Text style={shared.value}>{datesSession}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{dureeHeures ? `${dureeHeures} heures` : '—'} sur {nbJours} jour{nbJours > 1 ? 's' : ''}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Mode d'organisation</Text><Text style={shared.value}>{modalite}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Délai d'accès</Text><Text style={shared.value}>{delaiAcces}</Text></View>
+          <InfoRow label="Intitulé" value={formationTitle} bold />
+          <InfoRow label="Nature" value="Action de formation (article L. 6313-1 CT)" />
+          <InfoRow label="Date(s)" value={datesSession} />
+          <InfoRow label="Durée totale" value={`${dureeHeures ? `${dureeHeures} heures` : '—'} sur ${nbJours} jour${nbJours > 1 ? 's' : ''}`} />
+          <InfoRow label="Mode d'organisation" value={modalite} />
+          <InfoRow label="Délai d'accès" value={delaiAcces} />
         </View>
 
         {/* Planning */}
@@ -296,18 +322,13 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Conditions financières */}
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Prix de la formation</Text>
-          <View style={shared.row}><Text style={shared.label}>Frais pédagogiques</Text><Text style={shared.value}>{fmt(convention.montant_ht)} €{hasTva ? ' HT' : ''}</Text></View>
-          <View style={shared.row}><Text style={shared.label}>Frais refacturés</Text><Text style={shared.value}>0,00 €</Text></View>
-          {hasTva && (
-            <View style={shared.row}><Text style={shared.label}>TVA ({convention.taux_tva}%)</Text><Text style={shared.value}>{fmt(Number(convention.montant_ttc) - Number(convention.montant_ht))} €</Text></View>
-          )}
-          <View style={{ ...shared.row, marginTop: 4 }}>
-            <Text style={{ ...shared.label, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{hasTva ? 'Total TTC' : 'Coût total'}</Text>
-            <Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{fmt(cout)} €</Text>
+          <View style={{ width: 260 }}>
+            <MoneyRow label={`Frais pédagogiques${hasTva ? ' (HT)' : ''}`} amount={`${fmt(convention.montant_ht)} €`} />
+            <MoneyRow label="Frais refacturés" amount="0,00 €" />
+            {hasTva && <MoneyRow label={`TVA (${convention.taux_tva} %)`} amount={`${fmt(Number(convention.montant_ttc) - Number(convention.montant_ht))} €`} />}
+            <MoneyRow label={hasTva ? 'Total TTC' : 'Coût total'} amount={`${fmt(cout)} €`} bold top />
           </View>
-          <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 4 }}>
-            Soit {eurosEnLettres(cout)}.
-          </Text>
+          <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 6 }}>Soit {eurosEnLettres(cout)}.</Text>
           {!hasTva && (
             <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 3 }}>
               TVA non applicable — article 261-4-4°a du CGI (action de formation professionnelle continue).
@@ -319,9 +340,11 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {(financeurLine || numeroPEC) && (
           <View style={shared.section}>
             <Text style={shared.sectionTitle}>Financement</Text>
-            {financeurLine && <View style={shared.row}><Text style={shared.label}>Financeur</Text><Text style={shared.value}>{financeurLine}</Text></View>}
-            {numeroPEC && <View style={shared.row}><Text style={shared.label}>N° de dossier</Text><Text style={shared.value}>{numeroPEC}</Text></View>}
-            {dossier.montant_prise_en_charge != null && <View style={shared.row}><Text style={shared.label}>Prise en charge</Text><Text style={shared.value}>{fmt(dossier.montant_prise_en_charge)} €</Text></View>}
+            {financeurLine && <InfoRow label="Financeur" value={financeurLine} />}
+            {numeroPEC && <InfoRow label="N° de dossier" value={numeroPEC} />}
+            {dossier.montant_prise_en_charge != null && (
+              <View style={{ width: 260 }}><MoneyRow label="Prise en charge" amount={`${fmt(dossier.montant_prise_en_charge)} €`} /></View>
+            )}
           </View>
         )}
 
@@ -329,8 +352,8 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {(publicVise || prerequis) && (
           <View style={shared.section}>
             <Text style={shared.sectionTitle}>Public visé et prérequis</Text>
-            {publicVise && <View style={shared.row}><Text style={shared.label}>Public visé</Text><Text style={shared.value}>{publicVise}</Text></View>}
-            {prerequis && <View style={shared.row}><Text style={shared.label}>Prérequis</Text><Text style={shared.value}>{prerequis}</Text></View>}
+            {publicVise && <InfoRow label="Public visé" value={publicVise} />}
+            {prerequis && <InfoRow label="Prérequis" value={prerequis} />}
           </View>
         )}
 
@@ -401,8 +424,13 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </Text>
         </View>
 
+        {/* Lieu et date de signature */}
+        <Text style={{ fontSize: 9, color: SURFACE_700, marginTop: 6, marginBottom: 12 }}>
+          Fait à {ville}, le {fmtLongDate(dateFait)}, en deux exemplaires originaux.
+        </Text>
+
         {/* Signatures */}
-        <View style={{ flexDirection: 'row', gap: 20, marginTop: 10 }} wrap={false}>
+        <View style={{ flexDirection: 'row', gap: 20 }} wrap={false}>
           <View style={{ flex: 1 }}>
             <Text style={shared.sectionTitle}>Signature du bénéficiaire</Text>
             <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 8 }}>{clientRep ? `${clientRep} — ` : ''}Lu et approuvé, bon pour accord</Text>
