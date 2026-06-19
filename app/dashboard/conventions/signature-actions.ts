@@ -131,15 +131,14 @@ export async function signConventionPublicAction(
   // Email avec convention signée (copie PDF) → client + équipe (si signature complète des deux côtés)
   if (newStatus === 'signee_complete') {
     try {
-      const { data: convFull } = await supabase
-        .from('conventions')
-        .select('*, client:clients(raison_sociale, email), formation:formations(intitule)')
-        .eq('id', conv.id).single()
-      const cli: any = (convFull as any)?.client
+      const { loadConventionForPdf } = await import('@/lib/pdf/convention-data')
+      const loaded = await loadConventionForPdf(supabase, conv.id)
+      const convFull: any = loaded?.convention
+      const orgFull: any = loaded?.org
+      const cli: any = convFull?.client
       const toEmails: string[] = []
       if (cli?.email) toEmails.push(cli.email)
       // copie OF (créateur ou email contact)
-      const { data: orgFull } = await supabase.from('organizations').select('*').eq('id', conv.organization_id).single()
       const orgEmail = (orgFull as any)?.email_contact || orgFull?.email
       if (orgEmail && !toEmails.includes(orgEmail)) toEmails.push(orgEmail)
 
