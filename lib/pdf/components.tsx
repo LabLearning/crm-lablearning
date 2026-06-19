@@ -268,7 +268,7 @@ export function PdfDocHeader({
         {org?.numero_da && <Text style={shared.orgTagline}>N° déclaration d'activité : {org.numero_da}</Text>}
         {isQualiopi && <Text style={shared.qualiopiTag}>Certifié Qualiopi</Text>}
       </View>
-      <View style={{ alignItems: 'flex-end' }}>
+      <View style={{ flex: 1, alignItems: 'flex-end' }}>
         <Text style={shared.docTitle}>{docTitle}</Text>
         {numero && <Text style={shared.docMeta}>Réf. {numero}</Text>}
         <Text style={shared.docMeta}>{date}</Text>
