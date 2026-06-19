@@ -176,6 +176,8 @@ export async function updateFactureStatusAction(id: string, status: string): Pro
     if (cli?.email) {
       try {
         const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const orgDoc = await withDocumentLogo(supabase, org)
         const { renderToBuffer } = await import('@react-pdf/renderer')
         const { createElement } = await import('react')
         const { FacturePDF } = await import('@/lib/pdf/facture-pdf')
@@ -185,7 +187,7 @@ export async function updateFactureStatusAction(id: string, status: string): Pro
           .from('factures')
           .select('*, client:clients(*), formation:formations(intitule), lignes:facture_lignes(*), paiements(*)')
           .eq('id', id).single()
-        const buffer = await renderToBuffer(createElement(FacturePDF, { facture: factureFull as any, org }) as any)
+        const buffer = await renderToBuffer(createElement(FacturePDF, { facture: factureFull as any, org: orgDoc }) as any)
 
         const { sendDocumentEmail } = await import('@/lib/email')
         await sendDocumentEmail({

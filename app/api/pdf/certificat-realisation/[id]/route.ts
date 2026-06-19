@@ -22,7 +22,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
 
   const { data: formation } = await supabase.from('formations').select('*').eq('id', session.formation_id).single()
-  const { data: org } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
+  const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   const { data: emargements } = await supabase.from('emargements').select('est_present').eq('session_id', sessionId).eq('apprenant_id', params.id)
   const total = (emargements || []).length

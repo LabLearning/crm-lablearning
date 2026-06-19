@@ -14,7 +14,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const { data: formation } = await supabase.from('formations').select('*').eq('id', params.id).single()
   if (!formation) return NextResponse.json({ error: 'Formation introuvable' }, { status: 404 })
 
-  const { data: org } = await supabase.from('organizations').select('*').eq('id', formation.organization_id).single()
+  const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', formation.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   const buffer = await renderToBuffer(createElement(ProgrammeFormationPDF, { formation, org }) as any)
   return new NextResponse(new Uint8Array(buffer), {

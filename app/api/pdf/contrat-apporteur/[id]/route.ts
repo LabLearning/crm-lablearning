@@ -14,7 +14,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const { data: apporteur } = await supabase.from('apporteurs_affaires').select('*').eq('id', params.id).single()
   if (!apporteur) return NextResponse.json({ error: 'Apporteur introuvable' }, { status: 404 })
 
-  const { data: org } = await supabase.from('organizations').select('*').eq('id', apporteur.organization_id).single()
+  const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', apporteur.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   const buffer = await renderToBuffer(createElement(ContratApporteurPDF, { apporteur, org }) as any)
   return new NextResponse(new Uint8Array(buffer), {

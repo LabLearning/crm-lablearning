@@ -429,6 +429,8 @@ export async function sendDocumentToApprenantAction(
 
   const { data: formation } = await supabase.from('formations').select('*').eq('id', sess.formation_id).single()
   const { data: org } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const orgDoc = await withDocumentLogo(supabase, org)
 
   // Assiduité (émargements)
   const { data: emargements } = await supabase
@@ -448,12 +450,12 @@ export async function sendDocumentToApprenantAction(
   try {
     if (docType === 'attestation') {
       const { AttestationFormationPDF } = await import('@/lib/pdf/attestation-formation-pdf')
-      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: sess, formation, org, assiduite }) as any)
+      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: sess, formation, org: orgDoc, assiduite }) as any)
       docDbType = 'attestation_fin'
       docNom = `Attestation de formation — ${formationNom}`
     } else {
       const { CertificatRealisationPDF } = await import('@/lib/pdf/certificat-realisation-pdf')
-      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: sess, formation, org, assiduite, heuresPresence }) as any)
+      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: sess, formation, org: orgDoc, assiduite, heuresPresence }) as any)
       docDbType = 'certificat_realisation'
       docNom = `Certificat de réalisation — ${formationNom}`
     }

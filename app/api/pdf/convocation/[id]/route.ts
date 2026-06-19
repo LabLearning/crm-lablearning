@@ -24,7 +24,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
 
   const { data: formation } = await supabase.from('formations').select('*').eq('id', session.formation_id).single()
-  const { data: org } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
+  const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   const buffer = await renderToBuffer(
     createElement(ConvocationPDF, { apprenant, session, formation, org, formateur: (session as any).formateur }) as any

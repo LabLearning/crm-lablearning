@@ -26,7 +26,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { data: session } = dossier.session_id
     ? await supabase.from('sessions').select('*, formateur:formateurs(prenom, nom, qualifications, diplomes, certifications)').eq('id', dossier.session_id).single()
     : { data: null }
-  const { data: org } = await supabase.from('organizations').select('*').eq('id', dossier.organization_id).single()
+  const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', dossier.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   const buffer = await renderToBuffer(
     createElement(ContratFormationPDF, { dossier, client, formation, session, org, formateur: (session as any)?.formateur }) as any

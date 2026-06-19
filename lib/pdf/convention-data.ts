@@ -44,5 +44,8 @@ export async function loadConventionForPdf(supabase: any, conventionId: string) 
   convention.session = session
   convention.participants = participants
 
-  return { convention, org }
+  const { withDocumentLogo } = await import('./org-logo')
+  const orgForDoc = await withDocumentLogo(supabase, org)
+
+  return { convention, org: orgForDoc }
 }

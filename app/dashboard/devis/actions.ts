@@ -165,10 +165,12 @@ export async function updateDevisStatusAction(id: string, status: string): Promi
       const toEmail = ct?.email || cli?.email
       if (devis && toEmail) {
         const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const orgDoc = await withDocumentLogo(supabase, org)
         const { renderToBuffer } = await import('@react-pdf/renderer')
         const { createElement } = await import('react')
         const { DevisPDF } = await import('@/lib/pdf/devis-pdf')
-        const buffer = await renderToBuffer(createElement(DevisPDF, { devis: devis as any, org }) as any)
+        const buffer = await renderToBuffer(createElement(DevisPDF, { devis: devis as any, org: orgDoc }) as any)
         const fmtEuro = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
         const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString('fr-FR') : '—'
         const recipientName = ct?.prenom || ct?.nom

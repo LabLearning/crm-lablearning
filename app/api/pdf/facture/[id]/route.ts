@@ -30,11 +30,13 @@ export async function GET(
     return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 })
   }
 
-  const { data: org } = await supabase
+  const { data: orgRaw } = await supabase
     .from('organizations')
     .select('*')
     .eq('id', (facture as any).organization_id)
     .single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   const buffer = await renderToBuffer(
     createElement(FacturePDF, { facture: facture as Facture, org }) as any

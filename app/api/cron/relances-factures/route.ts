@@ -84,7 +84,9 @@ export async function GET(req: Request) {
           const { renderToBuffer } = await import('@react-pdf/renderer')
           const { createElement } = await import('react')
           const { FacturePDF } = await import('@/lib/pdf/facture-pdf')
-          const buffer = await renderToBuffer(createElement(FacturePDF, { facture: factureFull as any, org }) as any)
+          const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+          const orgDoc = await withDocumentLogo(supabase, org)
+          const buffer = await renderToBuffer(createElement(FacturePDF, { facture: factureFull as any, org: orgDoc }) as any)
           const relanceNum = (f.relance_count || 0) + 1
           await sendDocumentEmail({
             to: cli.email,

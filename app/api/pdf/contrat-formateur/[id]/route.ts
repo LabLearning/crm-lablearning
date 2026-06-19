@@ -16,7 +16,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { data: formateur } = await supabase.from('formateurs').select('*').eq('id', params.id).single()
   if (!formateur) return NextResponse.json({ error: 'Formateur introuvable' }, { status: 404 })
 
-  const { data: org } = await supabase.from('organizations').select('*').eq('id', formateur.organization_id).single()
+  const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', formateur.organization_id).single()
+  const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+  const org = await withDocumentLogo(supabase, orgRaw)
 
   let session = null
   if (sessionId) {

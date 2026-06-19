@@ -128,12 +128,14 @@ export async function GET(req: Request) {
       if (a?.email) {
         try {
           const org = await getOrg(sess.organization_id)
+          const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
+          const orgDoc = await withDocumentLogo(supabase, org)
           const formation = await supabase.from('formations').select('*').eq('id', (sess as any).formation_id).single()
           const buffer = await renderToBuffer(createElement(ConvocationPDF, {
             apprenant: a,
             session: sess,
             formation: formation.data,
-            org,
+            org: orgDoc,
             formateur: (sess as any).formateur,
           }) as any)
           await sendDocumentEmail({
