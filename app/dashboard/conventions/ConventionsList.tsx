@@ -19,12 +19,13 @@ interface ConventionsListProps {
   conventions: Convention[]
   clients: Pick<Client, 'id' | 'raison_sociale'>[]
   formations: Pick<Formation, 'id' | 'intitule' | 'duree_heures'>[]
+  sessions?: any[]
 }
 
 const typeOptions = Object.entries(CONVENTION_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))
 const financeurOptions = [{ value: '', label: 'Aucun' }, ...Object.entries(FINANCEUR_LABELS).map(([v, l]) => ({ value: v, label: l }))]
 
-export function ConventionsList({ conventions, clients, formations }: ConventionsListProps) {
+export function ConventionsList({ conventions, clients, formations, sessions = [] }: ConventionsListProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -36,6 +37,11 @@ export function ConventionsList({ conventions, clients, formations }: Convention
 
   const clientOptions = clients.map((c) => ({ value: c.id, label: c.raison_sociale || c.id }))
   const formationOptions = formations.map((f) => ({ value: f.id, label: f.intitule }))
+  const sessionOptions = sessions.map((s) => {
+    const d = s.date_debut ? new Date(s.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''
+    const label = [s.intitule || s.reference || 'Session', d ? `(${d})` : '', s.ville ? `· ${s.ville}` : ''].filter(Boolean).join(' ')
+    return { value: s.id, label }
+  })
 
   // Compteurs par onglet
   const pendingCount = conventions.filter(c => ['brouillon', 'envoyee'].includes(c.status)).length
@@ -240,6 +246,9 @@ export function ConventionsList({ conventions, clients, formations }: Convention
           <Select id="type" name="type" label="Type *" options={typeOptions} defaultValue="inter_entreprise" />
           <Select id="client_id" name="client_id" label="Client *" options={clientOptions} placeholder="Sélectionner" error={errors.client_id?.[0]} />
           <Select id="formation_id" name="formation_id" label="Formation *" options={formationOptions} placeholder="Sélectionner" error={errors.formation_id?.[0]} />
+          {sessionOptions.length > 0 && (
+            <Select id="session_id" name="session_id" label="Session liée (alimente planning + participants du PDF)" options={[{ value: '', label: 'Aucune' }, ...sessionOptions]} />
+          )}
           <Input id="objet" name="objet" label="Objet" placeholder="Convention de formation — Management" />
           <div className="grid grid-cols-3 gap-3">
             <Input id="nombre_stagiaires" name="nombre_stagiaires" type="number" label="Nb stagiaires" defaultValue="1" />

@@ -26,12 +26,21 @@ export default async function ConventionsPage() {
     .eq('is_active', true)
     .order('intitule')
 
+  // Sessions sélectionnables dans une convention (planning + participants du PDF)
+  const { data: sessions } = await supabase
+    .from('sessions')
+    .select('id, intitule, reference, date_debut, date_fin, formation_id, client_id, lieu, ville')
+    .eq('organization_id', session.organization.id)
+    .order('date_debut', { ascending: false })
+    .limit(300)
+
   return (
     <div className="animate-fade-in">
       <ConventionsList
         conventions={(conventions || []) as Convention[]}
         clients={clients || []}
         formations={formations || []}
+        sessions={(sessions || []) as any[]}
       />
     </div>
   )
