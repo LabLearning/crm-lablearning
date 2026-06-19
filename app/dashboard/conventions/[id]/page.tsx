@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui'
 import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { ConventionSignatureBlock } from './ConventionSignatureBlock'
+import { ConventionDetailsEditor } from './ConventionDetailsEditor'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +35,14 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
   if (!conv) redirect('/dashboard/conventions')
 
   const c = conv as any
+
+  // Sessions sélectionnables pour lier/changer la session de la convention
+  const { data: sessionsList } = await supabase
+    .from('sessions')
+    .select('id, intitule, reference, date_debut, ville')
+    .eq('organization_id', session.organization.id)
+    .order('date_debut', { ascending: false })
+    .limit(300)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
   const signatureUrl = c.signature_token ? `${appUrl}/convention/${c.signature_token}/signer` : null
 
@@ -143,12 +152,21 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         </div>
       </div>
 
-      {/* Session liée */}
+      {/* Session & financement — éditable */}
+      <ConventionDetailsEditor
+        conventionId={c.id}
+        sessionId={c.session_id || null}
+        financeurType={c.financeur_type || null}
+        financeurNom={c.financeur_nom || null}
+        sessions={(sessionsList || []) as any[]}
+      />
+
+      {/* Détails de la session liée (lecture seule) */}
       {c.session && (
         <div className="card p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">
-              <Calendar className="h-3.5 w-3.5" /> Session liée
+              <Calendar className="h-3.5 w-3.5" /> Détails de la session
             </div>
             <Link href={`/dashboard/sessions`} className="text-xs text-brand-600 hover:underline">Voir →</Link>
           </div>

@@ -80,6 +80,37 @@ export async function updateConventionStatusAction(id: string, status: string): 
   return { success: true }
 }
 
+export async function updateConventionDetailsAction(
+  id: string,
+  details: { session_id?: string | null; financeur_type?: string | null; financeur_nom?: string | null },
+): Promise<ActionResult> {
+  const session = await getSession()
+
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+
+  const supabase = await createServiceRoleClient()
+
+  const updateData: Record<string, unknown> = {}
+  if ('session_id' in details) updateData.session_id = details.session_id || null
+  if ('financeur_type' in details) updateData.financeur_type = details.financeur_type || null
+  if ('financeur_nom' in details) updateData.financeur_nom = details.financeur_nom || null
+
+  const { error } = await supabase
+    .from('conventions')
+    .update(updateData)
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+
+  if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  await logAudit({ action: 'update', entity_type: 'convention', entity_id: id, details })
+  revalidatePath(`/dashboard/conventions/${id}`)
+  revalidatePath('/dashboard/conventions')
+  return { success: true }
+}
+
 export async function deleteConventionAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
