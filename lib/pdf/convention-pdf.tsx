@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_500, SURFACE_700 } from './components'
+import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -46,6 +46,16 @@ const MODALITE_LABELS: Record<string, string> = {
   presentiel: 'Présentiel',
   distanciel: 'Distanciel',
   mixte: 'Mixte (présentiel et distanciel)',
+}
+
+const FINANCEUR_LABELS: Record<string, string> = {
+  opco: 'OPCO',
+  cpf: 'CPF',
+  pole_emploi: 'France Travail',
+  france_travail: 'France Travail',
+  entreprise: 'Entreprise (autofinancement)',
+  region: 'Région',
+  autre: 'Autre organisme',
 }
 
 // Entier 0..999 999 en toutes lettres (français)
@@ -173,6 +183,22 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     ? formation.methodes_pedagogiques.trim()
     : "La formation est animée selon une approche active, participative et opérationnelle. Elle alterne des apports théoriques courts, des échanges avec les participants, des analyses de situations professionnelles, des études de cas, des exercices pratiques et des mises en situation."
 
+  // Financement
+  const dossier = convention.dossier || {}
+  const financeurLabel = convention.financeur_type ? (FINANCEUR_LABELS[convention.financeur_type] || convention.financeur_type) : null
+  const financeurLine = [financeurLabel, convention.financeur_nom].filter(Boolean).join(' — ')
+  const numeroPEC = dossier.opco_numero_dossier || dossier.numero_prise_en_charge || dossier.numero || null
+
+  // Délai d'accès (Qualiopi) — paramètre OF, avec valeur par défaut
+  const delaiAcces = (org?.delai_acces && String(org.delai_acces).trim())
+    ? String(org.delai_acces).trim()
+    : "L'inscription doit être finalisée au plus tard 7 jours ouvrés avant le démarrage de la formation, sous réserve des places disponibles."
+
+  // Détails formation
+  const prerequis = (typeof formation.prerequis === 'string' && formation.prerequis.trim()) ? formation.prerequis.trim() : (toList(formation.prerequis)?.join(' ') || null)
+  const publicVise = (typeof formation.public_vise === 'string' && formation.public_vise.trim()) ? formation.public_vise.trim() : (toList(formation.public_vise)?.join(' ') || null)
+  const programme = toList(formation.programme_detaille)
+
   return (
     <Document title={`Convention ${convention.numero || ''}`} author={ofName}>
       <Page size="A4" style={shared.page}>
@@ -224,6 +250,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           <View style={shared.row}><Text style={shared.label}>Date(s)</Text><Text style={shared.value}>{datesSession}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{dureeHeures ? `${dureeHeures} heures` : '—'} sur {nbJours} jour{nbJours > 1 ? 's' : ''}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Mode d'organisation</Text><Text style={shared.value}>{modalite}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Délai d'accès</Text><Text style={shared.value}>{delaiAcces}</Text></View>
         </View>
 
         {/* Planning */}
@@ -269,20 +296,43 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Conditions financières */}
         <View style={shared.section}>
           <Text style={shared.sectionTitle}>Prix de la formation</Text>
-          {hasTva ? (
-            <>
-              <View style={shared.row}><Text style={shared.label}>Montant HT</Text><Text style={shared.value}>{fmt(convention.montant_ht)} €</Text></View>
-              <View style={shared.row}><Text style={shared.label}>TVA ({convention.taux_tva}%)</Text><Text style={shared.value}>{fmt(Number(convention.montant_ttc) - Number(convention.montant_ht))} €</Text></View>
-            </>
-          ) : null}
+          <View style={shared.row}><Text style={shared.label}>Frais pédagogiques</Text><Text style={shared.value}>{fmt(convention.montant_ht)} €{hasTva ? ' HT' : ''}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Frais refacturés</Text><Text style={shared.value}>0,00 €</Text></View>
+          {hasTva && (
+            <View style={shared.row}><Text style={shared.label}>TVA ({convention.taux_tva}%)</Text><Text style={shared.value}>{fmt(Number(convention.montant_ttc) - Number(convention.montant_ht))} €</Text></View>
+          )}
           <View style={{ ...shared.row, marginTop: 4 }}>
-            <Text style={{ ...shared.label, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{hasTva ? 'Montant TTC' : 'Coût total'}</Text>
+            <Text style={{ ...shared.label, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{hasTva ? 'Total TTC' : 'Coût total'}</Text>
             <Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{fmt(cout)} €</Text>
           </View>
           <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 4 }}>
             Soit {eurosEnLettres(cout)}.
           </Text>
+          {!hasTva && (
+            <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 3 }}>
+              TVA non applicable — article 261-4-4°a du CGI (action de formation professionnelle continue).
+            </Text>
+          )}
         </View>
+
+        {/* Financement */}
+        {(financeurLine || numeroPEC) && (
+          <View style={shared.section}>
+            <Text style={shared.sectionTitle}>Financement</Text>
+            {financeurLine && <View style={shared.row}><Text style={shared.label}>Financeur</Text><Text style={shared.value}>{financeurLine}</Text></View>}
+            {numeroPEC && <View style={shared.row}><Text style={shared.label}>N° de dossier</Text><Text style={shared.value}>{numeroPEC}</Text></View>}
+            {dossier.montant_prise_en_charge != null && <View style={shared.row}><Text style={shared.label}>Prise en charge</Text><Text style={shared.value}>{fmt(dossier.montant_prise_en_charge)} €</Text></View>}
+          </View>
+        )}
+
+        {/* Public visé et prérequis */}
+        {(publicVise || prerequis) && (
+          <View style={shared.section}>
+            <Text style={shared.sectionTitle}>Public visé et prérequis</Text>
+            {publicVise && <View style={shared.row}><Text style={shared.label}>Public visé</Text><Text style={shared.value}>{publicVise}</Text></View>}
+            {prerequis && <View style={shared.row}><Text style={shared.label}>Prérequis</Text><Text style={shared.value}>{prerequis}</Text></View>}
+          </View>
+        )}
 
         {/* Objectifs */}
         {objectifs && objectifs.length > 0 && (
@@ -290,6 +340,21 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={shared.sectionTitle}>Objectifs pédagogiques</Text>
             <Text style={{ fontSize: 8.5, color: SURFACE_700, marginBottom: 6 }}>À l'issue de la formation, les participants seront capables de :</Text>
             <Bullets items={objectifs} />
+          </View>
+        )}
+
+        {/* Programme détaillé */}
+        {programme && programme.length > 0 && (
+          <View style={shared.section}>
+            <Text style={shared.sectionTitle}>Programme de la formation</Text>
+            {programme.map((line, i) => {
+              const isModule = /^module|^jour|^partie|^s[ée]quence/i.test(line)
+              return (
+                <Text key={i} style={{ fontSize: 8.5, color: isModule ? SURFACE_900 : SURFACE_700, fontFamily: isModule ? 'Satoshi' : 'Satoshi', fontWeight: isModule ? 700 : 400, marginBottom: 2, marginTop: isModule ? 4 : 0, lineHeight: 1.45 }}>
+                  {isModule ? line : `•  ${line.replace(/^[-•]\s*/, '')}`}
+                </Text>
+              )
+            })}
           </View>
         )}
 

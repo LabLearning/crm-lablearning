@@ -21,6 +21,17 @@ export async function loadConventionForPdf(supabase: any, conventionId: string) 
     session = data
   }
 
+  // Dossier lié (n° de prise en charge / dossier OPCO)
+  let dossier: any = null
+  if (convention.dossier_id) {
+    const { data } = await supabase
+      .from('dossiers_formation')
+      .select('numero, numero_prise_en_charge, opco_numero_dossier, montant_prise_en_charge')
+      .eq('id', convention.dossier_id)
+      .single()
+    dossier = data
+  }
+
   // Participants : inscriptions actives de la session → apprenants
   let participants: any[] = []
   if (convention.session_id) {
@@ -43,6 +54,7 @@ export async function loadConventionForPdf(supabase: any, conventionId: string) 
 
   convention.session = session
   convention.participants = participants
+  convention.dossier = dossier
 
   const { withDocumentLogo } = await import('./org-logo')
   const orgForDoc = await withDocumentLogo(supabase, org)
