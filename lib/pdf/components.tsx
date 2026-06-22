@@ -293,3 +293,46 @@ export function PdfDocFooter({ numero, org }: { numero: string; org?: { name?: s
     </View>
   )
 }
+
+// ─── Cartes de signature (partagées : convention, contrats…) ─────────────────
+export interface SignatoryCard {
+  title: string            // "Pour l'organisme — Lab Learning"
+  name?: string            // nom du signataire
+  mention?: string         // "Lu et approuvé, bon pour accord"
+  hint?: string            // texte de la zone vide (def. "Signature et cachet")
+  signed?: boolean
+  signedBy?: string | null
+  signedDate?: string | null  // déjà formatée
+}
+
+export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard[]; faitMention?: string }) {
+  return (
+    <View wrap={false}>
+      {faitMention ? (
+        <Text style={{ fontSize: 9, color: SURFACE_700, marginTop: 6, marginBottom: 12 }}>{faitMention}</Text>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        {items.map((it, i) => (
+          <View key={i} style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, overflow: 'hidden' }}>
+            <View style={{ backgroundColor: SURFACE_50, paddingVertical: 6, paddingHorizontal: 10, borderBottomWidth: 0.5, borderBottomColor: SURFACE_200 }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{it.title}</Text>
+            </View>
+            <View style={{ padding: 10, minHeight: 96 }}>
+              {it.name ? <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{it.name}</Text> : null}
+              {it.mention ? <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 8 }}>{it.mention}</Text> : null}
+              {it.signed ? (
+                <View style={{ backgroundColor: BRAND_LIGHT, padding: 7, borderRadius: 4, marginTop: 4 }}>
+                  <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
+                  {it.signedBy ? <Text style={{ fontSize: 7.5, color: SURFACE_700 }}>{it.signedBy}</Text> : null}
+                  {it.signedDate ? <Text style={{ fontSize: 7, color: SURFACE_400 }}>Le {it.signedDate}</Text> : null}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 4 }}>{it.hint || 'Signature et cachet'}</Text>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}

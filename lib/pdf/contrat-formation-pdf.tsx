@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfDocHeader, PdfDocFooter, PdfSignatureCards, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface ContratFormationProps {
   dossier: any
@@ -119,7 +119,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
 
         <Article titre="Article 7 — Délai de rétractation">
           <P>
-            À compter de la date de signature du présent contrat, le stagiaire dispose d'un délai de <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>10 jours</Text> pour se rétracter.
+            À compter de la date de signature du présent contrat, le stagiaire dispose d'un délai de 10 jours pour se rétracter.
             Il en informe l'organisme par lettre recommandée avec accusé de réception. Aucune somme ne peut être exigée ni retenue
             de ce fait (art. L.6353-5 du Code du travail).
           </P>
@@ -141,19 +141,14 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
           </P>
         </Article>
 
-        <View style={{ marginTop: 16, flexDirection: 'row', justifyContent: 'space-between' }} wrap={false}>
-          <View style={{ width: 230 }}>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org?.city || '___________'}, le {today}, en deux exemplaires.</Text>
-            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginTop: 10 }}>Pour l'organisme</Text>
-            <View style={{ height: 46, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 200, marginTop: 4 }} />
-            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
-          </View>
-          <View style={{ width: 230 }}>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>Le stagiaire</Text>
-            <Text style={{ fontSize: 7, color: SURFACE_700, marginTop: 10 }}>Mention manuscrite « Lu et approuvé »</Text>
-            <View style={{ height: 46, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 200, marginTop: 4 }} />
-            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature précédée de la date</Text>
-          </View>
+        <View style={{ marginTop: 16 }}>
+          <PdfSignatureCards
+            faitMention={`Fait à ${org?.city || '___________'}, le ${today}, en deux exemplaires.`}
+            items={[
+              { title: "Pour l'organisme", name: org?.name || 'Lab Learning', mention: 'Représentant légal', hint: 'Signature et cachet' },
+              { title: 'Le stagiaire', mention: 'Mention manuscrite « Lu et approuvé »', hint: 'Signature précédée de la date' },
+            ]}
+          />
         </View>
 
         <PdfDocFooter numero={numero} org={org} />

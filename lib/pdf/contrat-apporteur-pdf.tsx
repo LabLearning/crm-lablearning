@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700 } from './components'
+import { PdfDocHeader, PdfDocFooter, PdfSignatureCards, shared, BRAND_GREEN, SURFACE_500, SURFACE_700 } from './components'
 
 interface ContratApporteurProps {
   apporteur: any
@@ -99,21 +99,14 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
           </Text>
         </View>
 
-        <View style={{ marginTop: 30, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View style={{ width: '45%' }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>L'Organisme</Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>{org.name}</Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>Date : {today}</Text>
-            <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', marginTop: 8 }} />
-            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
-          </View>
-          <View style={{ width: '45%' }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>L'Apporteur</Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>{apporteur.prenom} {apporteur.nom}</Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500 }}>Date : {today}</Text>
-            <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', marginTop: 8 }} />
-            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature précédée de "Lu et approuvé"</Text>
-          </View>
+        <View style={{ marginTop: 24 }}>
+          <PdfSignatureCards
+            faitMention={`Fait à ${org?.city || '___________'}, le ${today}, en deux exemplaires.`}
+            items={[
+              { title: "L'Organisme", name: org.name, mention: 'Représentant légal', hint: 'Signature et cachet' },
+              { title: "L'Apporteur", name: `${apporteur.prenom} ${apporteur.nom}`, mention: 'Mention « Lu et approuvé »', hint: 'Signature précédée de la date' },
+            ]}
+          />
         </View>
 
         <PdfDocFooter numero={numero} org={org} />

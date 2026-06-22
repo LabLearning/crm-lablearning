@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN, BRAND_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { shared, PdfDocHeader, PdfDocFooter, PdfSignatureCards, BRAND_GREEN, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -148,32 +148,6 @@ function InfoRow({ label, value, bold }: { label: string; value: string; bold?: 
   )
 }
 
-// Carte de signature (bénéficiaire / organisme)
-function SignatureCard({ title, name, mention, signed, signedBy, signedDate }: {
-  title: string; name: string; mention: string
-  signed?: boolean; signedBy?: string | null; signedDate?: string | null
-}) {
-  return (
-    <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, overflow: 'hidden' }}>
-      <View style={{ backgroundColor: SURFACE_50, paddingVertical: 6, paddingHorizontal: 10, borderBottomWidth: 0.5, borderBottomColor: SURFACE_200 }}>
-        <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{title}</Text>
-      </View>
-      <View style={{ padding: 10, minHeight: 96 }}>
-        <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{name}</Text>
-        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 8 }}>{mention}</Text>
-        {signed ? (
-          <View style={{ backgroundColor: BRAND_LIGHT, padding: 7, borderRadius: 4 }}>
-            <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
-            {signedBy ? <Text style={{ fontSize: 7.5, color: SURFACE_700 }}>{signedBy}</Text> : null}
-            {signedDate ? <Text style={{ fontSize: 7, color: SURFACE_400 }}>Le {signedDate}</Text> : null}
-          </View>
-        ) : (
-          <Text style={{ fontSize: 7, color: SURFACE_400 }}>Signature et cachet :</Text>
-        )}
-      </View>
-    </View>
-  )
-}
 
 // ─── Composant principal ─────────────────────────────────────────────────────
 
@@ -282,7 +256,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             {org?.address && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{org.address}{org.postal_code || org.city ? `, ${org.postal_code || ''} ${org.city || ''}` : ''}</Text>}
             {org?.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{org.siret}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>N° déclaration</Text><Text style={shared.value}>{org?.numero_da || '—'}</Text></View>
-            {repOfLine && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{repOfLine}</Text></View>}
+            {!!repOfLine && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{repOfLine}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>Email</Text><Text style={shared.value}>{ofEmail}</Text></View>
           </View>
           <View style={{ flex: 1 }}>
@@ -290,7 +264,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{client.adresse}{clientCpVille ? `, ${clientCpVille}` : ''}</Text>}
             {client.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{client.siret}</Text></View>}
-            {clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}</Text></View>}
+            {!!clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>Nb de stagiaires</Text><Text style={shared.value}>{participants.length || convention.nombre_stagiaires || '—'}</Text></View>
           </View>
         </View>
@@ -367,7 +341,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {(financeurLine || numeroPEC) && (
           <View style={shared.section}>
             <Text style={shared.sectionTitle}>Financement</Text>
-            {financeurLine && <InfoRow label="Financeur" value={financeurLine} />}
+            {!!financeurLine && <InfoRow label="Financeur" value={financeurLine} />}
             {numeroPEC && <InfoRow label="N° de dossier" value={numeroPEC} />}
             {dossier.montant_prise_en_charge != null && (
               <View style={{ width: 260 }}><MoneyRow label="Prise en charge" amount={`${fmt(dossier.montant_prise_en_charge)} €`} /></View>
@@ -451,30 +425,28 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </Text>
         </View>
 
-        {/* Lieu et date de signature */}
-        <Text style={{ fontSize: 9, color: SURFACE_700, marginTop: 6, marginBottom: 12 }}>
-          Fait à {ville}, le {fmtLongDate(dateFait)}, en deux exemplaires originaux.
-        </Text>
-
-        {/* Signatures */}
-        <View style={{ flexDirection: 'row', gap: 16 }} wrap={false}>
-          <SignatureCard
-            title={`Pour le bénéficiaire — ${clientName}`}
-            name={clientRep || '—'}
-            mention="Lu et approuvé, bon pour accord"
-            signed={!!convention.signature_client_nom}
-            signedBy={convention.signature_client_nom}
-            signedDate={convention.signature_client_date ? fmtDate(convention.signature_client_date) : null}
-          />
-          <SignatureCard
-            title={`Pour l'organisme — ${ofName}`}
-            name={repOfLine || `${ofName} — Représentant légal`}
-            mention="Représentant légal"
-            signed={!!convention.signature_of_date}
-            signedBy={ofName}
-            signedDate={convention.signature_of_date ? fmtDate(convention.signature_of_date) : null}
-          />
-        </View>
+        {/* Signatures (cartes partagées) */}
+        <PdfSignatureCards
+          faitMention={`Fait à ${ville}, le ${fmtLongDate(dateFait)}, en deux exemplaires originaux.`}
+          items={[
+            {
+              title: `Pour le bénéficiaire — ${clientName}`,
+              name: clientRep || '—',
+              mention: 'Lu et approuvé, bon pour accord',
+              signed: !!convention.signature_client_nom,
+              signedBy: convention.signature_client_nom,
+              signedDate: convention.signature_client_date ? fmtDate(convention.signature_client_date) : null,
+            },
+            {
+              title: `Pour l'organisme — ${ofName}`,
+              name: repOfLine || `${ofName} — Représentant légal`,
+              mention: 'Représentant légal',
+              signed: !!convention.signature_of_date,
+              signedBy: ofName,
+              signedDate: convention.signature_of_date ? fmtDate(convention.signature_of_date) : null,
+            },
+          ]}
+        />
 
         <PdfDocFooter numero={convention.numero} org={org} />
       </Page>
