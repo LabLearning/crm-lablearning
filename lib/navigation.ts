@@ -65,6 +65,7 @@ export const navigation: NavSection[] = [
     items: [
       { label: 'Dossiers', href: '/dashboard/dossiers', icon: 'FolderOpen', module: 'conventions' },
       { label: 'Conventions', href: '/dashboard/conventions', icon: 'FileSignature', module: 'conventions' },
+      { label: 'POEI', href: '/dashboard/poei', icon: 'Briefcase', module: 'conventions' },
     ],
   },
   // ── FINANCES ─────────────────────────────────────────────
