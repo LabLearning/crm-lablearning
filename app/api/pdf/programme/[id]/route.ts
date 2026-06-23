@@ -4,7 +4,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { ProgrammeFormationPDF } from '@/lib/pdf/programme-formation-pdf'
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   const anonClient = await createServerSupabaseClient()
   const { data: { user } } = await anonClient.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
@@ -14,11 +14,24 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const { data: formation } = await supabase.from('formations').select('*').eq('id', params.id).single()
   if (!formation) return NextResponse.json({ error: 'Formation introuvable' }, { status: 404 })
 
+  // Programme générique, ou contextualisé à une session (?session=<id>) :
+  // on ajoute alors une section « Organisation » avec dates / horaires / lieu.
+  let session: any = null
+  const sessionId = new URL(req.url).searchParams.get('session')
+  if (sessionId) {
+    const { data } = await supabase
+      .from('sessions')
+      .select('reference, date_debut, date_fin, horaires_jours, lieu, adresse, code_postal, ville, modalite, formateur:formateurs(prenom, nom)')
+      .eq('id', sessionId)
+      .single()
+    session = data
+  }
+
   const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', formation.organization_id).single()
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
   const org = await withDocumentLogo(supabase, orgRaw)
 
-  const buffer = await renderToBuffer(createElement(ProgrammeFormationPDF, { formation, org }) as any)
+  const buffer = await renderToBuffer(createElement(ProgrammeFormationPDF, { formation, org, session }) as any)
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',

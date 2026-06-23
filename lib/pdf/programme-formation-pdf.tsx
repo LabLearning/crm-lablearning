@@ -5,7 +5,26 @@ import {
   BRAND_GREEN, BRAND_LIGHT, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
 
-interface ProgrammeFormationProps { formation: any; org: any }
+interface ProgrammeFormationProps { formation: any; org: any; session?: any }
+
+function fmtLong(s: string | null | undefined): string {
+  if (!s) return '—'
+  return new Date(s).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+function fmtHeure(t: string | null | undefined): string {
+  if (!t) return ''
+  const [h, m] = String(t).split(':')
+  return `${parseInt(h, 10)}h${(m ?? '00').padStart(2, '0')}`
+}
+function dureeCreneau(d?: string | null, f?: string | null): string {
+  if (!d || !f) return ''
+  const [dh, dm] = d.split(':').map((x) => parseInt(x, 10))
+  const [fh, fm] = f.split(':').map((x) => parseInt(x, 10))
+  const mins = (fh * 60 + fm) - (dh * 60 + dm)
+  if (mins <= 0) return ''
+  const h = Math.floor(mins / 60), m = mins % 60
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
+}
 
 // Parse le programme_detaille en semaines → modules (objectif + contenu)
 function parseProgramme(text: string) {
@@ -63,8 +82,11 @@ function DureePill({ children }: { children: React.ReactNode }) {
 
 const MODALITE = (m: string) => m === 'presentiel' ? 'Présentiel' : m === 'distanciel' ? 'Distanciel' : 'Mixte'
 
-export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProps) {
+export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeFormationProps) {
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const jours: any[] = session && Array.isArray(session.horaires_jours) ? session.horaires_jours : []
+  const sessionLieu = session ? [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') : ''
+  const sessionFormateur = session?.formateur ? `${session.formateur.prenom || ''} ${session.formateur.nom || ''}`.trim() : ''
   const weeks = parseProgramme(formation.programme_detaille || '')
   const objectifs: string[] = Array.isArray(formation.objectifs_pedagogiques) ? formation.objectifs_pedagogiques : []
   const refHandicap = [org?.referent_handicap_nom, org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
@@ -86,6 +108,35 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
             {formation.is_poei ? <Chip icon="userCheck">Éligible POEI</Chip> : null}
           </View>
         </View>
+
+        {/* Organisation de la session (uniquement si programme tiré d'une session) */}
+        {session ? (
+          <View style={shared.section}>
+            <PdfSectionTitle icon="calendar">Organisation de la session</PdfSectionTitle>
+            <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>du {fmtLong(session.date_debut)} au {fmtLong(session.date_fin)}</Text></View>
+            {sessionLieu ? <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{sessionLieu}</Text></View> : null}
+            {sessionFormateur ? <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={shared.value}>{sessionFormateur}</Text></View> : null}
+            {jours.length > 0 ? (
+              <View style={{ ...shared.table, marginTop: 6 }}>
+                <View style={shared.tableHeader}>
+                  <Text style={{ ...shared.tableHeaderCell, width: '34%' }}>Jour</Text>
+                  <Text style={{ ...shared.tableHeaderCell, width: '40%' }}>Horaires</Text>
+                  <Text style={{ ...shared.tableHeaderCell, width: '26%' }}>Durée</Text>
+                </View>
+                {jours.flatMap((j: any, idx: number) => {
+                  const cr = [{ d: j.matin_debut, f: j.matin_fin }, { d: j.aprem_debut, f: j.aprem_fin }].filter((c) => c.d && c.f)
+                  return cr.map((c, ci) => (
+                    <View key={`${idx}-${ci}`} style={{ ...shared.tableRow, ...((idx + ci) % 2 === 1 ? shared.tableRowAlt : {}) }}>
+                      <Text style={{ ...shared.tableCell, width: '34%' }}>{ci === 0 ? fmtLong(j.date) : ''}</Text>
+                      <Text style={{ ...shared.tableCell, width: '40%' }}>{fmtHeure(c.d)} - {fmtHeure(c.f)}</Text>
+                      <Text style={{ ...shared.tableCell, width: '26%' }}>{dureeCreneau(c.d, c.f)}</Text>
+                    </View>
+                  ))
+                })}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Public visé */}
         {formation.public_vise ? (
