@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN } from './components'
+import { PdfSectionTitle, shared, PdfDocHeader, PdfDocFooter, BRAND_GREEN } from './components'
 import type { Devis } from '@/lib/types/dossier'
 
 function fmt(n: number | string | null | undefined): string {
@@ -44,7 +44,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
         {/* Émetteur + Destinataire */}
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Émetteur</Text>
+            <PdfSectionTitle>Émetteur</PdfSectionTitle>
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{ofNom}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: '#57534e' }}>{org.address}</Text>}
             {(org?.postal_code || org?.city) && <Text style={{ fontSize: 8, color: '#57534e' }}>{org?.postal_code || ''} {org?.city || ''}</Text>}
@@ -53,7 +53,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
             {org?.numero_da && <Text style={{ fontSize: 8, color: '#57534e' }}>N° DA : {org.numero_da}</Text>}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Destinataire</Text>
+            <PdfSectionTitle>Destinataire</PdfSectionTitle>
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {devis.contact && (
               <Text style={{ fontSize: 8, color: '#78716C' }}>{devis.contact.prenom} {devis.contact.nom}</Text>
@@ -93,7 +93,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
 
         {/* Lines table */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Prestations</Text>
+          <PdfSectionTitle>Prestations</PdfSectionTitle>
           <View style={shared.table}>
             <View style={shared.tableHeader}>
               <Text style={{ ...shared.tableHeaderCell, flex: 4 }}>Désignation</Text>
@@ -159,7 +159,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
         {/* Conditions */}
         {devis.conditions_particulieres && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Conditions particulières</Text>
+            <PdfSectionTitle>Conditions particulières</PdfSectionTitle>
             <Text style={{ fontSize: 8, color: '#57534e', lineHeight: 1.5 }}>{devis.conditions_particulieres}</Text>
           </View>
         )}
@@ -176,7 +176,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
 
         {/* Bon pour accord */}
         <View style={{ marginTop: 20 }}>
-          <Text style={shared.sectionTitle}>Acceptation du devis</Text>
+          <PdfSectionTitle>Acceptation du devis</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: '#57534e', marginBottom: 8 }}>
             Pour acceptation, le client retourne le présent devis daté et signé avec la mention manuscrite « Bon pour accord ».
           </Text>

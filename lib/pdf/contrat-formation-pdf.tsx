@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, PdfSignatureCards, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfDocHeader, PdfDocFooter, PdfSignatureCards, PdfSectionTitle, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface ContratFormationProps {
   dossier: any
@@ -17,7 +17,7 @@ const euro = (n: number | null | undefined) =>
 function Article({ titre, children }: { titre: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: 12 }} wrap={false}>
-      <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 4 }}>{titre}</Text>
+      <PdfSectionTitle>{titre}</PdfSectionTitle>
       {children}
     </View>
   )

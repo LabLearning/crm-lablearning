@@ -351,6 +351,56 @@ const ICONS: Record<string, (c: string) => React.ReactNode> = {
     <Path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
     <Circle cx={12} cy={10} r={3} stroke={c} strokeWidth={2} fill="none" />
   </>),
+  scale: (c) => (<>
+    <Path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Zm-14 0 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  fileText: (c) => (<>
+    <Path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  building: (c) => (<>
+    <Path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  penLine: (c) => (<>
+    <Path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  cap: (c) => (<>
+    <Path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M22 10v6M6 12.5V16a6 3 0 0 0 12 0v-3.5" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  calendar: (c) => (<>
+    <Path d="M8 2v4M16 2v4" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" />
+    <Rect x={3} y={4} width={18} height={18} rx={2} stroke={c} strokeWidth={2} fill="none" />
+    <Path d="M3 10h18" stroke={c} strokeWidth={2} fill="none" />
+  </>),
+}
+
+// Choisit une icône selon les mots-clés du libellé de section
+function pickIcon(text: string): string {
+  const t = (text || '').toLowerCase()
+  const has = (...k: string[]) => k.some((w) => t.includes(w))
+  if (has('objectif')) return 'target'
+  if (has('public', 'participant', 'stagiaire', 'destinataire', 'bénéficiaire', 'beneficiaire')) return 'users'
+  if (has('prérequis', 'prerequis')) return 'clipboardCheck'
+  if (has('émetteur', 'emetteur', 'organisme', 'employeur', 'facturer', 'entre les parties', 'entreprise')) return 'building'
+  if (has('admission')) return 'userCheck'
+  if (has('accessibil', 'handicap')) return 'accessibility'
+  if (has('signature')) return 'penLine'
+  if (has('prix', 'financ', 'tarif', 'règlement', 'reglement', 'paiement', 'facture')) return 'banknote'
+  if (has('évaluation', 'evaluation', 'résultat', 'resultat', 'compétence', 'competence', 'sanction', 'attestation', 'certif')) return 'award'
+  if (has('moyen', 'méthode', 'methode', 'pédagog', 'pedagog')) return 'monitor'
+  if (has('date', 'horaire', 'durée', 'duree', 'délai', 'delai')) return 'calendar'
+  if (has('programme', 'détail', 'detail', 'prestation', 'caractéristique', 'caracteristique', 'formation')) return 'list'
+  if (has('article', 'clause', 'litige', 'rgpd', 'confidential', 'statut', 'rémunération', 'remuneration', 'mission', 'obligation', 'objet', 'propriété', 'propriete', 'sollicitation', 'dissimulé', 'dissimule', 'protection', 'qualité', 'qualite', 'résiliation', 'resiliation')) return 'scale'
+  return 'fileText'
+}
+
+function childText(children: React.ReactNode): string {
+  let s = ''
+  React.Children.forEach(children, (ch) => { if (typeof ch === 'string' || typeof ch === 'number') s += String(ch) })
+  return s
 }
 
 export function PdfIcon({ name, size = 12, color = BRAND_GREEN }: { name: string; size?: number; color?: string }) {
@@ -359,11 +409,12 @@ export function PdfIcon({ name, size = 12, color = BRAND_GREEN }: { name: string
   return <Svg width={size} height={size} viewBox="0 0 24 24">{render(color)}</Svg>
 }
 
-// Titre de section avec icône (moderne)
+// Titre de section avec icône (moderne). Si `icon` absent, déduit des mots-clés.
 export function PdfSectionTitle({ icon, children, color = BRAND_GREEN }: { icon?: string; children: React.ReactNode; color?: string }) {
+  const name = icon || pickIcon(childText(children))
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 9 }}>
-      {icon ? <PdfIcon name={icon} size={13} color={color} /> : null}
+      <PdfIcon name={name} size={13} color={color} />
       <Text style={{ fontSize: 10.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, letterSpacing: -0.2 }}>{children}</Text>
     </View>
   )

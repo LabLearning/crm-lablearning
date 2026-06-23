@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter } from './components'
+import { PdfSectionTitle, shared, PdfDocHeader, PdfDocFooter } from './components'
 import type { Facture } from '@/lib/types/facture'
 
 function fmt(n: number | string | null | undefined): string {
@@ -63,7 +63,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         {/* Émetteur (OF) + Facturer à */}
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Émetteur</Text>
+            <PdfSectionTitle>Émetteur</PdfSectionTitle>
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{ofNom}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: '#57534e' }}>{org.address}</Text>}
             {(org?.postal_code || org?.city) && <Text style={{ fontSize: 8, color: '#57534e' }}>{org?.postal_code || ''} {org?.city || ''}</Text>}
@@ -78,7 +78,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
             {org?.numero_da && <Text style={{ fontSize: 8, color: '#57534e' }}>N° déclaration d'activité : {org.numero_da}</Text>}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Facturer à</Text>
+            <PdfSectionTitle>Facturer à</PdfSectionTitle>
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.adresse}</Text>}
             {(client.code_postal || client.ville) && <Text style={{ fontSize: 8, color: '#57534e' }}>{client.code_postal || ''} {client.ville || ''}</Text>}
@@ -98,7 +98,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
 
         {/* Lines */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Détail des prestations</Text>
+          <PdfSectionTitle>Détail des prestations</PdfSectionTitle>
           <View style={shared.table}>
             <View style={shared.tableHeader}>
               <Text style={{ ...shared.tableHeaderCell, flex: 4 }}>Désignation</Text>
@@ -177,7 +177,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         {/* Paiements history */}
         {paiements.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Règlements reçus</Text>
+            <PdfSectionTitle>Règlements reçus</PdfSectionTitle>
             {paiements.map((p) => (
               <View key={p.id} style={{ ...shared.row, marginBottom: 4 }}>
                 <Text style={{ ...shared.label, width: 90 }}>{fmtDate(p.date_paiement)}</Text>
@@ -194,7 +194,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         {/* Conditions */}
         {facture.conditions_paiement && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Conditions de paiement</Text>
+            <PdfSectionTitle>Conditions de paiement</PdfSectionTitle>
             <Text style={{ fontSize: 8, color: '#57534e', lineHeight: 1.5 }}>{facture.conditions_paiement}</Text>
           </View>
         )}
@@ -212,7 +212,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
         {/* Coordonnées bancaires (paiement par virement) */}
         {iban && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Règlement par virement</Text>
+            <PdfSectionTitle>Règlement par virement</PdfSectionTitle>
             <View style={shared.row}><Text style={shared.label}>Bénéficiaire</Text><Text style={shared.value}>{titulaire}</Text></View>
             {banque && <View style={shared.row}><Text style={shared.label}>Banque</Text><Text style={shared.value}>{banque}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>IBAN</Text><Text style={shared.value}>{iban}</Text></View>

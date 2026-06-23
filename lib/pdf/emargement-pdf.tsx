@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_LIGHT, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_LIGHT, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface EmargementProps {
   session: any
@@ -63,7 +63,7 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
 
         {/* Carte récap session — jour mis en avant si multi-jours */}
         <View style={shared.card}>
-          <Text style={shared.sectionTitle}>Action de formation</Text>
+          <PdfSectionTitle>Action de formation</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{formation?.intitule || '—'}</Text></View>
           {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
           {isMultiPage ? (

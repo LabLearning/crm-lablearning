@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface CertificatRealisationProps {
   apprenant: any
@@ -31,20 +31,20 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Organisme de formation</Text>
+          <PdfSectionTitle>Organisme de formation</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Raison sociale :</Text><Text style={shared.value}>{org.legal_name || org.name}</Text></View>
           <View style={shared.row}><Text style={shared.label}>N° déclaration :</Text><Text style={shared.value}>{org.numero_da || ''}</Text></View>
           <View style={shared.row}><Text style={shared.label}>SIRET :</Text><Text style={shared.value}>{org.siret || ''}</Text></View>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Stagiaire</Text>
+          <PdfSectionTitle>Stagiaire</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Nom :</Text><Text style={shared.value}>{apprenant.prenom} {apprenant.nom}</Text></View>
           {apprenant.entreprise && <View style={shared.row}><Text style={shared.label}>Entreprise :</Text><Text style={shared.value}>{apprenant.entreprise}</Text></View>}
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Caractéristiques de l'action</Text>
+          <PdfSectionTitle>Caractéristiques de l'action</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formation.intitule}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Nature :</Text><Text style={shared.value}>Action de formation</Text></View>
           <View style={shared.row}><Text style={shared.label}>Modalité :</Text><Text style={shared.value}>{formation.modalite === 'distanciel' ? 'À distance' : formation.modalite === 'mixte' ? 'Mixte (présentiel + à distance)' : 'Présentiel'}</Text></View>
@@ -54,7 +54,7 @@ export function CertificatRealisationPDF({ apprenant, session, formation, org, a
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Attestation</Text>
+          <PdfSectionTitle>Attestation</PdfSectionTitle>
           <Text style={{ fontSize: 9, color: SURFACE_900, lineHeight: 1.8 }}>
             Je soussigné(e) {representant}, atteste que {apprenant.prenom} {apprenant.nom} a réalisé {enTotalite ? 'en totalité' : 'partiellement'} une action concourant au développement des compétences (action de formation au sens de l'article L.6313-1 du Code du travail), dont les caractéristiques figurent ci-dessus.
           </Text>

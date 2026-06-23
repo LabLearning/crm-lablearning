@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, PdfSignatureCards, shared, BRAND_GREEN, SURFACE_500, SURFACE_700 } from './components'
+import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, PdfSignatureCards, shared, BRAND_GREEN, SURFACE_500, SURFACE_700 } from './components'
 
 interface ContratApporteurProps {
   apporteur: any
@@ -17,7 +17,7 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
         <PdfDocHeader docTitle="Contrat d'apporteur d'affaires" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Entre les parties</Text>
+          <PdfSectionTitle>Entre les parties</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>L'organisme :</Text><Text style={shared.value}>{org.name} — {org.legal_name || ''}</Text></View>
           <View style={shared.row}><Text style={shared.label}>SIRET :</Text><Text style={shared.value}>{org.siret || 'Non renseigné'}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Adresse :</Text><Text style={shared.value}>{org.address || ''} {org.postal_code || ''} {org.city || ''}</Text></View>
@@ -29,14 +29,14 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 1 — Objet du contrat</Text>
+          <PdfSectionTitle>Article 1 — Objet du contrat</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le présent contrat a pour objet de définir les conditions dans lesquelles l'Apporteur d'affaires s'engage à présenter des prospects susceptibles de devenir clients de l'Organisme pour ses formations professionnelles.
           </Text>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 2 — Obligations de l'apporteur</Text>
+          <PdfSectionTitle>Article 2 — Obligations de l'apporteur</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             L'Apporteur s'engage à :{'\n'}
             - Identifier et présenter des prospects qualifiés via la plateforme de l'Organisme{'\n'}
@@ -48,7 +48,7 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 3 — Rémunération</Text>
+          <PdfSectionTitle>Article 3 — Rémunération</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Taux de commission :</Text><Text style={shared.value}>{apporteur.taux_commission || 10}%</Text></View>
           <View style={shared.row}><Text style={shared.label}>Base de calcul :</Text><Text style={shared.value}>Montant HT des formations effectivement réalisées</Text></View>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
@@ -57,21 +57,21 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 4 — Durée</Text>
+          <PdfSectionTitle>Article 4 — Durée</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le présent contrat est conclu pour une durée indéterminée à compter de sa date de signature. Chaque partie peut y mettre fin par lettre recommandée avec accusé de réception, moyennant un préavis de 30 jours. Les commissions dues pour les affaires en cours restent acquises.
           </Text>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 5 — Confidentialité</Text>
+          <PdfSectionTitle>Article 5 — Confidentialité</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             L'Apporteur s'engage à garder strictement confidentielles toutes les informations commerciales, financières et techniques dont il aurait connaissance dans le cadre du présent contrat. Cette obligation perdure 2 ans après la fin du contrat.
           </Text>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 6 — Statut</Text>
+          <PdfSectionTitle>Article 6 — Statut</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             L'Apporteur exerce son activité en toute indépendance. Le présent contrat ne crée aucun lien de subordination entre les parties. L'Apporteur est seul responsable de ses obligations fiscales et sociales.{'\n'}
             Les parties conviennent expressément que l'Apporteur n'est pas un agent commercial au sens des articles L.134-1 et suivants du Code de commerce : il n'a ni mandat de représentation permanente, ni pouvoir de négocier ou de conclure des contrats au nom et pour le compte de l'Organisme. Son intervention se limite à la mise en relation.
@@ -79,21 +79,21 @@ export function ContratApporteurPDF({ apporteur, org }: ContratApporteurProps) {
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 7 — Non-sollicitation</Text>
+          <PdfSectionTitle>Article 7 — Non-sollicitation</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Pendant la durée du contrat et pendant une période de 12 mois suivant sa cessation, l'Apporteur s'interdit de solliciter, directement ou indirectement, les clients qu'il a apportés à l'Organisme pour leur proposer des prestations équivalentes pour son propre compte ou pour celui d'un tiers concurrent.
           </Text>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 8 — Protection des données (RGPD)</Text>
+          <PdfSectionTitle>Article 8 — Protection des données (RGPD)</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Chacune des parties s'engage à traiter les données personnelles auxquelles elle a accès dans le respect du Règlement (UE) 2016/679 (RGPD) et de la loi Informatique et Libertés. L'Apporteur garantit avoir recueilli, auprès des prospects qu'il transmet, les consentements et informations nécessaires à la communication de leurs données à l'Organisme et au traitement à des fins de prospection commerciale.
           </Text>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Article 9 — Litiges</Text>
+          <PdfSectionTitle>Article 9 — Litiges</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le présent contrat est régi par le droit français. En cas de différend, et après tentative de règlement amiable, les juridictions du ressort du siège de l'Organisme seront seules compétentes.
           </Text>

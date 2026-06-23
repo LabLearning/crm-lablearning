@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_LIGHT, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_LIGHT, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface AttestationFormationProps {
   apprenant: any
@@ -39,7 +39,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Formation suivie</Text>
+          <PdfSectionTitle>Formation suivie</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formation.intitule}</Text></View>
           {formation.reference && <View style={shared.row}><Text style={shared.label}>Référence :</Text><Text style={shared.value}>{formation.reference}</Text></View>}
           <View style={shared.row}><Text style={shared.label}>Durée :</Text><Text style={shared.value}>{formation.duree_heures || 0} heures</Text></View>
@@ -51,7 +51,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
 
         {formation.objectifs_pedagogiques && formation.objectifs_pedagogiques.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Objectifs pédagogiques atteints</Text>
+            <PdfSectionTitle>Objectifs pédagogiques atteints</PdfSectionTitle>
             {formation.objectifs_pedagogiques.map((obj: string, i: number) => (
               <Text key={i} style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, paddingLeft: 10 }}>
                 - {obj}
@@ -62,7 +62,7 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
 
         {formation.competences_visees && formation.competences_visees.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Compétences acquises</Text>
+            <PdfSectionTitle>Compétences acquises</PdfSectionTitle>
             {formation.competences_visees.map((comp: string, i: number) => (
               <Text key={i} style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, paddingLeft: 10 }}>
                 - {comp}
@@ -72,14 +72,14 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
         )}
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Modalités d'évaluation</Text>
+          <PdfSectionTitle>Modalités d'évaluation</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             {formation.modalites_evaluation || 'Évaluation des acquis en cours et en fin de formation (QCM, mise en situation pratique).'}
           </Text>
         </View>
 
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Résultats de l'évaluation des acquis</Text>
+          <PdfSectionTitle>Résultats de l'évaluation des acquis</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             {assiduite != null
               ? `Les objectifs pédagogiques de la formation ont été évalués. Acquis validés au regard des objectifs visés. Assiduité constatée : ${assiduite}%.`

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
-import { shared, PdfDocHeader, PdfDocFooter, PdfSignatureCards, BRAND_GREEN, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { PdfSectionTitle, shared, PdfDocHeader, PdfDocFooter, PdfSignatureCards, BRAND_GREEN, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Parties */}
         <View style={{ flexDirection: 'row', gap: 20, marginBottom: 18 }}>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Organisme de formation</Text>
+            <PdfSectionTitle>Organisme de formation</PdfSectionTitle>
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{org?.legal_name || ofName}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{org.address}{org.postal_code || org.city ? `, ${org.postal_code || ''} ${org.city || ''}` : ''}</Text>}
             {org?.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{org.siret}</Text></View>}
@@ -260,7 +260,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <View style={shared.row}><Text style={shared.label}>Email</Text><Text style={shared.value}>{ofEmail}</Text></View>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={shared.sectionTitle}>Bénéficiaire / Employeur</Text>
+            <PdfSectionTitle>Bénéficiaire / Employeur</PdfSectionTitle>
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{client.adresse}{clientCpVille ? `, ${clientCpVille}` : ''}</Text>}
             {client.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{client.siret}</Text></View>}
@@ -271,7 +271,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
 
         {/* Objet et durée */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Objet, nature et durée de la formation</Text>
+          <PdfSectionTitle>Objet, nature et durée de la formation</PdfSectionTitle>
           <InfoRow label="Intitulé" value={formationTitle} bold />
           <InfoRow label="Nature" value="Action de formation (article L. 6313-1 CT)" />
           <InfoRow label="Date(s)" value={datesSession} />
@@ -283,7 +283,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Planning */}
         {jours.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Dates et horaires</Text>
+            <PdfSectionTitle>Dates et horaires</PdfSectionTitle>
             <View style={shared.table}>
               <View style={shared.tableHeader}>
                 <Text style={{ ...shared.tableHeaderCell, width: '22%' }}>Jour</Text>
@@ -312,7 +312,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Participants */}
         {participants.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Participants</Text>
+            <PdfSectionTitle>Participants</PdfSectionTitle>
             <Text style={{ fontSize: 8.5, color: SURFACE_700, marginBottom: 6 }}>
               Le bénéficiaire s'engage à assurer la présence des participants aux dates, lieux et heures prévus.
             </Text>
@@ -322,7 +322,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
 
         {/* Conditions financières */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Prix de la formation</Text>
+          <PdfSectionTitle>Prix de la formation</PdfSectionTitle>
           <View style={{ width: 260 }}>
             <MoneyRow label={`Frais pédagogiques${hasTva ? ' (HT)' : ''}`} amount={`${fmt(convention.montant_ht)} €`} />
             <MoneyRow label="Frais refacturés" amount="0,00 €" />
@@ -340,7 +340,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Financement */}
         {(financeurLine || numeroPEC) && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Financement</Text>
+            <PdfSectionTitle>Financement</PdfSectionTitle>
             {!!financeurLine && <InfoRow label="Financeur" value={financeurLine} />}
             {numeroPEC && <InfoRow label="N° de dossier" value={numeroPEC} />}
             {dossier.montant_prise_en_charge != null && (
@@ -352,7 +352,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Public visé et prérequis */}
         {(publicVise || prerequis) && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Public visé et prérequis</Text>
+            <PdfSectionTitle>Public visé et prérequis</PdfSectionTitle>
             {publicVise && <InfoRow label="Public visé" value={publicVise} />}
             {prerequis && <InfoRow label="Prérequis" value={prerequis} />}
           </View>
@@ -361,7 +361,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Objectifs */}
         {objectifs && objectifs.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Objectifs pédagogiques</Text>
+            <PdfSectionTitle>Objectifs pédagogiques</PdfSectionTitle>
             <Text style={{ fontSize: 8.5, color: SURFACE_700, marginBottom: 6 }}>À l'issue de la formation, les participants seront capables de :</Text>
             <Bullets items={objectifs} />
           </View>
@@ -370,7 +370,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Programme détaillé */}
         {programme && programme.length > 0 && (
           <View style={shared.section}>
-            <Text style={shared.sectionTitle}>Programme de la formation</Text>
+            <PdfSectionTitle>Programme de la formation</PdfSectionTitle>
             {programme.map((line, i) => {
               const isModule = /^module|^jour|^partie|^s[ée]quence/i.test(line)
               return (
@@ -384,25 +384,25 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
 
         {/* Moyens */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Moyens et supports pédagogiques</Text>
+          <PdfSectionTitle>Moyens et supports pédagogiques</PdfSectionTitle>
           <Bullets items={moyens} />
         </View>
 
         {/* Évaluation */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Modalités d'évaluation des acquis</Text>
+          <PdfSectionTitle>Modalités d'évaluation des acquis</PdfSectionTitle>
           <Bullets items={modalitesEval} />
         </View>
 
         {/* Suivi */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Modalités pédagogiques et de suivi</Text>
+          <PdfSectionTitle>Modalités pédagogiques et de suivi</PdfSectionTitle>
           <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>{modalitesPeda}</Text>
         </View>
 
         {/* Accessibilité handicap */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Accessibilité — situation de handicap</Text>
+          <PdfSectionTitle>Accessibilité — situation de handicap</PdfSectionTitle>
           <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>
             Les formations sont accessibles aux personnes en situation de handicap. Pour étudier les adaptations nécessaires, contacter {refHandicap || ofEmail}.
           </Text>
@@ -410,7 +410,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
 
         {/* Clauses réglementaires */}
         <View style={shared.section}>
-          <Text style={shared.sectionTitle}>Clauses réglementaires</Text>
+          <PdfSectionTitle>Clauses réglementaires</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginBottom: 6 }}>
             <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Non-réalisation — </Text>
             En application de l'article L. 6354-1 du Code du travail, faute de réalisation totale ou partielle de la prestation, l'organisme prestataire doit rembourser au cocontractant les sommes indûment perçues.
