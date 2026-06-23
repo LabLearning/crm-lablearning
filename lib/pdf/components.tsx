@@ -1,6 +1,7 @@
 import * as React from 'react'
 import {
   Document, Page, View, Text, Image, StyleSheet, Font,
+  Svg, Path, Circle, Line, Polyline, Rect,
 } from '@react-pdf/renderer'
 
 // ─── Polices plateforme (Satoshi titres + General Sans corps, via Fontshare) ──
@@ -290,6 +291,80 @@ export function PdfDocFooter({ numero, org }: { numero: string; org?: { name?: s
         style={shared.footerText}
         render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
       />
+    </View>
+  )
+}
+
+// ─── Icônes Lucide (SVG, partagées) ──────────────────────────────────────────
+// Tracés repris de lucide.dev (viewBox 24, stroke). Rendu via @react-pdf Svg.
+const ICONS: Record<string, (c: string) => React.ReactNode> = {
+  users: (c) => (<>
+    <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx={9} cy={7} r={4} stroke={c} strokeWidth={2} fill="none" />
+    <Path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  target: (c) => (<>
+    <Circle cx={12} cy={12} r={10} stroke={c} strokeWidth={2} fill="none" />
+    <Circle cx={12} cy={12} r={6} stroke={c} strokeWidth={2} fill="none" />
+    <Circle cx={12} cy={12} r={2} stroke={c} strokeWidth={2} fill="none" />
+  </>),
+  list: (c) => (<>
+    <Path d="m3 17 2 2 4-4M3 7l2 2 4-4" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1={13} y1={6} x2={21} y2={6} stroke={c} strokeWidth={2} strokeLinecap="round" />
+    <Line x1={13} y1={12} x2={21} y2={12} stroke={c} strokeWidth={2} strokeLinecap="round" />
+    <Line x1={13} y1={18} x2={21} y2={18} stroke={c} strokeWidth={2} strokeLinecap="round" />
+  </>),
+  clock: (c) => (<>
+    <Circle cx={12} cy={12} r={10} stroke={c} strokeWidth={2} fill="none" />
+    <Polyline points="12 6 12 12 16 14" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  monitor: (c) => (<>
+    <Rect x={2} y={3} width={20} height={14} rx={2} stroke={c} strokeWidth={2} fill="none" />
+    <Line x1={8} y1={21} x2={16} y2={21} stroke={c} strokeWidth={2} strokeLinecap="round" />
+    <Line x1={12} y1={17} x2={12} y2={21} stroke={c} strokeWidth={2} strokeLinecap="round" />
+  </>),
+  clipboardCheck: (c) => (<>
+    <Rect x={8} y={2} width={8} height={4} rx={1} stroke={c} strokeWidth={2} fill="none" />
+    <Path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="m9 14 2 2 4-4" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  userCheck: (c) => (<>
+    <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx={9} cy={7} r={4} stroke={c} strokeWidth={2} fill="none" />
+    <Polyline points="16 11 18 13 22 9" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  accessibility: (c) => (<>
+    <Circle cx={16} cy={4} r={1} stroke={c} strokeWidth={2} fill="none" />
+    <Path d="m18 19 1-7-6 1m-5-4 3-3 5.5 3-2.36 3.5M4.24 14.5a5 5 0 0 0 6.88 6M13.76 17.5a5 5 0 0 0-6.88-6" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </>),
+  banknote: (c) => (<>
+    <Rect x={2} y={6} width={20} height={12} rx={2} stroke={c} strokeWidth={2} fill="none" />
+    <Circle cx={12} cy={12} r={2} stroke={c} strokeWidth={2} fill="none" />
+    <Path d="M6 12h.01M18 12h.01" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" />
+  </>),
+  award: (c) => (<>
+    <Path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx={12} cy={8} r={6} stroke={c} strokeWidth={2} fill="none" />
+  </>),
+  check: (c) => (<Polyline points="20 6 9 17 4 12" stroke={c} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />),
+  pin: (c) => (<>
+    <Path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx={12} cy={10} r={3} stroke={c} strokeWidth={2} fill="none" />
+  </>),
+}
+
+export function PdfIcon({ name, size = 12, color = BRAND_GREEN }: { name: string; size?: number; color?: string }) {
+  const render = ICONS[name]
+  if (!render) return null
+  return <Svg width={size} height={size} viewBox="0 0 24 24">{render(color)}</Svg>
+}
+
+// Titre de section avec icône (moderne)
+export function PdfSectionTitle({ icon, children, color = BRAND_GREEN }: { icon?: string; children: React.ReactNode; color?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 9 }}>
+      {icon ? <PdfIcon name={icon} size={13} color={color} /> : null}
+      <Text style={{ fontSize: 10.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, letterSpacing: -0.2 }}>{children}</Text>
     </View>
   )
 }
