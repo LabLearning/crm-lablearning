@@ -158,6 +158,10 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
           <textarea id="methodes_pedagogiques" name="methodes_pedagogiques" rows={3} className="input-base resize-none" placeholder="Apports théoriques, études de cas, mises en situation..." defaultValue={formation?.methodes_pedagogiques || ''} />
           <textarea id="moyens_techniques" name="moyens_techniques" rows={2} className="input-base resize-none" placeholder="Salle équipée, vidéoprojecteur, PC..." defaultValue={formation?.moyens_techniques || ''} />
           <textarea id="modalites_evaluation" name="modalites_evaluation" rows={2} className="input-base resize-none" placeholder="QCM, mise en situation, étude de cas..." defaultValue={formation?.modalites_evaluation || ''} />
+          <div>
+            <label htmlFor="modalites_admission" className="text-xs font-medium text-surface-600 mb-1 block">Modalités d'admission</label>
+            <textarea id="modalites_admission" name="modalites_admission" rows={3} className="input-base resize-none w-full" placeholder="Analyse du besoin, vérification des prérequis, entretien / positionnement, validation conjointe..." defaultValue={(formation as any)?.modalites_admission || ''} />
+          </div>
           <Input id="accessibilite_handicap" name="accessibilite_handicap" label="Accessibilité handicap" defaultValue={formation?.accessibilite_handicap || ''} placeholder="Locaux accessibles PMR..." />
         </div>
       )}

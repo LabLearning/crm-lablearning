@@ -26,6 +26,7 @@ export const createFormationSchema = z.object({
   code_rncp: z.string().optional(),
   code_rs: z.string().optional(),
   certificateur: z.string().optional(),
+  modalites_admission: z.string().optional(),
   is_published: z.coerce.boolean().optional(),
   is_poei: z.coerce.boolean().optional(),
 })

@@ -94,6 +94,14 @@ export function ProgrammeFormationPDF({ formation, org }: ProgrammeFormationProp
           </Text>
         </View>
 
+        {/* Admission */}
+        {(formation as any).modalites_admission && (
+          <View style={shared.section}>
+            <Text style={shared.sectionTitle}>Modalités d'admission</Text>
+            <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>{(formation as any).modalites_admission}</Text>
+          </View>
+        )}
+
         {/* Certification */}
         {formation.est_certifiante && (
           <View style={shared.section}>

@@ -55,6 +55,7 @@ export interface Formation {
   code_rs: string | null
   certificateur: string | null
   is_active: boolean
+  modalites_admission: string | null
   is_published: boolean
   is_poei?: boolean
   tags: string[]
