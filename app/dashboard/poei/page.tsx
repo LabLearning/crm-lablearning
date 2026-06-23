@@ -9,16 +9,19 @@ export default async function PoeiPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: poei } = await supabase
+  const { data: poeiRaw } = await supabase
     .from('poei')
     .select(`
       *,
       client:clients(raison_sociale),
       formation:formations(intitule),
-      session:sessions(reference, date_debut, date_fin)
+      session:sessions(reference, date_debut, date_fin),
+      candidats:poei_candidats(id)
     `)
     .eq('organization_id', session.organization.id)
     .order('created_at', { ascending: false })
+
+  const poei = (poeiRaw || []).map((p: any) => ({ ...p, candidats_count: (p.candidats || []).length })) as Poei[]
 
   const { data: clients } = await supabase
     .from('clients')
@@ -26,27 +29,24 @@ export default async function PoeiPage() {
     .eq('organization_id', session.organization.id)
     .order('raison_sociale')
 
-  const { data: formations } = await supabase
+  // Catalogue : on ne propose que les formations marquées POEI (fallback : toutes si aucune)
+  const { data: formationsPoei } = await supabase
     .from('formations')
-    .select('id, intitule')
+    .select('id, intitule, duree_heures, is_poei')
     .eq('organization_id', session.organization.id)
     .eq('is_active', true)
     .order('intitule')
 
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('id, intitule, reference, date_debut, ville')
-    .eq('organization_id', session.organization.id)
-    .order('date_debut', { ascending: false })
-    .limit(300)
+  const onlyPoei = (formationsPoei || []).filter((f: any) => f.is_poei)
+  const formations = (onlyPoei.length > 0 ? onlyPoei : (formationsPoei || [])) as any[]
 
   return (
     <div className="animate-fade-in">
       <PoeiList
-        poei={(poei || []) as Poei[]}
+        poei={poei}
         clients={clients || []}
-        formations={formations || []}
-        sessions={(sessions || []) as any[]}
+        formations={formations}
+        hasPoeiCatalog={onlyPoei.length > 0}
       />
     </div>
   )

@@ -62,6 +62,7 @@ export async function createFormationAction(formData: FormData): Promise<ActionR
       code_rs: parsed.data.code_rs || null,
       certificateur: parsed.data.certificateur || null,
       is_published: parsed.data.is_published || false,
+      is_poei: parsed.data.is_poei || false,
       created_by: session.user.id,
     })
     .select()
@@ -132,6 +133,7 @@ export async function updateFormationAction(id: string, formData: FormData): Pro
       code_rs: parsed.data.code_rs || null,
       certificateur: parsed.data.certificateur || null,
       is_published: parsed.data.is_published || false,
+      is_poei: parsed.data.is_poei || false,
       version: newVersion,
       date_derniere_maj: new Date().toISOString().split('T')[0],
       historique_versions: history,

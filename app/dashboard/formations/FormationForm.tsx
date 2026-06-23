@@ -191,10 +191,14 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
       )}
 
       {/* Publication */}
-      <div className="pt-2">
+      <div className="pt-2 space-y-2">
         <label className="flex items-center gap-2 text-sm text-surface-700">
           <input type="checkbox" name="is_published" value="true" defaultChecked={formation?.is_published} className="rounded border-surface-300" />
           Publier dans le catalogue
+        </label>
+        <label className="flex items-center gap-2 text-sm text-surface-700">
+          <input type="checkbox" name="is_poei" value="true" defaultChecked={(formation as any)?.is_poei} className="rounded border-surface-300" />
+          Éligible POEI (Préparation Opérationnelle à l'Emploi)
         </label>
       </div>
 

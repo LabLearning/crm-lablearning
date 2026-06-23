@@ -56,6 +56,7 @@ export interface Formation {
   certificateur: string | null
   is_active: boolean
   is_published: boolean
+  is_poei?: boolean
   tags: string[]
   created_at: string
   updated_at: string

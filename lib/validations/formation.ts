@@ -27,6 +27,7 @@ export const createFormationSchema = z.object({
   code_rs: z.string().optional(),
   certificateur: z.string().optional(),
   is_published: z.coerce.boolean().optional(),
+  is_poei: z.coerce.boolean().optional(),
 })
 
 export const createSessionSchema = z.object({

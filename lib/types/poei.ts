@@ -40,7 +40,31 @@ export interface Poei {
   // jointures
   client?: { raison_sociale: string | null } | null
   formation?: { intitule: string | null } | null
-  session?: { reference: string | null; date_debut: string | null; date_fin: string | null } | null
+  session?: { id?: string; reference: string | null; date_debut: string | null; date_fin: string | null } | null
+  candidats?: PoeiCandidat[]
+  candidats_count?: number
+}
+
+export interface PoeiCandidat {
+  id: string
+  organization_id: string
+  poei_id: string
+  apprenant_id: string | null
+  inscription_id: string | null
+  identifiant_ft: string | null
+  poste_vise: string | null
+  type_contrat: TypeContrat | null
+  date_embauche_prevue: string | null
+  statut: string  // inscrit | en_formation | embauche | abandonne
+  created_at: string
+  apprenant?: { nom: string | null; prenom: string | null; email: string | null; telephone: string | null } | null
+}
+
+export const CANDIDAT_STATUT_LABELS: Record<string, string> = {
+  inscrit: 'Inscrit',
+  en_formation: 'En formation',
+  embauche: 'Embauché',
+  abandonne: 'Abandonné',
 }
 
 export const POEI_STATUS_LABELS: Record<PoeiStatus, string> = {
