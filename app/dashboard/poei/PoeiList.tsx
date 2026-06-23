@@ -86,11 +86,16 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">POEI</h1>
-          <p className="text-sm text-surface-500 mt-0.5">Préparation Opérationnelle à l'Emploi — projets collectifs France Travail</p>
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
+            <Briefcase className="h-5 w-5 text-sky-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">POEI</h1>
+            <p className="text-sm text-surface-500 mt-0.5">Préparation Opérationnelle à l'Emploi — projets collectifs France Travail</p>
+          </div>
         </div>
-        <Button onClick={() => { setErrors({}); setCreateOpen(true) }} icon={<Plus className="h-4 w-4" />}>Nouveau projet</Button>
+        <Button onClick={() => { setErrors({}); setCreateOpen(true) }} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Nouveau projet</Button>
       </div>
 
       {!hasPoeiCatalog && (
@@ -102,12 +107,12 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Projets', value: stats.total, icon: <Briefcase className="h-4 w-4 text-brand-500" /> },
-          { label: 'En montage', value: stats.montage, icon: <Clock className="h-4 w-4 text-amber-500" /> },
-          { label: 'En formation', value: stats.formation, icon: <GraduationCap className="h-4 w-4 text-indigo-500" /> },
-          { label: 'Candidats', value: stats.candidats, icon: <Users className="h-4 w-4 text-emerald-500" /> },
+          { label: 'Projets', value: stats.total, icon: <Briefcase className="h-4 w-4 text-sky-500" /> },
+          { label: 'En montage', value: stats.montage, icon: <Clock className="h-4 w-4 text-sky-500" /> },
+          { label: 'En formation', value: stats.formation, icon: <GraduationCap className="h-4 w-4 text-sky-500" /> },
+          { label: 'Candidats', value: stats.candidats, icon: <Users className="h-4 w-4 text-sky-500" /> },
         ].map((s) => (
-          <div key={s.label} className="card p-4">
+          <div key={s.label} className="card p-4 border-l-2 border-l-sky-400">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-surface-500 uppercase tracking-wider">{s.label}</span>
               {s.icon}
@@ -216,7 +221,7 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Annuler</Button>
-            <Button type="submit" isLoading={isCreating} icon={<Briefcase className="h-4 w-4" />}>Créer le projet</Button>
+            <Button type="submit" isLoading={isCreating} icon={<Briefcase className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Créer le projet</Button>
           </div>
         </form>
       </Modal>

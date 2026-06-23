@@ -80,13 +80,14 @@ export function MobileNav({ isOpen, onClose, permissions, orgName, userRole }: M
                   {visibleItems.map((item) => {
                     const Icon = iconMap[item.icon]
                     const active = isActive(item.href)
+                    const sky = item.accent === 'sky'
                     return (
                       <Link key={item.href} href={item.href} onClick={onClose}
                         className={cn(
                           'flex items-center gap-2.5 rounded-xl px-2.5 py-[7px] transition-all duration-150',
-                          active ? 'bg-surface-900 text-white' : 'text-surface-500 hover:bg-surface-100 hover:text-surface-800'
+                          active ? (sky ? 'bg-sky-500 text-white' : 'bg-surface-900 text-white') : cn('text-surface-500 hover:bg-surface-100 hover:text-surface-800', sky && 'text-sky-600')
                         )}>
-                        {Icon && <Icon className={cn('h-4 w-4', active ? 'text-white' : '')} />}
+                        {Icon && <Icon className={cn('h-4 w-4', active ? 'text-white' : sky ? 'text-sky-500' : '')} />}
                         <span className="text-[13px] font-medium">{item.label}</span>
                       </Link>
                     )

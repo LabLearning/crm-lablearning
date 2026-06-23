@@ -41,13 +41,13 @@ export function PoeiStatusBar({ poeiId, statut }: { poeiId: string; statut: Poei
                 <button
                   onClick={() => change(step)}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    isCurrent ? 'bg-brand-500 text-white' : done ? 'bg-brand-50 text-brand-700' : 'bg-surface-50 text-surface-400 hover:bg-surface-100'
+                    isCurrent ? 'bg-sky-500 text-white' : done ? 'bg-sky-50 text-sky-700' : 'bg-surface-50 text-surface-400 hover:bg-surface-100'
                   }`}
                 >
                   {done && !isCurrent && <Check className="h-3 w-3" />}
                   {POEI_STATUS_LABELS[step]}
                 </button>
-                {i < POEI_WORKFLOW.length - 1 && <div className={`h-px w-3 ${done ? 'bg-brand-300' : 'bg-surface-200'}`} />}
+                {i < POEI_WORKFLOW.length - 1 && <div className={`h-px w-3 ${done ? 'bg-sky-300' : 'bg-surface-200'}`} />}
               </div>
             )
           })}

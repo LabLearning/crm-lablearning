@@ -87,17 +87,18 @@ export function Sidebar({ permissions, orgName, userRole, collapsed, onToggle }:
                     {visibleItems.map(item => {
                       const Icon = iconMap[item.icon]
                       const active = isActive(item.href)
+                      const sky = item.accent === 'sky'
                       return (
                         <Link key={item.href} href={item.href} title={collapsed ? item.label : undefined}
                           className={cn(
                             'flex items-center gap-2.5 rounded-lg transition-all duration-150',
                             collapsed ? 'justify-center px-0 py-2.5 mx-1' : 'px-2.5 py-[7px]',
                             active
-                              ? cn(c.activeBg, c.activeText, 'shadow-sm')
-                              : cn('text-surface-600', c.hoverBg)
+                              ? sky ? 'bg-sky-500 text-white shadow-sm' : cn(c.activeBg, c.activeText, 'shadow-sm')
+                              : cn('text-surface-600', sky ? 'hover:bg-sky-50' : c.hoverBg)
                           )}>
-                          {Icon && <Icon className={cn('shrink-0', collapsed ? 'h-[18px] w-[18px]' : 'h-4 w-4', active ? 'text-white' : 'text-surface-400')} />}
-                          {!collapsed && <span className={cn('text-[13px] font-medium truncate', active ? 'text-white' : 'text-surface-600')}>{item.label}</span>}
+                          {Icon && <Icon className={cn('shrink-0', collapsed ? 'h-[18px] w-[18px]' : 'h-4 w-4', active ? 'text-white' : sky ? 'text-sky-500' : 'text-surface-400')} />}
+                          {!collapsed && <span className={cn('text-[13px] font-medium truncate', active ? 'text-white' : sky ? 'text-sky-600' : 'text-surface-600')}>{item.label}</span>}
                         </Link>
                       )
                     })}

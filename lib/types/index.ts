@@ -115,6 +115,7 @@ export interface NavItem {
   module?: CRMModule
   children?: NavItem[]
   hideForRoles?: string[]
+  accent?: 'sky'  // identité visuelle distincte (ex. POEI en bleu ciel)
 }
 
 export interface NavSection {

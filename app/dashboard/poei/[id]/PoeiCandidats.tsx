@@ -58,9 +58,9 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="section-label">Candidats</span>
-          <Badge variant="default">{candidats.length}</Badge>
+          <Badge variant="default" className="!bg-sky-100 !text-sky-700 !border-sky-200">{candidats.length}</Badge>
         </div>
-        <Button onClick={() => { setErrors({}); setMode('new'); setOpen(true) }} size="sm" icon={<UserPlus className="h-4 w-4" />}>Ajouter</Button>
+        <Button onClick={() => { setErrors({}); setMode('new'); setOpen(true) }} size="sm" icon={<UserPlus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Ajouter</Button>
       </div>
 
       {candidats.length === 0 ? (
@@ -93,7 +93,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
           <div className="flex gap-2 p-1 bg-surface-100 rounded-xl">
             {(['new', 'existing'] as const).map((m) => (
               <button key={m} type="button" onClick={() => setMode(m)}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${mode === m ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500'}`}>
+                className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${mode === m ? 'bg-white shadow-sm text-sky-700' : 'text-surface-500'}`}>
                 {m === 'new' ? 'Nouveau candidat' : 'Apprenant existant'}
               </button>
             ))}
@@ -127,7 +127,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
 
           <div className="flex justify-end gap-3 pt-1">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-            <Button type="submit" isLoading={saving} icon={<UserPlus className="h-4 w-4" />}>Ajouter</Button>
+            <Button type="submit" isLoading={saving} icon={<UserPlus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Ajouter</Button>
           </div>
         </form>
       </Modal>

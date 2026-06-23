@@ -50,10 +50,11 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-heading font-bold text-surface-900 inline-flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-surface-400" />
+              <Building2 className="h-5 w-5 text-sky-500" />
               {p.client?.raison_sociale || 'Projet POEI'}
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-surface-500">
+              <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-xs font-semibold">POEI</span>
               <span className="font-mono">{p.numero}</span>
               <Badge variant={POEI_STATUS_COLORS[p.statut]} dot>{POEI_STATUS_LABELS[p.statut]}</Badge>
               {p.formation?.intitule && <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" /> {p.formation.intitule}</span>}
