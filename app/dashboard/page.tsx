@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
+import { OnboardingGuide } from './OnboardingGuide'
 
 const ROLE_REDIRECTS: Record<string, string> = {
   directeur_commercial: '/dashboard/dirco-home',
@@ -56,6 +57,24 @@ export default async function DashboardPage() {
   const sessionsEnCours = allSessions.filter(s => s.status === 'en_cours' || (s.date_debut <= today && s.date_fin >= today))
   const sessionsAVenir = allSessions.filter(s => s.date_debut > today)
 
+  // Guide de démarrage : détection automatique de l'avancement
+  const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
+  const [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt] = await Promise.all([
+    supabase.from('organizations').select('siret, representant_legal_nom, logo_url').eq('id', organization.id).single(),
+    headCount('formations'), headCount('clients'), headCount('leads'),
+    headCount('sessions'), headCount('devis'), headCount('factures'), headCount('users'),
+  ])
+  const onboardingFlags = {
+    org: !!((orgRow.data as any)?.siret && (orgRow.data as any)?.representant_legal_nom && (orgRow.data as any)?.logo_url),
+    formations: (fCnt.count || 0) > 0,
+    clients: (cCnt.count || 0) > 0,
+    leads: (lCnt.count || 0) > 0,
+    sessions: (sCnt.count || 0) > 0,
+    devis: (dCnt.count || 0) > 0,
+    factures: (factCnt.count || 0) > 0,
+    team: (uCnt.count || 0) > 1,
+  }
+
   const SESSION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' }> = {
     planifiee: { label: 'Planifiée', variant: 'default' },
     confirmee: { label: 'Confirmée', variant: 'info' },
@@ -97,6 +116,9 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Guide de démarrage (masquable) */}
+      <OnboardingGuide flags={onboardingFlags} firstName={user.first_name} />
 
       {/* ── Agenda des sessions ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
