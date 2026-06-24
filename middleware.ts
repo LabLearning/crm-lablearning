@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Not logged in and trying to access protected area
-  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/mon-espace') || pathname.startsWith('/franchise'))) {
+  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/mon-espace') || pathname.startsWith('/franchise') || pathname.startsWith('/onboarding'))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

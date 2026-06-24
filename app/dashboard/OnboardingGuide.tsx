@@ -68,6 +68,9 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <Link href="/onboarding" className="hidden sm:inline-flex items-center gap-1.5 mr-1 px-3 py-1.5 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
+            <Sparkles className="h-3.5 w-3.5" /> Visite guidée
+          </Link>
           <button onClick={() => setCollapsed((c) => !c)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100" title={collapsed ? 'Déplier' : 'Replier'}>
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
