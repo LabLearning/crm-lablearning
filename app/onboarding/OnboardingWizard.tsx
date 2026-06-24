@@ -2,113 +2,81 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveOnboardingAction } from './actions'
+import Link from 'next/link'
 
 // ─── Icônes SVG inline (pas d'emoji) ─────────────────────────────────────────
 const I = {
-  cap: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.84l8.57 3.9a2 2 0 0 0 1.66 0z" /><path d="M22 10v6M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></svg>,
-  building: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01" /></svg>,
-  user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
   trending: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 7h6v6" /><path d="m22 7-8.5 8.5-5-5L2 17" /></svg>,
+  cap: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.84l8.57 3.9a2 2 0 0 0 1.66 0z" /><path d="M22 10v6M6 12.5V16a6 3 0 0 0 12 0v-3.5" /></svg>,
   file: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" /><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8" /></svg>,
-  shield: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg>,
-  layers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.84z" /><path d="m6.08 9.5-3.49 1.59a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83L17.92 9.5" /><path d="m6.08 14.5-3.49 1.59a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83l-3.51-1.6" /></svg>,
-  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m20 6-11 11-5-5" /></svg>,
+  shield: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg>,
+  user: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  pen: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>,
+  calendar: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18" /></svg>,
+  receipt: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M8 7h8M8 11h6" /></svg>,
+  layers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.84z" /><path d="m6.08 9.5-3.49 1.59a1 1 0 0 0 0 1.81l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9a1 1 0 0 0 0-1.83L17.92 9.5" /></svg>,
+  grid: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /></svg>,
   arrow: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg>,
+  chevron: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>,
 }
 
-const ACCOUNT_TYPES = [
-  { id: 'of', icon: I.cap, title: 'Organisme de formation', sub: 'Catalogue, sessions, Qualiopi — le cœur de ton activité.' },
-  { id: 'cfa', icon: I.building, title: 'Centre / CFA', sub: 'Plusieurs sites, volumes importants, alternance.' },
-  { id: 'solo', icon: I.user, title: 'Formateur indépendant', sub: 'En solo : prospection, conventions, factures simplifiées.' },
+const FEATS = [
+  { icon: I.trending, t: 'Commercial', s: 'Leads, devis, apporteurs et pipeline de vente.' },
+  { icon: I.cap, t: 'Formations', s: 'Catalogue, sessions, apprenants et émargement.' },
+  { icon: I.file, t: 'Administratif', s: 'Conventions, dossiers OPCO, facturation.' },
+  { icon: I.shield, t: 'Qualité', s: 'Qualiopi, preuves, évaluations et réclamations.' },
 ]
 
-const FOCUS = [
-  { id: 'commercial', icon: I.trending, title: 'Croissance commerciale', tag: 'Leads · Devis' },
-  { id: 'admin', icon: I.file, title: 'Pilotage administratif', tag: 'Conventions · OPCO' },
-  { id: 'qualiopi', icon: I.shield, title: 'Excellence Qualiopi', tag: 'Qualité · Preuves' },
-  { id: 'all', icon: I.layers, title: 'Vue 360°', tag: 'Tout-en-un' },
+const FLOW = [
+  { icon: I.user, l: 'Lead' },
+  { icon: I.file, l: 'Devis' },
+  { icon: I.pen, l: 'Convention' },
+  { icon: I.calendar, l: 'Session' },
+  { icon: I.receipt, l: 'Facture' },
 ]
 
-export function OnboardingWizard({ defaultName, defaultPrenom, defaultNom }: { defaultName: string; defaultPrenom: string; defaultNom: string }) {
+const START = [
+  { icon: I.grid, t: 'Tableau de bord', s: 'Vue d\'ensemble + guide pas à pas', href: '/dashboard' },
+  { icon: I.trending, t: 'Leads', s: 'Suivre et convertir tes opportunités', href: '/dashboard/leads' },
+  { icon: I.calendar, t: 'Sessions', s: 'Planifier et piloter les formations', href: '/dashboard/sessions' },
+]
+
+export function OnboardingWizard({ prenom }: { prenom: string }) {
   const router = useRouter()
   const [step, setStep] = useState(1)
-  const [busy, setBusy] = useState(false)
 
-  const [name, setName] = useState(defaultName || '')
-  const [type, setType] = useState('of')
-  const [focus, setFocus] = useState('all')
-  const [prenom, setPrenom] = useState(defaultPrenom || '')
-  const [nom, setNom] = useState(defaultNom || '')
-
-  const initials = `${(prenom[0] || '')}${(nom[0] || '')}`.toUpperCase() || (name[0] || 'L').toUpperCase()
-  const focusLabel = FOCUS.find((f) => f.id === focus)?.title || ''
-
-  function skip() {
+  function done() {
     try { localStorage.setItem('ll_onboarding_wizard_done', '1') } catch {}
     router.push('/dashboard')
   }
-
-  async function finish() {
-    setBusy(true)
-    try {
-      const fd = new FormData()
-      fd.set('name', name.trim())
-      fd.set('prenom', prenom.trim())
-      fd.set('nom', nom.trim())
-      await saveOnboardingAction(fd)
-    } catch {}
-    try { localStorage.setItem('ll_onboarding_wizard_done', '1') } catch {}
-    router.push('/dashboard')
-  }
-
-  const canNext = step === 1 ? name.trim().length > 0 && !!type : true
 
   return (
     <div className="ob">
-      {/* Ambiance cockpit */}
       <div className="ob-orb ob-orb-1" aria-hidden />
       <div className="ob-orb ob-orb-2" aria-hidden />
       <div className="ob-grid" aria-hidden />
 
-      {/* Topbar */}
       <header className="ob-topbar">
         <div className="ob-logo">
-          <span className="ob-logo-mark">{I.layers}</span>
-          <span className="ob-logo-text">Lab Learning</span>
+          <img src="/logo-lablearning.svg" alt="Lab Learning" className="ob-logo-img" />
         </div>
-        <button className="ob-skip" onClick={skip}>Passer</button>
+        <button className="ob-skip" onClick={done}>Passer</button>
       </header>
 
-      {/* Stage */}
       <main className="ob-stage">
         <div key={step} className="ob-screen">
-          <div className="ob-eyebrow">
-            <span className="ob-dot" />
-            {step === 1 ? 'Bienvenue' : `Étape ${step} sur 3`}
-          </div>
+          <div className="ob-eyebrow"><span className="ob-dot" />{step === 1 ? 'Bienvenue' : `Étape ${step} sur 3`}</div>
 
           {step === 1 && (
             <>
-              <h1 className="ob-title">Donne un nom à ton <span className="ob-accent">espace de travail</span></h1>
-              <p className="ob-sub">Il t'accompagnera partout. Choisis un nom reconnaissable — tu pourras toujours le modifier plus tard.</p>
-
-              <div className="ob-field">
-                <label htmlFor="ws" className="ob-label">Nom de l'espace</label>
-                <input id="ws" className="ob-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex. Lab Learning" autoFocus />
-                <span className="ob-help">Visible dans l'en-tête, sur tes documents et tes emails.</span>
-              </div>
-
-              <div className="ob-cards">
-                {ACCOUNT_TYPES.map((t) => (
-                  <button key={t.id} type="button" className={`ob-card ${type === t.id ? 'is-sel' : ''}`} onClick={() => setType(t.id)} aria-pressed={type === t.id}>
-                    <span className="ob-card-ic">{t.icon}</span>
-                    <span className="ob-card-body">
-                      <span className="ob-card-title">{t.title}</span>
-                      <span className="ob-card-sub">{t.sub}</span>
-                    </span>
-                    <span className="ob-tick">{I.check}</span>
-                  </button>
+              <h1 className="ob-title">{prenom ? `${prenom}, ` : ''}ton CRM pour piloter <span className="ob-accent">toute l'activité</span></h1>
+              <p className="ob-sub">Un seul outil pour l'équipe Lab Learning : du premier contact à la facturation, en passant par les sessions, les conventions et le suivi Qualiopi.</p>
+              <div className="ob-feats">
+                {FEATS.map((f) => (
+                  <div key={f.t} className="ob-feat">
+                    <span className="ob-feat-ic">{f.icon}</span>
+                    <span className="ob-feat-body"><span className="ob-feat-t">{f.t}</span><span className="ob-feat-s">{f.s}</span></span>
+                  </div>
                 ))}
               </div>
             </>
@@ -116,49 +84,40 @@ export function OnboardingWizard({ defaultName, defaultPrenom, defaultNom }: { d
 
           {step === 2 && (
             <>
-              <h1 className="ob-title">Quel est ton <span className="ob-accent">objectif principal</span> ?</h1>
-              <p className="ob-sub">On adapte ta prise en main à ce qui compte le plus pour toi. Tu pourras le faire évoluer au fil de ta progression.</p>
-
-              <div className="ob-grid-cards">
-                {FOCUS.map((f) => (
-                  <button key={f.id} type="button" className={`ob-gcard ${focus === f.id ? 'is-sel' : ''}`} onClick={() => setFocus(f.id)} aria-pressed={focus === f.id}>
-                    <span className="ob-gframe">{f.icon}</span>
-                    <span className="ob-gname">{f.title}</span>
-                    <span className="ob-gtag">{f.tag}</span>
-                    <span className="ob-gtick">{I.check}</span>
-                  </button>
+              <h1 className="ob-title">Tout est <span className="ob-accent">connecté</span>, du lead à la facture</h1>
+              <p className="ob-sub">Chaque étape alimente la suivante — pas de double saisie. Voici le cycle d'une action de formation dans le CRM.</p>
+              <div className="ob-flow">
+                {FLOW.map((n, i) => (
+                  <div className="ob-flow-item" key={n.l}>
+                    <div className="ob-node">
+                      <span className="ob-node-ic">{n.icon}</span>
+                      <span className="ob-node-l">{n.l}</span>
+                    </div>
+                    {i < FLOW.length - 1 && <span className="ob-conn">{I.chevron}</span>}
+                  </div>
                 ))}
               </div>
+              <p className="ob-note"><span className="ob-note-dot" />Un lead « gagné » crée déjà un dossier ; la convention et la facture reprennent automatiquement les données de l'organisme et de la formation.</p>
             </>
           )}
 
           {step === 3 && (
             <>
-              <h1 className="ob-title">Personnalise ton <span className="ob-accent">profil</span></h1>
-              <p className="ob-sub">Une dernière touche. Ton profil évoluera avec toi à mesure que tu avances dans le CRM.</p>
-
-              <div className="ob-profile">
-                <div className="ob-avatar">{initials}</div>
-                <div className="ob-profile-meta">
-                  <div className="ob-profile-name">{[prenom, nom].filter(Boolean).join(' ') || 'Ton nom'}</div>
-                  <div className="ob-profile-ws">{name || 'Ton espace'}{focusLabel ? ` · ${focusLabel}` : ''}</div>
-                </div>
-              </div>
-
-              <div className="ob-row">
-                <div className="ob-field">
-                  <label htmlFor="pn" className="ob-label">Prénom</label>
-                  <input id="pn" className="ob-input" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" />
-                </div>
-                <div className="ob-field">
-                  <label htmlFor="nm" className="ob-label">Nom</label>
-                  <input id="nm" className="ob-input" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" />
-                </div>
+              <h1 className="ob-title">Prêt à <span className="ob-accent">démarrer</span> ?</h1>
+              <p className="ob-sub">Le guide de démarrage t'attend sur le tableau de bord et coche les étapes automatiquement à mesure que tu avances. Accède à l'essentiel :</p>
+              <div className="ob-start">
+                {START.map((s) => (
+                  <Link key={s.t} href={s.href} className="ob-slink" onClick={() => { try { localStorage.setItem('ll_onboarding_wizard_done', '1') } catch {} }}>
+                    <span className="ob-slink-ic">{s.icon}</span>
+                    <span className="ob-slink-t">{s.t}</span>
+                    <span className="ob-slink-s">{s.s}</span>
+                    <span className="ob-slink-go">Ouvrir {I.arrow}</span>
+                  </Link>
+                ))}
               </div>
             </>
           )}
 
-          {/* Footer : progression + actions */}
           <div className="ob-footer">
             <div className="ob-progress">
               {[1, 2, 3].map((n) => <span key={n} className={`ob-pdot ${n === step ? 'is-on' : n < step ? 'is-done' : ''}`} />)}
@@ -166,13 +125,9 @@ export function OnboardingWizard({ defaultName, defaultPrenom, defaultNom }: { d
             <div className="ob-actions">
               {step > 1 && <button className="ob-back" onClick={() => setStep((s) => s - 1)}>Retour</button>}
               {step < 3 ? (
-                <button className="ob-cta" disabled={!canNext} onClick={() => setStep((s) => s + 1)}>
-                  Continuer <span className="ob-cta-ic">{I.arrow}</span>
-                </button>
+                <button className="ob-cta" onClick={() => setStep((s) => s + 1)}>{step === 1 ? 'Découvrir le parcours' : 'Continuer'} <span className="ob-cta-ic">{I.arrow}</span></button>
               ) : (
-                <button className="ob-cta" disabled={busy} onClick={finish}>
-                  {busy ? 'Un instant…' : 'Accéder au CRM'} <span className="ob-cta-ic">{I.arrow}</span>
-                </button>
+                <button className="ob-cta" onClick={done}>Accéder au CRM <span className="ob-cta-ic">{I.arrow}</span></button>
               )}
             </div>
           </div>
@@ -187,75 +142,57 @@ export function OnboardingWizard({ defaultName, defaultPrenom, defaultNom }: { d
 const css = `
 .ob{position:relative;min-height:100vh;background:#FAFAFA;color:#0F172A;overflow:hidden;font-family:'General Sans',system-ui,sans-serif;}
 .ob *{box-sizing:border-box;}
-/* Orbes */
 .ob-orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.4;pointer-events:none;z-index:0;}
 .ob-orb-1{width:560px;height:560px;top:-160px;left:-140px;background:radial-gradient(circle at 30% 30%,#2FAE76,transparent 70%);animation:obFloat1 24s ease-in-out infinite;}
 .ob-orb-2{width:620px;height:620px;bottom:-220px;right:-160px;background:radial-gradient(circle at 60% 40%,#195245,transparent 70%);animation:obFloat2 26s ease-in-out infinite;}
 @keyframes obFloat1{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,30px)}}
 @keyframes obFloat2{0%,100%{transform:translate(0,0)}50%{transform:translate(-50px,-30px)}}
-/* Grille */
 .ob-grid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(25,82,69,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(25,82,69,.05) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 42%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse 70% 60% at 50% 42%,#000 30%,transparent 75%);}
-/* Topbar */
 .ob-topbar{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:20px 28px;}
 .ob-logo{display:flex;align-items:center;gap:10px;}
-.ob-logo-mark{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,#2FAE76 0%,#195245 55%,#0f3a30 100%);box-shadow:0 6px 16px rgba(25,82,69,.28);}
-.ob-logo-mark svg{width:17px;height:17px;}
-.ob-logo-text{font-weight:700;font-size:15px;letter-spacing:-.02em;}
+.ob-logo-img{height:30px;width:auto;max-width:150px;display:block;}
 .ob-skip{border:0;background:transparent;color:#64748B;font-size:13px;font-weight:600;cursor:pointer;padding:8px 12px;border-radius:9px;transition:.15s;font-family:inherit;}
 .ob-skip:hover{background:rgba(15,23,42,.05);color:#0F172A;}
-/* Stage */
 .ob-stage{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 70px);padding:24px;}
-.ob-screen{width:100%;max-width:640px;animation:obIn .5s cubic-bezier(.16,1,.3,1);}
+.ob-screen{width:100%;max-width:660px;animation:obIn .5s cubic-bezier(.16,1,.3,1);}
 @keyframes obIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-/* Eyebrow */
-.ob-eyebrow{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #EEF2F1;box-shadow:0 2px 10px rgba(15,23,42,.04);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:#475569;letter-spacing:.01em;}
+.ob-eyebrow{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #EEF2F1;box-shadow:0 2px 10px rgba(15,23,42,.04);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:#475569;}
 .ob-dot{width:8px;height:8px;border-radius:50%;background:#10B981;box-shadow:0 0 0 0 rgba(16,185,129,.5);animation:obPulse 1.8s ease-out infinite;}
 @keyframes obPulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}70%{box-shadow:0 0 0 7px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
-/* Titres */
 .ob-title{font-family:'General Sans',system-ui,sans-serif;font-feature-settings:'ss01' on;font-weight:700;font-size:38px;line-height:1.08;letter-spacing:-.03em;margin:18px 0 10px;}
 .ob-accent{background:linear-gradient(135deg,#2FAE76 0%,#195245 50%,#0f3a30 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.ob-sub{font-size:15.5px;line-height:1.55;color:#64748B;max-width:540px;margin:0 0 26px;}
-/* Champ */
-.ob-field{display:flex;flex-direction:column;gap:7px;margin-bottom:18px;flex:1;}
-.ob-label{font-size:13px;font-weight:600;color:#334155;}
-.ob-input{width:100%;border:1px solid #E6EAE9;background:#fff;border-radius:13px;padding:14px 16px;font-size:15px;color:#0F172A;outline:none;transition:.15s;font-family:inherit;box-shadow:0 1px 2px rgba(15,23,42,.03);}
-.ob-input::placeholder{color:#94A3B8;}
-.ob-input:focus{border-color:#2FAE76;box-shadow:0 0 0 4px rgba(47,174,118,.15);}
-.ob-help{font-size:12.5px;color:#94A3B8;}
-.ob-row{display:flex;gap:14px;}
-/* Cartes choix (radio) */
-.ob-cards{display:flex;flex-direction:column;gap:11px;}
-.ob-card{position:relative;display:flex;align-items:center;gap:14px;text-align:left;background:#fff;border:1.5px solid #EEF2F1;border-radius:16px;padding:15px 16px;cursor:pointer;transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s,border-color .18s;font-family:inherit;box-shadow:0 1px 3px rgba(15,23,42,.03);}
-.ob-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,23,42,.08);}
-.ob-card-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#ECFDF3;color:#195245;flex:0 0 auto;transition:.18s;}
-.ob-card-ic svg{width:21px;height:21px;}
-.ob-card-body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
-.ob-card-title{font-size:14.5px;font-weight:700;color:#0F172A;letter-spacing:-.01em;}
-.ob-card-sub{font-size:12.5px;color:#64748B;line-height:1.4;}
-.ob-tick{width:22px;height:22px;border-radius:50%;border:1.5px solid #E2E8F0;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:.18s;transform:scale(.8);}
-.ob-tick svg{width:13px;height:13px;opacity:0;transition:.18s;}
-.ob-card.is-sel{border-color:#2FAE76;box-shadow:0 0 0 4px rgba(47,174,118,.13),0 10px 26px rgba(15,23,42,.07);}
-.ob-card.is-sel .ob-card-ic{background:linear-gradient(135deg,#2FAE76,#195245);color:#fff;}
-.ob-card.is-sel .ob-tick{border-color:transparent;background:linear-gradient(135deg,#2FAE76,#195245);transform:scale(1);}
-.ob-card.is-sel .ob-tick svg{opacity:1;}
-/* Cartes gamifiées (grille) */
-.ob-grid-cards{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
-.ob-gcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:#fff;border:1.5px solid #EEF2F1;border-radius:18px;padding:18px;cursor:pointer;transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s,border-color .18s;font-family:inherit;box-shadow:0 1px 3px rgba(15,23,42,.03);overflow:hidden;}
-.ob-gcard:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(15,23,42,.09);}
-.ob-gframe{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#ECFDF3;color:#195245;border:1px solid #D6F0E2;transition:.18s;}
-.ob-gframe svg{width:24px;height:24px;}
-.ob-gname{font-size:15px;font-weight:700;color:#0F172A;letter-spacing:-.01em;}
-.ob-gtag{font-size:11.5px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:.05em;}
-.ob-gtick{position:absolute;top:14px;right:14px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#2FAE76,#195245);color:#fff;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(.5);transition:.2s cubic-bezier(.16,1,.3,1);}
-.ob-gtick svg{width:13px;height:13px;}
-.ob-gcard.is-sel{border-color:#2FAE76;box-shadow:0 0 0 4px rgba(47,174,118,.13),0 14px 30px rgba(15,23,42,.08);}
-.ob-gcard.is-sel .ob-gframe{background:linear-gradient(135deg,#2FAE76,#195245);color:#fff;border-color:transparent;}
-.ob-gcard.is-sel .ob-gtick{opacity:1;transform:scale(1);}
-/* Profil */
-.ob-profile{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #EEF2F1;border-radius:18px;padding:16px 18px;margin-bottom:18px;box-shadow:0 2px 12px rgba(15,23,42,.04);}
-.ob-avatar{width:58px;height:58px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;color:#fff;background:linear-gradient(135deg,#2FAE76 0%,#195245 55%,#0f3a30 100%);box-shadow:0 8px 20px rgba(25,82,69,.28);letter-spacing:.02em;}
-.ob-profile-name{font-size:16px;font-weight:700;color:#0F172A;letter-spacing:-.01em;}
-.ob-profile-ws{font-size:13px;color:#64748B;margin-top:2px;}
+.ob-sub{font-size:15.5px;line-height:1.55;color:#64748B;max-width:560px;margin:0 0 26px;}
+/* Step 1 — features */
+.ob-feats{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ob-feat{display:flex;align-items:flex-start;gap:13px;background:#fff;border:1px solid #EEF2F1;border-radius:16px;padding:15px 16px;box-shadow:0 1px 3px rgba(15,23,42,.03);transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s;}
+.ob-feat:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(15,23,42,.07);}
+.ob-feat-ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2FAE76,#195245);color:#fff;flex:0 0 auto;box-shadow:0 5px 13px rgba(25,82,69,.22);}
+.ob-feat-ic svg{width:20px;height:20px;}
+.ob-feat-body{display:flex;flex-direction:column;gap:2px;}
+.ob-feat-t{font-size:14px;font-weight:700;color:#0F172A;letter-spacing:-.01em;}
+.ob-feat-s{font-size:12.5px;color:#64748B;line-height:1.4;}
+/* Step 2 — flow */
+.ob-flow{display:flex;align-items:flex-start;justify-content:space-between;background:#fff;border:1px solid #EEF2F1;border-radius:18px;padding:24px 14px;box-shadow:0 2px 14px rgba(15,23,42,.05);}
+.ob-flow-item{display:flex;align-items:flex-start;flex:1;}
+.ob-flow-item:last-child{flex:0 0 auto;}
+.ob-node{display:flex;flex-direction:column;align-items:center;gap:9px;width:100%;text-align:center;}
+.ob-node-ic{width:48px;height:48px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2FAE76 0%,#195245 60%,#0f3a30 100%);color:#fff;box-shadow:0 7px 18px rgba(25,82,69,.24);}
+.ob-node-ic svg{width:22px;height:22px;}
+.ob-node-l{font-size:12px;font-weight:700;color:#334155;letter-spacing:-.01em;}
+.ob-conn{display:flex;align-items:center;color:#9FD9BE;margin-top:14px;}
+.ob-conn svg{width:18px;height:18px;}
+.ob-note{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;line-height:1.5;color:#64748B;margin:16px 2px 0;}
+.ob-note-dot{width:7px;height:7px;border-radius:50%;background:#2FAE76;margin-top:5px;flex:0 0 auto;}
+/* Step 3 — start */
+.ob-start{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.ob-slink{display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid #EEF2F1;border-radius:16px;padding:16px;text-decoration:none;color:inherit;box-shadow:0 1px 3px rgba(15,23,42,.03);transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s,border-color .18s;}
+.ob-slink:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(15,23,42,.09);border-color:#D6F0E2;}
+.ob-slink-ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#ECFDF3;color:#195245;border:1px solid #D6F0E2;}
+.ob-slink-ic svg{width:21px;height:21px;}
+.ob-slink-t{font-size:14.5px;font-weight:700;color:#0F172A;letter-spacing:-.01em;margin-top:2px;}
+.ob-slink-s{font-size:12px;color:#64748B;line-height:1.4;flex:1;}
+.ob-slink-go{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:#195245;margin-top:4px;}
+.ob-slink-go svg{width:14px;height:14px;}
 /* Footer */
 .ob-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:30px;}
 .ob-progress{display:flex;gap:7px;}
@@ -270,16 +207,17 @@ const css = `
 .ob-cta:disabled{opacity:.45;cursor:not-allowed;}
 .ob-cta-ic{display:flex;}
 .ob-cta-ic svg{width:17px;height:17px;}
-/* Focus visibles (a11y) */
-.ob-card:focus-visible,.ob-gcard:focus-visible,.ob-cta:focus-visible,.ob-skip:focus-visible,.ob-back:focus-visible{outline:2px solid #2FAE76;outline-offset:2px;}
-.ob-input:focus-visible{outline:none;}
-/* Responsive */
-@media (max-width:600px){
-  .ob-title{font-size:28px;}
+.ob-slink:focus-visible,.ob-cta:focus-visible,.ob-skip:focus-visible,.ob-back:focus-visible{outline:2px solid #2FAE76;outline-offset:2px;}
+@media (max-width:620px){
+  .ob-title{font-size:27px;}
   .ob-sub{font-size:14.5px;margin-bottom:20px;}
-  .ob-grid-cards{grid-template-columns:1fr;}
-  .ob-row{flex-direction:column;gap:0;}
+  .ob-feats{grid-template-columns:1fr;}
+  .ob-start{grid-template-columns:1fr;}
   .ob-stage{padding:18px;}
+  .ob-flow{flex-direction:column;gap:6px;padding:18px;}
+  .ob-flow-item{flex-direction:column;align-items:center;width:100%;}
+  .ob-node{flex-direction:row;justify-content:flex-start;gap:12px;text-align:left;}
+  .ob-conn{margin:2px 0;transform:rotate(90deg);}
   .ob-footer{flex-direction:column-reverse;align-items:stretch;gap:14px;}
   .ob-actions{justify-content:space-between;}
   .ob-cta{flex:1;justify-content:center;}
