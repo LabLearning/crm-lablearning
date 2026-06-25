@@ -118,7 +118,7 @@ const sessionMap = await existingByDendreo('sessions')
       civilite: clean(f.civilite), nom: clean(f.nom) || '—', prenom: clean(f.prenom) || '',
       email: clean(f.email_pro) || clean(f.email_perso),
       telephone: clean(f.telephone_pro) || clean(f.telephone_perso),
-      siret: clean(f.siret), adresse: clean(f.adresse), code_postal: clean(f.code_postal), ville: clean(f.ville),
+      siret: clean(f.siret), numero_da: clean(f.num_da), adresse: clean(f.adresse), code_postal: clean(f.code_postal), ville: clean(f.ville),
       type_contrat: salarie ? 'salarie' : 'sous_traitance', is_active: true, notes: '[Dendreo]',
     })
   }
@@ -192,6 +192,7 @@ const formationByName = new Map()
       civilite: clean(p.civilite), nom: clean(p.nom) || '—', prenom: clean(p.prenom) || '',
       email: clean(p.email), telephone: clean(p.portable),
       date_naissance: clean(p.date_de_naissance), poste: clean(p.fonction),
+      statut_bpf: clean(p.statut_bpf),
       entreprise: clean(p.catalogue_entreprise), notes: '[Dendreo]',
     })
   }

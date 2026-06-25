@@ -45,7 +45,7 @@ async function mapResource(sb: any, resource: string, o: any): Promise<Mapped | 
         client_id: await lookupId(sb, 'clients', o.id_entreprise),
         civilite: clean(o.civilite), nom: clean(o.nom), prenom: clean(o.prenom) || '',
         email: clean(o.email), telephone: clean(o.portable), date_naissance: clean(o.date_de_naissance),
-        poste: clean(o.fonction), entreprise: clean(o.catalogue_entreprise),
+        poste: clean(o.fonction), statut_bpf: clean(o.statut_bpf), entreprise: clean(o.catalogue_entreprise),
       }) }
     }
     case 'formateur': {
@@ -54,7 +54,7 @@ async function mapResource(sb: any, resource: string, o: any): Promise<Mapped | 
         organization_id: ORG, dendreo_id: String(o.id_formateur),
         civilite: clean(o.civilite), nom: clean(o.nom), prenom: clean(o.prenom) || '',
         email: clean(o.email_pro) || clean(o.email_perso), telephone: clean(o.telephone_pro) || clean(o.telephone_perso),
-        siret: clean(o.siret), adresse: clean(o.adresse), code_postal: clean(o.code_postal), ville: clean(o.ville),
+        siret: clean(o.siret), numero_da: clean(o.num_da), adresse: clean(o.adresse), code_postal: clean(o.code_postal), ville: clean(o.ville),
         type_contrat: salarie ? 'salarie' : 'sous_traitance', is_active: true,
       }) }
     }

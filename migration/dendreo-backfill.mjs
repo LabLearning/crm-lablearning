@@ -90,6 +90,28 @@ log(`\n${DRY ? '🔍 DRY-RUN' : '🚀 APPLY'} — Backfill Dendreo`)
   log(`  formations (catégorie) : ${n}`)
 }
 
+// ── APPRENANTS (statut_bpf) ──
+{
+  const participants = await dendreo('participants') || []
+  let n = 0
+  await pool(participants, 8, async (p) => {
+    const v = clean(p.statut_bpf)
+    if (v && await patch('apprenants', p.id_participant, { statut_bpf: v })) n++
+  })
+  log(`  apprenants (statut_bpf) : ${n}`)
+}
+
+// ── FORMATEURS (numero_da) ──
+{
+  const formateurs = await dendreo('formateurs') || []
+  let n = 0
+  for (const f of formateurs) {
+    const v = clean(f.num_da)
+    if (v && await patch('formateurs', f.id_formateur, { numero_da: v })) n++
+  }
+  log(`  formateurs (numero_da) : ${n}`)
+}
+
 // ── SESSIONS (formateur + lieu via détail action) ──
 {
   const salles = await dendreo('salles_de_formation') || []
