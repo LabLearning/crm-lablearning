@@ -56,8 +56,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const weeks = parseWeeks(f.programme_detaille || '')
   const jours: any[] = Array.isArray(sess.horaires_jours) ? sess.horaires_jours : []
   const perWeek = weeks.length ? Math.ceil(jours.length / weeks.length) : 0
+  // Date de debut de chaque semaine : jour reel de session si dispo, sinon
+  // date_debut de session + 7 jours par semaine
+  const base = poei?.date_debut || sess.date_debut
+  const weekDate = (i: number): string => {
+    if (perWeek && jours[i * perWeek]?.date) return fmt(jours[i * perWeek].date)
+    if (!base) return ''
+    const d = new Date(base)
+    d.setDate(d.getDate() + i * 7)
+    return fmt(d.toISOString())
+  }
   let rows: PdcRow[] = weeks.map((w, i) => ({
-    date: fmt(perWeek ? jours[i * perWeek]?.date : null),
+    date: weekDate(i),
     comp: w.modules.join(' · '),
     heures: w.duree ? w.duree.replace(/h$/i, ' h') : '',
     obj: w.titre,

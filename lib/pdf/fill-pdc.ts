@@ -7,6 +7,9 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 const NAVY = rgb(0.106, 0.165, 0.42)
 const H = 841.92
 const PITCH = 11.4 // pas entre cases (chiffres)
+// Les coordonnees relevees correspondent au bas de la boite englobante des
+// glyphes (pdfminer) ; la vraie ligne de base est ~2pt plus haut.
+const LIFT = 2.0
 
 export interface PdcRow { date?: string; comp?: string; heures?: string; obj?: string }
 export interface PdcData {
@@ -32,12 +35,12 @@ export async function fillPdc(templateBytes: ArrayBuffer | Uint8Array, d: PdcDat
 
   const T = (txt: any, x: number, yTop: number, size = 9, bold = false) => {
     const v = san(txt)
-    if (v) page.drawText(v, { x, y: yTop, size, font: bold ? fontB : font, color: NAVY })
+    if (v) page.drawText(v, { x, y: yTop + LIFT, size, font: bold ? fontB : font, color: NAVY })
   }
   // Chiffres en cases (pas fixe)
   const boxed = (val: any, startX: number, y: number, size = 9.5) => {
     const ds = digits(val)
-    for (let i = 0; i < ds.length; i++) page.drawText(ds[i], { x: startX + i * PITCH, y, size, font, color: NAVY })
+    for (let i = 0; i < ds.length; i++) page.drawText(ds[i], { x: startX + i * PITCH, y: y + LIFT, size, font, color: NAVY })
   }
   // Retour à la ligne dans une largeur donnée
   const wrap = (text: string, maxW: number, size: number) => {
@@ -54,7 +57,7 @@ export async function fillPdc(templateBytes: ArrayBuffer | Uint8Array, d: PdcDat
   }
   const para = (text: string, x: number, yTop: number, maxW: number, size = 7, lh = 8.6, maxLines = 6) => {
     const lines = wrap(text, maxW, size).slice(0, maxLines)
-    lines.forEach((l, i) => page.drawText(l, { x, y: yTop - i * lh, size, font, color: NAVY }))
+    lines.forEach((l, i) => page.drawText(l, { x, y: yTop + LIFT - i * lh, size, font, color: NAVY }))
   }
 
   // ── Employeur ──
@@ -79,7 +82,7 @@ export async function fillPdc(templateBytes: ArrayBuffer | Uint8Array, d: PdcDat
   // Stagiaire / tuteur : coche (Mme x40 / M x68.3) + nom
   const check = (civ: string | undefined, y: number) => {
     const isMme = (civ || '').toLowerCase().startsWith('mme')
-    page.drawText('X', { x: isMme ? 40 : 68.3, y, size: 8.5, font: fontB, color: NAVY })
+    page.drawText('X', { x: isMme ? 40 : 68.3, y: y + LIFT, size: 8.5, font: fontB, color: NAVY })
   }
   check(d.stagiaireCiv, 464.4); T(d.stagiaire, 257, 464.4)
   check(d.tuteurCiv, 415.9); T(d.tuteur, 257, 415.9)
