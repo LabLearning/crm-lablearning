@@ -33,23 +33,44 @@ export async function POST(req: Request) {
     ? (obj.id ?? obj[`id_${resource}`] ?? Object.entries(obj).find(([k]) => /^id_/.test(k) && !/^id_(add|edit|delete)$/.test(k))?.[1] ?? null)
     : (p.id ?? p.resource_id ?? null)
 
+  const verb = eventType && eventType.includes('.') ? eventType.split('.').slice(1).join('.') : ''
+  let eventId: string | null = null
   try {
     const supabase = await createServiceRoleClient()
-    await supabase.from('dendreo_webhook_events').insert({
+    const { data } = await supabase.from('dendreo_webhook_events').insert({
       organization_id: ORG,
       event_type: eventType ? String(eventType) : null,
       resource: resource ? String(resource) : null,
       resource_id: resourceId != null ? String(resourceId) : null,
       payload: payload ?? null,
       status: 'received',
-    })
+    }).select('id').single()
+    eventId = data?.id || null
   } catch (e) {
     console.error('[dendreo webhook] log error', e)
-    // On répond 200 quand même pour éviter que Dendreo ne rejoue en boucle
   }
 
-  // TODO (sync) : router selon event_type/resource vers un handler qui met à
-  // jour l'entité CRM correspondante par dendreo_id (cf. migration/dendreo-sync.mjs).
+  // Synchronisation vers le CRM (upsert par dendreo_id)
+  if (resource && obj) {
+    try {
+      const { applyDendreoEvent } = await import('@/lib/dendreo-map')
+      const res = await applyDendreoEvent(resource, verb, obj)
+      if (eventId) {
+        const supabase = await createServiceRoleClient()
+        await supabase.from('dendreo_webhook_events')
+          .update({ status: res.status, error: res.error || null, processed_at: new Date().toISOString() })
+          .eq('id', eventId)
+      }
+    } catch (e: any) {
+      console.error('[dendreo webhook] sync error', e)
+      if (eventId) {
+        const supabase = await createServiceRoleClient()
+        await supabase.from('dendreo_webhook_events').update({ status: 'error', error: String(e?.message || e), processed_at: new Date().toISOString() }).eq('id', eventId)
+      }
+    }
+  }
+
+  // Réponse 200 systématique pour éviter que Dendreo ne rejoue en boucle
   return NextResponse.json({ ok: true })
 }
 
