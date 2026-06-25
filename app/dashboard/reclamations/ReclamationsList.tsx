@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Trash2, ArrowRight, Save,
+  Plus, Search, Trash2, ArrowRight, Save,
   MessageSquareWarning, AlertTriangle, Clock, CheckCircle2,
   Lightbulb, Eye,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import {
   createReclamationAction, updateReclamationStatusAction,
   createActionAction, updateActionStatusAction, deleteReclamationAction,
@@ -43,7 +43,6 @@ export function ReclamationsList({ reclamations, actions, users }: ReclamationsL
   const [createActionOpen, setCreateActionOpen] = useState(false)
   const [detailRec, setDetailRec] = useState<Reclamation | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const userOptions = [{ value: '', label: 'Non assigné' }, ...users.map((u) => ({ value: u.id, label: `${u.first_name} ${u.last_name}` }))]
 
@@ -81,7 +80,6 @@ export function ReclamationsList({ reclamations, actions, users }: ReclamationsL
     const result = await updateReclamationStatusAction(id, status, details)
     if (result.success) toast('success', `Statut : ${RECLAMATION_STATUS_LABELS[status]}`)
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleCreateAction(e: React.FormEvent<HTMLFormElement>) {
@@ -104,7 +102,6 @@ export function ReclamationsList({ reclamations, actions, users }: ReclamationsL
     const result = await deleteReclamationAction(id)
     if (result.success) toast('success', 'Supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   return (
@@ -170,18 +167,9 @@ export function ReclamationsList({ reclamations, actions, users }: ReclamationsL
                   {r.status === 'action_corrective' && (
                     <Button size="sm" variant="secondary" onClick={() => handleStatusChange(r.id, 'cloturee', { resolution_satisfaisante: 'true' })} icon={<CheckCircle2 className="h-3.5 w-3.5" />}>Clôturer</Button>
                   )}
-                  <div className="relative">
-                    <button onClick={() => setActiveMenu(activeMenu === r.id ? null : r.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                    {activeMenu === r.id && (
-                      <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                        <button onClick={() => handleDelete(r.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                          <Trash2 className="h-4 w-4" /> Supprimer
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <RowMenu items={[
+                    { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(r.id), danger: true },
+                  ]} />
                 </div>
               </div>
             </div>

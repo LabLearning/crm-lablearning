@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Copy, Eye,
+  Plus, Search, Pencil, Trash2, Copy, Eye,
   ListChecks, CheckCircle2, Circle, X, Send, Save,
   GraduationCap, ChevronDown, ChevronRight, Sparkles, Loader2,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import {
   createQCMAction, updateQCMStatusAction, deleteQCMAction, duplicateQCMAction,
   addQuestionAction, addChoixAction, removeQuestionAction, removeChoixAction,
@@ -34,7 +34,6 @@ export function QCMList({ qcms, formations }: QCMListProps) {
   const [builderQCM, setBuilderQCM] = useState<QCM | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const formationOptions = [{ value: '', label: 'Aucune (générique)' }, ...formations.map((f) => ({ value: f.id, label: f.intitule }))]
 
@@ -73,21 +72,18 @@ export function QCMList({ qcms, formations }: QCMListProps) {
     const result = await deleteQCMAction(id)
     if (result.success) toast('success', 'QCM supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleDuplicate(id: string) {
     const result = await duplicateQCMAction(id)
     if (result.success) toast('success', 'QCM dupliqué')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handlePublish(id: string) {
     const result = await updateQCMStatusAction(id, 'publie')
     if (result.success) toast('success', 'QCM publié')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   return (
@@ -125,28 +121,13 @@ export function QCMList({ qcms, formations }: QCMListProps) {
                 <h3 className="text-sm font-semibold text-surface-900 line-clamp-2">{q.titre}</h3>
                 {q.description && <p className="text-xs text-surface-500 mt-0.5 line-clamp-1">{q.description}</p>}
               </div>
-              <div className="relative ml-2">
-                <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === q.id ? null : q.id) }} className="p-1 rounded-lg text-surface-400 hover:bg-surface-100">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-                {activeMenu === q.id && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                    <button onClick={() => { setBuilderQCM(q); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                    </button>
-                    {q.status === 'brouillon' && (
-                      <button onClick={() => handlePublish(q.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                        <Send className="h-4 w-4" /> Publier
-                      </button>
-                    )}
-                    <button onClick={() => handleDuplicate(q.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <Copy className="h-4 w-4 text-surface-400" /> Dupliquer
-                    </button>
-                    <button onClick={() => handleDelete(q.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                      <Trash2 className="h-4 w-4" /> Supprimer
-                    </button>
-                  </div>
-                )}
+              <div className="ml-2" onClick={(e) => e.stopPropagation()}>
+                <RowMenu width={192} items={[
+                  { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setBuilderQCM(q) },
+                  { label: 'Publier', icon: <Send className="h-4 w-4" />, onClick: () => handlePublish(q.id), hidden: q.status !== 'brouillon' },
+                  { label: 'Dupliquer', icon: <Copy className="h-4 w-4 text-surface-400" />, onClick: () => handleDuplicate(q.id) },
+                  { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(q.id), danger: true },
+                ]} />
               </div>
             </div>
 

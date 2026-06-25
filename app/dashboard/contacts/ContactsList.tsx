@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2,
+  Plus, Search, Pencil, Trash2,
   Mail, Phone, Building2, Star, PenTool, GraduationCap, Save,
 } from 'lucide-react'
-import { Button, Badge, Input, Select, Modal, Avatar, useToast } from '@/components/ui'
+import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu } from '@/components/ui'
 import { createContactAction, updateContactAction, deleteContactAction } from './actions'
 import type { Contact, Client } from '@/lib/types/crm'
 
@@ -19,7 +19,6 @@ export function ContactsList({ contacts, clients }: ContactsListProps) {
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [editContact, setEditContact] = useState<Contact | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const clientOptions = [
     { value: '', label: 'Aucun client' },
@@ -43,7 +42,6 @@ export function ContactsList({ contacts, clients }: ContactsListProps) {
     const result = await deleteContactAction(id)
     if (result.success) toast('success', 'Contact supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   function ContactForm({ contact, onDone }: { contact?: Contact; onDone: () => void }) {
@@ -184,20 +182,11 @@ export function ContactsList({ contacts, clients }: ContactsListProps) {
                     </div>
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <div className="relative inline-block">
-                      <button onClick={() => setActiveMenu(activeMenu === contact.id ? null : contact.id)} className="p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {activeMenu === contact.id && (
-                        <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl border border-surface-200 shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                          <button onClick={() => { setEditContact(contact); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                            <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                          </button>
-                          <button onClick={() => handleDelete(contact.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                            <Trash2 className="h-4 w-4" /> Supprimer
-                          </button>
-                        </div>
-                      )}
+                    <div className="inline-block">
+                      <RowMenu items={[
+                        { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditContact(contact) },
+                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(contact.id), danger: true },
+                      ]} />
                     </div>
                   </td>
                 </tr>

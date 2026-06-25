@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Send, Trash2, Eye,
+  Plus, Search, Send, Trash2, Eye,
   Receipt, Building2, Euro, Calendar, AlertTriangle,
   CreditCard, ArrowRight, FileX, Clock, Download, Banknote, Loader2,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import {
   createFactureAction, updateFactureStatusAction, deleteFactureAction,
   addFactureLigneAction, removeFactureLigneAction,
@@ -35,7 +35,6 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
   const [cessionFacture, setCessionFacture] = useState<Facture | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const clientOptions = clients.map((c) => ({
     value: c.id, label: c.raison_sociale || `${c.prenom || ''} ${c.nom || ''}`.trim() || c.id,
@@ -90,7 +89,6 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
     const result = await updateFactureStatusAction(id, status)
     if (result.success) toast('success', `Facture ${FACTURE_STATUS_LABELS[status].toLowerCase()}`)
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleDelete(id: string) {
@@ -98,7 +96,6 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
     const result = await deleteFactureAction(id)
     if (result.success) toast('success', 'Facture supprimée')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleAvoir(id: string) {
@@ -106,7 +103,6 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
     const result = await createAvoirAction(id)
     if (result.success) toast('success', 'Avoir créé, facture annulée')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   return (
@@ -218,63 +214,40 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
                     </span>
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <div className="relative inline-block">
-                      <button onClick={() => setActiveMenu(activeMenu === f.id ? null : f.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {activeMenu === f.id && (
-                        <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                          <button onClick={() => { setDetailFacture(f); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                            <Eye className="h-4 w-4 text-surface-400" /> Voir le détail
-                          </button>
-                          <a href={`/api/pdf/facture/${f.id}`} target="_blank" rel="noopener noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                            <Download className="h-4 w-4 text-surface-400" /> Télécharger PDF
-                          </a>
-                          {f.status === 'brouillon' && (
-                            <button onClick={() => handleStatus(f.id, 'emise')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                              <Receipt className="h-4 w-4" /> Émettre
-                            </button>
-                          )}
-                          {f.status === 'emise' && (
-                            <button onClick={() => handleStatus(f.id, 'envoyee')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                              <Send className="h-4 w-4" /> Marquer envoyée
-                            </button>
-                          )}
-                          {['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && (
-                            <button onClick={() => { setPaiementFacture(f); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                              <CreditCard className="h-4 w-4" /> Enregistrer un paiement
-                            </button>
-                          )}
-                          {['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) &&
-                           !f.affacturage_status &&
-                           f.type !== 'avoir' && (
-                            <button
-                              onClick={() => {
-                                if (affactureurs.length === 0) {
-                                  toast('error', 'Ajoutez d\'abord un affactureur dans /dashboard/affacturage')
-                                  setActiveMenu(null)
-                                  return
-                                }
-                                setCessionFacture(f)
-                                setActiveMenu(null)
-                              }}
-                              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50">
-                              <Banknote className="h-4 w-4" /> Céder à l'affacturage
-                            </button>
-                          )}
-                          {!['brouillon', 'annulee'].includes(f.status) && f.type !== 'avoir' && (
-                            <button onClick={() => handleAvoir(f.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-warning-600 hover:bg-warning-50">
-                              <FileX className="h-4 w-4" /> Créer un avoir
-                            </button>
-                          )}
-                          {f.status === 'brouillon' && (
-                            <button onClick={() => handleDelete(f.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                              <Trash2 className="h-4 w-4" /> Supprimer
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <RowMenu
+                      width={208}
+                      items={[
+                        { label: 'Voir le détail', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailFacture(f) },
+                        { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/facture/${f.id}`, target: '_blank' },
+                        { label: 'Émettre', icon: <Receipt className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(f.id, 'emise'), hidden: f.status !== 'brouillon' },
+                        { label: 'Marquer envoyée', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(f.id, 'envoyee'), hidden: f.status !== 'emise' },
+                        {
+                          label: 'Enregistrer un paiement',
+                          icon: <CreditCard className="h-4 w-4 text-success-600" />,
+                          onClick: () => setPaiementFacture(f),
+                          hidden: !['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status),
+                        },
+                        {
+                          label: "Céder à l'affacturage",
+                          icon: <Banknote className="h-4 w-4 text-amber-600" />,
+                          onClick: () => {
+                            if (affactureurs.length === 0) {
+                              toast('error', 'Ajoutez d\'abord un affactureur dans /dashboard/affacturage')
+                              return
+                            }
+                            setCessionFacture(f)
+                          },
+                          hidden: !(['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && !f.affacturage_status && f.type !== 'avoir'),
+                        },
+                        {
+                          label: 'Créer un avoir',
+                          icon: <FileX className="h-4 w-4 text-warning-600" />,
+                          onClick: () => handleAvoir(f.id),
+                          hidden: !(!['brouillon', 'annulee'].includes(f.status) && f.type !== 'avoir'),
+                        },
+                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id), hidden: f.status !== 'brouillon' },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

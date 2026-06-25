@@ -3,10 +3,10 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, Search, MoreHorizontal, Send, Check, Trash2,
+  Plus, Search, Send, Check, Trash2,
   FileSignature, Building2, Euro, Clock, PenTool, Download, Link2, Copy,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import { createConventionAction, updateConventionStatusAction, deleteConventionAction } from './actions'
 import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
 import { FINANCEUR_LABELS } from '@/lib/types/crm'
@@ -32,7 +32,6 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
   const [createOpen, setCreateOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [tab, setTab] = useState<'all' | 'pending' | 'signed'>('all')
 
   const clientOptions = clients.map((c) => ({ value: c.id, label: c.raison_sociale || c.id }))
@@ -85,7 +84,6 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
     const result = await updateConventionStatusAction(id, status)
     if (result.success) toast('success', `Statut mis à jour : ${CONVENTION_STATUS_LABELS[status]}`)
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleGenerateSignatureLink(id: string) {
@@ -100,7 +98,6 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
         toast('success', 'Lien généré : ' + url)
       }
     } else toast('error', r.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleDelete(id: string) {
@@ -108,7 +105,6 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
     const result = await deleteConventionAction(id)
     if (result.success) toast('success', 'Convention supprimée')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   return (
@@ -194,40 +190,18 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
                   Renvoyer en signature
                 </Button>
               )}
-              <div className="relative ml-3" onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => setActiveMenu(activeMenu === c.id ? null : c.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-                {activeMenu === c.id && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                    <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noopener noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <Download className="h-4 w-4 text-surface-400" /> Télécharger PDF
-                    </a>
-                    <button onClick={() => handleGenerateSignatureLink(c.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                      <Link2 className="h-4 w-4" /> Lien de signature électronique
-                    </button>
-                    {c.status === 'brouillon' && (
-                      <button onClick={() => handleStatus(c.id, 'envoyee')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                        <Send className="h-4 w-4" /> Marquer envoyée
-                      </button>
-                    )}
-                    {c.status === 'envoyee' && (
-                      <button onClick={() => handleStatus(c.id, 'signee_client')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                        <Check className="h-4 w-4" /> Signée par le client
-                      </button>
-                    )}
-                    {c.status === 'signee_client' && (
-                      <button onClick={() => handleStatus(c.id, 'signee_complete')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                        <Check className="h-4 w-4" /> Signature complète
-                      </button>
-                    )}
-                    {['brouillon', 'envoyee'].includes(c.status) && (
-                      <button onClick={() => handleDelete(c.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                        <Trash2 className="h-4 w-4" /> Supprimer
-                      </button>
-                    )}
-                  </div>
-                )}
+              <div className="ml-3" onClick={(e) => e.stopPropagation()}>
+                <RowMenu
+                  width={208}
+                  items={[
+                    { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/convention/${c.id}`, target: '_blank' },
+                    { label: 'Lien de signature électronique', icon: <Link2 className="h-4 w-4 text-brand-600" />, onClick: () => handleGenerateSignatureLink(c.id) },
+                    { label: 'Marquer envoyée', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(c.id, 'envoyee'), hidden: c.status !== 'brouillon' },
+                    { label: 'Signée par le client', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatus(c.id, 'signee_client'), hidden: c.status !== 'envoyee' },
+                    { label: 'Signature complète', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatus(c.id, 'signee_complete'), hidden: c.status !== 'signee_client' },
+                    { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(c.id), danger: true, hidden: !['brouillon', 'envoyee'].includes(c.status) },
+                  ]}
+                />
               </div>
             </div>
           </div>

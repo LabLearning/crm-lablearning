@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Save,
+  Plus, Search, Pencil, Trash2, Save,
   Presentation, Star, Award, Clock, Calendar, Euro,
   CheckCircle2, XCircle, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
-import { Button, Badge, Input, Select, Modal, Avatar, useToast } from '@/components/ui'
+import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu } from '@/components/ui'
 import {
   createFormateurAction, updateFormateurAction, deleteFormateurAction,
   toggleFormateurAction, updateHabilitationAction,
@@ -140,7 +140,6 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
   const [createOpen, setCreateOpen] = useState(false)
   const [editFormateur, setEditFormateur] = useState<Formateur | null>(null)
   const [habilitationFormateur, setHabilitationFormateur] = useState<Formateur | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     if (!search) return formateurs
@@ -163,13 +162,11 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
     const result = await deleteFormateurAction(id)
     if (result.success) toast('success', 'Formateur supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleToggle(id: string, current: boolean) {
     const result = await toggleFormateurAction(id, !current)
     if (result.success) toast('success', !current ? 'Formateur activé' : 'Formateur désactivé')
-    setActiveMenu(null)
   }
 
   return (
@@ -205,28 +202,19 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
                   )}
                 </div>
               </div>
-              <div className="relative">
-                <button onClick={() => setActiveMenu(activeMenu === f.id ? null : f.id)} className="p-1 rounded-lg text-surface-400 hover:bg-surface-100">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-                {activeMenu === f.id && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                    <button onClick={() => { setEditFormateur(f); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                    </button>
-                    <button onClick={() => { setHabilitationFormateur(f); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                      <ShieldCheck className="h-4 w-4" /> Habilitations
-                    </button>
-                    <button onClick={() => handleToggle(f.id, f.is_active)} className={`flex items-center gap-2 w-full px-3 py-1.5 text-sm ${f.is_active ? 'text-warning-600 hover:bg-warning-50' : 'text-success-600 hover:bg-success-50'}`}>
-                      {f.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                      {f.is_active ? 'Désactiver' : 'Activer'}
-                    </button>
-                    <button onClick={() => handleDelete(f.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                      <Trash2 className="h-4 w-4" /> Supprimer
-                    </button>
-                  </div>
-                )}
-              </div>
+              <RowMenu
+                width={208}
+                items={[
+                  { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormateur(f) },
+                  { label: 'Habilitations', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, onClick: () => setHabilitationFormateur(f) },
+                  {
+                    label: f.is_active ? 'Désactiver' : 'Activer',
+                    icon: f.is_active ? <XCircle className="h-4 w-4 text-warning-600" /> : <CheckCircle2 className="h-4 w-4 text-success-600" />,
+                    onClick: () => handleToggle(f.id, f.is_active),
+                  },
+                  { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id) },
+                ]}
+              />
             </div>
 
             {/* Expertise tags */}

@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Save,
+  Plus, Search, Pencil, Trash2, Save,
   UserCheck, Building2, Mail, Phone, Accessibility,
   GraduationCap, Calendar, AlertTriangle,
 } from 'lucide-react'
-import { Button, Badge, Input, Select, Modal, Avatar, useToast } from '@/components/ui'
+import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu } from '@/components/ui'
 import {
   createApprenantAction, updateApprenantAction,
   deleteApprenantAction, inscrireApprenantAction,
@@ -125,7 +125,6 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions }: 
   const [editApprenant, setEditApprenant] = useState<Apprenant | null>(null)
   const [inscrireApprenant, setInscrireApprenant] = useState<Apprenant | null>(null)
   const [parcourApprenant, setParcourApprenant] = useState<Apprenant | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     if (!search) return apprenants
@@ -145,7 +144,6 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions }: 
     const result = await deleteApprenantAction(id)
     if (result.success) toast('success', 'Apprenant supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleInscrire(apprenantId: string, sessionId: string) {
@@ -231,26 +229,16 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions }: 
                       ) : <span className="text-sm text-surface-400">—</span>}
                     </td>
                     <td className="px-6 py-3.5 text-right">
-                      <div className="relative inline-block">
-                        <button onClick={() => setActiveMenu(activeMenu === a.id ? null : a.id)} className="p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                        {activeMenu === a.id && (
-                          <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                            <button onClick={() => { setParcourApprenant(a); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                              <GraduationCap className="h-4 w-4 text-surface-400" /> Voir le parcours
-                            </button>
-                            <button onClick={() => { setInscrireApprenant(a); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                              <Calendar className="h-4 w-4" /> Inscrire à une session
-                            </button>
-                            <button onClick={() => { setEditApprenant(a); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                              <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                            </button>
-                            <button onClick={() => handleDelete(a.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                              <Trash2 className="h-4 w-4" /> Supprimer
-                            </button>
-                          </div>
-                        )}
+                      <div className="inline-block">
+                        <RowMenu
+                          width={208}
+                          items={[
+                            { label: 'Voir le parcours', icon: <GraduationCap className="h-4 w-4 text-surface-400" />, onClick: () => setParcourApprenant(a) },
+                            { label: 'Inscrire à une session', icon: <Calendar className="h-4 w-4 text-brand-600" />, onClick: () => setInscrireApprenant(a) },
+                            { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditApprenant(a) },
+                            { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(a.id), danger: true },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Trash2, PenTool, FileText,
+  Plus, Search, Trash2, PenTool, FileText,
   FolderOpen, Download, Eye, Send,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import { createDocumentAction, requestSignatureAction, deleteDocumentAction } from './actions'
 import { DOCUMENT_TYPE_LABELS, SIGNATURE_STATUS_LABELS, SIGNATURE_STATUS_COLORS } from '@/lib/types/document'
 import { formatDate } from '@/lib/utils'
@@ -24,7 +24,6 @@ export function DocumentsList({ documents }: DocumentsListProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [signatureDoc, setSignatureDoc] = useState<DocType | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     return documents.filter((d) => {
@@ -55,7 +54,6 @@ export function DocumentsList({ documents }: DocumentsListProps) {
     const result = await deleteDocumentAction(id)
     if (result.success) toast('success', 'Document supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   return (
@@ -125,22 +123,14 @@ export function DocumentsList({ documents }: DocumentsListProps) {
                       {formatDate(doc.created_at, { day: 'numeric', month: 'short' })}
                     </td>
                     <td className="px-6 py-3.5 text-right">
-                      <div className="relative inline-block">
-                        <button onClick={() => setActiveMenu(activeMenu === doc.id ? null : doc.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                        {activeMenu === doc.id && (
-                          <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                            {doc.requires_signature && (
-                              <button onClick={() => { setSignatureDoc(doc); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                                <PenTool className="h-4 w-4" /> Demander une signature
-                              </button>
-                            )}
-                            <button onClick={() => handleDelete(doc.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                              <Trash2 className="h-4 w-4" /> Supprimer
-                            </button>
-                          </div>
-                        )}
+                      <div className="inline-block">
+                        <RowMenu
+                          width={208}
+                          items={[
+                            { label: 'Demander une signature', icon: <PenTool className="h-4 w-4 text-brand-600" />, onClick: () => setSignatureDoc(doc), hidden: !doc.requires_signature },
+                            { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(doc.id), danger: true },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

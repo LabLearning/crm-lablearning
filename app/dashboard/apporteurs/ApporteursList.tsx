@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import {
-  Plus, MoreHorizontal, Pencil, Trash2, Euro, Percent,
+  Plus, Pencil, Trash2, Euro, Percent,
   CheckCircle2, XCircle, Save, Handshake, Download,
 } from 'lucide-react'
-import { Button, Badge, Input, Select, Modal, useToast, CompanySearchInput } from '@/components/ui'
+import { Button, Badge, Input, Select, Modal, useToast, CompanySearchInput, RowMenu } from '@/components/ui'
 import { createApporteurAction, updateApporteurAction, deleteApporteurAction, toggleApporteurAction } from './actions'
 import type { ApporteurAffaires } from '@/lib/types/crm'
 import type { SireneCompany } from '@/lib/sirene'
@@ -94,20 +94,17 @@ export function ApporteursList({ apporteurs }: ApporteursListProps) {
   const { toast } = useToast()
   const [createOpen, setCreateOpen] = useState(false)
   const [editApporteur, setEditApporteur] = useState<ApporteurAffaires | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   async function handleDelete(id: string) {
     if (!confirm('Supprimer cet apporteur ?')) return
     const result = await deleteApporteurAction(id)
     if (result.success) toast('success', 'Apporteur supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleToggle(id: string, current: boolean) {
     const result = await toggleApporteurAction(id, !current)
     if (result.success) toast('success', !current ? 'Apporteur activé' : 'Apporteur désactivé')
-    setActiveMenu(null)
   }
 
   return (
@@ -138,25 +135,15 @@ export function ApporteursList({ apporteurs }: ApporteursListProps) {
                   )}
                 </div>
               </div>
-              <div className="relative">
-                <button onClick={() => setActiveMenu(activeMenu === a.id ? null : a.id)} className="p-1 rounded-lg text-surface-400 hover:bg-surface-100">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-                {activeMenu === a.id && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                    <button onClick={() => { setEditApporteur(a); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                    </button>
-                    <button onClick={() => handleToggle(a.id, a.is_active)} className={`flex items-center gap-2 w-full px-3 py-1.5 text-sm ${a.is_active ? 'text-warning-600 hover:bg-warning-50' : 'text-success-600 hover:bg-success-50'}`}>
-                      {a.is_active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                      {a.is_active ? 'Désactiver' : 'Activer'}
-                    </button>
-                    <button onClick={() => handleDelete(a.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                      <Trash2 className="h-4 w-4" /> Supprimer
-                    </button>
-                  </div>
-                )}
-              </div>
+              <RowMenu items={[
+                { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditApporteur(a) },
+                {
+                  label: a.is_active ? 'Désactiver' : 'Activer',
+                  icon: a.is_active ? <XCircle className="h-4 w-4 text-surface-400" /> : <CheckCircle2 className="h-4 w-4 text-surface-400" />,
+                  onClick: () => handleToggle(a.id, a.is_active),
+                },
+                { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(a.id), danger: true },
+              ]} />
             </div>
 
             <div className="flex items-center gap-3 mb-3">

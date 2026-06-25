@@ -2,11 +2,11 @@
 
 import { useState, useMemo, useRef } from 'react'
 import {
-  UserPlus, MoreHorizontal, Phone, Mail, Building2,
+  UserPlus, Phone, Mail, Building2,
   ArrowRight, Trash2, Eye, Edit3, Euro, List, LayoutGrid, Columns3,
   Search, Upload, Download, Filter, X, Star,
 } from 'lucide-react'
-import { Button, Badge, Modal, useToast } from '@/components/ui'
+import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { LeadForm } from './LeadForm'
 import { LeadDetail } from './LeadDetail'
 import {
@@ -71,7 +71,6 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
   const [createOpen, setCreateOpen] = useState(false)
   const [editLead, setEditLead] = useState<Lead | null>(null)
   const [detailLead, setDetailLead] = useState<Lead | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterChip, setFilterChip] = useState<FilterChip>('all')
@@ -130,13 +129,11 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
     const result = await deleteLeadAction(leadId)
     if (result.success) toast('success', 'Lead supprime')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
   async function handleConvert(leadId: string) {
     const result = await convertLeadToClientAction(leadId)
     if (result.success) toast('success', 'Lead converti en client')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   // Drag & Drop
@@ -220,21 +217,17 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded', scoreBg(score), scoreColor(score))}>{score}</span>
-            <div className="relative">
-              <button onClick={e => { e.stopPropagation(); setActiveMenu(activeMenu === lead.id ? null : lead.id) }}
-                className="p-1 rounded-lg text-surface-400 opacity-0 group-hover:opacity-100 hover:bg-surface-100 transition-all">
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-              {activeMenu === lead.id && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-surface-200 shadow-elevated py-1 z-20">
-                  <button onClick={() => { setDetailLead(lead); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50"><Eye className="h-4 w-4 text-surface-400" /> Voir le detail</button>
-                  <button onClick={() => { setEditLead(lead); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50"><Edit3 className="h-4 w-4 text-surface-400" /> Modifier</button>
-                  {!['gagne', 'perdu'].includes(lead.status) && (
-                    <button onClick={() => handleConvert(lead.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50"><ArrowRight className="h-4 w-4" /> Convertir en client</button>
-                  )}
-                  <button onClick={() => handleDelete(lead.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50"><Trash2 className="h-4 w-4" /> Supprimer</button>
-                </div>
-              )}
+            <div onClick={e => e.stopPropagation()}>
+              <RowMenu
+                width={192}
+                triggerClassName="opacity-0 group-hover:opacity-100"
+                items={[
+                  { label: 'Voir le detail', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailLead(lead) },
+                  { label: 'Modifier', icon: <Edit3 className="h-4 w-4 text-surface-400" />, onClick: () => setEditLead(lead) },
+                  { label: 'Convertir en client', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(lead.id), hidden: ['gagne', 'perdu'].includes(lead.status) },
+                  { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(lead.id), danger: true },
+                ]}
+              />
             </div>
           </div>
         </div>

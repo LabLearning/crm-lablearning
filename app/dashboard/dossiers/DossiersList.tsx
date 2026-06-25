@@ -3,11 +3,11 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, Search, MoreHorizontal, Trash2, ArrowRight,
+  Plus, Search, Trash2, ArrowRight,
   Building2, Euro, Calendar, FolderOpen, CheckCircle2,
   Circle, AlertTriangle, Clock, ChevronRight,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import { createDossierAction, updateDossierStatusAction, toggleChecklistItemAction, deleteDossierAction } from './actions'
 import { DossierOpcoCard } from './DossierOpcoCard'
 import { DOSSIER_STATUS_LABELS, DOSSIER_STATUS_COLORS, DOSSIER_WORKFLOW } from '@/lib/types/dossier'
@@ -33,7 +33,6 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
   const [detailDossier, setDetailDossier] = useState<DossierFormation | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const clientOptions = clients.map((c) => ({ value: c.id, label: c.raison_sociale || c.id }))
   const formationOptions = [{ value: '', label: 'Aucune' }, ...formations.map((f) => ({ value: f.id, label: f.intitule }))]
@@ -69,7 +68,6 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
       if (result.success) toast('success', `Dossier → ${DOSSIER_STATUS_LABELS[next]}`)
       else toast('error', result.error || 'Erreur')
     }
-    setActiveMenu(null)
   }
 
   async function handleDelete(id: string) {
@@ -77,7 +75,6 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
     const result = await deleteDossierAction(id)
     if (result.success) toast('success', 'Dossier supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   function getCompletionRate(checklist?: DossierChecklist[]): number {
@@ -195,18 +192,12 @@ export function DossiersList({ dossiers, clients, formations, sessions }: Dossie
                       {DOSSIER_STATUS_LABELS[nextStatus]}
                     </Button>
                   )}
-                  <div className="relative">
-                    <button onClick={() => setActiveMenu(activeMenu === d.id ? null : d.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                    {activeMenu === d.id && (
-                      <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                        <button onClick={() => handleDelete(d.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                          <Trash2 className="h-4 w-4" /> Supprimer
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <RowMenu
+                    width={176}
+                    items={[
+                      { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(d.id) },
+                    ]}
+                  />
                 </div>
               </div>
             </div>

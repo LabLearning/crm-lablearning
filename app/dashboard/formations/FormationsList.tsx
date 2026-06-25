@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, EyeOff,
+  Plus, Search, Pencil, Trash2, Eye, EyeOff,
   Clock, Users, Euro, GraduationCap, Award, Tag,
 } from 'lucide-react'
-import { Button, Badge, Modal, useToast } from '@/components/ui'
+import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { FormationForm } from './FormationForm'
 import { deleteFormationAction, toggleFormationAction } from './actions'
 import { MODALITE_LABELS, MODALITE_COLORS } from '@/lib/types/formation'
@@ -22,7 +22,6 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [editFormation, setEditFormation] = useState<Formation | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     return formations.filter((f) => {
@@ -39,13 +38,11 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
     const result = await deleteFormationAction(id)
     if (result.success) toast('success', 'Formation supprimée')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleToggle(id: string, current: boolean) {
     const result = await toggleFormationAction(id, !current)
     if (result.success) toast('success', !current ? 'Formation activée' : 'Formation désactivée')
-    setActiveMenu(null)
   }
 
   return (
@@ -93,24 +90,16 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
                 {f.sous_titre && <p className="text-xs text-surface-500 mt-0.5 truncate">{f.sous_titre}</p>}
               </div>
               {!readOnly && (
-                <div className="relative ml-2">
-                  <button onClick={(e) => { e.stopPropagation(); setActiveMenu(activeMenu === f.id ? null : f.id) }} className="p-1 rounded-lg text-surface-400 hover:bg-surface-100">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                  {activeMenu === f.id && (
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                      <button onClick={() => { setEditFormation(f); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                        <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                      </button>
-                      <button onClick={() => handleToggle(f.id, f.is_active)} className={`flex items-center gap-2 w-full px-3 py-1.5 text-sm ${f.is_active ? 'text-warning-600 hover:bg-warning-50' : 'text-success-600 hover:bg-success-50'}`}>
-                        {f.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        {f.is_active ? 'Désactiver' : 'Activer'}
-                      </button>
-                      <button onClick={() => handleDelete(f.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                        <Trash2 className="h-4 w-4" /> Supprimer
-                      </button>
-                    </div>
-                  )}
+                <div className="ml-2" onClick={(e) => e.stopPropagation()}>
+                  <RowMenu items={[
+                    { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormation(f) },
+                    {
+                      label: f.is_active ? 'Désactiver' : 'Activer',
+                      icon: f.is_active ? <EyeOff className="h-4 w-4 text-surface-400" /> : <Eye className="h-4 w-4 text-surface-400" />,
+                      onClick: () => handleToggle(f.id, f.is_active),
+                    },
+                    { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(f.id), danger: true },
+                  ]} />
                 </div>
               )}
             </div>

@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Send, Check,
+  Plus, Search, Pencil, Trash2, Send, Check,
   X, FileText, ArrowRight, Euro, Calendar, Building2, Eye, Download,
 } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import {
   createDevisAction, updateDevisStatusAction, deleteDevisAction,
   convertDevisToConventionAction, addDevisLigneAction, removeDevisLigneAction,
@@ -28,7 +28,6 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [detailDevis, setDetailDevis] = useState<Devis | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const clientOptions = clients.map((c) => ({
     value: c.id, label: c.raison_sociale || `${c.prenom} ${c.nom}` || c.id,
@@ -64,14 +63,12 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
     const result = await updateDevisStatusAction(id, status)
     if (result.success) toast('success', `Devis ${DEVIS_STATUS_LABELS[status].toLowerCase()}`)
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleConvert(id: string) {
     const result = await convertDevisToConventionAction(id)
     if (result.success) toast('success', 'Convention créée depuis le devis')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleDelete(id: string) {
@@ -79,7 +76,6 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
     const result = await deleteDevisAction(id)
     if (result.success) toast('success', 'Devis supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   // Create form
@@ -183,45 +179,16 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
                     )}
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <div className="relative inline-block">
-                      <button onClick={() => setActiveMenu(activeMenu === d.id ? null : d.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {activeMenu === d.id && (
-                        <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                          <button onClick={() => { setDetailDevis(d); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                            <Eye className="h-4 w-4 text-surface-400" /> Voir / Modifier
-                          </button>
-                          <a href={`/api/pdf/devis/${d.id}`} target="_blank" rel="noopener noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                            <Download className="h-4 w-4 text-surface-400" /> Télécharger PDF
-                          </a>
-                          {d.status === 'brouillon' && (
-                            <button onClick={() => handleStatusChange(d.id, 'envoye')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                              <Send className="h-4 w-4" /> Marquer comme envoyé
-                            </button>
-                          )}
-                          {d.status === 'envoye' && (
-                            <>
-                              <button onClick={() => handleStatusChange(d.id, 'accepte')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                                <Check className="h-4 w-4" /> Accepté
-                              </button>
-                              <button onClick={() => handleStatusChange(d.id, 'refuse')} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                                <X className="h-4 w-4" /> Refusé
-                              </button>
-                            </>
-                          )}
-                          {d.status === 'accepte' && (
-                            <button onClick={() => handleConvert(d.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                              <ArrowRight className="h-4 w-4" /> Créer convention
-                            </button>
-                          )}
-                          {d.status === 'brouillon' && (
-                            <button onClick={() => handleDelete(d.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                              <Trash2 className="h-4 w-4" /> Supprimer
-                            </button>
-                          )}
-                        </div>
-                      )}
+                    <div className="inline-block">
+                      <RowMenu width={208} items={[
+                        { label: 'Voir / Modifier', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailDevis(d) },
+                        { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/devis/${d.id}`, target: '_blank' },
+                        { label: 'Marquer comme envoyé', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatusChange(d.id, 'envoye'), hidden: d.status !== 'brouillon' },
+                        { label: 'Accepté', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatusChange(d.id, 'accepte'), hidden: d.status !== 'envoye' },
+                        { label: 'Refusé', icon: <X className="h-4 w-4" />, onClick: () => handleStatusChange(d.id, 'refuse'), danger: true, hidden: d.status !== 'envoye' },
+                        { label: 'Créer convention', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(d.id), hidden: d.status !== 'accepte' },
+                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(d.id), danger: true, hidden: d.status !== 'brouillon' },
+                      ]} />
                     </div>
                   </td>
                 </tr>

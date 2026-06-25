@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { UserPlus, MoreHorizontal, ShieldAlert, ShieldOff, Mail, UserCog, Clock, RefreshCw, X, Send } from 'lucide-react'
-import { Button, Input, Select, Badge, Avatar, Modal, useToast } from '@/components/ui'
+import { UserPlus, ShieldAlert, ShieldOff, Mail, UserCog, Clock, RefreshCw, X, Send } from 'lucide-react'
+import { Button, Input, Select, Badge, Avatar, Modal, useToast, RowMenu } from '@/components/ui'
 import { inviteUserAction, updateUserRoleAction, toggleUserStatusAction, startImpersonationAction, resendInvitationAction, cancelInvitationAction, sendTestInvitationAction } from './actions'
 import { ROLE_LABELS, ROLE_COLORS, STATUS_LABELS, STATUS_COLORS } from '@/lib/types'
 import { formatDateTime } from '@/lib/utils'
@@ -39,7 +39,6 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [isInviting, setIsInviting] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [inviteRole, setInviteRole] = useState('gestionnaire')
   const [isTesting, setIsTesting] = useState(false)
 
@@ -89,7 +88,6 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
     } else {
       toast('error', result.error || 'Erreur')
     }
-    setActiveMenu(null)
   }
 
   async function handleToggleStatus(userId: string, currentStatus: string) {
@@ -100,7 +98,6 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
     } else {
       toast('error', result.error || 'Erreur')
     }
-    setActiveMenu(null)
   }
 
   async function handleImpersonate(userId: string) {
@@ -110,7 +107,6 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
     } else {
       toast('error', result.error || 'Erreur')
     }
-    setActiveMenu(null)
   }
 
   async function handleResendInvite(invitationId: string) {
@@ -225,72 +221,27 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
                   {isAdmin && (
                     <td className="px-6 py-4 text-right">
                       {user.id !== currentUserId && (
-                        <div className="relative inline-block">
-                          <button
-                            onClick={() => setActiveMenu(activeMenu === user.id ? null : user.id)}
-                            className="p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-
-                          {activeMenu === user.id && (
-                            <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl border border-surface-200 shadow-elevated py-1.5 z-10 animate-in-scale origin-top-right">
-                              {isSuperAdmin && (
-                                <>
-                                  <div className="px-3 py-1.5 text-2xs font-semibold text-surface-400 uppercase tracking-wider">
-                                    Changer le rôle
-                                  </div>
-                                  {roleOptions.map((opt) => (
-                                    <button
-                                      key={opt.value}
-                                      onClick={() => handleRoleChange(user.id, opt.value)}
-                                      className={`flex items-center gap-2 w-full px-3 py-1.5 text-sm transition-colors ${
-                                        user.role === opt.value
-                                          ? 'text-brand-600 bg-brand-50 font-medium'
-                                          : 'text-surface-700 hover:bg-surface-50'
-                                      }`}
-                                    >
-                                      {opt.label}
-                                    </button>
-                                  ))}
-                                  <div className="border-t border-surface-100 my-1" />
-                                </>
-                              )}
-                              {isSuperAdmin && (
-                                <>
-                                  <button
-                                    onClick={() => handleImpersonate(user.id)}
-                                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50 transition-colors"
-                                  >
-                                    <UserCog className="h-4 w-4" />
-                                    Aperçu du compte
-                                  </button>
-                                  <div className="border-t border-surface-100 my-1" />
-                                </>
-                              )}
-                              <button
-                                onClick={() => handleToggleStatus(user.id, user.status)}
-                                className={`flex items-center gap-2 w-full px-3 py-1.5 text-sm transition-colors ${
-                                  user.status === 'active'
-                                    ? 'text-danger-600 hover:bg-danger-50'
-                                    : 'text-success-600 hover:bg-success-50'
-                                }`}
-                              >
-                                {user.status === 'active' ? (
-                                  <>
-                                    <ShieldOff className="h-4 w-4" />
-                                    Suspendre
-                                  </>
-                                ) : (
-                                  <>
-                                    <ShieldAlert className="h-4 w-4" />
-                                    Réactiver
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <RowMenu
+                          width={224}
+                          items={[
+                            { label: 'Changer le rôle', info: true, hidden: !isSuperAdmin },
+                            ...roleOptions.map((opt) => ({
+                              label: opt.label,
+                              onClick: () => handleRoleChange(user.id, opt.value),
+                              infoColor: user.role === opt.value ? 'text-brand-600' : undefined,
+                              hidden: !isSuperAdmin,
+                            })),
+                            {
+                              label: 'Aperçu du compte',
+                              icon: <UserCog className="h-4 w-4 text-surface-400" />,
+                              onClick: () => handleImpersonate(user.id),
+                              hidden: !isSuperAdmin,
+                            },
+                            user.status === 'active'
+                              ? { label: 'Suspendre', icon: <ShieldOff className="h-4 w-4 text-danger-600" />, danger: true, onClick: () => handleToggleStatus(user.id, user.status) }
+                              : { label: 'Réactiver', icon: <ShieldAlert className="h-4 w-4 text-success-600" />, onClick: () => handleToggleStatus(user.id, user.status) },
+                          ]}
+                        />
                       )}
                     </td>
                   )}
