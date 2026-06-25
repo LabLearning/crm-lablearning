@@ -108,6 +108,13 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     .select('id, status, score, completed_at, apprenant_id, qcm:qcm(titre)')
     .eq('session_id', params.id)
 
+  // Conventions liées à la session
+  const { data: conventions } = await supabase
+    .from('conventions')
+    .select('id, numero, type, status, montant_ttc, signature_client_date, signature_of_date')
+    .eq('session_id', params.id)
+    .order('created_at', { ascending: false })
+
   // Est-ce que le user est le formateur de cette session ?
   const isFormateur = session.user.role === 'formateur' && (sessionData.formateur as any)?.user_id === session.user.id
 
@@ -121,6 +128,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         rapport={rapport as any}
         evaluations={(evaluations || []) as any[]}
         qcmSessions={(qcmSessions || []) as any[]}
+        conventions={(conventions || []) as any[]}
         isFormateur={isFormateur}
         userRole={session.user.role}
       />

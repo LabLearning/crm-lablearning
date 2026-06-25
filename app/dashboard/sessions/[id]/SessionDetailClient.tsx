@@ -6,13 +6,23 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, UserCheck, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
-  Star, ListChecks,
+  Star, ListChecks, FileSignature,
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction } from './actions'
 import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
+import { SessionDocActions } from './SessionDocActions'
+
+const CONVENTION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'danger' }> = {
+  brouillon: { label: 'Brouillon', variant: 'default' },
+  envoyee: { label: 'Envoyée', variant: 'info' },
+  signee_client: { label: 'Signée client', variant: 'success' },
+  signee_of: { label: 'Signée OF', variant: 'success' },
+  signee_complete: { label: 'Signée (complète)', variant: 'success' },
+  annulee: { label: 'Annulée', variant: 'danger' },
+}
 
 interface Props {
   session: any
@@ -22,6 +32,7 @@ interface Props {
   rapport: any
   evaluations?: any[]
   qcmSessions?: any[]
+  conventions?: any[]
   isFormateur: boolean
   userRole: string
 }
@@ -42,9 +53,9 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], isFormateur, userRole }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], isFormateur, userRole }: Props) {
   const [isPending, startTransition] = useTransition()
-  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm'>('session')
+  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({})
   const [createDate, setCreateDate] = useState('')
@@ -184,6 +195,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           { id: 'evaluations' as const, label: `Évaluations (${evaluations.length})`, icon: Star },
           { id: 'qcm' as const, label: `QCM (${qcmSessions.length})`, icon: ListChecks },
           { id: 'rapport' as const, label: 'Rapport', icon: FileText },
+          ...(!isFormateur ? [{ id: 'conventions' as const, label: `Conventions (${conventions.length})`, icon: FileSignature }] : []),
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={cn('flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0',
@@ -199,6 +211,11 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ═══════════════════════════════════════════════ */}
       {tab === 'session' && (
         <div className="space-y-4">
+          {/* Envois : convention en signature + contrat formateur */}
+          {!isFormateur && (
+            <SessionDocActions sessionId={session.id} hasClient={!!session.client_id} hasFormateur={!!(formateur?.id || session.formateur_id)} />
+          )}
+
           {/* Formateur */}
           {formateur && (
             <div className="card p-4 flex items-center gap-4">
@@ -706,6 +723,58 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                         {new Date(q.completed_at).toLocaleDateString('fr-FR')}
                       </span>
                     )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════
+          ONGLET CONVENTIONS
+          ═══════════════════════════════════════════════ */}
+      {tab === 'conventions' && !isFormateur && (
+        <div className="space-y-4">
+          <SessionDocActions sessionId={session.id} hasClient={!!session.client_id} hasFormateur={!!(formateur?.id || session.formateur_id)} />
+
+          {conventions.length === 0 ? (
+            <div className="card p-8 text-center">
+              <FileSignature className="h-8 w-8 text-surface-300 mx-auto mb-2" />
+              <div className="text-sm text-surface-500">Aucune convention pour cette session</div>
+              <div className="text-xs text-surface-400 mt-1">Utilisez « Convention en signature » ci-dessus pour la créer et l'envoyer au client.</div>
+            </div>
+          ) : (
+            <div className="card overflow-hidden">
+              <div className="divide-y divide-surface-100">
+                {conventions.map((c: any) => (
+                  <div key={c.id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                      <FileSignature className="h-5 w-5 text-brand-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900">{c.numero}</div>
+                      <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
+                        {c.montant_ttc != null && <span>{Number(c.montant_ttc).toLocaleString('fr-FR')} € TTC</span>}
+                        <span className={c.signature_client_date ? 'text-emerald-600' : 'text-surface-400'}>
+                          Client {c.signature_client_date ? 'signé' : 'en attente'}
+                        </span>
+                        <span className={c.signature_of_date ? 'text-emerald-600' : 'text-surface-400'}>
+                          OF {c.signature_of_date ? 'signé' : 'en attente'}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant={CONVENTION_STATUS[c.status]?.variant || 'default'}>
+                      {CONVENTION_STATUS[c.status]?.label || c.status}
+                    </Badge>
+                    <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-50 text-surface-600 text-xs font-medium hover:bg-surface-100 transition-colors shrink-0">
+                      <Download className="h-3.5 w-3.5" /> PDF
+                    </a>
+                    <Link href={`/dashboard/conventions/${c.id}`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 text-xs font-medium hover:bg-brand-100 transition-colors shrink-0">
+                      Ouvrir
+                    </Link>
                   </div>
                 ))}
               </div>
