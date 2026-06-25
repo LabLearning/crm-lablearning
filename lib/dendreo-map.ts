@@ -92,12 +92,89 @@ async function mapResource(sb: any, resource: string, o: any): Promise<Mapped | 
   }
 }
 
+const DBASE = process.env.DENDREO_API_BASE || `https://pro.dendreo.com/${process.env.DENDREO_SLUG || 'lab_learning'}/api`
+const DKEY = process.env.DENDREO_API_KEY || ''
+
+async function fetchAction(id: string | number): Promise<any | null> {
+  const r = await fetch(`${DBASE}/actions_de_formation.php?id_action_de_formation=${id}&key=${DKEY}`, { headers: { Accept: 'application/json' } })
+  if (!r.ok) return null
+  const d = await r.json()
+  return Array.isArray(d) ? d[0] : d
+}
+async function formationIdByName(sb: any, intitule: string | null): Promise<string | null> {
+  if (!intitule) return null
+  const { data } = await sb.from('formations').select('id').eq('organization_id', ORG).ilike('intitule', intitule).limit(1).maybeSingle()
+  return data?.id || null
+}
+
+/**
+ * Synchronise une action de formation : upsert de la session (par dendreo_id) +
+ * réconciliation des inscriptions (depuis le tableau participants du détail).
+ */
+async function syncAction(sb: any, actionId: string): Promise<{ status: 'processed' | 'ignored' | 'error'; error?: string }> {
+  const a = await fetchAction(actionId)
+  if (!a) return { status: 'error', error: 'action introuvable' }
+
+  const clientId = await lookupId(sb, 'clients', a.id_entreprise)
+  const fdid = a.formateurs && a.formateurs[0] && a.formateurs[0].id_formateur
+  const formateurId = fdid ? await lookupId(sb, 'formateurs', fdid) : null
+  const formationId = await formationIdByName(sb, clean(a.intitule)) || await formationIdByName(sb, clean(a.formation))
+  const past = a.date_fin && new Date(a.date_fin) < new Date()
+
+  const { data: sess } = await sb.from('sessions').select('id').eq('organization_id', ORG).eq('dendreo_id', String(actionId)).maybeSingle()
+  const base = defined({
+    client_id: clientId, formateur_id: formateurId, intitule: clean(a.intitule),
+    reference: clean(a.numero_complet) || clean(a.numero),
+    date_debut: day(a.date_debut) || day(a.date_effective_debut),
+    date_fin: day(a.date_fin) || day(a.date_effective_fin) || day(a.date_debut),
+    places_min: num(a.nb_participants_min), places_max: num(a.nb_participants_max),
+  })
+
+  if (sess) {
+    if (formationId) (base as any).formation_id = formationId
+    await sb.from('sessions').update(base).eq('id', sess.id)
+  } else {
+    if (!formationId) return { status: 'ignored' } // pas de formation correspondante → on n'insère pas
+    await sb.from('sessions').insert({
+      organization_id: ORG, dendreo_id: String(actionId), formation_id: formationId,
+      status: past ? 'terminee' : 'confirmee', type_session: a.mode_organisation === 'intra' ? 'intra' : 'inter',
+      notes_internes: '[Dendreo]', ...base,
+    })
+  }
+  const { data: s2 } = await sb.from('sessions').select('id,status').eq('organization_id', ORG).eq('dendreo_id', String(actionId)).maybeSingle()
+  if (!s2) return { status: 'error', error: 'session non créée' }
+
+  // Réconciliation des inscriptions
+  const parts = Array.isArray(a.participants) ? a.participants : []
+  if (parts.length) {
+    const { data: existing } = await sb.from('inscriptions').select('apprenant_id').eq('session_id', s2.id)
+    const have = new Set((existing || []).map((e: any) => e.apprenant_id))
+    const st = s2.status === 'terminee' ? 'complete' : s2.status === 'en_cours' ? 'en_cours' : 'confirme'
+    const rows: any[] = []
+    for (const p of parts) {
+      const apprId = await lookupId(sb, 'apprenants', p.id_participant)
+      if (apprId && !have.has(apprId)) rows.push({ organization_id: ORG, session_id: s2.id, apprenant_id: apprId, status: st, date_inscription: day(p.date_add) })
+    }
+    if (rows.length) await sb.from('inscriptions').insert(rows)
+  }
+  return { status: 'processed' }
+}
+
 /** Applique un événement Dendreo au CRM. Retourne le statut de traitement. */
 export async function applyDendreoEvent(resource: string, verb: string, obj: any): Promise<{ status: 'processed' | 'ignored' | 'error'; error?: string }> {
   if (!obj || typeof obj !== 'object') return { status: 'ignored' }
   const sb = await createServiceRoleClient()
+
+  // Actions de formation → session + inscriptions (re-fetch du détail complet)
+  if (resource === 'action_de_formation' || resource === 'action') {
+    if (verb === 'deleted' || verb === 'delete') return { status: 'ignored' }
+    const id = obj.id_action_de_formation || obj.id
+    if (!id) return { status: 'ignored' }
+    return syncAction(sb, String(id))
+  }
+
   const mapped = await mapResource(sb, resource, obj).catch((e) => { throw e })
-  if (!mapped) return { status: 'ignored' } // ressource non gérée (sessions/inscriptions/etc.)
+  if (!mapped) return { status: 'ignored' } // ressource non gérée
 
   // Suppression : on ne supprime pas automatiquement (CRM fait foi). Journalisé seulement.
   if (verb === 'deleted' || verb === 'delete') return { status: 'ignored' }
