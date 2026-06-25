@@ -145,8 +145,8 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
     if (!search) return formateurs
     const s = search.toLowerCase()
     return formateurs.filter((f) =>
-      f.prenom.toLowerCase().includes(s) || f.nom.toLowerCase().includes(s) ||
-      f.domaines_expertise.some((d) => d.toLowerCase().includes(s)) ||
+      (f.prenom || '').toLowerCase().includes(s) || (f.nom || '').toLowerCase().includes(s) ||
+      (f.domaines_expertise || []).some((d) => d.toLowerCase().includes(s)) ||
       (f.email || '').toLowerCase().includes(s)
     )
   }, [formateurs, search])
@@ -218,18 +218,18 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
             </div>
 
             {/* Expertise tags */}
-            {f.domaines_expertise.length > 0 && (
+            {(f.domaines_expertise || []).length > 0 && (
               <div className="flex flex-wrap gap-1 mb-3">
-                {f.domaines_expertise.map((d) => (
+                {(f.domaines_expertise || []).map((d) => (
                   <Badge key={d} variant="info">{d}</Badge>
                 ))}
               </div>
             )}
 
             {/* Certifications */}
-            {f.certifications.length > 0 && (
+            {(f.certifications || []).length > 0 && (
               <div className="flex flex-wrap gap-1 mb-3">
-                {f.certifications.map((c) => (
+                {(f.certifications || []).map((c) => (
                   <Badge key={c} variant="success"><Award className="h-3 w-3 mr-0.5" />{c}</Badge>
                 ))}
               </div>
