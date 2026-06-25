@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
-  Sparkles, Check, ChevronDown, ChevronUp, X, ArrowRight,
+  Compass, Check, ChevronDown, ChevronUp, X, ArrowRight,
   Settings, GraduationCap, Building2, UserPlus, Calendar, FileText, Receipt, Users,
 } from 'lucide-react'
 
@@ -56,11 +56,11 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
       <div className="flex items-start justify-between gap-4 p-5 bg-gradient-to-r from-brand-50 to-white">
         <div className="flex items-start gap-3">
           <div className="h-10 w-10 rounded-xl bg-brand-500 flex items-center justify-center shrink-0">
-            <Sparkles className="h-5 w-5 text-white" />
+            <Compass className="h-5 w-5 text-white" />
           </div>
           <div>
             <h2 className="text-base font-heading font-bold text-surface-900">
-              {allDone ? 'Votre CRM est prêt 🎉' : `Prise en main du CRM${firstName ? `, ${firstName}` : ''}`}
+              {allDone ? 'Votre CRM est prêt' : `Prise en main du CRM${firstName ? `, ${firstName}` : ''}`}
             </h2>
             <p className="text-sm text-surface-500 mt-0.5">
               {allDone ? 'Toutes les étapes clés sont configurées. Vous pouvez masquer ce guide.' : 'Suivez ces étapes pour utiliser le CRM de A à Z. Tout est lié : chaque étape alimente la suivante.'}
@@ -69,7 +69,7 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Link href="/onboarding" className="hidden sm:inline-flex items-center gap-1.5 mr-1 px-3 py-1.5 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
-            <Sparkles className="h-3.5 w-3.5" /> Visite guidée
+            <Compass className="h-3.5 w-3.5" /> Visite guidée
           </Link>
           <button onClick={() => setCollapsed((c) => !c)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100" title={collapsed ? 'Déplier' : 'Replier'}>
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}

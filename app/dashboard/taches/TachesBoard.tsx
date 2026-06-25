@@ -10,7 +10,7 @@ import {
   CheckSquare,
   Clock,
   Eye,
-  Sparkles,
+  CircleCheck,
   Filter,
   Calendar,
   X,
@@ -96,7 +96,7 @@ const COLUMNS: {
   {
     key: 'terminee',
     label: 'Terminé',
-    icon: Sparkles,
+    icon: CircleCheck,
     iconBg: 'bg-emerald-100',
     iconText: 'text-emerald-700',
     countBg: 'bg-emerald-100',
@@ -334,7 +334,7 @@ export default function TachesBoard({ taches, users, currentUserId }: Props) {
         </div>
         <div className="card p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-emerald-600" />
+            <CircleCheck className="h-5 w-5 text-emerald-600" />
           </div>
           <div>
             <div className="text-2xl font-heading font-bold text-surface-900">{byColumn.terminee.length}</div>

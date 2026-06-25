@@ -2,7 +2,7 @@ import { getFranchiseSession } from '@/lib/franchise-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getFranchiseStats } from '@/lib/franchise-data'
 import { ProgressRing } from '@/components/ui'
-import { Building2, Banknote, Target, Sparkles } from 'lucide-react'
+import { Building2, Banknote, Target, TrendingUp } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +63,7 @@ export default async function FranchisePrevisionPage() {
           {/* Potentiel */}
           <div>
             <div className="text-sm font-heading font-semibold text-surface-900 mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-500" /> Potentiel restant ({restants} établissement{restants > 1 ? 's' : ''} à former)
+              <TrendingUp className="h-4 w-4 text-amber-500" /> Potentiel restant ({restants} établissement{restants > 1 ? 's' : ''} à former)
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <PotCard icon={Building2} tint="blue" label="Établissements à former" value={String(restants)} sub={`sur ${totalDeclares} au total`} />

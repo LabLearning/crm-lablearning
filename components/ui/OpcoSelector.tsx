@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Building, CheckCircle2, AlertCircle, Loader2, Sparkles } from 'lucide-react'
+import { Building, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react'
 
 interface Opco {
   id: string
@@ -92,7 +92,7 @@ export function OpcoSelector({
 
       {autoMatch && !isDetecting && (
         <div className="rounded-xl bg-brand-50 border border-brand-200 px-4 py-3 text-sm flex items-start gap-3">
-          <Sparkles className="h-4 w-4 text-brand-600 mt-0.5 shrink-0" />
+          <Zap className="h-4 w-4 text-brand-600 mt-0.5 shrink-0" />
           <div className="flex-1">
             <div className="font-medium text-brand-900">
               Détecté automatiquement : <strong>{autoMatch.opco.nom}</strong>

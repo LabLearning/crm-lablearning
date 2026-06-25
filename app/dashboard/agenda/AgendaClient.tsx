@@ -6,7 +6,7 @@ import {
   CalendarDays, ChevronLeft, ChevronRight, List, LayoutGrid,
   Calendar as CalIcon, Clock, MapPin, Phone, Mail,
   FileText, Bell, Clipboard, GraduationCap, CheckSquare,
-  AlertCircle, Sparkles,
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

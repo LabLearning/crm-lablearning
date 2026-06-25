@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Network, Pencil, Check, Loader2, Sparkles, Building2, TrendingUp, Banknote, X } from 'lucide-react'
+import { Network, Pencil, Check, Loader2, Building2, TrendingUp, Banknote, X } from 'lucide-react'
 import { ProgressRing } from '@/components/ui'
 import { updateFranchiseAction } from '../actions'
 
@@ -113,7 +113,7 @@ export default function FranchiseCoverageClient({
           {/* Prévisionnel */}
           <div className="mt-5 pt-5 border-t border-surface-100">
             <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Prévisionnel sur les {restants} établissements à former
+              <TrendingUp className="h-3.5 w-3.5 text-amber-500" /> Prévisionnel sur les {restants} établissements à former
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Pot icon={Building2} tint="blue" label="CA potentiel" value={fmtEuro(caPotentiel)} sub={`~${fmtEuro(caMoyen)} / étab.`} />
