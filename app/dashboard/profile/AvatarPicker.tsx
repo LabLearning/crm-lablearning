@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Upload, Trash2, Sparkles, Check, Loader2 } from 'lucide-react'
+import { Camera, Upload, Trash2, CircleUserRound, Check, Loader2 } from 'lucide-react'
 import { Avatar, Badge, useToast } from '@/components/ui'
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
@@ -90,7 +90,7 @@ export function AvatarPicker({ user }: { user: User }) {
           </button>
           <button type="button" onClick={() => setGallery((v) => !v)} disabled={busy}
             className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${gallery ? 'bg-brand-500 text-white hover:bg-brand-600' : 'border border-surface-200 text-surface-700 hover:bg-surface-50'}`}>
-            <Sparkles className="h-4 w-4" /> Choisir un avatar
+            <CircleUserRound className="h-4 w-4" /> Choisir un avatar
           </button>
           {user.avatar_url && (
             <button type="button" onClick={remove} disabled={busy} title="Retirer l'avatar"
