@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { Save, User as UserIcon } from 'lucide-react'
-import { Button, Input, Avatar, Badge, useToast } from '@/components/ui'
+import { Button, Input, useToast } from '@/components/ui'
 import { updateProfileAction } from './actions'
-import { ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
-import { formatDate } from '@/lib/utils'
+import { AvatarPicker } from './AvatarPicker'
 import type { User } from '@/lib/types'
 
 interface ProfileFormProps {
@@ -34,29 +33,8 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   return (
     <div className="space-y-6">
-      {/* Profile header */}
-      <div className="card p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-        <Avatar
-          firstName={user.first_name}
-          lastName={user.last_name}
-          src={user.avatar_url}
-          size="xl"
-        />
-        <div>
-          <h2 className="text-xl font-heading font-bold text-surface-900">
-            {user.first_name} {user.last_name}
-          </h2>
-          <p className="text-sm text-surface-500 mt-0.5">{user.email}</p>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant={ROLE_COLORS[user.role]} dot>
-              {ROLE_LABELS[user.role]}
-            </Badge>
-            <span className="text-xs text-surface-400">
-              Membre depuis {formatDate(user.created_at)}
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* Profile header + avatar */}
+      <AvatarPicker user={user} />
 
       {/* Edit form */}
       <form onSubmit={handleSubmit} className="card p-6">

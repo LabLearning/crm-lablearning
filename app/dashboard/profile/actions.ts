@@ -39,3 +39,28 @@ export async function updateProfileAction(formData: FormData): Promise<ActionRes
   revalidatePath('/dashboard', 'layout')
   return { success: true }
 }
+
+// Choisir un avatar préfait (URL d'avatar généré) — supprime d'abord
+// une éventuelle photo uploadée dans notre bucket pour ne pas la laisser orpheline.
+export async function setAvatarAction(url: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  if (!url || !/^https:\/\//.test(url)) {
+    return { success: false, error: 'Avatar invalide' }
+  }
+
+  const { data: me } = await supabase.from('users').select('avatar_url').eq('id', session.user.id).single()
+  const old = me?.avatar_url as string | null
+  if (old) {
+    const path = old.split('/organisation/')[1]
+    if (path && path.startsWith('avatars/')) await supabase.storage.from('organisation').remove([path])
+  }
+
+  const { error } = await supabase.from('users').update({ avatar_url: url }).eq('id', session.user.id)
+  if (error) return { success: false, error: "Erreur lors de l'enregistrement de l'avatar" }
+
+  await logAudit({ action: 'update_avatar', entity_type: 'user', entity_id: session.user.id })
+  revalidatePath('/dashboard', 'layout')
+  return { success: true }
+}
