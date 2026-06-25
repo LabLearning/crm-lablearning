@@ -14,7 +14,8 @@ export default async function SessionsPage() {
     .select(`
       *,
       formation:formation_id(intitule, reference, modalite, duree_heures),
-      formateur:formateurs(prenom, nom)
+      formateur:formateurs(prenom, nom),
+      client:client_id(raison_sociale)
     `)
     .eq('organization_id', session.organization.id)
     .order('date_debut', { ascending: false })

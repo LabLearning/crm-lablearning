@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import {
   Plus, Search, Pencil, Trash2, Users, QrCode,
-  Calendar, MapPin, Video, Clock, User as UserIcon,
+  Calendar, MapPin, Video, Clock, User as UserIcon, Building2,
 } from 'lucide-react'
 import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { SessionForm } from './SessionForm'
@@ -148,6 +148,11 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                   <div className="min-w-0">
                     {s.reference && <div className="text-2xs font-mono text-surface-400">{s.reference}</div>}
                     <h3 className="text-sm font-semibold text-surface-900 truncate">{getSessionTitle(s)}</h3>
+                    {(s as any).client?.raison_sociale && (
+                      <div className="flex items-center gap-1 text-xs font-medium text-brand-600 mt-0.5 truncate">
+                        <Building2 className="h-3.5 w-3.5 shrink-0" /> {(s as any).client.raison_sociale}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant={SESSION_STATUS_COLORS[s.status]} dot>{SESSION_STATUS_LABELS[s.status]}</Badge>
