@@ -94,9 +94,9 @@ const sessionMap = await existingByDendreo('sessions')
       organization_id: ORG, dendreo_id: did, type: 'entreprise',
       raison_sociale: raison, siret: clean(e.siret), tva_intra: clean(e.num_tva_intra),
       forme_juridique: clean(e.statut_juridique), sigle: clean(e.sigle),
-      code_naf: clean(e.code_ape || e.naf), adresse: clean(e.adresse),
-      code_postal: clean(e.code_postal), ville: clean(e.ville),
-      telephone: clean(e.telephone), email: clean(e.email),
+      code_naf: clean(e.ape_code), secteur_activite: clean(e.code_naf && e.code_naf.intitule),
+      adresse: clean(e.adresse), code_postal: clean(e.code_postal), ville: clean(e.ville),
+      telephone: clean(e.telephone), email: clean(e.email_standard), site_web: clean(e.site_internet),
       notes: '[Dendreo]',
     })
   }
@@ -138,7 +138,7 @@ const formationByName = new Map()
     if (!intitule) continue
     toInsert.push({
       organization_id: ORG, dendreo_id: did, reference: clean(m.numero_complet) || clean(m.numero),
-      intitule, categorie: typeof m.categorie === 'string' ? clean(m.categorie) : null,
+      intitule, categorie: clean(m.categorie && m.categorie.intitule) || (typeof m.categorie === 'string' ? clean(m.categorie) : null),
       modalite: 'presentiel',
       duree_heures: Number(m.duree_heures) || 0, duree_jours: m.duree_jours != null ? Number(m.duree_jours) : null,
       objectifs_pedagogiques: clean(m.objectif) ? [clean(m.objectif)] : null, prerequis: clean(m.pre_requis), public_vise: clean(m.public_vise),
