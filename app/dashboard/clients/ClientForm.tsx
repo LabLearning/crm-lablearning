@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Save, Award, GraduationCap, UserCircle } from 'lucide-react'
+import { Save, Award, GraduationCap, UserCircle, CheckCircle2, UserPlus } from 'lucide-react'
 import { Button, Input, Select, CompanySearchInput, OpcoSelector } from '@/components/ui'
 import { createClientAction, updateClientAction } from './actions'
+import { createContactAction } from '../contacts/actions'
 import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import type { Client } from '@/lib/types/crm'
 import type { SireneCompany } from '@/lib/sirene'
@@ -29,6 +30,9 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
   const [clientType, setClientType] = useState(client?.type || 'entreprise')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
+  // Étape référent (après création d'un client entreprise)
+  const [step, setStep] = useState<'client' | 'referent'>('client')
+  const [newClientId, setNewClientId] = useState<string | null>(null)
 
   // Champs entreprise contrôlés
   const [raisonSociale, setRaisonSociale] = useState(client?.raison_sociale || '')
@@ -103,6 +107,13 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
       : await createClientAction(formData)
 
     if (result.success) {
+      // Création d'un client entreprise → enchaîner sur la création du référent
+      if (!client && clientType === 'entreprise' && (result.data as any)?.id) {
+        setNewClientId((result.data as any).id)
+        setStep('referent')
+        setIsLoading(false)
+        return
+      }
       onSuccess()
     } else if (result.errors) {
       setFieldErrors(result.errors)
@@ -111,6 +122,20 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
       setError(result.error)
     }
     setIsLoading(false)
+  }
+
+  // Étape 2 : référent de l'entreprise (contact lié)
+  if (step === 'referent' && newClientId) {
+    return (
+      <ReferentStep
+        clientId={newClientId}
+        companyName={raisonSociale}
+        defaultPrenom={dirigeantPrenom}
+        defaultNom={dirigeantNom}
+        defaultPoste={dirigeantQualite}
+        onDone={onSuccess}
+      />
+    )
   }
 
   const isNewClient = !client
@@ -271,9 +296,87 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>Annuler</Button>
         <Button type="submit" isLoading={isLoading} icon={<Save className="h-4 w-4" />}>
-          {client ? 'Mettre à jour' : 'Créer le client'}
+          {client ? 'Mettre à jour' : clientType === 'entreprise' ? 'Créer et ajouter le référent' : 'Créer le client'}
         </Button>
       </div>
     </form>
+  )
+}
+
+interface ReferentStepProps {
+  clientId: string
+  companyName: string
+  defaultPrenom?: string
+  defaultNom?: string
+  defaultPoste?: string
+  onDone: () => void
+}
+
+function ReferentStep({ clientId, companyName, defaultPrenom, defaultNom, defaultPoste, onDone }: ReferentStepProps) {
+  const [saving, setSaving] = useState(false)
+  const [errs, setErrs] = useState<Record<string, string[]>>({})
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSaving(true); setErrs({}); setError(null)
+    const fd = new FormData(e.currentTarget)
+    fd.set('client_id', clientId)
+    fd.set('est_referent_formation', 'true')
+    fd.set('est_principal', 'true')
+    const r = await createContactAction(fd)
+    setSaving(false)
+    if (r.success) onDone()
+    else if (r.errors) setErrs(r.errors)
+    else setError(r.error || 'Erreur')
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-start gap-3">
+        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+        <div>
+          <div className="text-sm font-semibold text-emerald-900">Client « {companyName || 'entreprise'} » créé</div>
+          <div className="text-xs text-emerald-700 mt-0.5">Ajoutez maintenant le référent (interlocuteur principal de l'entreprise).</div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-xl bg-danger-50 border border-danger-200 px-4 py-3 text-sm text-danger-700">{error}</div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center gap-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+          <UserCircle className="h-4 w-4 text-surface-400" /> Référent de l'entreprise
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <Select id="ref_civilite" name="civilite" label="Civilité" options={[{ value: '', label: '—' }, { value: 'M.', label: 'M.' }, { value: 'Mme', label: 'Mme' }]} />
+          <Input id="ref_prenom" name="prenom" label="Prénom *" defaultValue={defaultPrenom || ''} error={errs.prenom?.[0]} />
+          <Input id="ref_nom" name="nom" label="Nom *" defaultValue={defaultNom || ''} error={errs.nom?.[0]} />
+        </div>
+
+        <Input id="ref_poste" name="poste" label="Poste / fonction" defaultValue={defaultPoste || ''} placeholder="Responsable formation, Gérant..." />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Input id="ref_email" name="email" type="email" label="Email" error={errs.email?.[0]} />
+          <Input id="ref_telephone" name="telephone" label="Téléphone" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input id="ref_mobile" name="mobile" label="Mobile" />
+          <Input id="ref_whatsapp" name="whatsapp" label="WhatsApp" placeholder="06 12 34 56 78" />
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+          <input type="checkbox" name="est_signataire" value="true" className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500" />
+          Ce référent est le signataire des conventions
+        </label>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <Button type="button" variant="secondary" onClick={onDone}>Passer cette étape</Button>
+          <Button type="submit" isLoading={saving} icon={<UserPlus className="h-4 w-4" />}>Ajouter le référent</Button>
+        </div>
+      </form>
+    </div>
   )
 }
