@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Search, Building2, User, MoreHorizontal, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react'
-import { Button, Badge, Modal, useToast } from '@/components/ui'
+import { Plus, Search, Building2, User, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react'
+import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { ClientForm } from './ClientForm'
 import { deleteClientAction } from './actions'
 import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
@@ -19,7 +19,6 @@ export function ClientsList({ clients }: ClientsListProps) {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [editClient, setEditClient] = useState<Client | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -163,29 +162,11 @@ export function ClientsList({ clients }: ClientsListProps) {
                     )}
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <div className="relative inline-block">
-                      <button
-                        onClick={() => setActiveMenu(activeMenu === client.id ? null : client.id)}
-                        className="p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                      {activeMenu === client.id && (
-                        <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border border-surface-200 shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                          <button
-                            onClick={() => { setEditClient(client); setActiveMenu(null) }}
-                            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50"
-                          >
-                            <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                          </button>
-                          <button
-                            onClick={() => handleDelete(client.id)}
-                            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50"
-                          >
-                            <Trash2 className="h-4 w-4" /> Supprimer
-                          </button>
-                        </div>
-                      )}
+                    <div className="inline-block">
+                      <RowMenu items={[
+                        { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditClient(client) },
+                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(client.id) },
+                      ]} />
                     </div>
                   </td>
                 </tr>

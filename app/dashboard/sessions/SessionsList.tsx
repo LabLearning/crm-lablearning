@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import {
-  Plus, Search, MoreHorizontal, Pencil, Trash2, Users, QrCode,
+  Plus, Search, Pencil, Trash2, Users, QrCode,
   Calendar, MapPin, Video, Clock, User as UserIcon,
 } from 'lucide-react'
-import { Button, Badge, Modal, useToast } from '@/components/ui'
+import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { SessionForm } from './SessionForm'
 import { deleteSessionAction, updateSessionStatusAction } from './actions'
 import {
@@ -45,7 +45,6 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [editSession, setEditSession] = useState<Session | null>(null)
-  const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     return sessions.filter((s) => {
@@ -69,7 +68,6 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
     const result = await deleteSessionAction(id)
     if (result.success) toast('success', 'Session supprimée')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   async function handleStatusChange(id: string, status: SessionStatus) {
@@ -83,7 +81,6 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
     const r = await confirmSessionAction(id)
     if (r.success) toast('success', 'Session confirmée — convention et contrat envoyés pour signature')
     else toast('error', r.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   function getSessionTitle(s: Session): string {
@@ -186,53 +183,17 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
               </div>
 
               {/* Actions */}
-              <div className="relative shrink-0">
-                <button onClick={() => setActiveMenu(activeMenu === s.id ? null : s.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-                {activeMenu === s.id && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl border shadow-elevated py-1 z-20 animate-in-scale origin-top-right">
-                    <button onClick={() => { setEditSession(s); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <Pencil className="h-4 w-4 text-surface-400" /> Modifier
-                    </button>
-                    <a href={`/api/sessions/${s.id}/qr-codes`} target="_blank" rel="noopener noreferrer" onClick={() => setActiveMenu(null)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                      <QrCode className="h-4 w-4 text-surface-400" /> QR codes apprenants
-                    </a>
-                    {s.status === 'planifiee' && (s as any).mission_status === 'accepted' && (
-                      <button onClick={() => handleConfirmSession(s.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-brand-600 hover:bg-brand-50">
-                        Confirmer & envoyer signatures
-                      </button>
-                    )}
-                    {s.status === 'planifiee' && (s as any).mission_status !== 'accepted' && (
-                      <div className="px-3 py-1.5 text-xs text-surface-400">
-                        Formateur doit d'abord accepter la mission
-                      </div>
-                    )}
-                    {s.status === 'en_attente_signatures' && (
-                      <div className="px-3 py-1.5 text-xs text-amber-600">
-                        En attente des signatures
-                      </div>
-                    )}
-                    {s.status === 'validee' && (
-                      <button onClick={() => { handleStatusChange(s.id, 'en_cours'); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                        Démarrer la session
-                      </button>
-                    )}
-                    {s.status === 'confirmee' && (
-                      <button onClick={() => { handleStatusChange(s.id, 'en_cours'); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-success-600 hover:bg-success-50">
-                        Démarrer la session
-                      </button>
-                    )}
-                    {s.status === 'en_cours' && (
-                      <button onClick={() => { handleStatusChange(s.id, 'terminee'); setActiveMenu(null) }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50">
-                        Terminer la session
-                      </button>
-                    )}
-                    <button onClick={() => handleDelete(s.id)} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-danger-600 hover:bg-danger-50">
-                      <Trash2 className="h-4 w-4" /> Supprimer
-                    </button>
-                  </div>
-                )}
+              <div className="shrink-0">
+                <RowMenu width={208} items={[
+                  { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditSession(s) },
+                  { label: 'QR codes apprenants', icon: <QrCode className="h-4 w-4 text-surface-400" />, href: `/api/sessions/${s.id}/qr-codes`, target: '_blank' },
+                  { label: 'Confirmer & envoyer signatures', onClick: () => handleConfirmSession(s.id), hidden: !(s.status === 'planifiee' && (s as any).mission_status === 'accepted') },
+                  { label: "Formateur doit d'abord accepter la mission", info: true, hidden: !(s.status === 'planifiee' && (s as any).mission_status !== 'accepted') },
+                  { label: 'En attente des signatures', info: true, infoColor: 'text-amber-600', hidden: s.status !== 'en_attente_signatures' },
+                  { label: 'Démarrer la session', onClick: () => handleStatusChange(s.id, 'en_cours'), hidden: !(s.status === 'validee' || s.status === 'confirmee') },
+                  { label: 'Terminer la session', onClick: () => handleStatusChange(s.id, 'terminee'), hidden: s.status !== 'en_cours' },
+                  { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(s.id) },
+                ]} />
               </div>
             </div>
           </div>
