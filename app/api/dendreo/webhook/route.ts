@@ -24,11 +24,14 @@ export async function POST(req: Request) {
   let payload: any = null
   try { payload = await req.json() } catch { payload = await req.text().catch(() => null) }
 
-  // Extraction best-effort (le format exact sera affiné en voyant de vrais events)
+  // Format Dendreo : { event: "<resource>.<verbe>", timestamp, "<resource>": {objet} }
   const p = payload && typeof payload === 'object' ? payload : {}
-  const eventType = p.event || p.type || p.action || p.evenement || null
-  const resource = p.resource || p.objet || p.entity || p.table || null
-  const resourceId = p.id || p.resource_id || p.objet_id || null
+  const eventType: string | null = p.event || p.type || p.action || p.evenement || null
+  const resource: string | null = eventType ? eventType.split('.')[0] : (p.resource || null)
+  const obj = resource && p[resource] && typeof p[resource] === 'object' ? p[resource] : null
+  const resourceId = obj
+    ? (obj.id ?? obj[`id_${resource}`] ?? Object.entries(obj).find(([k]) => /^id_/.test(k) && !/^id_(add|edit|delete)$/.test(k))?.[1] ?? null)
+    : (p.id ?? p.resource_id ?? null)
 
   try {
     const supabase = await createServiceRoleClient()
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
       organization_id: ORG,
       event_type: eventType ? String(eventType) : null,
       resource: resource ? String(resource) : null,
-      resource_id: resourceId ? String(resourceId) : null,
+      resource_id: resourceId != null ? String(resourceId) : null,
       payload: payload ?? null,
       status: 'received',
     })

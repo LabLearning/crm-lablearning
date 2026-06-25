@@ -141,7 +141,7 @@ const formationByName = new Map()
       intitule, categorie: typeof m.categorie === 'string' ? clean(m.categorie) : null,
       modalite: 'presentiel',
       duree_heures: Number(m.duree_heures) || 0, duree_jours: m.duree_jours != null ? Number(m.duree_jours) : null,
-      objectifs_pedagogiques: clean(m.objectif), prerequis: clean(m.pre_requis), public_vise: clean(m.public_vise),
+      objectifs_pedagogiques: clean(m.objectif) ? [clean(m.objectif)] : null, prerequis: clean(m.pre_requis), public_vise: clean(m.public_vise),
       methodes_pedagogiques: clean(m.modalites_pedagogiques), moyens_techniques: clean(m.moyens_supports_pedagogiques),
       modalites_evaluation: clean(m.modalites_devaluation), accessibilite_handicap: clean(m.accessibilite),
       tarif_inter_ht: m.prix != null ? Number(m.prix) : null, tarif_intra_ht: m.prix_intra != null ? Number(m.prix_intra) : null,
