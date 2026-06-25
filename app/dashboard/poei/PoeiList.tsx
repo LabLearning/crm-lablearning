@@ -99,7 +99,7 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
       </div>
 
       {!hasPoeiCatalog && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Aucune formation marquée « Éligible POEI » dans le catalogue. Coche la case sur une fiche formation pour filtrer les programmes POEI. En attendant, toutes les formations sont proposées.
         </div>
       )}
@@ -112,7 +112,7 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
           { label: 'En formation', value: stats.formation, icon: <GraduationCap className="h-4 w-4 text-sky-500" /> },
           { label: 'Candidats', value: stats.candidats, icon: <Users className="h-4 w-4 text-sky-500" /> },
         ].map((s) => (
-          <div key={s.label} className="card p-4 border-l-2 border-l-sky-400">
+          <div key={s.label} className="card p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-surface-500 uppercase tracking-wider">{s.label}</span>
               {s.icon}

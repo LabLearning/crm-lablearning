@@ -58,7 +58,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="section-label">Candidats</span>
-          <Badge variant="default" className="!bg-sky-100 !text-sky-700 !border-sky-200">{candidats.length}</Badge>
+          <Badge variant="default" className="!bg-sky-100 !text-sky-700 !border-transparent">{candidats.length}</Badge>
         </div>
         <Button onClick={() => { setErrors({}); setMode('new'); setOpen(true) }} size="sm" icon={<UserPlus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Ajouter</Button>
       </div>
