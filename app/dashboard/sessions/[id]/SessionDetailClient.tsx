@@ -6,7 +6,7 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, UserCheck, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
-  Star, ListChecks, FileSignature,
+  Star, ListChecks, FileSignature, Award,
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
@@ -33,6 +33,7 @@ interface Props {
   evaluations?: any[]
   qcmSessions?: any[]
   conventions?: any[]
+  evaluationsAppr?: any[]
   isFormateur: boolean
   userRole: string
 }
@@ -53,7 +54,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], isFormateur, userRole }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], evaluationsAppr = [], isFormateur, userRole }: Props) {
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -509,6 +510,19 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                         {a?.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{a.telephone}</span>}
                         {a?.entreprise && <span className="flex items-center gap-1"><Building2 className="h-3 w-3 shrink-0" />{a.entreprise}</span>}
                       </div>
+                      {evaluationsAppr.filter((e) => e.apprenant_id === a?.id && e.note != null).length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {evaluationsAppr.filter((e) => e.apprenant_id === a?.id && e.note != null).map((e) => {
+                            const ratio = e.note_max ? e.note / e.note_max : null
+                            const color = ratio == null ? 'bg-surface-100 text-surface-600' : ratio >= 0.7 ? 'bg-emerald-50 text-emerald-700' : ratio >= 0.5 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
+                            return (
+                              <span key={e.id} title={e.intitule || ''} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', color)}>
+                                <Award className="h-3 w-3" />{Number(e.note)}{e.note_max ? `/${Number(e.note_max)}` : ''}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       {assiduity !== null && (
