@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Save, Camera, Loader2,
   Presentation, Star, Award, Clock, Calendar, Euro,
@@ -170,6 +171,7 @@ function HabilitationModal({ formateur, onDone }: { formateur: Formateur; onDone
 
 export function FormateursList({ formateurs, sessionCounts }: FormateursListProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [editFormateur, setEditFormateur] = useState<Formateur | null>(null)
@@ -220,7 +222,7 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((f) => (
-          <div key={f.id} onClick={() => setEditFormateur(f)}
+          <div key={f.id} onClick={() => router.push(`/dashboard/formateurs/${f.id}`)}
             className={`card p-5 hover:shadow-card hover:border-brand-200 transition-all cursor-pointer ${!f.is_active ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
