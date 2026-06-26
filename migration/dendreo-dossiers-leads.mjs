@@ -48,7 +48,7 @@ async function insert(table, rows) {
   if (DRY || !rows.length) return
   for (let i = 0; i < rows.length; i += 100) {
     const r = await fetch(`${SBASE}/rest/v1/${table}`, { method: 'POST', headers: sbH, body: JSON.stringify(rows.slice(i, i + 100)) })
-    if (!r.ok) throw new Error(`POST ${table} → ${r.status} ${(await r.text()).slice(0, 400)}`)
+    if (!r.ok) throw new Error(`POST ${table} → ${r.status} ${(await r.text()).slice(0, 1500)}`)
   }
 }
 
@@ -60,17 +60,25 @@ log(`\n${DRY ? '🔍 DRY-RUN' : '🚀 APPLY'} — Financements → dossiers · O
   const finNom = new Map(financeurs.map((f) => [String(f.id_opca), clean(f.raison_sociale)]))
   const sessions = await sbGetAll(`/sessions?organization_id=eq.${ORG}&select=id,dendreo_id,client_id,formation_id&dendreo_id=not.is.null`)
   const sessByAction = new Map(sessions.map((s) => [String(s.dendreo_id), s]))
+  const clientsAll = await sbGetAll(`/clients?organization_id=eq.${ORG}&select=id,dendreo_id&dendreo_id=not.is.null`)
+  const clientByDid = new Map(clientsAll.map((c) => [String(c.dendreo_id), c.id]))
   const done = await existingDendreo('dossiers_formation')
   const typeMap = { opca: 'opco', entreprise: 'entreprise', particulier: 'fonds_propres', public: 'france_travail' }
-  const rows = []
+  const rows = []; let skipped = 0
   for (const f of financements) {
     const did = String(f.id_financement)
     if (done.has(did)) continue
     const sess = sessByAction.get(String(f.id_action_de_formation))
+    let clientId = sess?.client_id || null
+    if (!clientId && f.id_action_de_formation) {
+      const rA = await fetch(`${DBASE}/actions_de_formation.php?id_action_de_formation=${f.id_action_de_formation}&key=${DKEY}`, { headers: { Accept: 'application/json' } }).catch(() => null)
+      if (rA && rA.ok) { const a = await rA.json(); const obj = Array.isArray(a) ? a[0] : a; clientId = clientByDid.get(String(obj && obj.id_entreprise)) || null }
+    }
+    if (!clientId) { skipped++; continue }
     rows.push({
       organization_id: ORG, dendreo_id: did,
       numero: clean(f.numero_dossier) || `FIN-${did}`,
-      session_id: sess?.id || null, client_id: sess?.client_id || null, formation_id: sess?.formation_id || null,
+      session_id: sess?.id || null, client_id: clientId, formation_id: sess?.formation_id || null,
       status: 'en_cours',
       financeur_type: typeMap[String(f.type)] || 'autre',
       financeur_nom: finNom.get(String(f.id_financeur)) || null,
@@ -80,7 +88,7 @@ log(`\n${DRY ? '🔍 DRY-RUN' : '🚀 APPLY'} — Financements → dossiers · O
       notes: '[Dendreo]',
     })
   }
-  log(`  financements=${financements.length} · dossiers à créer=${rows.length} · liés à une session=${rows.filter((r) => r.session_id).length}`)
+  log(`  financements=${financements.length} · dossiers à créer=${rows.length} · liés à une session=${rows.filter((r) => r.session_id).length} · ignorés(sans client)=${skipped}`)
   await insert('dossiers_formation', rows)
 }
 
@@ -104,7 +112,7 @@ log(`\n${DRY ? '🔍 DRY-RUN' : '🚀 APPLY'} — Financements → dossiers · O
       organization_id: ORG, dendreo_id: did, type: 'entreprise',
       entreprise: cli?.raison_sociale || clean(o.numero_complet) || 'Opportunité Dendreo',
       siret: cli?.siret || null,
-      contact_nom: ct?.nom || null, contact_prenom: ct?.prenom || null,
+      contact_nom: ct?.nom || '—', contact_prenom: ct?.prenom || null,
       contact_email: ct?.email || null, contact_telephone: ct?.telephone || null,
       contact_civilite: ct?.civilite || null,
       status,
