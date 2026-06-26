@@ -103,6 +103,7 @@ const sessionMap = await existingByDendreo('sessions')
       code_naf: clean(e.ape_code), secteur_activite: clean(e.code_naf && e.code_naf.intitule),
       adresse: clean(e.adresse), code_postal: clean(e.code_postal), ville: clean(e.ville),
       telephone: clean(e.telephone), email: clean(e.email_standard), site_web: clean(e.site_internet),
+      pays: clean(e.pays), financeur_type: ({ 'Models\\Opca': 'opco', 'Models\\Entreprise': 'entreprise' })[e.financeur_type] || null,
       notes: '[Dendreo]',
     })
   }
@@ -152,7 +153,7 @@ const formationByName = new Map()
       modalites_evaluation: clean(m.modalites_devaluation), accessibilite_handicap: clean(m.accessibilite),
       programme_detaille: clean(String(m.description || '').replace(/<\s*li[^>]*>/gi, '\n• ').replace(/<\s*\/\s*(p|div|h[1-6]|tr)\s*>/gi, '\n').replace(/<\s*br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').split('\n').map((l) => l.trim()).filter((l) => l && l !== '•').join('\n')),
       tarif_inter_ht: m.prix != null ? Number(m.prix) : null, tarif_intra_ht: m.prix_intra != null ? Number(m.prix_intra) : null,
-      is_active: true,
+      modalites_admission: clean(m.infos_admission), is_active: true,
     })
   }
   const created = await insertBatch('formations', toInsert)
