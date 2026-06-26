@@ -38,7 +38,13 @@ async function sb(method, path, body) {
 }
 async function existingByDendreo(table) {
   try {
-    const rows = await sb('GET', `/${table}?organization_id=eq.${ORG}&select=id,dendreo_id&dendreo_id=not.is.null`)
+    const rows = []; const page = 1000
+    for (let from = 0; ; from += page) {
+      const r = await fetch(`${SBASE}/rest/v1/${table}?organization_id=eq.${ORG}&select=id,dendreo_id&dendreo_id=not.is.null`, { headers: { ...sbHeaders, Range: `${from}-${from + page - 1}` } })
+      if (!r.ok) throw new Error(`GET ${table} → ${r.status} ${(await r.text()).slice(0, 120)}`)
+      const batch = await r.json(); rows.push(...batch)
+      if (batch.length < page) break
+    }
     return new Map(rows.map((x) => [String(x.dendreo_id), x.id]))
   } catch (e) {
     if (String(e).includes('dendreo_id does not exist')) {
@@ -203,14 +209,29 @@ const formationByName = new Map()
 
 // ── ACTIONS_DE_FORMATION → sessions ──
 {
+  // Matching approximatif (repli si l'intitulé d'action ≠ intitulé catalogue exact)
+  const formationEntries = [...formationByName.entries()].filter(([k, v]) => v && v !== '__new__')
+  const fuzzyForm = (intit) => {
+    const q = norm(intit); if (!q) return null
+    for (const [k, id] of formationEntries) if (k.includes(q) || q.includes(k)) return id
+    const qt = new Set(q.split(' ').filter((w) => w.length > 3))
+    if (!qt.size) return null
+    let best = null, bestScore = 0
+    for (const [k, id] of formationEntries) {
+      const kt = k.split(' ').filter((w) => w.length > 3)
+      const inter = kt.filter((w) => qt.has(w)).length
+      const score = inter / Math.max(1, Math.min(qt.size, kt.length))
+      if (score > bestScore) { bestScore = score; best = id }
+    }
+    return bestScore >= 0.5 ? best : null
+  }
   const toInsert = []
   let orphanForm = 0
   for (const a of actions) {
     const did = String(a.id_action_de_formation)
     if (sessionMap.has(did)) continue
-    const formationId = formationByName.get(norm(a.intitule)) || formationByName.get(norm(a.formation))
-    const matchable = moduleNames.has(norm(a.intitule)) || moduleNames.has(norm(a.formation))
-    if (!matchable) orphanForm++
+    const formationId = formationByName.get(norm(a.intitule)) || formationByName.get(norm(a.formation)) || fuzzyForm(a.intitule)
+    if (!formationId) orphanForm++
     const clientId = a.id_entreprise ? clientMap.get(String(a.id_entreprise)) : null
     const past = a.date_fin && new Date(a.date_fin) < new Date()
     toInsert.push({
