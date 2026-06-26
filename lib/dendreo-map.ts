@@ -68,6 +68,7 @@ async function mapResource(sb: any, resource: string, o: any): Promise<Mapped | 
         prerequis: clean(o.pre_requis), public_vise: clean(o.public_vise),
         methodes_pedagogiques: clean(o.modalites_pedagogiques), moyens_techniques: clean(o.moyens_supports_pedagogiques),
         modalites_evaluation: clean(o.modalites_devaluation), accessibilite_handicap: clean(o.accessibilite),
+        programme_detaille: clean(String(o.description || '').replace(/<\s*li[^>]*>/gi, '\n• ').replace(/<\s*\/\s*(p|div|h[1-6]|tr)\s*>/gi, '\n').replace(/<\s*br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').split('\n').map((l) => l.trim()).filter((l) => l && l !== '•').join('\n')),
         tarif_inter_ht: num(o.prix), tarif_intra_ht: num(o.prix_intra), is_active: true,
       }) }
     }

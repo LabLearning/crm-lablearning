@@ -144,6 +144,7 @@ const formationByName = new Map()
       objectifs_pedagogiques: clean(m.objectif) ? [clean(m.objectif)] : null, prerequis: clean(m.pre_requis), public_vise: clean(m.public_vise),
       methodes_pedagogiques: clean(m.modalites_pedagogiques), moyens_techniques: clean(m.moyens_supports_pedagogiques),
       modalites_evaluation: clean(m.modalites_devaluation), accessibilite_handicap: clean(m.accessibilite),
+      programme_detaille: clean(String(m.description || '').replace(/<\s*li[^>]*>/gi, '\n• ').replace(/<\s*\/\s*(p|div|h[1-6]|tr)\s*>/gi, '\n').replace(/<\s*br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').split('\n').map((l) => l.trim()).filter((l) => l && l !== '•').join('\n')),
       tarif_inter_ht: m.prix != null ? Number(m.prix) : null, tarif_intra_ht: m.prix_intra != null ? Number(m.prix_intra) : null,
       is_active: true,
     })
