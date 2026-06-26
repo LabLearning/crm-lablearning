@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
-  Plus, Search, Pencil, Trash2, Save,
+  Plus, Search, Pencil, Trash2, Save, Camera, Loader2,
   Presentation, Star, Award, Clock, Calendar, Euro,
   CheckCircle2, XCircle, ShieldCheck, AlertTriangle,
 } from 'lucide-react'
@@ -31,6 +31,22 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const [photoUrl, setPhotoUrl] = useState<string | null>((formateur as any)?.photo_url || null)
+  const [uploading, setUploading] = useState(false)
+  const photoRef = useRef<HTMLInputElement>(null)
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const fd = new FormData(); fd.append('file', file)
+    const res = await fetch('/api/formateurs/upload-photo', { method: 'POST', body: fd })
+    const json = await res.json().catch(() => ({}))
+    if (res.ok) setPhotoUrl(json.url)
+    else toast('error', json.error || "Échec de l'envoi")
+    setUploading(false)
+    if (photoRef.current) photoRef.current.value = ''
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -45,6 +61,24 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <input type="hidden" name="photo_url" value={photoUrl || ''} />
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          <Avatar firstName={formateur?.prenom || ''} lastName={formateur?.nom || ''} src={photoUrl} size="xl" className="!h-16 !w-16" />
+          <button type="button" onClick={() => photoRef.current?.click()} disabled={uploading}
+            className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-brand-500 text-white flex items-center justify-center shadow-sm ring-2 ring-white hover:bg-brand-600 disabled:opacity-60">
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+          </button>
+        </div>
+        <div className="text-sm">
+          <button type="button" onClick={() => photoRef.current?.click()} disabled={uploading}
+            className="font-medium text-brand-600 hover:text-brand-700">Importer une photo</button>
+          {photoUrl && <button type="button" onClick={() => setPhotoUrl(null)} className="block text-xs text-surface-400 hover:text-danger-600 mt-0.5">Retirer</button>}
+          <p className="text-xs text-surface-400 mt-0.5">PNG, JPG — 5 Mo max</p>
+        </div>
+      </div>
+      <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handlePhoto} />
+
       <div className="grid grid-cols-3 gap-3">
         <Select id="civilite" name="civilite" label="Civilité" options={[{ value: '', label: '—' }, { value: 'M.', label: 'M.' }, { value: 'Mme', label: 'Mme' }]} defaultValue={formateur?.civilite || ''} />
         <Input id="prenom" name="prenom" label="Prénom *" defaultValue={formateur?.prenom || ''} error={errors.prenom?.[0]} />
@@ -186,10 +220,11 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((f) => (
-          <div key={f.id} className={`card p-5 hover:shadow-card transition-shadow ${!f.is_active ? 'opacity-60' : ''}`}>
+          <div key={f.id} onClick={() => setEditFormateur(f)}
+            className={`card p-5 hover:shadow-card hover:border-brand-200 transition-all cursor-pointer ${!f.is_active ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <Avatar firstName={f.prenom} lastName={f.nom} size="lg" />
+                <Avatar firstName={f.prenom} lastName={f.nom} src={(f as any).photo_url} size="lg" />
                 <div>
                   <div className="text-sm font-semibold text-surface-900">{f.civilite} {f.prenom} {f.nom}</div>
                   <div className="text-xs text-surface-500">{contratLabels[f.type_contrat] || f.type_contrat}</div>

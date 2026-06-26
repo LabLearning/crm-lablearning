@@ -80,6 +80,7 @@ export const createFormateurSchema = z.object({
   siret: z.string().optional(),
   tarif_journalier: z.coerce.number().min(0).optional(),
   tarif_horaire: z.coerce.number().min(0).optional(),
+  photo_url: z.string().optional(),
 })
 
 export const createApprenantSchema = z.object({
