@@ -31,39 +31,33 @@ export default async function DashboardPage() {
     redirect(ROLE_REDIRECTS[user.role])
   }
 
-  let data
-  try {
-    data = await getDashboardData()
-  } catch {
-    data = null
-  }
-
-  // Sessions pour l'agenda
   const supabase = await createServiceRoleClient()
   const today = new Date().toISOString().split('T')[0]
   const inThreeMonths = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
+  const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
 
-  const { data: upcomingSessions } = await supabase
-    .from('sessions')
-    .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule), formateur:formateurs(prenom, nom)')
-    .eq('organization_id', organization.id)
-    .gte('date_fin', today)
-    .lte('date_debut', inThreeMonths)
-    .not('status', 'eq', 'annulee')
-    .order('date_debut', { ascending: true })
-    .limit(15)
+  // Les 3 blocs sont indépendants → exécutés en parallèle (KPIs, agenda, compteurs onboarding)
+  const [data, { data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt]] = await Promise.all([
+    getDashboardData().catch(() => null),
+    supabase
+      .from('sessions')
+      .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule), formateur:formateurs(prenom, nom)')
+      .eq('organization_id', organization.id)
+      .gte('date_fin', today)
+      .lte('date_debut', inThreeMonths)
+      .not('status', 'eq', 'annulee')
+      .order('date_debut', { ascending: true })
+      .limit(15),
+    Promise.all([
+      supabase.from('organizations').select('siret, representant_legal_nom, logo_url').eq('id', organization.id).single(),
+      headCount('formations'), headCount('clients'), headCount('leads'),
+      headCount('sessions'), headCount('devis'), headCount('factures'), headCount('users'),
+    ]),
+  ])
 
   const allSessions = upcomingSessions || []
   const sessionsEnCours = allSessions.filter(s => s.status === 'en_cours' || (s.date_debut <= today && s.date_fin >= today))
   const sessionsAVenir = allSessions.filter(s => s.date_debut > today)
-
-  // Guide de démarrage : détection automatique de l'avancement
-  const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
-  const [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt] = await Promise.all([
-    supabase.from('organizations').select('siret, representant_legal_nom, logo_url').eq('id', organization.id).single(),
-    headCount('formations'), headCount('clients'), headCount('leads'),
-    headCount('sessions'), headCount('devis'), headCount('factures'), headCount('users'),
-  ])
   const onboardingFlags = {
     org: !!((orgRow.data as any)?.siret && (orgRow.data as any)?.representant_legal_nom && (orgRow.data as any)?.logo_url),
     formations: (fCnt.count || 0) > 0,
