@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export interface PortalApprenantContext {
@@ -50,7 +51,7 @@ export interface PortalApporteurContext {
 
 export type PortalContext = PortalApprenantContext | PortalFormateurContext | PortalClientContext | PortalApporteurContext
 
-export async function getPortalContext(token: string): Promise<PortalContext | null> {
+export const getPortalContext = cache(async function getPortalContext(token: string): Promise<PortalContext | null> {
   const supabase = await createServiceRoleClient()
 
   const { data: tokenData } = await supabase
@@ -65,18 +66,18 @@ export async function getPortalContext(token: string): Promise<PortalContext | n
   // Check expiration
   if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) return null
 
-  // Update last used
-  await supabase
-    .from('portal_access_tokens')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', tokenData.id)
-
-  // Fetch organization
-  const { data: org } = await supabase
-    .from('organizations')
-    .select('id, name, logo_url, primary_color')
-    .eq('id', tokenData.organization_id)
-    .single()
+  // Maj last_used_at + fetch organization en parallèle (l'update ne bloque plus le rendu)
+  const [, { data: org }] = await Promise.all([
+    supabase
+      .from('portal_access_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', tokenData.id),
+    supabase
+      .from('organizations')
+      .select('id, name, logo_url, primary_color')
+      .eq('id', tokenData.organization_id)
+      .single(),
+  ])
 
   if (!org) return null
 
@@ -156,4 +157,4 @@ export async function getPortalContext(token: string): Promise<PortalContext | n
   }
 
   return null
-}
+})

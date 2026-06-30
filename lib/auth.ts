@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { User, Organization, Permission } from '@/lib/types'
 
@@ -10,7 +11,9 @@ export interface SessionContext {
   impersonatedBy?: User
 }
 
-export async function getSession(): Promise<SessionContext> {
+// Mémoïsé par requête (React cache) : si getSession est appelé plusieurs fois
+// pendant le même rendu (ex: page + Server Action), une seule exécution réelle.
+export const getSession = cache(async function getSession(): Promise<SessionContext> {
   // Anon client for auth (needs cookies)
   const anonClient = await createServerSupabaseClient()
   const { data: { user: authUser } } = await anonClient.auth.getUser()
@@ -32,11 +35,19 @@ export async function getSession(): Promise<SessionContext> {
     redirect('/login')
   }
 
-  const { data: organization } = await supabase
-    .from('organizations')
-    .select('*')
-    .eq('id', user.organization_id)
-    .single()
+  // organization + permissions sont indépendantes (ne dépendent que de user) → en parallèle
+  const [{ data: organization }, { data: permissions }] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', user.organization_id)
+      .single(),
+    supabase
+      .from('permissions')
+      .select('*')
+      .eq('organization_id', user.organization_id)
+      .eq('role', user.role),
+  ])
 
   if (!organization) {
     redirect('/login')
@@ -70,20 +81,14 @@ export async function getSession(): Promise<SessionContext> {
     }
   }
 
-  const { data: permissions } = await supabase
-    .from('permissions')
-    .select('*')
-    .eq('organization_id', user.organization_id)
-    .eq('role', user.role)
-
   return {
     user: user as User,
     organization: organization as Organization,
     permissions: (permissions || []) as Permission[],
   }
-}
+})
 
-export async function getOptionalSession() {
+export const getOptionalSession = cache(async function getOptionalSession() {
   const anonClient = await createServerSupabaseClient()
   const { data: { user: authUser } } = await anonClient.auth.getUser()
 
@@ -97,4 +102,4 @@ export async function getOptionalSession() {
     .single()
 
   return user as User | null
-}
+})
