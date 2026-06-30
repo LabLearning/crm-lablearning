@@ -25,15 +25,24 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
   const allDocs = documents || []
 
   // URL de téléchargement par document : lien direct si http(s), sinon URL signée (bucket privé "dossiers")
+  // Les URLs signées sont générées en un seul appel batch (createSignedUrls)
   const downloadUrls: Record<string, string> = {}
+  const docsToSign: { id: string; path: string }[] = []
   for (const doc of allDocs) {
     if (!doc.file_url) continue
     if (/^https?:\/\//.test(doc.file_url)) {
       downloadUrls[doc.id] = doc.file_url
     } else {
-      const { data: signed } = await supabase.storage.from('dossiers').createSignedUrl(doc.file_url, 60 * 60)
-      if (signed?.signedUrl) downloadUrls[doc.id] = signed.signedUrl
+      docsToSign.push({ id: doc.id, path: doc.file_url })
     }
+  }
+  if (docsToSign.length > 0) {
+    const { data: signedList } = await supabase.storage
+      .from('dossiers')
+      .createSignedUrls(docsToSign.map((d) => d.path), 60 * 60)
+    ;(signedList || []).forEach((signed, idx) => {
+      if (signed?.signedUrl && !signed.error) downloadUrls[docsToSign[idx].id] = signed.signedUrl
+    })
   }
 
   // Also get pending signatures

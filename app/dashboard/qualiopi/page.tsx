@@ -17,17 +17,25 @@ export default async function QualiopiPage() {
     .order('critere', { ascending: true })
     .order('indicateur', { ascending: true })
 
-  // Signer les preuves stockées (bucket privé) pour permettre le téléchargement
+  // Signer les preuves stockées (bucket privé) en un seul appel batch (createSignedUrls)
+  const preuvesToSign: { p: any; path: string }[] = []
   for (const ind of indicateurs || []) {
     for (const p of (ind as any).preuves || []) {
       if (!p.document_url) continue
       if (/^https?:\/\//.test(p.document_url)) {
         p.signed_url = p.document_url
       } else {
-        const { data: signed } = await supabase.storage.from('dossiers').createSignedUrl(p.document_url, 3600)
-        p.signed_url = signed?.signedUrl || null
+        preuvesToSign.push({ p, path: p.document_url })
       }
     }
+  }
+  if (preuvesToSign.length > 0) {
+    const { data: signedList } = await supabase.storage
+      .from('dossiers')
+      .createSignedUrls(preuvesToSign.map((x) => x.path), 3600)
+    ;(signedList || []).forEach((signed, idx) => {
+      preuvesToSign[idx].p.signed_url = signed?.error ? null : signed?.signedUrl || null
+    })
   }
 
   // Preuves vivantes déjà produites par le CRM (compteurs par module)

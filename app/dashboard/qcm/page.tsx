@@ -17,17 +17,23 @@ export default async function QCMPage() {
     .eq('organization_id', session.organization.id)
     .order('created_at', { ascending: false })
 
-  // Count responses per QCM
-  const qcmsWithCounts = await Promise.all(
-    (qcms || []).map(async (q) => {
-      const { count } = await supabase
-        .from('qcm_reponses')
-        .select('*', { count: 'exact', head: true })
-        .eq('qcm_id', q.id)
-        .eq('is_complete', true)
-      return { ...q, _reponses_count: count || 0 }
-    })
-  )
+  // Count responses per QCM (1 seule requête batch au lieu de N)
+  const reponsesCounts: Record<string, number> = {}
+  const qcmIds = (qcms || []).map((q) => q.id)
+  if (qcmIds.length > 0) {
+    const { data: reponseRows } = await supabase
+      .from('qcm_reponses')
+      .select('qcm_id')
+      .in('qcm_id', qcmIds)
+      .eq('is_complete', true)
+    for (const r of reponseRows || []) {
+      reponsesCounts[r.qcm_id] = (reponsesCounts[r.qcm_id] || 0) + 1
+    }
+  }
+  const qcmsWithCounts = (qcms || []).map((q) => ({
+    ...q,
+    _reponses_count: reponsesCounts[q.id] || 0,
+  }))
 
   const { data: formations } = await supabase
     .from('formations')

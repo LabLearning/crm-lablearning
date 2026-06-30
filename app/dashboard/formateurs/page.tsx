@@ -13,15 +13,17 @@ export default async function FormateursPage() {
     .eq('organization_id', session.organization.id)
     .order('nom', { ascending: true })
 
-  // Count sessions per formateur
+  // Count sessions per formateur (1 seule requête batch au lieu de N)
   const sessionCounts: Record<string, number> = {}
-  if (formateurs) {
-    for (const f of formateurs) {
-      const { count } = await supabase
-        .from('sessions')
-        .select('*', { count: 'exact', head: true })
-        .eq('formateur_id', f.id)
-      sessionCounts[f.id] = count || 0
+  if (formateurs && formateurs.length > 0) {
+    const { data: sessionRows } = await supabase
+      .from('sessions')
+      .select('formateur_id')
+      .in('formateur_id', formateurs.map((f) => f.id))
+    for (const row of sessionRows || []) {
+      if (row.formateur_id) {
+        sessionCounts[row.formateur_id] = (sessionCounts[row.formateur_id] || 0) + 1
+      }
     }
   }
 

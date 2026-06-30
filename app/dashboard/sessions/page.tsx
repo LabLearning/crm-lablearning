@@ -20,48 +20,68 @@ export default async function SessionsPage() {
     .eq('organization_id', session.organization.id)
     .order('date_debut', { ascending: false })
 
-  // Count + IDs des inscriptions + formations liées (pour pré-cocher en édition)
-  const sessionsWithCounts = await Promise.all(
-    (sessions || []).map(async (s) => {
-      const [{ data: inscrits, count }, { data: linkedFormations }] = await Promise.all([
-        supabase.from('inscriptions').select('apprenant_id', { count: 'exact' }).eq('session_id', s.id).not('status', 'in', '("annule","abandonne")'),
-        supabase.from('session_formations').select('formation_id, ordre').eq('session_id', s.id).order('ordre'),
-      ])
-      return {
-        ...s,
-        _nb_inscrits: count || 0,
-        _inscrits_ids: (inscrits || []).map(i => i.apprenant_id),
-        _formation_ids: (linkedFormations || []).map(f => f.formation_id),
-      }
-    })
-  )
+  // Inscriptions + formations liées : 2 requêtes batch (au lieu de 2 par session),
+  // parallélisées avec les listes de référence
+  const sessionIds = (sessions || []).map((s) => s.id)
 
-  const { data: formations } = await supabase
-    .from('formations')
-    .select('id, intitule, reference, modalite, duree_heures, duree_jours')
-    .eq('organization_id', session.organization.id)
-    .eq('is_active', true)
-    .order('intitule')
+  const [
+    { data: allInscrits },
+    { data: allLinkedFormations },
+    { data: formations },
+    { data: formateurs },
+    { data: clients },
+    { data: apprenants },
+  ] = await Promise.all([
+    sessionIds.length > 0
+      ? supabase.from('inscriptions').select('session_id, apprenant_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")')
+      : Promise.resolve({ data: [] as any[] }),
+    sessionIds.length > 0
+      ? supabase.from('session_formations').select('session_id, formation_id, ordre').in('session_id', sessionIds).order('ordre')
+      : Promise.resolve({ data: [] as any[] }),
+    supabase
+      .from('formations')
+      .select('id, intitule, reference, modalite, duree_heures, duree_jours')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('intitule'),
+    supabase
+      .from('formateurs')
+      .select('id, prenom, nom, tarif_journalier')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('nom'),
+    supabase
+      .from('clients')
+      .select('id, raison_sociale, adresse, code_postal, ville')
+      .eq('organization_id', session.organization.id)
+      .eq('type', 'entreprise')
+      .order('raison_sociale'),
+    supabase
+      .from('apprenants')
+      .select('id, prenom, nom, email, client_id')
+      .eq('organization_id', session.organization.id)
+      .order('nom'),
+  ])
 
-  const { data: formateurs } = await supabase
-    .from('formateurs')
-    .select('id, prenom, nom, tarif_journalier')
-    .eq('organization_id', session.organization.id)
-    .eq('is_active', true)
-    .order('nom')
+  // Regroupement en mémoire (rapide) — préserve l'ordre par 'ordre' déjà appliqué côté SQL
+  const inscritsBySession: Record<string, string[]> = {}
+  for (const i of allInscrits || []) {
+    ;(inscritsBySession[i.session_id] ||= []).push(i.apprenant_id)
+  }
+  const formationsBySession: Record<string, string[]> = {}
+  for (const f of allLinkedFormations || []) {
+    ;(formationsBySession[f.session_id] ||= []).push(f.formation_id)
+  }
 
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, raison_sociale, adresse, code_postal, ville')
-    .eq('organization_id', session.organization.id)
-    .eq('type', 'entreprise')
-    .order('raison_sociale')
-
-  const { data: apprenants } = await supabase
-    .from('apprenants')
-    .select('id, prenom, nom, email, client_id')
-    .eq('organization_id', session.organization.id)
-    .order('nom')
+  const sessionsWithCounts = (sessions || []).map((s) => {
+    const inscritsIds = inscritsBySession[s.id] || []
+    return {
+      ...s,
+      _nb_inscrits: inscritsIds.length,
+      _inscrits_ids: inscritsIds,
+      _formation_ids: formationsBySession[s.id] || [],
+    }
+  })
 
   return (
     <div className="animate-fade-in">

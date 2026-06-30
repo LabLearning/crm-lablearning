@@ -22,17 +22,23 @@ export default async function PortalSessionsPage({ params }: { params: { token: 
     .eq('formateur_id', context.formateur.id)
     .order('date_debut', { ascending: false })
 
-  // Count inscriptions per session
-  const sessionsWithCounts = await Promise.all(
-    (sessions || []).map(async (s) => {
-      const { count } = await supabase
-        .from('inscriptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('session_id', s.id)
-        .not('status', 'in', '("annule","abandonne")')
-      return { ...s, _nb_inscrits: count || 0 }
-    })
-  )
+  // Count inscriptions per session (1 seule requête batch au lieu de N)
+  const inscritsCounts: Record<string, number> = {}
+  const sessionIds = (sessions || []).map((s) => s.id)
+  if (sessionIds.length > 0) {
+    const { data: inscritRows } = await supabase
+      .from('inscriptions')
+      .select('session_id')
+      .in('session_id', sessionIds)
+      .not('status', 'in', '("annule","abandonne")')
+    for (const r of inscritRows || []) {
+      inscritsCounts[r.session_id] = (inscritsCounts[r.session_id] || 0) + 1
+    }
+  }
+  const sessionsWithCounts = (sessions || []).map((s) => ({
+    ...s,
+    _nb_inscrits: inscritsCounts[s.id] || 0,
+  }))
 
   const today = new Date().toISOString().split('T')[0]
 
