@@ -42,30 +42,29 @@ export default async function LeadsPage() {
     leadsQuery = leadsQuery.eq('gestionnaire_id', session.user.id)
   }
 
-  const { data: leads } = await leadsQuery
-
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, first_name, last_name, role')
-    .eq('organization_id', session.organization.id)
-    .eq('status', 'active')
-    .in('role', ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'])
-
-  // Gestionnaires (pour assignation à la validation)
-  const { data: gestionnaires } = await supabase
-    .from('users')
-    .select('id, first_name, last_name')
-    .eq('organization_id', session.organization.id)
-    .eq('status', 'active')
-    .in('role', ['gestionnaire', 'super_admin'])
-
-  // Formations pour le sélecteur du recueil de besoin
-  const { data: formations } = await supabase
-    .from('formations')
-    .select('id, intitule, tarif_inter_ht, tarif_intra_ht')
-    .eq('organization_id', session.organization.id)
-    .eq('is_active', true)
-    .order('intitule')
+  const [{ data: leads }, { data: users }, { data: gestionnaires }, { data: formations }] = await Promise.all([
+    leadsQuery,
+    supabase
+      .from('users')
+      .select('id, first_name, last_name, role')
+      .eq('organization_id', session.organization.id)
+      .eq('status', 'active')
+      .in('role', ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial']),
+    // Gestionnaires (pour assignation à la validation)
+    supabase
+      .from('users')
+      .select('id, first_name, last_name')
+      .eq('organization_id', session.organization.id)
+      .eq('status', 'active')
+      .in('role', ['gestionnaire', 'super_admin']),
+    // Formations pour le sélecteur du recueil de besoin
+    supabase
+      .from('formations')
+      .select('id, intitule, tarif_inter_ht, tarif_intra_ht')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('intitule'),
+  ])
 
   const isApporteur = session.user.role === 'apporteur_affaires'
 

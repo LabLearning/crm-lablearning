@@ -20,43 +20,49 @@ export default async function PartenaireDossiersPage({ params }: { params: { tok
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')
   const supabase = await createServiceRoleClient()
 
-  // Get leads from this partner
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, contact_nom, entreprise, status, montant_estime, converted_client_id')
-    .eq('apporteur_id', context.apporteur.id)
+  // Get leads from this partner and their dossiers — and in parallel, all org
+  // dossiers (independent query keyed on organization, not on the leads chain).
+  const [dossiersFromLeads, { data: allDossiers }] = await Promise.all([
+    (async () => {
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('id, contact_nom, entreprise, status, montant_estime, converted_client_id')
+        .eq('apporteur_id', context.apporteur.id)
 
-  const clientIds = (leads || []).map((l: any) => l.converted_client_id).filter(Boolean)
+      const clientIds = (leads || []).map((l: any) => l.converted_client_id).filter(Boolean)
 
-  let dossiers: any[] = []
-  if (clientIds.length > 0) {
-    const { data } = await supabase
-      .from('dossiers_formation')
-      .select(`
+      if (clientIds.length > 0) {
+        const { data } = await supabase
+          .from('dossiers_formation')
+          .select(`
         id, numero, status, montant_total_ht, montant_total_ttc, date_creation,
         financeur_nom, financeur_type,
         client:clients(raison_sociale),
         formation:formation_id(intitule, duree_heures),
         session:sessions(date_debut, date_fin, lieu, status)
       `)
-      .in('client_id', clientIds)
-      .order('date_creation', { ascending: false })
-    dossiers = data || []
-  }
-
-  // Also get dossiers created from partner's leads (via notes matching)
-  const { data: allDossiers } = await supabase
-    .from('dossiers_formation')
-    .select(`
+          .in('client_id', clientIds)
+          .order('date_creation', { ascending: false })
+        return data || []
+      }
+      return []
+    })(),
+    // Also get dossiers created from partner's leads (via notes matching)
+    supabase
+      .from('dossiers_formation')
+      .select(`
       id, numero, status, montant_total_ht, montant_total_ttc, date_creation,
       financeur_nom,
       client:clients(raison_sociale),
       formation:formation_id(intitule, duree_heures),
       session:sessions(date_debut, date_fin, lieu)
     `)
-    .eq('organization_id', context.organization.id)
-    .order('date_creation', { ascending: false })
-    .limit(50)
+      .eq('organization_id', context.organization.id)
+      .order('date_creation', { ascending: false })
+      .limit(50),
+  ])
+
+  let dossiers: any[] = dossiersFromLeads
 
   // Merge and deduplicate
   const allIds = new Set(dossiers.map((d: any) => d.id))

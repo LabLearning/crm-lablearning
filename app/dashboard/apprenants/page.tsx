@@ -8,26 +8,26 @@ export default async function ApprenantsPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: apprenants } = await supabase
-    .from('apprenants')
-    .select('*, client:clients(raison_sociale)')
-    .eq('organization_id', session.organization.id)
-    .order('nom', { ascending: true })
-
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, raison_sociale')
-    .eq('organization_id', session.organization.id)
-    .eq('type', 'entreprise')
-    .order('raison_sociale')
-
-  // Available sessions (upcoming or in progress)
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('id, reference, date_debut, date_fin, formation:formations(intitule)')
-    .eq('organization_id', session.organization.id)
-    .in('status', ['planifiee', 'confirmee', 'en_cours'])
-    .order('date_debut', { ascending: true })
+  const [{ data: apprenants }, { data: clients }, { data: sessions }] = await Promise.all([
+    supabase
+      .from('apprenants')
+      .select('*, client:clients(raison_sociale)')
+      .eq('organization_id', session.organization.id)
+      .order('nom', { ascending: true }),
+    supabase
+      .from('clients')
+      .select('id, raison_sociale')
+      .eq('organization_id', session.organization.id)
+      .eq('type', 'entreprise')
+      .order('raison_sociale'),
+    // Available sessions (upcoming or in progress)
+    supabase
+      .from('sessions')
+      .select('id, reference, date_debut, date_fin, formation:formations(intitule)')
+      .eq('organization_id', session.organization.id)
+      .in('status', ['planifiee', 'confirmee', 'en_cours'])
+      .order('date_debut', { ascending: true }),
+  ])
 
   // All inscriptions for these apprenants
   const apprenantIds = (apprenants || []).map((a) => a.id)

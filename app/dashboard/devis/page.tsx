@@ -9,29 +9,29 @@ export default async function DevisPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: devisList } = await supabase
-    .from('devis')
-    .select(`
-      *,
-      client:clients(raison_sociale, nom, prenom, type),
-      formation:formations(intitule, reference),
-      lignes:devis_lignes(*)
-    `)
-    .eq('organization_id', session.organization.id)
-    .order('created_at', { ascending: false })
-
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, raison_sociale, type, nom, prenom')
-    .eq('organization_id', session.organization.id)
-    .order('raison_sociale')
-
-  const { data: formations } = await supabase
-    .from('formations')
-    .select('id, intitule, reference, tarif_inter_ht')
-    .eq('organization_id', session.organization.id)
-    .eq('is_active', true)
-    .order('intitule')
+  const [{ data: devisList }, { data: clients }, { data: formations }] = await Promise.all([
+    supabase
+      .from('devis')
+      .select(`
+        *,
+        client:clients(raison_sociale, nom, prenom, type),
+        formation:formations(intitule, reference),
+        lignes:devis_lignes(*)
+      `)
+      .eq('organization_id', session.organization.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('clients')
+      .select('id, raison_sociale, type, nom, prenom')
+      .eq('organization_id', session.organization.id)
+      .order('raison_sociale'),
+    supabase
+      .from('formations')
+      .select('id, intitule, reference, tarif_inter_ht')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('intitule'),
+  ])
 
   return (
     <div className="animate-fade-in">

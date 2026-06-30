@@ -24,30 +24,35 @@ export default async function ApprenantHomePage() {
     )
   }
 
-  // Inscriptions avec sessions et formations
-  const { data: inscriptions } = await supabase
-    .from('inscriptions')
-    .select('id, status, session:sessions(id, reference, date_debut, date_fin, lieu, status, formation:formations(intitule, duree_heures))')
-    .eq('apprenant_id', apprenant.id)
-    .not('status', 'in', '("annule","abandonne")')
-    .order('created_at', { ascending: false })
+  // Requêtes indépendantes en parallèle : inscriptions, documents, QCM
+  const [
+    { data: inscriptions },
+    { count: nbDocuments },
+    { count: nbQcm },
+  ] = await Promise.all([
+    // Inscriptions avec sessions et formations
+    supabase
+      .from('inscriptions')
+      .select('id, status, session:sessions(id, reference, date_debut, date_fin, lieu, status, formation:formations(intitule, duree_heures))')
+      .eq('apprenant_id', apprenant.id)
+      .not('status', 'in', '("annule","abandonne")')
+      .order('created_at', { ascending: false }),
+    // Documents disponibles
+    supabase
+      .from('documents')
+      .select('id', { count: 'exact', head: true })
+      .eq('apprenant_id', apprenant.id),
+    // QCM sessions disponibles
+    supabase
+      .from('qcm_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('apprenant_id', apprenant.id)
+      .is('completed_at', null),
+  ])
 
   const allInscriptions = inscriptions || []
   const enCours = allInscriptions.filter((i: any) => ['confirmee', 'en_cours'].includes(i.session?.status))
   const aVenir = allInscriptions.filter((i: any) => i.session?.status === 'planifiee' || (i.session?.date_debut && new Date(i.session.date_debut) > new Date()))
-
-  // Documents disponibles
-  const { count: nbDocuments } = await supabase
-    .from('documents')
-    .select('id', { count: 'exact', head: true })
-    .eq('apprenant_id', apprenant.id)
-
-  // QCM sessions disponibles
-  const { count: nbQcm } = await supabase
-    .from('qcm_sessions')
-    .select('id', { count: 'exact', head: true })
-    .eq('apprenant_id', apprenant.id)
-    .is('completed_at', null)
 
   const prochaine = aVenir.length > 0 ? aVenir[0] : enCours.length > 0 ? enCours[0] : null
 

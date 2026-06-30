@@ -7,17 +7,18 @@ export default async function ContactsPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: contacts } = await supabase
-    .from('contacts')
-    .select('*, client:clients(raison_sociale, type)')
-    .eq('organization_id', session.organization.id)
-    .order('nom', { ascending: true })
-
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, raison_sociale, type')
-    .eq('organization_id', session.organization.id)
-    .order('raison_sociale', { ascending: true })
+  const [{ data: contacts }, { data: clients }] = await Promise.all([
+    supabase
+      .from('contacts')
+      .select('*, client:clients(raison_sociale, type)')
+      .eq('organization_id', session.organization.id)
+      .order('nom', { ascending: true }),
+    supabase
+      .from('clients')
+      .select('id, raison_sociale, type')
+      .eq('organization_id', session.organization.id)
+      .order('raison_sociale', { ascending: true }),
+  ])
 
   return (
     <div className="animate-fade-in">

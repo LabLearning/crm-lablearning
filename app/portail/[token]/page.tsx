@@ -18,27 +18,27 @@ export default async function PortalHomePage({ params }: { params: { token: stri
 
   if (context.type === 'apprenant') {
     // Fetch apprenant data
-    const { data: inscriptions } = await supabase
-      .from('inscriptions')
-      .select(`
+    const [{ data: inscriptions }, { count: pendingQcm }, { count: docsCount }] = await Promise.all([
+      supabase
+        .from('inscriptions')
+        .select(`
         *,
         session:sessions(reference, date_debut, date_fin, horaires, lieu, status,
           formation:formation_id(intitule, duree_heures, modalite)
         )
       `)
-      .eq('apprenant_id', context.apprenant.id)
-      .order('date_inscription', { ascending: false })
-
-    const { count: pendingQcm } = await supabase
-      .from('qcm_reponses')
-      .select('*', { count: 'exact', head: true })
-      .eq('apprenant_id', context.apprenant.id)
-      .eq('is_complete', false)
-
-    const { count: docsCount } = await supabase
-      .from('documents')
-      .select('*', { count: 'exact', head: true })
-      .eq('apprenant_id', context.apprenant.id)
+        .eq('apprenant_id', context.apprenant.id)
+        .order('date_inscription', { ascending: false }),
+      supabase
+        .from('qcm_reponses')
+        .select('*', { count: 'exact', head: true })
+        .eq('apprenant_id', context.apprenant.id)
+        .eq('is_complete', false),
+      supabase
+        .from('documents')
+        .select('*', { count: 'exact', head: true })
+        .eq('apprenant_id', context.apprenant.id),
+    ])
 
     const allInscriptions = inscriptions || []
     const enCours = allInscriptions.filter((i) => ['inscrit', 'confirme', 'en_cours'].includes(i.status))
@@ -109,17 +109,18 @@ export default async function PortalHomePage({ params }: { params: { token: stri
   if (context.type === 'apporteur') {
     const isPartenaire = context.apporteur.categorie === 'partenaire'
 
-    const { data: leads } = await supabase
-      .from('leads')
-      .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, created_at')
-      .eq('apporteur_id', context.apporteur.id)
-      .order('created_at', { ascending: false })
-      .limit(20)
-
-    const { data: commissions } = await supabase
-      .from('commissions')
-      .select('id, montant_commission, montant_base, status')
-      .eq('apporteur_id', context.apporteur.id)
+    const [{ data: leads }, { data: commissions }] = await Promise.all([
+      supabase
+        .from('leads')
+        .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, created_at')
+        .eq('apporteur_id', context.apporteur.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('commissions')
+        .select('id, montant_commission, montant_base, status')
+        .eq('apporteur_id', context.apporteur.id),
+    ])
 
     const allLeads = leads || []
     const allComm = commissions || []
@@ -289,25 +290,25 @@ export default async function PortalHomePage({ params }: { params: { token: stri
 
   // ---- CLIENT ----
   if (context.type === 'client') {
-    const { data: conventions } = await supabase
-      .from('conventions')
-      .select('id, numero, status, formation:formation_id(intitule)')
-      .eq('client_id', context.client.id)
-      .order('created_at', { ascending: false })
-      .limit(5)
-
-    const { data: factures } = await supabase
-      .from('factures')
-      .select('id, numero, status, montant_ttc, date_emission')
-      .eq('client_id', context.client.id)
-      .order('date_emission', { ascending: false })
-      .limit(5)
-
-    const { data: dossiers } = await supabase
-      .from('dossiers_formation')
-      .select('id, status, session:sessions(date_debut, formation:formation_id(intitule))')
-      .eq('client_id', context.client.id)
-      .limit(5)
+    const [{ data: conventions }, { data: factures }, { data: dossiers }] = await Promise.all([
+      supabase
+        .from('conventions')
+        .select('id, numero, status, formation:formation_id(intitule)')
+        .eq('client_id', context.client.id)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('factures')
+        .select('id, numero, status, montant_ttc, date_emission')
+        .eq('client_id', context.client.id)
+        .order('date_emission', { ascending: false })
+        .limit(5),
+      supabase
+        .from('dossiers_formation')
+        .select('id, status, session:sessions(date_debut, formation:formation_id(intitule))')
+        .eq('client_id', context.client.id)
+        .limit(5),
+    ])
 
     const displayName = context.contact ? context.contact.prenom + ' ' + context.contact.nom : context.client.raison_sociale || 'Client'
     const nbConventions = (conventions || []).length

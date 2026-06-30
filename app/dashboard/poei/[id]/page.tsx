@@ -27,19 +27,20 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   if (!poei) redirect('/dashboard/poei')
   const p = poei as Poei
 
-  const { data: candidatsRaw } = await supabase
-    .from('poei_candidats')
-    .select('*, apprenant:apprenants(nom, prenom, email, telephone)')
-    .eq('poei_id', params.id)
-    .order('created_at', { ascending: true })
+  const [{ data: candidatsRaw }, { data: clients }, { data: formations }, { data: apprenants }] = await Promise.all([
+    supabase
+      .from('poei_candidats')
+      .select('*, apprenant:apprenants(nom, prenom, email, telephone)')
+      .eq('poei_id', params.id)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('clients').select('id, raison_sociale').eq('organization_id', session.organization.id).order('raison_sociale'),
+    supabase
+      .from('formations').select('id, intitule').eq('organization_id', session.organization.id).eq('is_active', true).order('intitule'),
+    supabase
+      .from('apprenants').select('id, nom, prenom').eq('organization_id', session.organization.id).order('nom').limit(1000),
+  ])
   const candidats = (candidatsRaw || []) as PoeiCandidat[]
-
-  const { data: clients } = await supabase
-    .from('clients').select('id, raison_sociale').eq('organization_id', session.organization.id).order('raison_sociale')
-  const { data: formations } = await supabase
-    .from('formations').select('id, intitule').eq('organization_id', session.organization.id).eq('is_active', true).order('intitule')
-  const { data: apprenants } = await supabase
-    .from('apprenants').select('id, nom, prenom').eq('organization_id', session.organization.id).order('nom').limit(1000)
 
   return (
     <div className="space-y-5 animate-fade-in max-w-4xl">

@@ -10,19 +10,19 @@ export default async function ApporteurCommissionsPage({ params }: { params: { t
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')
   const supabase = await createServiceRoleClient()
 
-  // Get commissions
-  const { data: commissions } = await supabase
-    .from('commissions')
-    .select('id, montant_commission, status, created_at, date_paiement, lead:leads(contact_nom, entreprise, montant_estime)')
-    .eq('apporteur_id', context.apporteur.id)
-    .order('created_at', { ascending: false })
-
-  // Get leads gagnes for potential commissions
-  const { data: leadsGagnes } = await supabase
-    .from('leads')
-    .select('id, contact_nom, entreprise, montant_estime, converted_at')
-    .eq('apporteur_id', context.apporteur.id)
-    .eq('status', 'gagne')
+  // Get commissions + leads gagnes for potential commissions
+  const [{ data: commissions }, { data: leadsGagnes }] = await Promise.all([
+    supabase
+      .from('commissions')
+      .select('id, montant_commission, status, created_at, date_paiement, lead:leads(contact_nom, entreprise, montant_estime)')
+      .eq('apporteur_id', context.apporteur.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('leads')
+      .select('id, contact_nom, entreprise, montant_estime, converted_at')
+      .eq('apporteur_id', context.apporteur.id)
+      .eq('status', 'gagne'),
+  ])
 
   const allComm = commissions || []
   const totalGagne = allComm.reduce((s, c: any) => s + (c.montant_commission || 0), 0)

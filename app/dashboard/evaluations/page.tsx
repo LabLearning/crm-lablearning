@@ -7,21 +7,22 @@ export default async function EvaluationsPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: reponses } = await supabase
-    .from('qcm_reponses')
-    .select(`
-      *,
-      apprenant:apprenants(prenom, nom, email),
-      qcm:qcm(titre, type, score_min_reussite)
-    `)
-    .eq('organization_id', session.organization.id)
-    .order('created_at', { ascending: false })
-
-  const { data: satisfactions } = await supabase
-    .from('evaluations_satisfaction')
-    .select('*')
-    .eq('organization_id', session.organization.id)
-    .order('created_at', { ascending: false })
+  const [{ data: reponses }, { data: satisfactions }] = await Promise.all([
+    supabase
+      .from('qcm_reponses')
+      .select(`
+        *,
+        apprenant:apprenants(prenom, nom, email),
+        qcm:qcm(titre, type, score_min_reussite)
+      `)
+      .eq('organization_id', session.organization.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('evaluations_satisfaction')
+      .select('*')
+      .eq('organization_id', session.organization.id)
+      .order('created_at', { ascending: false }),
+  ])
 
   return (
     <div className="animate-fade-in">

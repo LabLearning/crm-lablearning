@@ -38,40 +38,45 @@ export default async function MonEspacePage() {
       return <AccountNotLinked roleName="Formateur" userName={userName} />
     }
 
-    // Missions à valider (proposées en attente de réponse)
-    const { data: pendingMissions } = await supabase
-      .from('sessions')
-      .select(`
-        id, reference, date_debut, date_fin, lieu, horaires, mission_proposed_at,
-        formation:formation_id(intitule),
-        proposer:users!sessions_mission_proposed_by_fkey(first_name, last_name)
-      `)
-      .eq('formateur_id', formateur.id)
-      .eq('mission_status', 'pending')
-      .order('date_debut', { ascending: true })
-
-    const { data: sessions } = await supabase
-      .from('sessions')
-      .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule)')
-      .eq('formateur_id', formateur.id)
-      .eq('mission_status', 'accepted')
-      .in('status', ['planifiee', 'confirmee', 'en_cours'])
-      .order('date_debut', { ascending: true })
-      .limit(10)
-
-    // Sessions avec leurs tâches pour check-list
-    const { data: sessionsAvecTaches } = await supabase
-      .from('sessions')
-      .select(`
-        id, reference, date_debut, date_fin,
-        formation:formation_id(intitule),
-        contrat:contrats_formateur(facturation_status),
-        taches:taches_formateur(id, type, libelle, description, bloque_facturation, complete, date_completion)
-      `)
-      .eq('formateur_id', formateur.id)
-      .in('status', ['en_attente_signatures', 'validee', 'en_cours', 'terminee'])
-      .order('date_debut', { ascending: false })
-      .limit(15)
+    // Requêtes indépendantes en parallèle : missions en attente, sessions actives, sessions+tâches
+    const [
+      { data: pendingMissions },
+      { data: sessions },
+      { data: sessionsAvecTaches },
+    ] = await Promise.all([
+      // Missions à valider (proposées en attente de réponse)
+      supabase
+        .from('sessions')
+        .select(`
+          id, reference, date_debut, date_fin, lieu, horaires, mission_proposed_at,
+          formation:formation_id(intitule),
+          proposer:users!sessions_mission_proposed_by_fkey(first_name, last_name)
+        `)
+        .eq('formateur_id', formateur.id)
+        .eq('mission_status', 'pending')
+        .order('date_debut', { ascending: true }),
+      supabase
+        .from('sessions')
+        .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule)')
+        .eq('formateur_id', formateur.id)
+        .eq('mission_status', 'accepted')
+        .in('status', ['planifiee', 'confirmee', 'en_cours'])
+        .order('date_debut', { ascending: true })
+        .limit(10),
+      // Sessions avec leurs tâches pour check-list
+      supabase
+        .from('sessions')
+        .select(`
+          id, reference, date_debut, date_fin,
+          formation:formation_id(intitule),
+          contrat:contrats_formateur(facturation_status),
+          taches:taches_formateur(id, type, libelle, description, bloque_facturation, complete, date_completion)
+        `)
+        .eq('formateur_id', formateur.id)
+        .in('status', ['en_attente_signatures', 'validee', 'en_cours', 'terminee'])
+        .order('date_debut', { ascending: false })
+        .limit(15),
+    ])
 
     const tachesSessions = (sessionsAvecTaches || [])
       .filter((s: any) => s.taches && s.taches.length > 0)
@@ -179,17 +184,20 @@ export default async function MonEspacePage() {
       return <AccountNotLinked roleName="Apporteur d'affaires" userName={userName} />
     }
 
-    const { data: leads } = await supabase
-      .from('leads').select('id, contact_nom, contact_prenom, entreprise, status, montant_estime')
-      .eq('apporteur_id', apporteur.id).order('created_at', { ascending: false }).limit(20)
+    // Leads + commissions (indépendants) en parallèle
+    const [{ data: leads }, { data: commissions }] = await Promise.all([
+      supabase
+        .from('leads').select('id, contact_nom, contact_prenom, entreprise, status, montant_estime')
+        .eq('apporteur_id', apporteur.id).order('created_at', { ascending: false }).limit(20),
+      supabase
+        .from('commissions').select('montant_commission, status').eq('apporteur_id', apporteur.id),
+    ])
 
     const allLeads = leads || []
     const gagnes = allLeads.filter(l => l.status === 'gagne')
     const enCours = allLeads.filter(l => !['gagne', 'perdu'].includes(l.status))
     const caGenere = gagnes.reduce((s, l) => s + (l.montant_estime || 0), 0)
 
-    const { data: commissions } = await supabase
-      .from('commissions').select('montant_commission, status').eq('apporteur_id', apporteur.id)
     const allComms = commissions || []
     const payees = allComms.filter(c => c.status === 'payee').reduce((s, c) => s + (Number(c.montant_commission) || 0), 0)
     const enAttente = allComms.filter(c => c.status !== 'payee').reduce((s, c) => s + (Number(c.montant_commission) || 0), 0)

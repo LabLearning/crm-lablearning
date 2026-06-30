@@ -40,29 +40,27 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
 
   if (!dossier) redirect('/dashboard/dossiers')
 
-  // Apprenants inscrits à la session
+  // Apprenants inscrits à la session, convention et contrat formateur liés
   const sessionId = (dossier as any).session?.id
-  const { data: inscriptions } = sessionId ? await supabase
-    .from('inscriptions')
-    .select('id, status, apprenant:apprenants(id, prenom, nom, email)')
-    .eq('session_id', sessionId)
-    : { data: [] }
-
-  // Convention liée
-  const { data: convention } = sessionId ? await supabase
-    .from('conventions')
-    .select('id, numero, status, signature_client_date, signature_client_nom, sent_at, signature_token, akto_dossier_status, akto_dossier_numero')
-    .eq('session_id', sessionId)
-    .maybeSingle()
-    : { data: null }
-
-  // Contrat formateur lié
-  const { data: contrat } = sessionId ? await supabase
-    .from('contrats_formateur')
-    .select('id, numero, status, signature_formateur_date, signature_formateur_nom, sent_at, montant_ht')
-    .eq('session_id', sessionId)
-    .maybeSingle()
-    : { data: null }
+  const [{ data: inscriptions }, { data: convention }, { data: contrat }] = await Promise.all([
+    sessionId ? supabase
+      .from('inscriptions')
+      .select('id, status, apprenant:apprenants(id, prenom, nom, email)')
+      .eq('session_id', sessionId)
+      : Promise.resolve({ data: [] }),
+    sessionId ? supabase
+      .from('conventions')
+      .select('id, numero, status, signature_client_date, signature_client_nom, sent_at, signature_token, akto_dossier_status, akto_dossier_numero')
+      .eq('session_id', sessionId)
+      .maybeSingle()
+      : Promise.resolve({ data: null }),
+    sessionId ? supabase
+      .from('contrats_formateur')
+      .select('id, numero, status, signature_formateur_date, signature_formateur_nom, sent_at, montant_ht')
+      .eq('session_id', sessionId)
+      .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
   const d = dossier as any
   const sess = d.session

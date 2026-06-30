@@ -21,35 +21,38 @@ export default async function PlanningFormateurPage() {
   const now = new Date()
   const sixMonths = new Date(now.getFullYear(), now.getMonth() + 6, 1)
 
-  const { data: dispos } = await supabase
-    .from('formateur_disponibilites')
-    .select('id, date, type, creneau')
-    .eq('formateur_id', formateur.id)
-    .gte('date', now.toISOString().split('T')[0])
-    .lte('date', sixMonths.toISOString().split('T')[0])
-
-  // Sessions planifiées
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('id, reference, date_debut, date_fin, lieu, status, formation:formation_id(intitule)')
-    .eq('formateur_id', formateur.id)
-    .not('status', 'eq', 'annulee')
-    .gte('date_fin', now.toISOString().split('T')[0])
-
-  // Récupérer les événements Google Calendar
-  let googleEvents: any[] = []
-  try {
-    googleEvents = await getGoogleCalendarEvents(formateur.id)
-  } catch { /* Google non connecté */ }
+  // Requêtes indépendantes en parallèle : dispos, sessions, fiche formateur (Google) + events Google
+  const [
+    { data: dispos },
+    { data: sessions },
+    { data: formateurFull },
+    googleEvents,
+  ] = await Promise.all([
+    // Disponibilités sur les 6 prochains mois
+    supabase
+      .from('formateur_disponibilites')
+      .select('id, date, type, creneau')
+      .eq('formateur_id', formateur.id)
+      .gte('date', now.toISOString().split('T')[0])
+      .lte('date', sixMonths.toISOString().split('T')[0]),
+    // Sessions planifiées
+    supabase
+      .from('sessions')
+      .select('id, reference, date_debut, date_fin, lieu, status, formation:formation_id(intitule)')
+      .eq('formateur_id', formateur.id)
+      .not('status', 'eq', 'annulee')
+      .gte('date_fin', now.toISOString().split('T')[0]),
+    // Vérifier si Google est connecté
+    supabase
+      .from('formateurs')
+      .select('google_calendar_connected')
+      .eq('id', formateur.id)
+      .single(),
+    // Récupérer les événements Google Calendar (Google non connecté -> [])
+    getGoogleCalendarEvents(formateur.id).catch(() => [] as any[]),
+  ])
 
   const isGoogleConnected = googleEvents.length > 0 || false // sera mis à jour par la page
-
-  // Vérifier si Google est connecté
-  const { data: formateurFull } = await supabase
-    .from('formateurs')
-    .select('google_calendar_connected')
-    .eq('id', formateur.id)
-    .single()
 
   // Générer le token de sync calendrier
   const calendarToken = Buffer.from((formateur.email || '') + formateur.id).toString('base64url').substring(0, 20)

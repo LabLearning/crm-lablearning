@@ -48,13 +48,33 @@ export default async function ApporteurHomePage() {
     )
   }
 
-  // Leads sourcés par cet apporteur
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, created_at')
-    .eq('apporteur_id', apporteur.id)
-    .order('created_at', { ascending: false })
-    .limit(50)
+  // Requêtes indépendantes en parallèle : leads, commissions, leads avec client
+  const [
+    { data: leads },
+    { data: commissions },
+    { data: leadsWithClient },
+  ] = await Promise.all([
+    // Leads sourcés par cet apporteur
+    supabase
+      .from('leads')
+      .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, created_at')
+      .eq('apporteur_id', apporteur.id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    // Commissions
+    supabase
+      .from('commissions')
+      .select('id, montant, status, date_validation, lead:leads(contact_nom, contact_prenom, entreprise, status)')
+      .eq('apporteur_id', apporteur.id)
+      .order('date_validation', { ascending: false })
+      .limit(20),
+    // Clients liés aux leads
+    supabase
+      .from('leads')
+      .select('client_id')
+      .eq('apporteur_id', apporteur.id)
+      .not('client_id', 'is', null),
+  ])
 
   const allLeads = leads || []
   const gagnes = allLeads.filter(l => l.status === 'gagne')
@@ -63,24 +83,10 @@ export default async function ApporteurHomePage() {
   const pipeline = enCours.reduce((s, l) => s + (l.montant_estime || 0), 0)
   const tauxConversion = allLeads.length > 0 ? Math.round((gagnes.length / allLeads.length) * 100) : 0
 
-  // Commissions
-  const { data: commissions } = await supabase
-    .from('commissions')
-    .select('id, montant, status, date_validation, lead:leads(contact_nom, contact_prenom, entreprise, status)')
-    .eq('apporteur_id', apporteur.id)
-    .order('date_validation', { ascending: false })
-    .limit(20)
-
   const allCommissions = commissions || []
   const commissionsPayees = allCommissions.filter(c => c.status === 'payee').reduce((s, c) => s + (c.montant || 0), 0)
   const commissionsEnAttente = allCommissions.filter(c => c.status !== 'payee').reduce((s, c) => s + (c.montant || 0), 0)
 
-  // Clients liés aux leads
-  const { data: leadsWithClient } = await supabase
-    .from('leads')
-    .select('client_id')
-    .eq('apporteur_id', apporteur.id)
-    .not('client_id', 'is', null)
   const clientIds = [...new Set((leadsWithClient || []).map((l: any) => l.client_id).filter(Boolean))]
   let clients: any[] = []
   if (clientIds.length > 0) {

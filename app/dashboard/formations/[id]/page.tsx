@@ -22,18 +22,18 @@ export default async function FormationDetailPage({ params }: { params: { id: st
 
   if (!formation) redirect('/dashboard/formations')
 
-  // Sessions liées
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('id, reference, status, date_debut, date_fin, lieu, formateur:formateurs(prenom, nom)')
-    .eq('formation_id', params.id)
-    .order('date_debut', { ascending: false })
-
-  // QCM liés
-  const { data: qcms } = await supabase
-    .from('qcm')
-    .select('id, titre, type, status')
-    .eq('formation_id', params.id)
+  // Sessions liées + QCM liés (indépendants entre eux)
+  const [{ data: sessions }, { data: qcms }] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('id, reference, status, date_debut, date_fin, lieu, formateur:formateurs(prenom, nom)')
+      .eq('formation_id', params.id)
+      .order('date_debut', { ascending: false }),
+    supabase
+      .from('qcm')
+      .select('id, titre, type, status')
+      .eq('formation_id', params.id),
+  ])
 
   const STATUS_LABELS: Record<string, string> = {
     planifiee: 'Planifiée', confirmee: 'Confirmée', en_cours: 'En cours', terminee: 'Terminée', annulee: 'Annulée',

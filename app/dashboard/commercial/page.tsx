@@ -45,7 +45,6 @@ export default async function CommercialPage() {
   } else if (!isDirecteur) {
     leadsQuery = leadsQuery.eq('assigned_to', userId)
   }
-  const { data: leads } = await leadsQuery
 
   // Interactions today — directeur sees all team, commercial sees own
   let interactionsQuery = supabase
@@ -58,7 +57,6 @@ export default async function CommercialPage() {
   if (!isDirecteur) {
     interactionsQuery = interactionsQuery.eq('user_id', userId)
   }
-  const { data: interactions } = await interactionsQuery
 
   // Devis — directeur sees all active, commercial sees own
   let devisQuery = supabase
@@ -71,34 +69,40 @@ export default async function CommercialPage() {
   if (!isDirecteur) {
     devisQuery = devisQuery.eq('created_by', userId)
   }
-  const { data: devis } = await devisQuery
+
+  const [{ data: leads }, { data: interactions }, { data: devis }] = await Promise.all([
+    leadsQuery,
+    interactionsQuery,
+    devisQuery,
+  ])
 
   // Données spécifiques apporteur
   let commissions: any[] = []
   let apporteurInfo: any = null
   let apporteurClients: any[] = []
   if (isApporteur && apporteurRecordId) {
-    const { data: apporteurRecord } = await supabase
-      .from('apporteurs_affaires')
-      .select('id, taux_commission')
-      .eq('id', apporteurRecordId)
-      .single()
+    const [{ data: apporteurRecord }, { data: comms }, { data: leadsWithClient }] = await Promise.all([
+      supabase
+        .from('apporteurs_affaires')
+        .select('id, taux_commission')
+        .eq('id', apporteurRecordId)
+        .single(),
+      supabase
+        .from('commissions')
+        .select('id, montant, status, date_validation, lead:leads(contact_nom, contact_prenom, entreprise, montant_estime, status)')
+        .eq('apporteur_id', apporteurRecordId)
+        .order('date_validation', { ascending: false })
+        .limit(30),
+      supabase
+        .from('leads')
+        .select('client_id')
+        .eq('apporteur_id', apporteurRecordId)
+        .not('client_id', 'is', null),
+    ])
     apporteurInfo = apporteurRecord
-
-    const { data: comms } = await supabase
-      .from('commissions')
-      .select('id, montant, status, date_validation, lead:leads(contact_nom, contact_prenom, entreprise, montant_estime, status)')
-      .eq('apporteur_id', apporteurRecordId)
-      .order('date_validation', { ascending: false })
-      .limit(30)
     commissions = comms || []
 
     // Clients liés aux leads de l'apporteur
-    const { data: leadsWithClient } = await supabase
-      .from('leads')
-      .select('client_id')
-      .eq('apporteur_id', apporteurRecordId)
-      .not('client_id', 'is', null)
     const clientIds = [...new Set((leadsWithClient || []).map((l: any) => l.client_id).filter(Boolean))]
     if (clientIds.length > 0) {
       const { data: clients } = await supabase

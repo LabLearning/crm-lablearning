@@ -10,48 +10,53 @@ export default async function PartenaireSessionsPage({ params }: { params: { tok
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')
   const supabase = await createServiceRoleClient()
 
-  // Get sessions from dossiers linked to partner's leads
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, converted_client_id, entreprise')
-    .eq('apporteur_id', context.apporteur.id)
+  // Get sessions from dossiers linked to partner's leads — and in parallel,
+  // fetch all recent sessions for this org (independent query).
+  const [sessionsFromLeads, { data: allSessions }] = await Promise.all([
+    (async () => {
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('id, converted_client_id, entreprise')
+        .eq('apporteur_id', context.apporteur.id)
 
-  const clientIds = (leads || []).map((l: any) => l.converted_client_id).filter(Boolean)
+      const clientIds = (leads || []).map((l: any) => l.converted_client_id).filter(Boolean)
 
-  let sessions: any[] = []
-  if (clientIds.length > 0) {
-    const { data: dossiers } = await supabase
-      .from('dossiers_formation')
-      .select('session_id')
-      .in('client_id', clientIds)
+      if (clientIds.length > 0) {
+        const { data: dossiers } = await supabase
+          .from('dossiers_formation')
+          .select('session_id')
+          .in('client_id', clientIds)
 
-    const sessionIds = (dossiers || []).map((d: any) => d.session_id).filter(Boolean)
+        const sessionIds = (dossiers || []).map((d: any) => d.session_id).filter(Boolean)
 
-    if (sessionIds.length > 0) {
-      const { data } = await supabase
-        .from('sessions')
-        .select(`
+        if (sessionIds.length > 0) {
+          const { data } = await supabase
+            .from('sessions')
+            .select(`
           id, reference, date_debut, date_fin, horaires, lieu, ville, status, places_max,
           formation:formation_id(intitule, duree_heures, modalite),
           formateur:formateurs(prenom, nom)
         `)
-        .in('id', sessionIds)
-        .order('date_debut', { ascending: true })
-      sessions = data || []
-    }
-  }
-
-  // Also fetch all recent sessions for this org
-  const { data: allSessions } = await supabase
-    .from('sessions')
-    .select(`
+            .in('id', sessionIds)
+            .order('date_debut', { ascending: true })
+          return data || []
+        }
+      }
+      return []
+    })(),
+    supabase
+      .from('sessions')
+      .select(`
       id, reference, date_debut, date_fin, horaires, lieu, ville, status, places_max,
       formation:formation_id(intitule, duree_heures, modalite),
       formateur:formateurs(prenom, nom)
     `)
-    .eq('organization_id', context.organization.id)
-    .order('date_debut', { ascending: true })
-    .limit(30)
+      .eq('organization_id', context.organization.id)
+      .order('date_debut', { ascending: true })
+      .limit(30),
+  ])
+
+  let sessions: any[] = sessionsFromLeads
 
   // Merge
   const allIds = new Set(sessions.map((s: any) => s.id))

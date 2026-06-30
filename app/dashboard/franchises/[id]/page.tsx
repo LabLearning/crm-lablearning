@@ -29,22 +29,45 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
 
   if (!franchise) notFound()
 
-  // Établissements
-  const { data: etablissements } = await supabase
-    .from('clients')
-    .select('id, raison_sociale, ville, code_postal')
-    .eq('franchise_id', params.id)
-    .eq('organization_id', orgId)
-    .order('raison_sociale')
+  // Requêtes indépendantes (n'utilisent que params.id / orgId)
+  const [
+    { data: etablissements },
+    { data: allClients },
+    { data: franchiseUsers },
+    { data: audits },
+  ] = await Promise.all([
+    // Établissements
+    supabase
+      .from('clients')
+      .select('id, raison_sociale, ville, code_postal')
+      .eq('franchise_id', params.id)
+      .eq('organization_id', orgId)
+      .order('raison_sociale'),
+    // Tous les clients de l'org (pour rattacher de nouveaux établissements)
+    supabase
+      .from('clients')
+      .select('id, raison_sociale, ville, franchise_id')
+      .eq('organization_id', orgId)
+      .order('raison_sociale'),
+    // Utilisateurs franchise (comptes d'accès)
+    supabase
+      .from('users')
+      .select('id, email, first_name, last_name, status')
+      .eq('organization_id', orgId)
+      .eq('role', 'franchise')
+      .eq('franchise_id', params.id)
+      .order('created_at', { ascending: true }),
+    // Audits de la franchise (récents)
+    supabase
+      .from('audits_etablissement')
+      .select('id, date_audit, type_audit, note_globale, note_sur, client:clients(raison_sociale)')
+      .eq('franchise_id', params.id)
+      .eq('organization_id', orgId)
+      .order('date_audit', { ascending: false })
+      .limit(8),
+  ])
 
   const clientIds = (etablissements || []).map((c) => c.id)
-
-  // Tous les clients de l'org (pour rattacher de nouveaux établissements)
-  const { data: allClients } = await supabase
-    .from('clients')
-    .select('id, raison_sociale, ville, franchise_id')
-    .eq('organization_id', orgId)
-    .order('raison_sociale')
 
   // Dossiers de la franchise (par franchise_id OU par client rattaché)
   const { data: dossiers } = await supabase
@@ -64,24 +87,6 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
         : `franchise_id.eq.${params.id}`,
     )
     .order('date_creation', { ascending: false })
-
-  // Utilisateurs franchise (comptes d'accès)
-  const { data: franchiseUsers } = await supabase
-    .from('users')
-    .select('id, email, first_name, last_name, status')
-    .eq('organization_id', orgId)
-    .eq('role', 'franchise')
-    .eq('franchise_id', params.id)
-    .order('created_at', { ascending: true })
-
-  // Audits de la franchise (récents)
-  const { data: audits } = await supabase
-    .from('audits_etablissement')
-    .select('id, date_audit, type_audit, note_globale, note_sur, client:clients(raison_sociale)')
-    .eq('franchise_id', params.id)
-    .eq('organization_id', orgId)
-    .order('date_audit', { ascending: false })
-    .limit(8)
 
   const auditsList = audits || []
   const auditsWithNote = auditsList.filter((a) => a.note_globale != null)

@@ -25,13 +25,41 @@ export default async function DircoHomePage() {
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 
-  // Tous les leads de l'organisation
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, source, created_at, assigned_to, assigned_user:users!leads_assigned_to_fkey(first_name, last_name)')
-    .eq('organization_id', orgId)
-    .order('created_at', { ascending: false })
-    .limit(200)
+  const [
+    // Tous les leads de l'organisation
+    { data: leads },
+    // Commerciaux de l'équipe
+    { data: commerciaux },
+    // Apporteurs d'affaires
+    { data: apporteurs },
+    // Devis en attente
+    { data: devis },
+  ] = await Promise.all([
+    supabase
+      .from('leads')
+      .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, source, created_at, assigned_to, assigned_user:users!leads_assigned_to_fkey(first_name, last_name)')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false })
+      .limit(200),
+    supabase
+      .from('users')
+      .select('id, first_name, last_name, email, role')
+      .eq('organization_id', orgId)
+      .eq('status', 'active')
+      .in('role', ['commercial', 'directeur_commercial']),
+    supabase
+      .from('apporteurs_affaires')
+      .select('id, nom, prenom, email, taux_commission, is_active')
+      .eq('organization_id', orgId)
+      .eq('is_active', true),
+    supabase
+      .from('devis')
+      .select('id, numero, status, montant_ht, client:clients(raison_sociale)')
+      .eq('organization_id', orgId)
+      .in('status', ['brouillon', 'envoye'])
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ])
 
   const allLeads = leads || []
   const gagnes = allLeads.filter(l => l.status === 'gagne')
@@ -40,14 +68,6 @@ export default async function DircoHomePage() {
   const caGenere = gagnes.reduce((s, l) => s + (l.montant_estime || 0), 0)
   const pipeline = enCours.reduce((s, l) => s + (l.montant_estime || 0), 0)
   const tauxConversion = allLeads.length > 0 ? Math.round((gagnes.length / allLeads.length) * 100) : 0
-
-  // Commerciaux de l'équipe
-  const { data: commerciaux } = await supabase
-    .from('users')
-    .select('id, first_name, last_name, email, role')
-    .eq('organization_id', orgId)
-    .eq('status', 'active')
-    .in('role', ['commercial', 'directeur_commercial'])
 
   // Stats par commercial
   const teamStats = (commerciaux || []).map(c => {
@@ -63,23 +83,7 @@ export default async function DircoHomePage() {
     }
   }).sort((a, b) => b.ca - a.ca)
 
-  // Apporteurs d'affaires
-  const { data: apporteurs } = await supabase
-    .from('apporteurs_affaires')
-    .select('id, nom, prenom, email, taux_commission, is_active')
-    .eq('organization_id', orgId)
-    .eq('is_active', true)
-
   const leadsApporteurs = allLeads.filter(l => l.source === 'apporteur_affaires')
-
-  // Devis en attente
-  const { data: devis } = await supabase
-    .from('devis')
-    .select('id, numero, status, montant_ht, client:clients(raison_sociale)')
-    .eq('organization_id', orgId)
-    .in('status', ['brouillon', 'envoye'])
-    .order('created_at', { ascending: false })
-    .limit(10)
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">

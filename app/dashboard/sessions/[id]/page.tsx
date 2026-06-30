@@ -69,57 +69,61 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     }
   }
 
-  // Récupérer les émargements (y compris ceux qu'on vient de créer)
-  const { data: emargements } = await supabase
-    .from('emargements')
-    .select('id, apprenant_id, date, creneau, est_present, signature_data, signed_at')
-    .eq('session_id', params.id)
-    .order('date', { ascending: true })
-
-  // Pointages du formateur
-  const { data: pointages } = await supabase
-    .from('pointages_formateur')
-    .select('id, date, heure_arrivee, heure_depart, photo_arrivee_url, photo_depart_url')
-    .eq('session_id', params.id)
-    .order('date', { ascending: true })
-
-  // Rapport de session
+  // Lectures indépendantes (toutes filtrées par session_id, après la génération des émargements)
   const formateurId = (sessionData.formateur as any)?.id
-  let rapport = null
-  if (formateurId) {
-    const { data } = await supabase
-      .from('rapports_session')
-      .select('id, status, submitted_at')
+  const [
+    { data: emargements },
+    { data: pointages },
+    { data: rapportRes },
+    { data: evaluations },
+    { data: qcmSessions },
+    { data: conventions },
+    { data: evaluationsAppr },
+  ] = await Promise.all([
+    // Récupérer les émargements (y compris ceux qu'on vient de créer)
+    supabase
+      .from('emargements')
+      .select('id, apprenant_id, date, creneau, est_present, signature_data, signed_at')
       .eq('session_id', params.id)
-      .eq('formateur_id', formateurId)
-      .single()
-    rapport = data
-  }
-
-  // Évaluations de satisfaction (apprenants)
-  const { data: evaluations } = await supabase
-    .from('evaluations_satisfaction')
-    .select('id, type, note_globale, completee_at, apprenant_id')
-    .eq('session_id', params.id)
-
-  // QCM sessions (passages des apprenants)
-  const { data: qcmSessions } = await supabase
-    .from('qcm_sessions')
-    .select('id, status, score, completed_at, apprenant_id, qcm:qcm(titre)')
-    .eq('session_id', params.id)
-
-  // Conventions liées à la session
-  const { data: conventions } = await supabase
-    .from('conventions')
-    .select('id, numero, type, status, montant_ttc, signature_client_date, signature_of_date')
-    .eq('session_id', params.id)
-    .order('created_at', { ascending: false })
-
-  // Évaluations (notes) des apprenants pour cette session
-  const { data: evaluationsAppr } = await supabase
-    .from('evaluations_apprenant')
-    .select('id, apprenant_id, intitule, note, note_max, appreciation, evaluateur, validated, date_evaluation')
-    .eq('session_id', params.id)
+      .order('date', { ascending: true }),
+    // Pointages du formateur
+    supabase
+      .from('pointages_formateur')
+      .select('id, date, heure_arrivee, heure_depart, photo_arrivee_url, photo_depart_url')
+      .eq('session_id', params.id)
+      .order('date', { ascending: true }),
+    // Rapport de session
+    formateurId
+      ? supabase
+          .from('rapports_session')
+          .select('id, status, submitted_at')
+          .eq('session_id', params.id)
+          .eq('formateur_id', formateurId)
+          .single()
+      : Promise.resolve({ data: null }),
+    // Évaluations de satisfaction (apprenants)
+    supabase
+      .from('evaluations_satisfaction')
+      .select('id, type, note_globale, completee_at, apprenant_id')
+      .eq('session_id', params.id),
+    // QCM sessions (passages des apprenants)
+    supabase
+      .from('qcm_sessions')
+      .select('id, status, score, completed_at, apprenant_id, qcm:qcm(titre)')
+      .eq('session_id', params.id),
+    // Conventions liées à la session
+    supabase
+      .from('conventions')
+      .select('id, numero, type, status, montant_ttc, signature_client_date, signature_of_date')
+      .eq('session_id', params.id)
+      .order('created_at', { ascending: false }),
+    // Évaluations (notes) des apprenants pour cette session
+    supabase
+      .from('evaluations_apprenant')
+      .select('id, apprenant_id, intitule, note, note_max, appreciation, evaluateur, validated, date_evaluation')
+      .eq('session_id', params.id),
+  ])
+  const rapport = rapportRes
 
   // Est-ce que le user est le formateur de cette session ?
   const isFormateur = session.user.role === 'formateur' && (sessionData.formateur as any)?.user_id === session.user.id

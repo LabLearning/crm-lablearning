@@ -21,11 +21,12 @@ export default async function FranchiseFinancierPage() {
   const supabase = await createServiceRoleClient()
   const orgId = organization.id
 
-  const stats = await getFranchiseStats(supabase, franchise.id, orgId)
-
   // Détail dossier par dossier
-  const { data: clients } = await supabase
-    .from('clients').select('id').eq('franchise_id', franchise.id).eq('organization_id', orgId)
+  const [stats, { data: clients }] = await Promise.all([
+    getFranchiseStats(supabase, franchise.id, orgId),
+    supabase
+      .from('clients').select('id').eq('franchise_id', franchise.id).eq('organization_id', orgId),
+  ])
   const clientIds = (clients || []).map((c: any) => c.id)
   const orFilter = clientIds.length
     ? `franchise_id.eq.${franchise.id},client_id.in.(${clientIds.join(',')})`

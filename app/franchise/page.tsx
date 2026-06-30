@@ -18,16 +18,17 @@ export default async function FranchiseDashboard() {
   const supabase = await createServiceRoleClient()
   const orgId = organization.id
 
-  const stats = await getFranchiseStats(supabase, franchise.id, orgId)
-
   // Derniers audits
-  const { data: audits } = await supabase
-    .from('audits_etablissement')
-    .select('id, date_audit, type_audit, note_globale, note_sur, client:clients(raison_sociale)')
-    .eq('franchise_id', franchise.id)
-    .eq('organization_id', orgId)
-    .order('date_audit', { ascending: false })
-    .limit(5)
+  const [stats, { data: audits }] = await Promise.all([
+    getFranchiseStats(supabase, franchise.id, orgId),
+    supabase
+      .from('audits_etablissement')
+      .select('id, date_audit, type_audit, note_globale, note_sur, client:clients(raison_sociale)')
+      .eq('franchise_id', franchise.id)
+      .eq('organization_id', orgId)
+      .order('date_audit', { ascending: false })
+      .limit(5),
+  ])
 
   const auditsWithNote = (audits || []).filter((a) => a.note_globale != null)
   const avgAudit = auditsWithNote.length

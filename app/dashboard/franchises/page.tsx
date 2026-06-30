@@ -18,16 +18,17 @@ export default async function FranchisesPage() {
 
   const franchiseIds = (franchises || []).map((f) => f.id)
 
-  const { data: clients } = franchiseIds.length
-    ? await supabase.from('clients').select('id, franchise_id').in('franchise_id', franchiseIds)
-    : { data: [] as any[] }
-
-  const { data: dossiers } = franchiseIds.length
-    ? await supabase
-        .from('dossiers_formation')
-        .select('id, franchise_id, montant_total_ttc, commission_montant, commission_status')
-        .in('franchise_id', franchiseIds)
-    : { data: [] as any[] }
+  const [{ data: clients }, { data: dossiers }] = await Promise.all([
+    franchiseIds.length
+      ? supabase.from('clients').select('id, franchise_id').in('franchise_id', franchiseIds)
+      : Promise.resolve({ data: [] as any[] }),
+    franchiseIds.length
+      ? supabase
+          .from('dossiers_formation')
+          .select('id, franchise_id, montant_total_ttc, commission_montant, commission_status')
+          .in('franchise_id', franchiseIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ])
 
   return (
     <FranchisesClient

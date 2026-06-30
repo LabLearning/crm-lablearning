@@ -10,19 +10,21 @@ export default async function RapportsFormateurPage() {
   const { data: formateur } = await supabase.from('formateurs').select('id').eq('user_id', session.user.id).single()
   if (!formateur) redirect('/dashboard/formateur-home')
 
-  // Sessions du formateur (pour savoir lesquelles ont besoin d'un rapport)
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule)')
-    .eq('formateur_id', formateur.id)
-    .in('status', ['en_cours', 'terminee'])
-    .order('date_debut', { ascending: false })
-
-  // Rapports existants
-  const { data: rapports } = await supabase
-    .from('rapports_session')
-    .select('*')
-    .eq('formateur_id', formateur.id)
+  // Sessions + rapports (indépendants) en parallèle
+  const [{ data: sessions }, { data: rapports }] = await Promise.all([
+    // Sessions du formateur (pour savoir lesquelles ont besoin d'un rapport)
+    supabase
+      .from('sessions')
+      .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule)')
+      .eq('formateur_id', formateur.id)
+      .in('status', ['en_cours', 'terminee'])
+      .order('date_debut', { ascending: false }),
+    // Rapports existants
+    supabase
+      .from('rapports_session')
+      .select('*')
+      .eq('formateur_id', formateur.id),
+  ])
 
   // Apprenants par session (pour les commentaires)
   const sessionIds = (sessions || []).map(s => s.id)

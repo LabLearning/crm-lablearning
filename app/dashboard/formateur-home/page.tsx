@@ -30,56 +30,65 @@ export default async function FormateurHomePage() {
     )
   }
 
-  // Sessions du formateur (toutes sauf annulées)
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule, duree_heures)')
-    .eq('formateur_id', formateur.id)
-    .not('status', 'eq', 'annulee')
-    .order('date_debut', { ascending: true })
+  // Requêtes indépendantes de premier niveau (sessions + pointages + QCM) en parallèle
+  const [
+    { data: sessions },
+    { data: todayPointages },
+    { data: allPointages },
+    { count: qcmCount },
+  ] = await Promise.all([
+    // Sessions du formateur (toutes sauf annulées)
+    supabase
+      .from('sessions')
+      .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule, duree_heures)')
+      .eq('formateur_id', formateur.id)
+      .not('status', 'eq', 'annulee')
+      .order('date_debut', { ascending: true }),
+    // Pointages du jour
+    supabase
+      .from('pointages_formateur')
+      .select('id, heure_arrivee, heure_depart, photo_arrivee_url, photo_depart_url, session_id, session:sessions(reference, formation:formation_id(intitule))')
+      .eq('formateur_id', formateur.id)
+      .eq('date', today),
+    // Tous les pointages (historique récent)
+    supabase
+      .from('pointages_formateur')
+      .select('id, date, heure_arrivee, heure_depart, session:sessions(reference, formation:formation_id(intitule))')
+      .eq('formateur_id', formateur.id)
+      .order('date', { ascending: false })
+      .limit(20),
+    // QCM à corriger
+    supabase
+      .from('qcm')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', session.organization.id),
+  ])
 
   const allSessions = sessions || []
   const sessionsActives = allSessions.filter(s => ['confirmee', 'en_cours'].includes(s.status))
   const sessionsTerminees = allSessions.filter(s => s.status === 'terminee')
 
-  // Apprenants inscrits dans ses sessions actives
+  // Apprenants inscrits + émargements en attente (dépendent de activeIds, indépendants entre eux)
   const activeIds = sessionsActives.map(s => s.id)
   let nbApprenants = 0
-  if (activeIds.length > 0) {
-    const { count } = await supabase
-      .from('inscriptions')
-      .select('id', { count: 'exact', head: true })
-      .in('session_id', activeIds)
-      .not('status', 'in', '("annule","abandonne")')
-    nbApprenants = count || 0
-  }
-
-  // Émargements à faire aujourd'hui
   let emargementsPending = 0
   if (activeIds.length > 0) {
-    const { count } = await supabase
-      .from('emargements')
-      .select('id', { count: 'exact', head: true })
-      .in('session_id', activeIds)
-      .eq('date', today)
-      .eq('est_present', false)
-    emargementsPending = count || 0
+    const [{ count: apprenantsCount }, { count: emargementsCount }] = await Promise.all([
+      supabase
+        .from('inscriptions')
+        .select('id', { count: 'exact', head: true })
+        .in('session_id', activeIds)
+        .not('status', 'in', '("annule","abandonne")'),
+      supabase
+        .from('emargements')
+        .select('id', { count: 'exact', head: true })
+        .in('session_id', activeIds)
+        .eq('date', today)
+        .eq('est_present', false),
+    ])
+    nbApprenants = apprenantsCount || 0
+    emargementsPending = emargementsCount || 0
   }
-
-  // Pointages du jour
-  const { data: todayPointages } = await supabase
-    .from('pointages_formateur')
-    .select('id, heure_arrivee, heure_depart, photo_arrivee_url, photo_depart_url, session_id, session:sessions(reference, formation:formation_id(intitule))')
-    .eq('formateur_id', formateur.id)
-    .eq('date', today)
-
-  // Tous les pointages (historique récent)
-  const { data: allPointages } = await supabase
-    .from('pointages_formateur')
-    .select('id, date, heure_arrivee, heure_depart, session:sessions(reference, formation:formation_id(intitule))')
-    .eq('formateur_id', formateur.id)
-    .order('date', { ascending: false })
-    .limit(20)
 
   // Calcul heures totales pointées
   const totalHeures = (allPointages || []).reduce((sum, p: any) => {
@@ -88,12 +97,6 @@ export default async function FormateurHomePage() {
     }
     return sum
   }, 0)
-
-  // QCM à corriger
-  const { count: qcmCount } = await supabase
-    .from('qcm')
-    .select('id', { count: 'exact', head: true })
-    .eq('organization_id', session.organization.id)
 
   function formatHeure(iso: string) {
     return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })

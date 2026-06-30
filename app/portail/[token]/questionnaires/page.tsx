@@ -9,10 +9,11 @@ export default async function PortalQuestionnairesPage({ params }: { params: { t
 
   const supabase = await createServiceRoleClient()
 
-  // Pending QCMs with full questions + choices for the player
-  const { data: pendingReponses } = await supabase
-    .from('qcm_reponses')
-    .select(`
+  // Pending QCMs with full questions + choices for the player + Completed QCMs (summary only)
+  const [{ data: pendingReponses }, { data: completedReponses }] = await Promise.all([
+    supabase
+      .from('qcm_reponses')
+      .select(`
       *,
       qcm:qcm(
         titre, type, description, duree_minutes, score_min_reussite,
@@ -22,20 +23,19 @@ export default async function PortalQuestionnairesPage({ params }: { params: { t
         )
       )
     `)
-    .eq('apprenant_id', context.apprenant.id)
-    .eq('is_complete', false)
-    .order('created_at', { ascending: false })
-
-  // Completed QCMs — summary only
-  const { data: completedReponses } = await supabase
-    .from('qcm_reponses')
-    .select(`
+      .eq('apprenant_id', context.apprenant.id)
+      .eq('is_complete', false)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('qcm_reponses')
+      .select(`
       *,
       qcm:qcm(titre, type, score_min_reussite)
     `)
-    .eq('apprenant_id', context.apprenant.id)
-    .eq('is_complete', true)
-    .order('completed_at', { ascending: false })
+      .eq('apprenant_id', context.apprenant.id)
+      .eq('is_complete', true)
+      .order('completed_at', { ascending: false }),
+  ])
 
   return (
     <QuestionnairesClient

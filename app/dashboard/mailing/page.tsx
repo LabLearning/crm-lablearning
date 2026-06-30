@@ -7,22 +7,22 @@ export default async function MailingPage() {
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 
-  // Fetch leads with email for the contact list
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, contact_nom, contact_prenom, contact_email, entreprise, status')
-    .eq('organization_id', orgId)
-    .not('contact_email', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(500)
-
-  // Fetch clients with contacts
-  const { data: contacts } = await supabase
-    .from('contacts')
-    .select('id, nom, prenom, email, client:clients(raison_sociale)')
-    .eq('organization_id', orgId)
-    .not('email', 'is', null)
-    .limit(500)
+  // Fetch leads with email + clients with contacts (indépendants entre eux)
+  const [{ data: leads }, { data: contacts }] = await Promise.all([
+    supabase
+      .from('leads')
+      .select('id, contact_nom, contact_prenom, contact_email, entreprise, status')
+      .eq('organization_id', orgId)
+      .not('contact_email', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabase
+      .from('contacts')
+      .select('id, nom, prenom, email, client:clients(raison_sociale)')
+      .eq('organization_id', orgId)
+      .not('email', 'is', null)
+      .limit(500),
+  ])
 
   const allContacts = [
     ...(leads || []).map((l: any) => ({

@@ -7,23 +7,23 @@ export default async function ReclamationsPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: reclamations } = await supabase
-    .from('reclamations')
-    .select('*, responsable:users!reclamations_responsable_id_fkey(first_name, last_name)')
-    .eq('organization_id', session.organization.id)
-    .order('created_at', { ascending: false })
-
-  const { data: actions } = await supabase
-    .from('actions_amelioration')
-    .select('*, responsable:users!actions_amelioration_responsable_id_fkey(first_name, last_name)')
-    .eq('organization_id', session.organization.id)
-    .order('created_at', { ascending: false })
-
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, first_name, last_name')
-    .eq('organization_id', session.organization.id)
-    .eq('status', 'active')
+  const [{ data: reclamations }, { data: actions }, { data: users }] = await Promise.all([
+    supabase
+      .from('reclamations')
+      .select('*, responsable:users!reclamations_responsable_id_fkey(first_name, last_name)')
+      .eq('organization_id', session.organization.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('actions_amelioration')
+      .select('*, responsable:users!actions_amelioration_responsable_id_fkey(first_name, last_name)')
+      .eq('organization_id', session.organization.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('users')
+      .select('id, first_name, last_name')
+      .eq('organization_id', session.organization.id)
+      .eq('status', 'active'),
+  ])
 
   return (
     <div className="animate-fade-in">
