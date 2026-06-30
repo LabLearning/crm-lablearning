@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { Plus, Search, Building2, User, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react'
 import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { ClientForm } from './ClientForm'
@@ -42,7 +43,6 @@ export function ClientsList({ clients }: ClientsListProps) {
     const result = await deleteClientAction(id)
     if (result.success) toast('success', 'Client supprimé')
     else toast('error', result.error || 'Erreur')
-    setActiveMenu(null)
   }
 
   return (
@@ -116,9 +116,12 @@ export function ClientsList({ clients }: ClientsListProps) {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-sm font-medium text-surface-900 truncate">
+                        <Link
+                          href={`/dashboard/clients/${client.id}`}
+                          className="text-sm font-medium text-surface-900 truncate block hover:text-brand-600 transition-colors"
+                        >
                           {getDisplayName(client)}
-                        </div>
+                        </Link>
                         {client.siret && (
                           <div className="text-xs text-surface-400 font-mono">SIRET {client.siret}</div>
                         )}

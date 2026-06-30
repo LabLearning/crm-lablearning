@@ -1,0 +1,290 @@
+import { getSession } from '@/lib/auth'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import {
+  ArrowLeft, Mail, Phone, Globe, MapPin, Building2, User, FileText,
+  Receipt, FolderOpen, Users, ShieldCheck, GraduationCap, Hash, Banknote, StickyNote,
+} from 'lucide-react'
+import { Badge } from '@/components/ui'
+import { formatDate } from '@/lib/utils'
+import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
+import type { Client } from '@/lib/types/crm'
+import { ClientEditButton } from './ClientEditButton'
+
+export const dynamic = 'force-dynamic'
+
+function fmtMontant(n: any): string {
+  return `${Number(n || 0).toLocaleString('fr-FR')} €`
+}
+
+export default async function ClientDetailPage({ params }: { params: { id: string } }) {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: client } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', params.id)
+    .eq('organization_id', session.organization.id)
+    .single()
+
+  if (!client) redirect('/dashboard/clients')
+
+  // Données liées — toutes indépendantes (ne dépendent que de l'id client) → en parallèle
+  const [
+    { data: contacts },
+    { data: leads },
+    { data: dossiers },
+    { data: devis },
+    { data: factures },
+  ] = await Promise.all([
+    supabase.from('contacts').select('*').eq('client_id', params.id).order('est_principal', { ascending: false }),
+    supabase.from('leads').select('*').eq('converted_client_id', params.id).order('created_at', { ascending: false }),
+    supabase.from('dossiers_formation').select('*').eq('client_id', params.id).order('created_at', { ascending: false }),
+    supabase.from('devis').select('*').eq('client_id', params.id).order('created_at', { ascending: false }),
+    supabase.from('factures').select('*').eq('client_id', params.id).order('date_emission', { ascending: false }),
+  ])
+
+  const c = client as Client
+  const contactsList = (contacts || []) as any[]
+  const dossiersList = (dossiers || []) as any[]
+  const devisList = (devis || []) as any[]
+  const facturesList = (factures || []) as any[]
+  const leadsList = (leads || []) as any[]
+
+  const isEntreprise = c.type === 'entreprise'
+  const displayName = isEntreprise
+    ? (c.raison_sociale || 'Sans nom')
+    : `${c.prenom || ''} ${c.nom || ''}`.trim() || 'Sans nom'
+
+  const totalFacture = facturesList
+    .filter((f) => f.type !== 'avoir' && f.status !== 'annulee')
+    .reduce((s, f) => s + Number(f.montant_ttc || 0), 0)
+  const totalPaye = facturesList.reduce((s, f) => s + Number(f.montant_paye || 0), 0)
+
+  const stats = [
+    { label: 'Contacts', value: contactsList.length, icon: Users },
+    { label: 'Dossiers', value: dossiersList.length, icon: FolderOpen },
+    { label: 'Factures', value: facturesList.length, icon: Receipt },
+    { label: 'CA facturé', value: fmtMontant(totalFacture), icon: Banknote },
+  ]
+
+  const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) => (
+    <div className="flex items-start gap-2.5 py-1.5">
+      <Icon className="h-3.5 w-3.5 text-surface-400 mt-0.5 shrink-0" />
+      <div className="min-w-0">
+        <div className="text-2xs text-surface-400 uppercase tracking-wider">{label}</div>
+        <div className="text-sm text-surface-700 break-words">{value}</div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-5 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <Link href="/dashboard/clients" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700">
+          <ArrowLeft className="h-4 w-4" /> Clients
+        </Link>
+        <ClientEditButton client={c} />
+      </div>
+
+      {/* En-tête */}
+      <div className="card p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 ${isEntreprise ? 'bg-brand-50' : 'bg-purple-50'}`}>
+          {isEntreprise ? <Building2 className="h-7 w-7 text-brand-600" /> : <User className="h-7 w-7 text-purple-600" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-heading font-bold text-surface-900 truncate">{displayName}</h1>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <Badge variant={isEntreprise ? 'info' : 'default'}>{CLIENT_TYPE_LABELS[c.type]}</Badge>
+            {c.financeur_type && <Badge variant="warning">{FINANCEUR_LABELS[c.financeur_type]}</Badge>}
+            {c.est_qualiopi && <Badge variant="success"><ShieldCheck className="h-3 w-3 mr-0.5" />Qualiopi</Badge>}
+            {c.est_organisme_formation && <Badge variant="default"><GraduationCap className="h-3 w-3 mr-0.5" />Organisme de formation</Badge>}
+            {(c.tags || []).map((t) => <Badge key={t} variant="default">{t}</Badge>)}
+          </div>
+          <div className="flex items-center gap-4 mt-2.5 text-sm text-surface-500 flex-wrap">
+            {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-1 hover:text-surface-700"><Mail className="h-3.5 w-3.5" />{c.email}</a>}
+            {c.telephone && <a href={`tel:${c.telephone}`} className="flex items-center gap-1 hover:text-surface-700"><Phone className="h-3.5 w-3.5" />{c.telephone}</a>}
+            {c.site_web && <a href={c.site_web.startsWith('http') ? c.site_web : `https://${c.site_web}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-surface-700"><Globe className="h-3.5 w-3.5" />{c.site_web}</a>}
+          </div>
+          {c.siret && <div className="text-xs text-surface-400 mt-1 font-mono">SIRET {c.siret}</div>}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s) => (
+          <div key={s.label} className="stat-card">
+            <div className="stat-icon bg-surface-100">
+              <s.icon className="h-5 w-5 text-surface-600" />
+            </div>
+            <div>
+              <p className="stat-label">{s.label}</p>
+              <p className="stat-value text-surface-900 mt-0.5">{s.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Colonne gauche : infos */}
+        <div className="space-y-5">
+          {/* Coordonnées */}
+          <div className="card p-5">
+            <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Coordonnées</div>
+            {(c.adresse || c.ville) ? (
+              <InfoRow icon={MapPin} label="Adresse" value={
+                <>{c.adresse && <div>{c.adresse}</div>}<div>{[c.code_postal, c.ville].filter(Boolean).join(' ')}</div>{c.pays && c.pays !== 'France' && <div>{c.pays}</div>}</>
+              } />
+            ) : null}
+            {c.email && <InfoRow icon={Mail} label="Email" value={c.email} />}
+            {c.telephone && <InfoRow icon={Phone} label="Téléphone" value={c.telephone} />}
+            {!c.adresse && !c.ville && !c.email && !c.telephone && (
+              <div className="text-sm text-surface-400">Aucune coordonnée renseignée</div>
+            )}
+          </div>
+
+          {/* Informations légales / financeur */}
+          {(isEntreprise || c.financeur_type || c.numero_opco) && (
+            <div className="card p-5">
+              <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Informations</div>
+              {c.financeur_type && <InfoRow icon={Banknote} label="Financeur" value={FINANCEUR_LABELS[c.financeur_type]} />}
+              {c.numero_opco && <InfoRow icon={Hash} label="N° OPCO" value={c.numero_opco} />}
+              {c.code_naf && <InfoRow icon={Hash} label="Code NAF" value={c.code_naf} />}
+              {c.secteur_activite && <InfoRow icon={Building2} label="Secteur" value={c.secteur_activite} />}
+              {c.taille_entreprise && <InfoRow icon={Users} label="Taille" value={c.taille_entreprise} />}
+              {(c as any).forme_juridique && <InfoRow icon={FileText} label="Forme juridique" value={(c as any).forme_juridique} />}
+              {(c as any).tva_intra && <InfoRow icon={Hash} label="TVA intra" value={(c as any).tva_intra} />}
+              {(c as any).convention_collective && <InfoRow icon={FileText} label="Convention collective" value={(c as any).convention_collective} />}
+            </div>
+          )}
+
+          {/* Notes */}
+          {c.notes && (
+            <div className="card p-5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">
+                <StickyNote className="h-3.5 w-3.5" /> Notes
+              </div>
+              <p className="text-sm text-surface-600 whitespace-pre-wrap">{c.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Colonne droite : contacts + activité */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Contacts */}
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
+              <Users className="h-4 w-4 text-brand-500" />
+              <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Contacts ({contactsList.length})</span>
+            </div>
+            {contactsList.length === 0 ? (
+              <div className="text-center py-8 text-sm text-surface-400">Aucun contact rattaché</div>
+            ) : (
+              <div className="divide-y divide-surface-100">
+                {contactsList.map((ct) => (
+                  <div key={ct.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
+                      <User className="h-4 w-4 text-surface-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900 truncate">
+                        {[ct.civilite, ct.prenom, ct.nom].filter(Boolean).join(' ')}
+                        {ct.est_principal && <Badge variant="info" className="ml-2">Principal</Badge>}
+                      </div>
+                      <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
+                        {ct.poste && <span>{ct.poste}</span>}
+                        {ct.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{ct.email}</span>}
+                        {(ct.telephone || ct.mobile) && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{ct.telephone || ct.mobile}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Dossiers de formation */}
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-brand-500" />
+              <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Dossiers de formation ({dossiersList.length})</span>
+            </div>
+            {dossiersList.length === 0 ? (
+              <div className="text-center py-8 text-sm text-surface-400">Aucun dossier</div>
+            ) : (
+              <div className="divide-y divide-surface-100">
+                {dossiersList.slice(0, 10).map((d) => (
+                  <Link key={d.id} href={`/dashboard/dossiers/${d.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                    <FileText className="h-4 w-4 text-surface-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900 truncate">{d.reference || d.intitule || 'Dossier'}</div>
+                      <div className="text-xs text-surface-400">{formatDate(d.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    </div>
+                    {d.statut && <Badge variant="default">{String(d.statut).replace(/_/g, ' ')}</Badge>}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Factures */}
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-4 w-4 text-brand-500" />
+                <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Factures ({facturesList.length})</span>
+              </div>
+              {totalPaye > 0 && <span className="text-xs text-surface-500">{fmtMontant(totalPaye)} encaissé</span>}
+            </div>
+            {facturesList.length === 0 ? (
+              <div className="text-center py-8 text-sm text-surface-400">Aucune facture</div>
+            ) : (
+              <div className="divide-y divide-surface-100">
+                {facturesList.slice(0, 10).map((f) => (
+                  <Link key={f.id} href={`/dashboard/factures`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                    <Receipt className="h-4 w-4 text-surface-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900 truncate">{f.numero || 'Facture'}</div>
+                      <div className="text-xs text-surface-400">{f.date_emission ? formatDate(f.date_emission, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-semibold text-surface-800">{fmtMontant(f.montant_ttc)}</div>
+                      {f.status && <div className="text-2xs text-surface-400">{String(f.status).replace(/_/g, ' ')}</div>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Devis */}
+          {devisList.length > 0 && (
+            <div className="card overflow-hidden">
+              <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-brand-500" />
+                <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Devis ({devisList.length})</span>
+              </div>
+              <div className="divide-y divide-surface-100">
+                {devisList.slice(0, 10).map((d) => (
+                  <Link key={d.id} href={`/dashboard/devis`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                    <FileText className="h-4 w-4 text-surface-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900 truncate">{d.numero || 'Devis'}</div>
+                      <div className="text-xs text-surface-400">{formatDate(d.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-semibold text-surface-800">{fmtMontant(d.montant_ttc)}</div>
+                      {d.status && <div className="text-2xs text-surface-400">{String(d.status).replace(/_/g, ' ')}</div>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
