@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus, Search, Building2, User, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react'
 import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { ClientForm } from './ClientForm'
@@ -15,6 +15,7 @@ interface ClientsListProps {
 }
 
 export function ClientsList({ clients }: ClientsListProps) {
+  const router = useRouter()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -105,7 +106,11 @@ export function ClientsList({ clients }: ClientsListProps) {
             </thead>
             <tbody className="divide-y divide-surface-100">
               {filtered.map((client) => (
-                <tr key={client.id} className="hover:bg-surface-50/50 transition-colors">
+                <tr
+                  key={client.id}
+                  onClick={() => router.push(`/dashboard/clients/${client.id}`)}
+                  className="hover:bg-surface-50/50 transition-colors cursor-pointer"
+                >
                   <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${client.type === 'entreprise' ? 'bg-brand-50' : 'bg-purple-50'}`}>
@@ -116,12 +121,9 @@ export function ClientsList({ clients }: ClientsListProps) {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <Link
-                          href={`/dashboard/clients/${client.id}`}
-                          className="text-sm font-medium text-surface-900 truncate block hover:text-brand-600 transition-colors"
-                        >
+                        <div className="text-sm font-medium text-surface-900 truncate">
                           {getDisplayName(client)}
-                        </Link>
+                        </div>
                         {client.siret && (
                           <div className="text-xs text-surface-400 font-mono">SIRET {client.siret}</div>
                         )}
@@ -164,7 +166,7 @@ export function ClientsList({ clients }: ClientsListProps) {
                       <span className="text-sm text-surface-400">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-3.5 text-right">
+                  <td className="px-6 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-block">
                       <RowMenu items={[
                         { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditClient(client) },
