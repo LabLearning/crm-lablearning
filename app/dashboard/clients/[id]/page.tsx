@@ -160,9 +160,6 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               {(c as any).convention_collective && <InfoRow icon={FileText} label="Convention collective" value={(c as any).convention_collective} />}
             </div>
           )}
-
-          {/* Commentaires (éditable) */}
-          <ClientNotes clientId={c.id} initialNotes={c.notes} />
         </div>
 
         {/* Colonne droite : contacts + activité */}
@@ -252,6 +249,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               </div>
             )}
           </div>
+
+          {/* Commentaires (éditable) — sous les factures */}
+          <ClientNotes clientId={c.id} initialNotes={c.notes} />
 
           {/* Devis */}
           {devisList.length > 0 && (
