@@ -246,19 +246,21 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
                   )}
                 </div>
               </div>
-              <RowMenu
-                width={208}
-                items={[
-                  { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormateur(f) },
-                  { label: 'Habilitations', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, onClick: () => setHabilitationFormateur(f) },
-                  {
-                    label: f.is_active ? 'Désactiver' : 'Activer',
-                    icon: f.is_active ? <XCircle className="h-4 w-4 text-warning-600" /> : <CheckCircle2 className="h-4 w-4 text-success-600" />,
-                    onClick: () => handleToggle(f.id, f.is_active),
-                  },
-                  { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id) },
-                ]}
-              />
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowMenu
+                  width={208}
+                  items={[
+                    { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormateur(f) },
+                    { label: 'Habilitations', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, onClick: () => setHabilitationFormateur(f) },
+                    {
+                      label: f.is_active ? 'Désactiver' : 'Activer',
+                      icon: f.is_active ? <XCircle className="h-4 w-4 text-warning-600" /> : <CheckCircle2 className="h-4 w-4 text-success-600" />,
+                      onClick: () => handleToggle(f.id, f.is_active),
+                    },
+                    { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id) },
+                  ]}
+                />
+              </div>
             </div>
 
             {/* Expertise tags */}
