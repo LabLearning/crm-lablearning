@@ -40,6 +40,7 @@ export async function createFormateurAction(formData: FormData): Promise<ActionR
       siret: parsed.data.siret || null,
       tarif_journalier: parsed.data.tarif_journalier || null,
       tarif_horaire: parsed.data.tarif_horaire || null,
+      zone_intervention: parsed.data.zone_intervention || null,
       photo_url: parsed.data.photo_url || null,
     })
     .select()
@@ -79,6 +80,7 @@ export async function updateFormateurAction(id: string, formData: FormData): Pro
       siret: parsed.data.siret || null,
       tarif_journalier: parsed.data.tarif_journalier || null,
       tarif_horaire: parsed.data.tarif_horaire || null,
+      zone_intervention: parsed.data.zone_intervention || null,
       photo_url: parsed.data.photo_url || null,
     })
     .eq('id', id)

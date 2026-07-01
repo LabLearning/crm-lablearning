@@ -77,6 +77,7 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
             {f.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" />{f.email}</span>}
             {f.telephone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{f.telephone}</span>}
             {f.tarif_journalier && <span className="flex items-center gap-1"><Euro className="h-3.5 w-3.5" />{Number(f.tarif_journalier).toLocaleString('fr-FR')} €/j</span>}
+            {(f as any).zone_intervention && <span className="flex items-center gap-1 text-brand-600 font-medium"><MapPin className="h-3.5 w-3.5" />{(f as any).zone_intervention}</span>}
             {(f as any).numero_da && <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" />DA {(f as any).numero_da}</span>}
           </div>
           {(f.siret) && <div className="text-xs text-surface-400 mt-1">SIRET {f.siret}</div>}

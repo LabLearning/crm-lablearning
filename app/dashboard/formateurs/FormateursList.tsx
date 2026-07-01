@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Save, Camera, Loader2,
   Presentation, Star, Award, Clock, Calendar, Euro,
-  CheckCircle2, XCircle, ShieldCheck, AlertTriangle,
+  CheckCircle2, XCircle, ShieldCheck, AlertTriangle, MapPin,
 } from 'lucide-react'
 import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu } from '@/components/ui'
 import {
@@ -112,6 +112,7 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
         <Input id="tarif_journalier" name="tarif_journalier" type="number" label="Tarif journalier (€)" defaultValue={formateur?.tarif_journalier?.toString() || ''} />
         <Input id="tarif_horaire" name="tarif_horaire" type="number" label="Tarif horaire (€)" defaultValue={formateur?.tarif_horaire?.toString() || ''} />
       </div>
+      <Input id="zone_intervention" name="zone_intervention" label="Zone d'intervention" placeholder="Île-de-France, National, Grand Est..." defaultValue={(formateur as any)?.zone_intervention || ''} />
 
       <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
         <Button type="button" variant="secondary" onClick={onDone}>Annuler</Button>
@@ -236,6 +237,12 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
                       <span className="text-xs font-medium text-surface-700">{f.note_moyenne}/5</span>
                       <span className="text-2xs text-surface-400">({f.nombre_evaluations})</span>
                     </div>
+                  )}
+                  {(f as any).zone_intervention && (
+                    <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-2xs font-medium">
+                      <MapPin className="h-3 w-3" />
+                      {(f as any).zone_intervention}
+                    </span>
                   )}
                 </div>
               </div>

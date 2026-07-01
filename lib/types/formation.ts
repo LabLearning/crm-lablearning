@@ -84,6 +84,7 @@ export interface Formateur {
   siret: string | null
   tarif_journalier: number | null
   tarif_horaire: number | null
+  zone_intervention: string | null
   note_moyenne: number | null
   nombre_evaluations: number
   is_active: boolean
