@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Mail, Phone, Globe, MapPin, Building2, User, FileText,
-  Receipt, FolderOpen, Users, ShieldCheck, GraduationCap, Hash, Banknote,
+  Receipt, FolderOpen, Users, Hash, Banknote,
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
@@ -100,8 +100,6 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <Badge variant={isEntreprise ? 'info' : 'default'}>{CLIENT_TYPE_LABELS[c.type]}</Badge>
             {c.financeur_type && <Badge variant="warning">{FINANCEUR_LABELS[c.financeur_type]}</Badge>}
-            {c.est_qualiopi && <Badge variant="success"><ShieldCheck className="h-3 w-3 shrink-0" />Qualiopi</Badge>}
-            {c.est_organisme_formation && <Badge variant="default"><GraduationCap className="h-3 w-3 shrink-0" />Organisme de formation</Badge>}
             {(c.tags || []).map((t) => <Badge key={t} variant="default">{t}</Badge>)}
           </div>
           <div className="flex items-center gap-4 mt-2.5 text-sm text-surface-500 flex-wrap">
