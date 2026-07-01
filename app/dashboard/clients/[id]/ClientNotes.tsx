@@ -30,7 +30,7 @@ export function ClientNotes({ clientId, initialNotes }: { clientId: string; init
     <div className="card overflow-hidden">
       <div className="px-4 py-3 border-b border-surface-100 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <StickyNote className="h-4 w-4 text-brand-500" />
+          <StickyNote className="h-4 w-4 text-brand-500 shrink-0" />
           <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Commentaires</span>
         </div>
         {dirty && (
