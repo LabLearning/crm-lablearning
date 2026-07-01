@@ -4,13 +4,14 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Mail, Phone, Globe, MapPin, Building2, User, FileText,
-  Receipt, FolderOpen, Users, ShieldCheck, GraduationCap, Hash, Banknote, StickyNote,
+  Receipt, FolderOpen, Users, ShieldCheck, GraduationCap, Hash, Banknote,
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import type { Client } from '@/lib/types/crm'
 import { ClientEditButton } from './ClientEditButton'
+import { ClientNotes } from './ClientNotes'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,15 +161,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             </div>
           )}
 
-          {/* Notes */}
-          {c.notes && (
-            <div className="card p-5">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">
-                <StickyNote className="h-3.5 w-3.5" /> Notes
-              </div>
-              <p className="text-sm text-surface-600 whitespace-pre-wrap">{c.notes}</p>
-            </div>
-          )}
+          {/* Commentaires (éditable) */}
+          <ClientNotes clientId={c.id} initialNotes={c.notes} />
         </div>
 
         {/* Colonne droite : contacts + activité */}

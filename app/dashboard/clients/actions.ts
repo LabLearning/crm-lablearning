@@ -159,6 +159,26 @@ export async function updateClientAction(id: string, formData: FormData): Promis
   return { success: true }
 }
 
+export async function updateClientNotesAction(id: string, notes: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { error } = await supabase
+    .from('clients')
+    .update({ notes: notes || null })
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+
+  if (error) {
+    return { success: false, error: 'Erreur lors de l\'enregistrement' }
+  }
+
+  await logAudit({ action: 'update', entity_type: 'client', entity_id: id })
+  revalidatePath('/dashboard/clients')
+  revalidatePath(`/dashboard/clients/${id}`)
+  return { success: true }
+}
+
 export async function deleteClientAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
