@@ -24,13 +24,23 @@ export async function createFormationAction(formData: FormData): Promise<ActionR
 
   const supabase = await createServiceRoleClient()
 
-  // Auto-generate reference
-  const { count } = await supabase
-    .from('formations')
-    .select('*', { count: 'exact', head: true })
-    .eq('organization_id', session.organization.id)
-
-  const ref = parsed.data.reference || `FOR-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+  // Auto-génération de la référence : max des suffixes existants de l'année + 1
+  // (robuste aux suppressions — évite les doublons contrairement à un simple count)
+  let ref = parsed.data.reference
+  if (!ref) {
+    const prefix = `FOR-${new Date().getFullYear()}-`
+    const { data: existing } = await supabase
+      .from('formations')
+      .select('reference')
+      .eq('organization_id', session.organization.id)
+      .like('reference', `${prefix}%`)
+    let maxNum = 0
+    for (const row of existing || []) {
+      const m = String(row.reference || '').match(/(\d+)$/)
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10))
+    }
+    ref = `${prefix}${String(maxNum + 1).padStart(3, '0')}`
+  }
 
   const { data, error } = await supabase
     .from('formations')

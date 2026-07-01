@@ -103,7 +103,14 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
 
       {/* Identification */}
       <div className="grid grid-cols-3 gap-3">
-        <Input id="reference" name="reference" label="Référence" placeholder="FOR-2024-001" defaultValue={formation?.reference || ''} />
+        {formation ? (
+          <Input id="reference" name="reference" label="Référence" defaultValue={formation.reference || ''} readOnly className="bg-surface-50 text-surface-500 cursor-not-allowed" />
+        ) : (
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-surface-700">Référence</label>
+            <div className="input-base bg-surface-50 text-surface-400 flex items-center select-none">Générée automatiquement</div>
+          </div>
+        )}
         <div className="col-span-2">
           <Input id="intitule" name="intitule" label="Intitulé *" defaultValue={formation?.intitule || ''} error={errors.intitule?.[0]} />
         </div>
