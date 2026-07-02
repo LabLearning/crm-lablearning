@@ -8,8 +8,9 @@ import {
   getLeadFormationsAction, addLeadFormationAction, deleteLeadFormationAction,
   confirmLeadFormationDateAction, proposeLeadFormationDateAction,
   setLeadFormationParticipantsAction, generateConventionForFormationAction,
-  getLeadParticipantsAction,
+  getLeadParticipantsAction, addLeadParticipantAction,
 } from './actions'
+import { Input } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
 const MANAGER_ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial']
@@ -68,6 +69,18 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
     setFormations((list) => list.map((x) => x.id === updated.id ? updated : x))
   }
 
+  // Ajoute un participant au pool (depuis une formation) et le retourne
+  async function addPoolParticipant(fd: FormData): Promise<Participant | null> {
+    const res = await addLeadParticipantAction(leadId, fd)
+    if (res.success && res.data) {
+      const np = res.data as Participant
+      setPool((p) => [...p, np])
+      return np
+    }
+    toast('error', res.error || 'Erreur')
+    return null
+  }
+
   const catalogOptions = [{ value: '', label: '— Choisir une formation —' }, ...catalog.map((c) => ({ value: c.id, label: c.intitule }))]
 
   return (
@@ -91,7 +104,7 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
           <div className="space-y-2.5">
             {formations.map((lf) => (
               <FormationRow key={lf.id} lf={lf} pool={pool} formateurs={formateurs} isManager={isManager}
-                onChange={updateOne} onDelete={() => handleDelete(lf.id)} />
+                onChange={updateOne} onDelete={() => handleDelete(lf.id)} onAddParticipant={addPoolParticipant} />
             ))}
           </div>
 
@@ -114,9 +127,10 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
   )
 }
 
-function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
+function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onAddParticipant }: {
   lf: LeadFormation; pool: Participant[]; formateurs: Formateur[]; isManager: boolean
   onChange: (lf: LeadFormation) => void; onDelete: () => void
+  onAddParticipant: (fd: FormData) => Promise<Participant | null>
 }) {
   const { toast } = useToast()
   const router = useRouter()
@@ -125,6 +139,20 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
   const [lieu, setLieu] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [assigned, setAssigned] = useState<Set<string>>(new Set((lf.assignments || []).map((a) => a.lead_participant_id)))
+  const [showAddPart, setShowAddPart] = useState(false)
+  const [addingPart, setAddingPart] = useState(false)
+
+  async function quickAddParticipant(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setAddingPart(true)
+    const np = await onAddParticipant(new FormData(e.currentTarget))
+    if (np) {
+      const next = new Set(assigned); next.add(np.id); setAssigned(next)
+      await setLeadFormationParticipantsAction(lf.id, Array.from(next))
+      setShowAddPart(false)
+    }
+    setAddingPart(false)
+  }
 
   const status = lf.planification_status || 'a_planifier'
   const confirmed = (status === 'date_confirmee' || status === 'convention_generee') && !!lf.session_id
@@ -178,10 +206,17 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
         </div>
       </div>
 
-      {/* Participants affectés (pool) */}
-      {pool.length > 0 && (
-        <div>
-          <div className="flex items-center gap-1 text-2xs text-surface-400 mb-1"><Users className="h-3 w-3" /> Participants ({assigned.size})</div>
+      {/* Participants affectés à cette formation */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1 text-2xs text-surface-400"><Users className="h-3 w-3" /> Participants ({assigned.size})</div>
+          {!conventionGenerated && (
+            <button type="button" onClick={() => setShowAddPart((v) => !v)} className="text-2xs font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-0.5">
+              <Plus className="h-3 w-3" /> Ajouter
+            </button>
+          )}
+        </div>
+        {pool.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {pool.map((p) => {
               const on = assigned.has(p.id)
@@ -193,8 +228,25 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
               )
             })}
           </div>
-        </div>
-      )}
+        ) : (
+          !showAddPart && <p className="text-2xs text-surface-400">Aucun participant. Cliquez « Ajouter » pour en créer, ou saisissez-les dans « Participants prévus » puis cochez-les ici.</p>
+        )}
+
+        {showAddPart && (
+          <form onSubmit={quickAddParticipant} className="mt-2 rounded-lg bg-surface-50 p-2 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Input name="prenom" placeholder="Prénom" />
+              <Input name="nom" placeholder="Nom *" />
+            </div>
+            <Input name="email" type="email" placeholder="Email" />
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => setShowAddPart(false)}>Annuler</Button>
+              <Button type="submit" size="sm" isLoading={addingPart}>Ajouter à cette formation</Button>
+            </div>
+            <p className="text-2xs text-surface-400">Détails complets (date de naissance, n° sécu…) modifiables dans « Participants prévus ».</p>
+          </form>
+        )}
+      </div>
 
       {/* Planification */}
       {conventionGenerated ? (
