@@ -411,7 +411,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
 
       {/* Detail Modal */}
       <Modal isOpen={!!detailLead} onClose={() => setDetailLead(null)} title={detailLead ? (detailLead.contact_prenom || '') + ' ' + detailLead.contact_nom : ''} size="lg">
-        {detailLead && <LeadDetail lead={detailLead} users={users} gestionnaires={gestionnaires} formateurs={formateurs} currentUserRole={currentUserRole} currentUserId={currentUserId} onStatusChange={s => handleStatusChange(detailLead.id, s)} onClose={() => setDetailLead(null)} />}
+        {detailLead && <LeadDetail lead={detailLead} users={users} gestionnaires={gestionnaires} formateurs={formateurs} formations={formations} currentUserRole={currentUserRole} currentUserId={currentUserId} onStatusChange={s => handleStatusChange(detailLead.id, s)} onClose={() => setDetailLead(null)} />}
       </Modal>
 
       {/* Import Modal */}

@@ -76,6 +76,17 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     return { success: false, error: `Erreur : ${error.message}` }
   }
 
+  // Modèle multi-formations : la formation choisie devient la 1re formation demandée
+  if (insertData.formation_id) {
+    await supabase.from('lead_formations').insert({
+      organization_id: session.organization.id,
+      lead_id: data.id,
+      formation_id: insertData.formation_id,
+      date_souhaitee: parsed.data.date_souhaitee || null,
+      planification_status: 'a_planifier',
+    })
+  }
+
   await logAudit({
     action: 'create',
     entity_type: 'lead',
@@ -1015,6 +1026,224 @@ export async function generateConventionFromLeadAction(leadId: string): Promise<
   revalidatePath('/dashboard/conventions')
   revalidatePath('/dashboard/clients')
   revalidatePath('/dashboard/apprenants')
+  return { success: true, data: { convention_id: convention.id, client_id: clientId } }
+}
+
+// ══════════════════════════════════════════════════════════
+// FORMATIONS MULTIPLES PAR LEAD (une formation = une session + une convention)
+// ══════════════════════════════════════════════════════════
+
+export async function getLeadFormationsAction(leadId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const { data } = await supabase
+    .from('lead_formations')
+    .select('*, formation:formations(intitule, reference, duree_jours, duree_heures, tarif_intra_ht), assignments:lead_formation_participants(lead_participant_id)')
+    .eq('lead_id', leadId)
+    .eq('organization_id', session.organization.id)
+    .order('created_at', { ascending: true })
+  return { success: true, data: data || [] }
+}
+
+export async function addLeadFormationAction(leadId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const formationId = (formData.get('formation_id') as string) || ''
+  if (!formationId) return { success: false, error: 'Formation requise' }
+  const { data, error } = await supabase
+    .from('lead_formations')
+    .insert({
+      organization_id: session.organization.id,
+      lead_id: leadId,
+      formation_id: formationId,
+      date_souhaitee: (formData.get('date_souhaitee') as string) || null,
+      planification_status: 'a_planifier',
+    })
+    .select('*, formation:formations(intitule, reference, duree_jours, duree_heures, tarif_intra_ht), assignments:lead_formation_participants(lead_participant_id)')
+    .single()
+  if (error) return { success: false, error: 'Erreur' }
+  revalidatePath('/dashboard/leads')
+  return { success: true, data }
+}
+
+export async function deleteLeadFormationAction(id: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const { error } = await supabase.from('lead_formations').delete().eq('id', id).eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur' }
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
+export async function setLeadFormationParticipantsAction(leadFormationId: string, participantIds: string[]): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  // Remplace les affectations
+  await supabase.from('lead_formation_participants').delete().eq('lead_formation_id', leadFormationId).eq('organization_id', session.organization.id)
+  if (participantIds.length > 0) {
+    await supabase.from('lead_formation_participants').insert(
+      participantIds.map((pid) => ({
+        organization_id: session.organization.id,
+        lead_formation_id: leadFormationId,
+        lead_participant_id: pid,
+      })),
+    )
+  }
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
+// Confirme la date d'UNE formation → crée sa session
+export async function confirmLeadFormationDateAction(leadFormationId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const date = (formData.get('date') as string) || ''
+  const formateurId = (formData.get('formateur_id') as string) || ''
+  if (!date) return { success: false, error: 'Date requise' }
+  if (!formateurId) return { success: false, error: 'Formateur requis' }
+
+  const { data: lf } = await supabase.from('lead_formations').select('*').eq('id', leadFormationId).eq('organization_id', session.organization.id).single()
+  if (!lf) return { success: false, error: 'Formation introuvable' }
+  if (!lf.formation_id) return { success: false, error: 'Aucune formation associée' }
+  if (lf.session_id) return { success: false, error: 'Une session existe déjà pour cette formation' }
+
+  const { data: lead } = await supabase.from('leads').select('*').eq('id', lf.lead_id).single()
+
+  const { data: formation } = await supabase.from('formations').select('intitule, duree_jours').eq('id', lf.formation_id).single()
+  const dureeJours = Number(formation?.duree_jours) || 1
+  const dateFin = addDaysIso(date, Math.max(0, dureeJours - 1))
+
+  const { count } = await supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('organization_id', session.organization.id)
+  const ref = `SES-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+
+  const { data: newSession, error: sErr } = await supabase
+    .from('sessions')
+    .insert({
+      organization_id: session.organization.id,
+      formation_id: lf.formation_id,
+      formateur_id: formateurId,
+      type_session: 'intra',
+      modalite: 'presentiel',
+      reference: ref,
+      intitule: formation?.intitule || null,
+      date_debut: date,
+      date_fin: dateFin,
+      places_min: 1,
+      places_max: lead?.nombre_stagiaires || null,
+      status: 'planifiee',
+      client_id: null,
+      created_by: session.user.id,
+      mission_status: 'pending',
+      mission_proposed_at: new Date().toISOString(),
+      mission_proposed_by: session.user.id,
+    })
+    .select()
+    .single()
+  if (sErr) { console.error('[confirmLeadFormationDate]', sErr); return { success: false, error: 'Erreur création session' } }
+
+  await supabase.from('lead_formations').update({
+    date_confirmee: date, formateur_id: formateurId, planification_status: 'date_confirmee', session_id: newSession.id,
+  }).eq('id', leadFormationId)
+
+  if (lead?.assigned_to) {
+    const { createNotification } = await import('@/lib/email')
+    await createNotification({
+      organizationId: session.organization.id, userId: lead.assigned_to,
+      titre: 'Date confirmée', message: `${formation?.intitule || 'Formation'} — session créée le ${formatFrDate(date)} pour ${leadLabel(lead)}.`,
+      type: 'lead', lienUrl: `/dashboard/leads?lead=${lf.lead_id}`, lienLabel: 'Voir le lead', entityType: 'lead', entityId: lf.lead_id,
+    })
+  }
+  await logAudit({ action: 'confirm_date', entity_type: 'lead_formation', entity_id: leadFormationId, details: { session_id: newSession.id } })
+  revalidatePath('/dashboard/leads'); revalidatePath('/dashboard/sessions')
+  return { success: true }
+}
+
+export async function proposeLeadFormationDateAction(leadFormationId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const date = (formData.get('date') as string) || ''
+  if (!date) return { success: false, error: 'Date requise' }
+  await supabase.from('lead_formations').update({ date_confirmee: date, planification_status: 'autre_date_proposee' }).eq('id', leadFormationId).eq('organization_id', session.organization.id)
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
+// Génère la convention d'UNE formation (Option A) : convertit le lead en client,
+// crée les apprenants des participants AFFECTÉS, les inscrit dans SA session, crée SA convention.
+export async function generateConventionForFormationAction(leadFormationId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: lf } = await supabase.from('lead_formations').select('*').eq('id', leadFormationId).eq('organization_id', session.organization.id).single()
+  if (!lf) return { success: false, error: 'Formation introuvable' }
+  if (!lf.formation_id) return { success: false, error: 'Aucune formation associée' }
+  if (lf.convention_id) return { success: false, error: 'Convention déjà générée pour cette formation' }
+
+  const { data: lead } = await supabase.from('leads').select('*').eq('id', lf.lead_id).single()
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+
+  // 1. Client (conversion une seule fois pour le lead)
+  let clientId = lead.converted_client_id as string | null
+  if (!clientId) {
+    const conv = await convertLeadToClientAction(lf.lead_id)
+    if (!conv.success) return { success: false, error: conv.error || 'Erreur conversion client' }
+    clientId = (conv.data as any)?.client_id || null
+  }
+  if (!clientId) return { success: false, error: 'Client introuvable' }
+
+  // 2. Participants AFFECTÉS à cette formation
+  const { data: assignments } = await supabase.from('lead_formation_participants').select('lead_participant_id').eq('lead_formation_id', leadFormationId)
+  const assignedIds = (assignments || []).map((a) => a.lead_participant_id)
+  let participants: any[] = []
+  if (assignedIds.length > 0) {
+    const { data: parts } = await supabase.from('lead_participants').select('*').in('id', assignedIds)
+    participants = parts || []
+  }
+
+  const apprenantIds: string[] = []
+  for (const p of participants) {
+    if (p.email) {
+      const { data: existing } = await supabase.from('apprenants').select('id').eq('organization_id', session.organization.id).eq('client_id', clientId).eq('email', p.email).maybeSingle()
+      if (existing) { apprenantIds.push(existing.id); continue }
+    }
+    const { data: appr } = await supabase.from('apprenants').insert({
+      organization_id: session.organization.id, client_id: clientId,
+      civilite: p.civilite || null, prenom: p.prenom || p.nom, nom: p.nom,
+      email: p.email || null, telephone: p.telephone || null, entreprise: lead.entreprise || null,
+      poste: p.poste || null, date_naissance: p.date_naissance || null,
+    }).select('id').single()
+    if (appr) apprenantIds.push(appr.id)
+  }
+
+  // 3. Inscriptions dans la session de CETTE formation
+  if (lf.session_id && apprenantIds.length > 0) {
+    for (const aid of apprenantIds) {
+      const { data: ex } = await supabase.from('inscriptions').select('id').eq('session_id', lf.session_id).eq('apprenant_id', aid).maybeSingle()
+      if (!ex) await supabase.from('inscriptions').insert({ organization_id: session.organization.id, session_id: lf.session_id, apprenant_id: aid, status: 'inscrit' })
+    }
+    await supabase.from('sessions').update({ client_id: clientId }).eq('id', lf.session_id)
+  }
+
+  // 4. Convention de CETTE formation
+  const { data: formation } = await supabase.from('formations').select('intitule, duree_heures, tarif_intra_ht').eq('id', lf.formation_id).single()
+  const { count } = await supabase.from('conventions').select('*', { count: 'exact', head: true }).eq('organization_id', session.organization.id)
+  const numero = `CONV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+  const montantHt = Number(formation?.tarif_intra_ht) || 0
+
+  const { data: convention, error: cErr } = await supabase.from('conventions').insert({
+    organization_id: session.organization.id, numero, type: 'intra_entreprise',
+    client_id: clientId, formation_id: lf.formation_id, session_id: lf.session_id || null,
+    objet: formation?.intitule || null, nombre_stagiaires: apprenantIds.length || 1,
+    duree_heures: formation?.duree_heures || null, dates_formation: lf.date_confirmee ? formatFrDate(lf.date_confirmee) : null,
+    montant_ht: montantHt, taux_tva: 20, montant_ttc: Math.round(montantHt * 1.2 * 100) / 100,
+    financeur_type: lead.financeur_type || null, status: 'brouillon', created_by: session.user.id,
+  }).select().single()
+  if (cErr) { console.error('[generateConventionForFormation]', cErr); return { success: false, error: 'Client créé, mais erreur convention' } }
+
+  await supabase.from('lead_formations').update({ convention_id: convention.id, planification_status: 'convention_generee' }).eq('id', leadFormationId)
+
+  await logAudit({ action: 'generate_convention', entity_type: 'lead_formation', entity_id: leadFormationId, details: { convention_id: convention.id, client_id: clientId, apprenants: apprenantIds.length } })
+  revalidatePath('/dashboard/leads'); revalidatePath('/dashboard/conventions'); revalidatePath('/dashboard/clients'); revalidatePath('/dashboard/apprenants')
   return { success: true, data: { convention_id: convention.id, client_id: clientId } }
 }
 

@@ -18,14 +18,15 @@ import type { Lead, LeadStatus, LeadInteraction } from '@/lib/types/crm'
 import type { User } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { LeadValidationCard } from './LeadValidationCard'
-import { LeadPlanificationCard } from './LeadPlanificationCard'
 import { LeadParticipantsCard } from './LeadParticipantsCard'
+import { LeadFormationsCard } from './LeadFormationsCard'
 
 interface LeadDetailProps {
   lead: Lead
   users: Pick<User, 'id' | 'first_name' | 'last_name' | 'role'>[]
   gestionnaires: Pick<User, 'id' | 'first_name' | 'last_name'>[]
   formateurs?: { id: string; prenom: string; nom: string }[]
+  formations?: { id: string; intitule: string }[]
   currentUserRole: string
   currentUserId: string
   onStatusChange: (status: LeadStatus) => void
@@ -35,7 +36,7 @@ interface LeadDetailProps {
 
 const interactionOptions = Object.entries(INTERACTION_LABELS).map(([v, l]) => ({ value: v, label: l }))
 
-export function LeadDetail({ lead, users, gestionnaires, formateurs = [], currentUserRole, currentUserId, onStatusChange, onClose, interactions = [] }: LeadDetailProps) {
+export function LeadDetail({ lead, users, gestionnaires, formateurs = [], formations = [], currentUserRole, currentUserId, onStatusChange, onClose, interactions = [] }: LeadDetailProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [addingInteraction, setAddingInteraction] = useState(false)
@@ -108,15 +109,16 @@ export function LeadDetail({ lead, users, gestionnaires, formateurs = [], curren
         gestionnaires={gestionnaires}
       />
 
-      {/* Planification : confirmation de date + création de session */}
-      <LeadPlanificationCard
-        lead={lead}
+      {/* Participants prévus (pool, futurs apprenants) */}
+      <LeadParticipantsCard leadId={lead.id} nombreStagiaires={lead.nombre_stagiaires} />
+
+      {/* Formations demandées : planification + affectation participants + convention (par formation) */}
+      <LeadFormationsCard
+        leadId={lead.id}
+        catalog={formations}
         formateurs={formateurs}
         currentUserRole={currentUserRole}
       />
-
-      {/* Participants prévus (futurs apprenants) */}
-      <LeadParticipantsCard leadId={lead.id} nombreStagiaires={lead.nombre_stagiaires} />
 
       {/* Status progression */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
