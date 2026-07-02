@@ -107,13 +107,18 @@ export async function requestPasswordResetAction(formData: FormData): Promise<Ac
   if (user) {
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
-      // Génère un lien de récupération via l'admin API Supabase (le user clique → page reset-password)
+      // Génère un lien de récupération via l'admin API Supabase.
+      // On route via /auth/confirm (verifyOtp côté serveur → pose la session) au lieu
+      // du action_link brut : évite l'échec PKCE sur la page /reset-password.
       const { data: linkData } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email,
         options: { redirectTo: `${appUrl}/reset-password` },
       })
-      const recoveryUrl = (linkData as any)?.properties?.action_link || `${appUrl}/reset-password`
+      const hashedToken = (linkData as any)?.properties?.hashed_token
+      const recoveryUrl = hashedToken
+        ? `${appUrl}/auth/confirm?token_hash=${hashedToken}&type=recovery&next=/reset-password`
+        : ((linkData as any)?.properties?.action_link || `${appUrl}/reset-password`)
 
       // Email brandé
       const { data: org } = await supabase.from('organizations').select('*').eq('id', user.organization_id).single()
