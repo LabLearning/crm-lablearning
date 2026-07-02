@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { GraduationCap, Plus, Trash2, Loader2, CalendarCheck, CalendarClock, Presentation, ArrowRight, FileSignature, Users } from 'lucide-react'
+import { GraduationCap, Plus, Trash2, Loader2, CalendarCheck, CalendarClock, Presentation, ArrowRight, FileSignature, Users, MapPin } from 'lucide-react'
 import { Button, Badge, Select, useToast } from '@/components/ui'
 import {
   getLeadFormationsAction, addLeadFormationAction, deleteLeadFormationAction,
@@ -23,6 +23,7 @@ interface Participant { id: string; prenom: string | null; nom: string }
 interface LeadFormation {
   id: string; formation_id: string | null; date_souhaitee: string | null; date_confirmee: string | null
   formateur_id: string | null; session_id: string | null; convention_id: string | null; planification_status: string | null
+  lieu: string | null
   formation?: { intitule: string | null } | null
   assignments?: { lead_participant_id: string }[]
 }
@@ -115,6 +116,10 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
                 <label className="block text-2xs text-surface-400 mb-0.5">Date souhaitée</label>
                 <input type="date" name="date_souhaitee" className="input-base w-full" />
               </div>
+              <div>
+                <label className="block text-2xs text-surface-400 mb-0.5">Lieu / adresse de la formation</label>
+                <input type="text" name="lieu" placeholder="Ex. 12 rue des Fleurs, 67000 Strasbourg (ou visio)" className="input-base w-full" />
+              </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" size="sm" variant="secondary" onClick={() => setShowAdd(false)}>Annuler</Button>
                 <Button type="submit" size="sm" isLoading={adding}>Ajouter</Button>
@@ -136,7 +141,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
   const router = useRouter()
   const [date, setDate] = useState(lf.date_confirmee || lf.date_souhaitee || '')
   const [formateurId, setFormateurId] = useState(lf.formateur_id || '')
-  const [lieu, setLieu] = useState('')
+  const [lieu, setLieu] = useState(lf.lieu || '')
   const [busy, setBusy] = useState<string | null>(null)
   const [assigned, setAssigned] = useState<Set<string>>(new Set((lf.assignments || []).map((a) => a.lead_participant_id)))
   const [showAddPart, setShowAddPart] = useState(false)
@@ -199,6 +204,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
         <div className="min-w-0">
           <div className="text-sm font-semibold text-surface-900 truncate">{lf.formation?.intitule || 'Formation'}</div>
           {lf.date_souhaitee && <div className="text-2xs text-surface-400">Souhaitée : {formatDate(lf.date_souhaitee, { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+          {lf.lieu && <div className="text-2xs text-surface-400 flex items-center gap-1"><MapPin className="h-3 w-3 shrink-0" />{lf.lieu}</div>}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Badge variant={PLANIF_VARIANTS[status] || 'default'}>{PLANIF_LABELS[status] || status}</Badge>

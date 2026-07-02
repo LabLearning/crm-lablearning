@@ -1057,6 +1057,7 @@ export async function addLeadFormationAction(leadId: string, formData: FormData)
       lead_id: leadId,
       formation_id: formationId,
       date_souhaitee: (formData.get('date_souhaitee') as string) || null,
+      lieu: (formData.get('lieu') as string) || null,
       planification_status: 'a_planifier',
     })
     .select('*, formation:formations(intitule, reference, duree_jours, duree_heures, tarif_intra_ht), assignments:lead_formation_participants(lead_participant_id)')
@@ -1129,7 +1130,7 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
       intitule: formation?.intitule || null,
       date_debut: date,
       date_fin: dateFin,
-      lieu,
+      lieu: lieu || lf.lieu || null,
       places_min: 1,
       places_max: lead?.nombre_stagiaires || null,
       status: 'planifiee',
@@ -1145,6 +1146,7 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
 
   await supabase.from('lead_formations').update({
     date_confirmee: date, formateur_id: formateurId, planification_status: 'date_confirmee', session_id: newSession.id,
+    lieu: lieu || lf.lieu || null,
   }).eq('id', leadFormationId)
 
   if (lead?.assigned_to) {
