@@ -136,7 +136,7 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
                 <Input name="email" type="email" placeholder="Email" />
                 <Input name="telephone" placeholder="Téléphone" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 items-end">
                 <div>
                   <label className="block text-2xs text-surface-400 mb-0.5">Date de naissance</label>
                   <Input name="date_naissance" type="date" />
