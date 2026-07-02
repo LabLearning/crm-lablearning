@@ -126,7 +126,7 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
         titre: 'Nouveau lead apporteur',
         message: `${apporteurName} a soumis un lead : ${parsed.data.contact_prenom || ''} ${parsed.data.contact_nom} — ${parsed.data.entreprise || 'Pas d\'entreprise'}`,
         type: 'lead',
-        lienUrl: '/dashboard/leads',
+        lienUrl: `/dashboard/leads?lead=${data.id}`,
         lienLabel: 'Voir le lead',
         entityType: 'lead',
         entityId: data.id,
@@ -140,8 +140,8 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     }
   }
 
-  // Une date de formation est proposée → notifier super_admin + gestionnaires (à planifier)
-  if (parsed.data.date_souhaitee) {
+  // Notifier super_admin + gestionnaires de TOUT nouveau lead (hors apporteur, déjà géré ci-dessus)
+  if (session.user.role !== 'apporteur_affaires') {
     const { createNotification } = await import('@/lib/email')
     const { data: managers } = await supabase
       .from('users')
@@ -149,16 +149,19 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
       .eq('organization_id', session.organization.id)
       .eq('status', 'active')
       .in('role', ['super_admin', 'gestionnaire'])
+    const creatorName = `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim() || 'Un commercial'
     const label = `${parsed.data.contact_prenom || ''} ${parsed.data.contact_nom}`.trim() + (parsed.data.entreprise ? ` — ${parsed.data.entreprise}` : '')
+    const planif = parsed.data.date_souhaitee ? ` — date souhaitée le ${formatFrDate(parsed.data.date_souhaitee)}, à planifier` : ''
     for (const m of managers || []) {
+      if (m.id === session.user.id) continue // ne pas se notifier soi-même
       await createNotification({
         organizationId: session.organization.id,
         userId: m.id,
-        titre: 'Nouveau lead à planifier',
-        message: `${label} — date souhaitée le ${formatFrDate(parsed.data.date_souhaitee)}. À confirmer ou proposer une autre date.`,
+        titre: 'Nouveau lead créé',
+        message: `${creatorName} a créé un nouveau lead : ${label}${planif}`,
         type: 'lead',
-        lienUrl: '/dashboard/leads',
-        lienLabel: 'Planifier',
+        lienUrl: `/dashboard/leads?lead=${data.id}`,
+        lienLabel: parsed.data.date_souhaitee ? 'Planifier' : 'Voir le lead',
         entityType: 'lead',
         entityId: data.id,
       })
@@ -492,7 +495,7 @@ export async function submitLeadForValidationAction(leadId: string): Promise<Act
       titre: 'Lead à valider',
       message: `${submitter} a soumis un lead pour validation : ${leadLabel}`,
       type: 'lead',
-      lienUrl: `/dashboard/leads?tab=validation`,
+      lienUrl: `/dashboard/leads?lead=${leadId}&tab=validation`,
       lienLabel: 'Voir le lead',
       entityType: 'lead',
       entityId: leadId,
@@ -560,7 +563,7 @@ export async function approveLeadAction(
     titre: 'Nouveau dossier à traiter',
     message: `Le lead "${leadLabel}" t'a été assigné par ${session.user.first_name} ${session.user.last_name}`,
     type: 'lead',
-    lienUrl: `/dashboard/leads`,
+    lienUrl: `/dashboard/leads?lead=${leadId}`,
     lienLabel: 'Voir le dossier',
     entityType: 'lead',
     entityId: leadId,
@@ -616,7 +619,7 @@ export async function rejectLeadAction(leadId: string, comment: string): Promise
       titre: 'Lead refusé',
       message: `Ton lead "${leadLabel}" a été refusé : ${comment}`,
       type: 'lead',
-      lienUrl: `/dashboard/leads`,
+      lienUrl: `/dashboard/leads?lead=${leadId}`,
       lienLabel: 'Voir le lead',
       entityType: 'lead',
       entityId: leadId,
@@ -767,7 +770,7 @@ export async function confirmLeadDateAction(leadId: string, formData: FormData):
       titre: 'Date de formation confirmée',
       message: `La date du ${formatFrDate(date)} est confirmée pour ${leadLabel(lead)}. La session a été créée.`,
       type: 'lead',
-      lienUrl: '/dashboard/leads',
+      lienUrl: `/dashboard/leads?lead=${leadId}`,
       lienLabel: 'Voir le lead',
       entityType: 'lead',
       entityId: leadId,
@@ -810,7 +813,7 @@ export async function proposeLeadDateAction(leadId: string, formData: FormData):
       titre: 'Autre date de formation proposée',
       message: `Une autre date est proposée pour ${leadLabel(lead)} : le ${formatFrDate(date)}.`,
       type: 'lead',
-      lienUrl: '/dashboard/leads',
+      lienUrl: `/dashboard/leads?lead=${leadId}`,
       lienLabel: 'Voir le lead',
       entityType: 'lead',
       entityId: leadId,

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   UserPlus, Phone, Mail, Building2,
   ArrowRight, Trash2, Eye, Edit3, Euro, List, LayoutGrid, Columns3,
@@ -73,6 +74,16 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
   const [editLead, setEditLead] = useState<Lead | null>(null)
   const [detailLead, setDetailLead] = useState<Lead | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+
+  // Ouverture auto d'un lead via ?lead=<id> (depuis une notification)
+  useEffect(() => {
+    const id = searchParams.get('lead')
+    if (id) {
+      const l = leads.find((x) => x.id === id)
+      if (l) setDetailLead(l)
+    }
+  }, [searchParams, leads])
   const [search, setSearch] = useState('')
   const [filterChip, setFilterChip] = useState<FilterChip>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
