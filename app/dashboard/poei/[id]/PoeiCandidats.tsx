@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Trash2, Users, FileText } from 'lucide-react'
+import { UserPlus, Trash2, Users, FileText, GraduationCap } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
 import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
@@ -79,6 +79,9 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
                 </div>
               </div>
               <a href={`/api/pdf/pdc/${c.id}`} target="_blank" rel="noopener noreferrer" title="Plan de développement de compétences (France Travail)" className="p-1.5 rounded-lg text-surface-400 hover:bg-sky-50 hover:text-sky-600 shrink-0"><FileText className="h-4 w-4" /></a>
+              {c.apprenant_id && (
+                <a href={`/api/pdf/attestation-entree/${c.apprenant_id}?poei=${poeiId}&candidat=${c.id}`} target="_blank" rel="noopener noreferrer" title="Attestation d'entrée en formation" className="p-1.5 rounded-lg text-surface-400 hover:bg-emerald-50 hover:text-emerald-600 shrink-0"><GraduationCap className="h-4 w-4" /></a>
+              )}
               <select value={c.statut} onChange={(e) => handleStatut(c.id, e.target.value)} className="text-xs rounded-lg border border-surface-200 px-2 py-1 bg-white">
                 {statutOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>

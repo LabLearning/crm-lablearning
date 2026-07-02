@@ -540,6 +540,10 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     {/* Documents : télécharger (admin) + envoyer à l'apprenant */}
                     {!isFormateur && (
                       <div className="flex items-center gap-1 mt-2 sm:mt-0 flex-wrap justify-end">
+                        <a href={`/api/pdf/attestation-entree/${a?.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-medium hover:bg-emerald-100 transition-colors">
+                          <Download className="h-3 w-3" /> Attestation d&apos;entrée
+                        </a>
                         <a href={`/api/pdf/convocation/${a?.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface-50 text-surface-500 text-[10px] font-medium hover:bg-surface-100 transition-colors">
                           <Download className="h-3 w-3" /> Convocation
