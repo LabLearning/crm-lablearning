@@ -17,7 +17,7 @@ export default async function AgendaPage() {
       .order('date', { ascending: true }),
     supabase
       .from('sessions')
-      .select('id, reference, date_debut, date_fin, horaires, lieu, status, formation:formation_id(intitule)')
+      .select('id, reference, date_debut, date_fin, horaires, horaires_jours, lieu, status, formation:formation_id(intitule), formateur:formateurs(prenom, nom)')
       .eq('organization_id', orgId)
       .in('status', ['planifiee', 'confirmee', 'en_cours']),
     supabase
@@ -52,11 +52,14 @@ export default async function AgendaPage() {
         sessions={(sessionsRes.data || []).map((s: any) => ({
           id: s.id,
           titre: s.formation?.intitule || s.reference || 'Session',
+          reference: s.reference || '',
           dateDebut: s.date_debut,
           dateFin: s.date_fin,
           horaires: s.horaires || '',
+          horairesJours: Array.isArray(s.horaires_jours) ? s.horaires_jours : [],
           lieu: s.lieu || '',
           status: s.status,
+          formateurNom: s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null,
         }))}
         taches={(tachesRes.data || []).map((t: any) => ({
           id: t.id,
