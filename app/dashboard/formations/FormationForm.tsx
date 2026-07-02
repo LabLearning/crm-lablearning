@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Save, ChevronDown, ChevronRight, Sparkles, Loader2 } from 'lucide-react'
+import { Save, ChevronDown, ChevronRight, Sparkles, Loader2, List } from 'lucide-react'
 import { Button, Input, Select } from '@/components/ui'
 import { createFormationAction, updateFormationAction } from './actions'
 import { MODALITE_LABELS } from '@/lib/types/formation'
@@ -14,6 +14,76 @@ interface FormationFormProps {
 }
 
 const modaliteOptions = Object.entries(MODALITE_LABELS).map(([v, l]) => ({ value: v, label: l }))
+
+// Textarea éditable avec support des puces (bouton + continuation auto sur Entrée).
+// Non contrôlé (defaultValue + name) → compatible avec le remplissage par l'IA.
+function BulletTextarea({ id, name, label, rows = 3, placeholder, defaultValue, hint }: {
+  id: string; name: string; label?: string; rows?: number; placeholder?: string; defaultValue?: string; hint?: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  function addBullet() {
+    const ta = ref.current
+    if (!ta) return
+    ta.focus()
+    const val = ta.value
+    const pos = ta.selectionStart
+    const lineStart = val.lastIndexOf('\n', pos - 1) + 1
+    // Ne pas dupliquer si la ligne commence déjà par une puce
+    if (/^\s*•/.test(val.slice(lineStart))) return
+    ta.value = val.slice(0, lineStart) + '• ' + val.slice(lineStart)
+    const newPos = pos + 2
+    ta.setSelectionRange(newPos, newPos)
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== 'Enter') return
+    const ta = e.currentTarget
+    const val = ta.value
+    const pos = ta.selectionStart
+    const lineStart = val.lastIndexOf('\n', pos - 1) + 1
+    const currentLine = val.slice(lineStart, pos)
+    if (!/^\s*•/.test(currentLine)) return
+    e.preventDefault()
+    if (currentLine.trim() === '•') {
+      // Puce vide → on termine la liste (retire la puce)
+      ta.value = val.slice(0, lineStart) + val.slice(pos)
+      ta.setSelectionRange(lineStart, lineStart)
+    } else {
+      const insert = '\n• '
+      ta.value = val.slice(0, pos) + insert + val.slice(pos)
+      const newPos = pos + insert.length
+      ta.setSelectionRange(newPos, newPos)
+    }
+  }
+
+  return (
+    <div>
+      {label && <label htmlFor={id} className="block text-sm font-medium text-surface-700 mb-1">{label}</label>}
+      <div className="relative">
+        <textarea
+          ref={ref}
+          id={id}
+          name={name}
+          rows={rows}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          onKeyDown={onKeyDown}
+          className="input-base resize-none w-full pr-16"
+        />
+        <button
+          type="button"
+          onClick={addBullet}
+          title="Ajouter une puce"
+          className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-medium text-surface-500 bg-surface-100 hover:bg-surface-200 hover:text-surface-700 transition-colors"
+        >
+          <List className="h-3 w-3 shrink-0" /> Puce
+        </button>
+      </div>
+      {hint && <p className="text-2xs text-surface-400 mt-1">{hint}</p>}
+    </div>
+  )
+}
 
 export function FormationForm({ formation, onSuccess, onCancel }: FormationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -140,21 +210,17 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
       <SectionHeader label="Programme & objectifs (Qualiopi C2)" sectionKey="programme" />
       {sections.programme && (
         <div className="space-y-3 pl-5 border-l-2 border-brand-100">
-          <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Objectifs pédagogiques</label>
-            <textarea id="objectifs_pedagogiques" name="objectifs_pedagogiques" rows={4} className="input-base resize-none" placeholder="Un objectif par ligne..." defaultValue={formation?.objectifs_pedagogiques?.join('\n') || ''} />
-            <p className="text-2xs text-surface-400 mt-1">Un objectif par ligne. Commencer par un verbe d'action.</p>
-          </div>
-          <Input id="prerequis" name="prerequis" label="Prérequis" defaultValue={formation?.prerequis || ''} placeholder="Aucun / Niveau B2 en français..." />
-          <Input id="public_vise" name="public_vise" label="Public visé" defaultValue={formation?.public_vise || ''} placeholder="Managers, responsables d'équipe..." />
-          <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Programme détaillé</label>
-            <textarea id="programme_detaille" name="programme_detaille" rows={6} className="input-base resize-none" defaultValue={formation?.programme_detaille || ''} placeholder="Module 1 : Introduction..." />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Compétences visées</label>
-            <textarea id="competences_visees" name="competences_visees" rows={3} className="input-base resize-none" placeholder="Une compétence par ligne" defaultValue={formation?.competences_visees?.join('\n') || ''} />
-          </div>
+          <BulletTextarea id="objectifs_pedagogiques" name="objectifs_pedagogiques" label="Objectifs pédagogiques" rows={4}
+            placeholder="Un objectif par ligne..." defaultValue={formation?.objectifs_pedagogiques?.join('\n') || ''}
+            hint="Un objectif par ligne. Commencer par un verbe d'action." />
+          <BulletTextarea id="prerequis" name="prerequis" label="Prérequis" rows={3}
+            placeholder="Aucun / Niveau B2 en français..." defaultValue={formation?.prerequis || ''} />
+          <BulletTextarea id="public_vise" name="public_vise" label="Public visé" rows={3}
+            placeholder="Managers, responsables d'équipe..." defaultValue={formation?.public_vise || ''} />
+          <BulletTextarea id="programme_detaille" name="programme_detaille" label="Programme détaillé" rows={6}
+            placeholder="Module 1 : Introduction..." defaultValue={formation?.programme_detaille || ''} />
+          <BulletTextarea id="competences_visees" name="competences_visees" label="Compétences visées" rows={3}
+            placeholder="Une compétence par ligne" defaultValue={formation?.competences_visees?.join('\n') || ''} />
         </div>
       )}
 
@@ -162,14 +228,16 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
       <SectionHeader label="Moyens pédagogiques (Qualiopi C4)" sectionKey="pedagogie" />
       {sections.pedagogie && (
         <div className="space-y-3 pl-5 border-l-2 border-success-100">
-          <textarea id="methodes_pedagogiques" name="methodes_pedagogiques" rows={3} className="input-base resize-none" placeholder="Apports théoriques, études de cas, mises en situation..." defaultValue={formation?.methodes_pedagogiques || ''} />
-          <textarea id="moyens_techniques" name="moyens_techniques" rows={2} className="input-base resize-none" placeholder="Salle équipée, vidéoprojecteur, PC..." defaultValue={formation?.moyens_techniques || ''} />
-          <textarea id="modalites_evaluation" name="modalites_evaluation" rows={2} className="input-base resize-none" placeholder="QCM, mise en situation, étude de cas..." defaultValue={formation?.modalites_evaluation || ''} />
-          <div>
-            <label htmlFor="modalites_admission" className="text-xs font-medium text-surface-600 mb-1 block">Modalités d'admission</label>
-            <textarea id="modalites_admission" name="modalites_admission" rows={3} className="input-base resize-none w-full" placeholder="Analyse du besoin, vérification des prérequis, entretien / positionnement, validation conjointe..." defaultValue={(formation as any)?.modalites_admission || ''} />
-          </div>
-          <Input id="accessibilite_handicap" name="accessibilite_handicap" label="Accessibilité handicap" defaultValue={formation?.accessibilite_handicap || ''} placeholder="Locaux accessibles PMR..." />
+          <BulletTextarea id="methodes_pedagogiques" name="methodes_pedagogiques" label="Méthodes pédagogiques" rows={3}
+            placeholder="Apports théoriques, études de cas, mises en situation..." defaultValue={formation?.methodes_pedagogiques || ''} />
+          <BulletTextarea id="moyens_techniques" name="moyens_techniques" label="Moyens techniques" rows={2}
+            placeholder="Salle équipée, vidéoprojecteur, PC..." defaultValue={formation?.moyens_techniques || ''} />
+          <BulletTextarea id="modalites_evaluation" name="modalites_evaluation" label="Modalités d'évaluation" rows={2}
+            placeholder="QCM, mise en situation, étude de cas..." defaultValue={formation?.modalites_evaluation || ''} />
+          <BulletTextarea id="modalites_admission" name="modalites_admission" label="Modalités d'admission" rows={3}
+            placeholder="Analyse du besoin, vérification des prérequis, entretien / positionnement..." defaultValue={(formation as any)?.modalites_admission || ''} />
+          <BulletTextarea id="accessibilite_handicap" name="accessibilite_handicap" label="Accessibilité handicap" rows={2}
+            placeholder="Locaux accessibles PMR..." defaultValue={formation?.accessibilite_handicap || ''} />
         </div>
       )}
 

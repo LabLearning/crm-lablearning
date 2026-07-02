@@ -9,7 +9,8 @@ import type { ActionResult } from '@/lib/types'
 
 function splitLines(text: string | undefined): string[] {
   if (!text) return []
-  return text.split('\n').map((l) => l.trim()).filter(Boolean)
+  // Retire une puce/tiret éventuel en début de ligne (les champs tableau restent propres)
+  return text.split('\n').map((l) => l.replace(/^\s*[•\-*]\s*/, '').trim()).filter(Boolean)
 }
 
 export async function createFormationAction(formData: FormData): Promise<ActionResult> {
