@@ -232,10 +232,10 @@ export function UsersList({ users, invitations, franchises = [], currentUserId, 
                               hidden: !isSuperAdmin,
                             })),
                             {
-                              label: 'Aperçu du compte',
+                              label: 'Se connecter en tant que',
                               icon: <UserCog className="h-4 w-4 text-surface-400" />,
                               onClick: () => handleImpersonate(user.id),
-                              hidden: !isSuperAdmin,
+                              hidden: !isSuperAdmin || user.role === 'super_admin',
                             },
                             user.status === 'active'
                               ? { label: 'Suspendre', icon: <ShieldOff className="h-4 w-4 text-danger-600" />, danger: true, onClick: () => handleToggleStatus(user.id, user.status) }
