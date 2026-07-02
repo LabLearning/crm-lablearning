@@ -665,6 +665,11 @@ export async function addLeadParticipantAction(leadId: string, formData: FormDat
       email: (formData.get('email') as string) || null,
       telephone: (formData.get('telephone') as string) || null,
       poste: (formData.get('poste') as string) || null,
+      date_naissance: (formData.get('date_naissance') as string) || null,
+      adresse: (formData.get('adresse') as string) || null,
+      type_contrat: (formData.get('type_contrat') as string) || null,
+      numero_securite_sociale: (formData.get('numero_securite_sociale') as string) || null,
+      niveau_diplome: (formData.get('niveau_diplome') as string) || null,
     })
     .select()
     .single()
@@ -882,6 +887,7 @@ export async function generateConventionFromLeadAction(leadId: string): Promise<
         telephone: p.telephone || null,
         entreprise: lead.entreprise || null,
         poste: p.poste || null,
+        date_naissance: p.date_naissance || null,
       })
       .select('id')
       .single()

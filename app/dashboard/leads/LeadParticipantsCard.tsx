@@ -2,13 +2,36 @@
 
 import { useState, useEffect } from 'react'
 import { Users, UserPlus, Trash2, Loader2, Mail, Phone } from 'lucide-react'
-import { Button, Input, useToast } from '@/components/ui'
+import { Button, Input, Select, useToast } from '@/components/ui'
 import { getLeadParticipantsAction, addLeadParticipantAction, deleteLeadParticipantAction } from './actions'
 
 interface Participant {
   id: string; civilite: string | null; prenom: string | null; nom: string
   email: string | null; telephone: string | null; poste: string | null
+  date_naissance: string | null; adresse: string | null; type_contrat: string | null
+  numero_securite_sociale: string | null; niveau_diplome: string | null
 }
+
+const CONTRAT_OPTIONS = [
+  { value: '', label: 'Type de contrat' },
+  { value: 'CDI', label: 'CDI' },
+  { value: 'CDD', label: 'CDD' },
+  { value: 'Intérim', label: 'Intérim' },
+  { value: 'Alternance', label: 'Alternance / Apprentissage' },
+  { value: 'Stage', label: 'Stage' },
+  { value: "Demandeur d'emploi", label: "Demandeur d'emploi" },
+  { value: 'Autre', label: 'Autre' },
+]
+const NIVEAU_OPTIONS = [
+  { value: '', label: 'Niveau de diplôme' },
+  { value: 'Sans diplôme', label: 'Sans diplôme' },
+  { value: 'Niveau 3 (CAP/BEP)', label: 'Niveau 3 (CAP/BEP)' },
+  { value: 'Niveau 4 (Bac)', label: 'Niveau 4 (Bac)' },
+  { value: 'Niveau 5 (Bac+2)', label: 'Niveau 5 (Bac+2)' },
+  { value: 'Niveau 6 (Licence)', label: 'Niveau 6 (Licence)' },
+  { value: 'Niveau 7 (Master)', label: 'Niveau 7 (Master)' },
+  { value: 'Niveau 8 (Doctorat)', label: 'Niveau 8 (Doctorat)' },
+]
 
 export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: string; nombreStagiaires: number | null }) {
   const { toast } = useToast()
@@ -88,6 +111,9 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
                     <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
                       {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
                       {p.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telephone}</span>}
+                      {p.type_contrat && <span>{p.type_contrat}</span>}
+                      {p.niveau_diplome && <span>{p.niveau_diplome}</span>}
+                      {p.date_naissance && <span>né(e) le {new Date(p.date_naissance).toLocaleDateString('fr-FR')}</span>}
                     </div>
                   </div>
                   <button onClick={() => handleDelete(p.id)} className="text-surface-300 hover:text-danger-600 transition-colors shrink-0" title="Retirer">
@@ -110,7 +136,18 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
                 <Input name="email" type="email" placeholder="Email" />
                 <Input name="telephone" placeholder="Téléphone" />
               </div>
-              <Input name="poste" placeholder="Poste / fonction" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-2xs text-surface-400 mb-0.5">Date de naissance</label>
+                  <Input name="date_naissance" type="date" />
+                </div>
+                <Select name="type_contrat" options={CONTRAT_OPTIONS} />
+              </div>
+              <Input name="adresse" placeholder="Adresse" />
+              <div className="grid grid-cols-2 gap-2">
+                <Input name="numero_securite_sociale" placeholder="N° sécurité sociale" />
+                <Select name="niveau_diplome" options={NIVEAU_OPTIONS} />
+              </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" size="sm" variant="secondary" onClick={() => setShowForm(false)}>Annuler</Button>
                 <Button type="submit" size="sm" isLoading={adding}>Ajouter</Button>
