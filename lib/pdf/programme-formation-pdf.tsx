@@ -26,6 +26,12 @@ function dureeCreneau(d?: string | null, f?: string | null): string {
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
 }
 
+// Retire tout caractère de puce en tête de ligne (•, ·, -, *), même combinés
+// comme "• ·", pour éviter les doubles puces (le PDF ajoute déjà sa propre puce).
+function stripBullet(s: string): string {
+  return s.replace(/^(?:\s*[•·*\-•·]+)+\s*/, '').trim()
+}
+
 // Parse le programme_detaille en semaines → modules (objectif + contenu)
 function parseProgramme(text: string) {
   const weeks: { titre: string; duree: string; modules: { titre: string; duree: string; objectif: string; bullets: string[] }[] }[] = []
@@ -45,10 +51,11 @@ function parseProgramme(text: string) {
       week.modules.push(mod)
     } else if (/^Objectif/i.test(line)) {
       if (mod) mod.objectif = line.replace(/^Objectif\s*:\s*/i, '').trim()
-    } else if (/^[-•]\s/.test(line)) {
-      if (mod) mod.bullets.push(line.replace(/^[-•]\s*/, '').trim())
     } else if (mod) {
-      mod.bullets.push(line)
+      // Toute autre ligne sous un module = puce de contenu (puces normalisées)
+      const cleaned = stripBullet(line)
+      // Ignore le libellé "Contenu :" (ce n'est pas une puce)
+      if (cleaned && !/^contenu\s*:?\s*$/i.test(cleaned)) mod.bullets.push(cleaned)
     }
   }
   return weeks
