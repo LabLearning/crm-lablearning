@@ -13,8 +13,17 @@ interface Notification {
   type: string
   lien_url: string | null
   lien_label: string | null
+  entity_type?: string | null
+  entity_id?: string | null
   is_read: boolean
   created_at: string
+}
+
+// Lien effectif : pour un lead, on ouvre la fiche via ?lead=<id> (robuste même si
+// lien_url ne contient pas le paramètre — ex. anciennes notifications).
+function resolveHref(n: { lien_url: string | null; entity_type?: string | null; entity_id?: string | null }): string | null {
+  if (n.entity_type === 'lead' && n.entity_id) return `/dashboard/leads?lead=${n.entity_id}`
+  return n.lien_url
 }
 
 const typeColors: Record<string, string> = {
@@ -245,10 +254,11 @@ function NotifRow({
     !n.is_read ? 'bg-brand-50/30 hover:bg-brand-50/50' : 'hover:bg-surface-50',
   )
 
-  if (n.lien_url) {
+  const href = resolveHref(n)
+  if (href) {
     return (
       <Link
-        href={n.lien_url}
+        href={href}
         onClick={() => { onMarkRead(); onClose() }}
         className={className}
       >
