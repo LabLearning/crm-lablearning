@@ -33,7 +33,7 @@ export default async function ApprenantHomePage() {
     // Inscriptions avec sessions et formations
     supabase
       .from('inscriptions')
-      .select('id, status, session:sessions(id, reference, date_debut, date_fin, lieu, status, formation:formations(intitule, duree_heures))')
+      .select('id, status, session:sessions(id, reference, date_debut, date_fin, lieu, status, formation:formation_id(intitule, duree_heures))')
       .eq('apprenant_id', apprenant.id)
       .not('status', 'in', '("annule","abandonne")')
       .order('created_at', { ascending: false }),

@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   let session = null
   if (sessionId) {
-    const { data } = await supabase.from('sessions').select('*, formation:formations(intitule, duree_heures)').eq('id', sessionId).single()
+    const { data } = await supabase.from('sessions').select('*, formation:formation_id(intitule, duree_heures)').eq('id', sessionId).single()
     session = data
   }
 

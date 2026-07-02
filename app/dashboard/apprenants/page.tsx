@@ -23,7 +23,7 @@ export default async function ApprenantsPage() {
     // Available sessions (upcoming or in progress)
     supabase
       .from('sessions')
-      .select('id, reference, date_debut, date_fin, formation:formations(intitule)')
+      .select('id, reference, date_debut, date_fin, formation:formation_id(intitule)')
       .eq('organization_id', session.organization.id)
       .in('status', ['planifiee', 'confirmee', 'en_cours'])
       .order('date_debut', { ascending: true }),

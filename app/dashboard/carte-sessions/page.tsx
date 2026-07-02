@@ -8,7 +8,7 @@ export default async function CarteSessionsPage() {
 
   const { data: sessions } = await supabase
     .from('sessions')
-    .select('id, reference, status, date_debut, date_fin, lieu, formation:formations(intitule, duree_heures, categorie), formateur:formateurs(prenom, nom)')
+    .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule, duree_heures, categorie), formateur:formateurs(prenom, nom)')
     .eq('organization_id', session.organization.id)
     .not('status', 'eq', 'annulee')
     .order('date_debut', { ascending: true })

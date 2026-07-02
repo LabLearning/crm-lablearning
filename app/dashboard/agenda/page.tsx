@@ -17,7 +17,7 @@ export default async function AgendaPage() {
       .order('date', { ascending: true }),
     supabase
       .from('sessions')
-      .select('id, reference, date_debut, date_fin, horaires, lieu, status, formation:formations(intitule)')
+      .select('id, reference, date_debut, date_fin, horaires, lieu, status, formation:formation_id(intitule)')
       .eq('organization_id', orgId)
       .in('status', ['planifiee', 'confirmee', 'en_cours']),
     supabase

@@ -43,7 +43,7 @@ export async function GET(_req: Request, { params }: { params: { formateurId: st
   // Récupérer toutes les sessions du formateur
   const { data: sessions } = await supabase
     .from('sessions')
-    .select('id, reference, date_debut, date_fin, lieu, status, formation:formations(intitule, duree_heures)')
+    .select('id, reference, date_debut, date_fin, lieu, status, formation:formation_id(intitule, duree_heures)')
     .eq('formateur_id', formateur.id)
     .not('status', 'eq', 'annulee')
     .order('date_debut', { ascending: true })
