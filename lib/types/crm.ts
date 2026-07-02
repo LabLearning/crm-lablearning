@@ -90,6 +90,12 @@ export interface Lead {
   nombre_stagiaires: number | null
   date_souhaitee: string | null
   commentaire: string | null
+  // Planification (workflow commercial)
+  formation_id: string | null
+  formateur_id: string | null
+  date_confirmee: string | null
+  session_id: string | null
+  planification_status: string | null
   // Suivi
   apporteur_id: string | null
   assigned_to: string | null

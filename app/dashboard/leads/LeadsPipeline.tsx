@@ -38,6 +38,7 @@ interface LeadsPipelineProps {
   currentUserRole: string
   currentUserId: string
   formations?: Formation[]
+  formateurs?: { id: string; prenom: string; nom: string }[]
   isApporteur?: boolean
 }
 
@@ -65,7 +66,7 @@ function scoreBg(s: number) { return s >= 70 ? 'bg-success-50' : s >= 40 ? 'bg-w
 type ViewMode = 'kanban' | 'list'
 type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score'
 
-export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], isApporteur }: LeadsPipelineProps) {
+export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], formateurs = [], isApporteur }: LeadsPipelineProps) {
   const { toast } = useToast()
   const [view, setView] = useState<ViewMode>('kanban')
   const [createOpen, setCreateOpen] = useState(false)
@@ -399,7 +400,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
 
       {/* Detail Modal */}
       <Modal isOpen={!!detailLead} onClose={() => setDetailLead(null)} title={detailLead ? (detailLead.contact_prenom || '') + ' ' + detailLead.contact_nom : ''} size="lg">
-        {detailLead && <LeadDetail lead={detailLead} users={users} gestionnaires={gestionnaires} currentUserRole={currentUserRole} currentUserId={currentUserId} onStatusChange={s => handleStatusChange(detailLead.id, s)} onClose={() => setDetailLead(null)} />}
+        {detailLead && <LeadDetail lead={detailLead} users={users} gestionnaires={gestionnaires} formateurs={formateurs} currentUserRole={currentUserRole} currentUserId={currentUserId} onStatusChange={s => handleStatusChange(detailLead.id, s)} onClose={() => setDetailLead(null)} />}
       </Modal>
 
       {/* Import Modal */}

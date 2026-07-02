@@ -140,8 +140,46 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     }
   }
 
+  // Une date de formation est proposée → notifier super_admin + gestionnaires (à planifier)
+  if (parsed.data.date_souhaitee) {
+    const { createNotification } = await import('@/lib/email')
+    const { data: managers } = await supabase
+      .from('users')
+      .select('id')
+      .eq('organization_id', session.organization.id)
+      .eq('status', 'active')
+      .in('role', ['super_admin', 'gestionnaire'])
+    const label = `${parsed.data.contact_prenom || ''} ${parsed.data.contact_nom}`.trim() + (parsed.data.entreprise ? ` — ${parsed.data.entreprise}` : '')
+    for (const m of managers || []) {
+      await createNotification({
+        organizationId: session.organization.id,
+        userId: m.id,
+        titre: 'Nouveau lead à planifier',
+        message: `${label} — date souhaitée le ${formatFrDate(parsed.data.date_souhaitee)}. À confirmer ou proposer une autre date.`,
+        type: 'lead',
+        lienUrl: '/dashboard/leads',
+        lienLabel: 'Planifier',
+        entityType: 'lead',
+        entityId: data.id,
+      })
+    }
+  }
+
   revalidatePath('/dashboard/leads')
   return { success: true, data }
+}
+
+// ── Helpers planification ──
+function formatFrDate(d: string): string {
+  try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) } catch { return d }
+}
+function addDaysIso(d: string, days: number): string {
+  const dt = new Date(d + 'T00:00:00')
+  dt.setDate(dt.getDate() + days)
+  return dt.toISOString().slice(0, 10)
+}
+function leadLabel(lead: any): string {
+  return `${lead.contact_prenom || ''} ${lead.contact_nom || ''}`.trim() + (lead.entreprise ? ` — ${lead.entreprise}` : '')
 }
 
 export async function updateLeadAction(id: string, formData: FormData): Promise<ActionResult> {
@@ -591,6 +629,145 @@ export async function rejectLeadAction(leadId: string, comment: string): Promise
     entity_id: leadId,
     details: { comment },
   })
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
+// Confirme la date proposée, désigne le formateur et CRÉE la session de formation
+export async function confirmLeadDateAction(leadId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const date = (formData.get('date') as string) || ''
+  const formateurId = (formData.get('formateur_id') as string) || ''
+  if (!date) return { success: false, error: 'Date requise' }
+  if (!formateurId) return { success: false, error: 'Formateur requis pour créer la session' }
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+    .single()
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+  if (!lead.formation_id) return { success: false, error: 'Aucune formation liée au lead — modifiez le lead pour en choisir une.' }
+
+  // Éviter les doublons si une session est déjà créée
+  if (lead.session_id) return { success: false, error: 'Une session existe déjà pour ce lead' }
+
+  const { data: formation } = await supabase
+    .from('formations')
+    .select('intitule, duree_jours')
+    .eq('id', lead.formation_id)
+    .single()
+  const dureeJours = Number(formation?.duree_jours) || 1
+  const dateFin = addDaysIso(date, Math.max(0, dureeJours - 1))
+
+  const { count } = await supabase
+    .from('sessions')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', session.organization.id)
+  const ref = `SES-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+
+  const { data: newSession, error: sErr } = await supabase
+    .from('sessions')
+    .insert({
+      organization_id: session.organization.id,
+      formation_id: lead.formation_id,
+      formateur_id: formateurId,
+      type_session: 'intra',
+      modalite: 'presentiel',
+      reference: ref,
+      intitule: formation?.intitule || null,
+      date_debut: date,
+      date_fin: dateFin,
+      places_min: 1,
+      places_max: lead.nombre_stagiaires || null,
+      status: 'planifiee',
+      client_id: null,
+      created_by: session.user.id,
+      mission_status: 'pending',
+      mission_proposed_at: new Date().toISOString(),
+      mission_proposed_by: session.user.id,
+    })
+    .select()
+    .single()
+  if (sErr) {
+    console.error('[confirmLeadDate] session', sErr)
+    return { success: false, error: 'Erreur lors de la création de la session' }
+  }
+
+  await supabase
+    .from('leads')
+    .update({
+      date_confirmee: date,
+      formateur_id: formateurId,
+      planification_status: 'date_confirmee',
+      session_id: newSession.id,
+    })
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+
+  // Notifier le commercial en charge
+  if (lead.assigned_to) {
+    const { createNotification } = await import('@/lib/email')
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: lead.assigned_to,
+      titre: 'Date de formation confirmée',
+      message: `La date du ${formatFrDate(date)} est confirmée pour ${leadLabel(lead)}. La session a été créée.`,
+      type: 'lead',
+      lienUrl: '/dashboard/leads',
+      lienLabel: 'Voir le lead',
+      entityType: 'lead',
+      entityId: leadId,
+    })
+  }
+
+  await logAudit({ action: 'confirm_date', entity_type: 'lead', entity_id: leadId, details: { date, session_id: newSession.id } })
+  revalidatePath('/dashboard/leads')
+  revalidatePath('/dashboard/sessions')
+  return { success: true }
+}
+
+// Propose une autre date que celle souhaitée (renvoie la balle au commercial)
+export async function proposeLeadDateAction(leadId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const date = (formData.get('date') as string) || ''
+  if (!date) return { success: false, error: 'Date requise' }
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+    .single()
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+
+  await supabase
+    .from('leads')
+    .update({ date_confirmee: date, planification_status: 'autre_date_proposee' })
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+
+  if (lead.assigned_to && lead.assigned_to !== session.user.id) {
+    const { createNotification } = await import('@/lib/email')
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: lead.assigned_to,
+      titre: 'Autre date de formation proposée',
+      message: `Une autre date est proposée pour ${leadLabel(lead)} : le ${formatFrDate(date)}.`,
+      type: 'lead',
+      lienUrl: '/dashboard/leads',
+      lienLabel: 'Voir le lead',
+      entityType: 'lead',
+      entityId: leadId,
+    })
+  }
+
+  await logAudit({ action: 'propose_date', entity_type: 'lead', entity_id: leadId, details: { date } })
   revalidatePath('/dashboard/leads')
   return { success: true }
 }

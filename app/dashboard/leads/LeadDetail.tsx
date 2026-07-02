@@ -18,11 +18,13 @@ import type { Lead, LeadStatus, LeadInteraction } from '@/lib/types/crm'
 import type { User } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { LeadValidationCard } from './LeadValidationCard'
+import { LeadPlanificationCard } from './LeadPlanificationCard'
 
 interface LeadDetailProps {
   lead: Lead
   users: Pick<User, 'id' | 'first_name' | 'last_name' | 'role'>[]
   gestionnaires: Pick<User, 'id' | 'first_name' | 'last_name'>[]
+  formateurs?: { id: string; prenom: string; nom: string }[]
   currentUserRole: string
   currentUserId: string
   onStatusChange: (status: LeadStatus) => void
@@ -32,7 +34,7 @@ interface LeadDetailProps {
 
 const interactionOptions = Object.entries(INTERACTION_LABELS).map(([v, l]) => ({ value: v, label: l }))
 
-export function LeadDetail({ lead, users, gestionnaires, currentUserRole, currentUserId, onStatusChange, onClose, interactions = [] }: LeadDetailProps) {
+export function LeadDetail({ lead, users, gestionnaires, formateurs = [], currentUserRole, currentUserId, onStatusChange, onClose, interactions = [] }: LeadDetailProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [addingInteraction, setAddingInteraction] = useState(false)
@@ -103,6 +105,13 @@ export function LeadDetail({ lead, users, gestionnaires, currentUserRole, curren
         currentUserRole={currentUserRole}
         currentUserId={currentUserId}
         gestionnaires={gestionnaires}
+      />
+
+      {/* Planification : confirmation de date + création de session */}
+      <LeadPlanificationCard
+        lead={lead}
+        formateurs={formateurs}
+        currentUserRole={currentUserRole}
       />
 
       {/* Status progression */}

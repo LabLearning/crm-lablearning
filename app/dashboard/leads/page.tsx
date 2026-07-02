@@ -42,7 +42,7 @@ export default async function LeadsPage() {
     leadsQuery = leadsQuery.eq('gestionnaire_id', session.user.id)
   }
 
-  const [{ data: leads }, { data: users }, { data: gestionnaires }, { data: formations }] = await Promise.all([
+  const [{ data: leads }, { data: users }, { data: gestionnaires }, { data: formations }, { data: formateurs }] = await Promise.all([
     leadsQuery,
     supabase
       .from('users')
@@ -64,6 +64,13 @@ export default async function LeadsPage() {
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('intitule'),
+    // Formateurs actifs (pour la désignation à la confirmation de date)
+    supabase
+      .from('formateurs')
+      .select('id, prenom, nom')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('nom'),
   ])
 
   const isApporteur = session.user.role === 'apporteur_affaires'
@@ -77,6 +84,7 @@ export default async function LeadsPage() {
         currentUserRole={session.user.role}
         currentUserId={session.user.id}
         formations={formations || []}
+        formateurs={formateurs || []}
         isApporteur={isApporteur}
       />
     </div>
