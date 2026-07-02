@@ -633,6 +633,56 @@ export async function rejectLeadAction(leadId: string, comment: string): Promise
   return { success: true }
 }
 
+// ── Participants prévisionnels du lead ──
+export async function getLeadParticipantsAction(leadId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const { data } = await supabase
+    .from('lead_participants')
+    .select('*')
+    .eq('lead_id', leadId)
+    .eq('organization_id', session.organization.id)
+    .order('created_at', { ascending: true })
+  return { success: true, data: data || [] }
+}
+
+export async function addLeadParticipantAction(leadId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const nom = (formData.get('nom') as string || '').trim()
+  if (!nom) return { success: false, error: 'Nom requis' }
+  const { data, error } = await supabase
+    .from('lead_participants')
+    .insert({
+      organization_id: session.organization.id,
+      lead_id: leadId,
+      civilite: (formData.get('civilite') as string) || null,
+      prenom: (formData.get('prenom') as string) || null,
+      nom,
+      email: (formData.get('email') as string) || null,
+      telephone: (formData.get('telephone') as string) || null,
+      poste: (formData.get('poste') as string) || null,
+    })
+    .select()
+    .single()
+  if (error) return { success: false, error: 'Erreur' }
+  revalidatePath('/dashboard/leads')
+  return { success: true, data }
+}
+
+export async function deleteLeadParticipantAction(id: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const { error } = await supabase
+    .from('lead_participants')
+    .delete()
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur' }
+  revalidatePath('/dashboard/leads')
+  return { success: true }
+}
+
 // Confirme la date proposée, désigne le formateur et CRÉE la session de formation
 export async function confirmLeadDateAction(leadId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()

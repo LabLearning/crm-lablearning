@@ -19,6 +19,7 @@ import type { User } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { LeadValidationCard } from './LeadValidationCard'
 import { LeadPlanificationCard } from './LeadPlanificationCard'
+import { LeadParticipantsCard } from './LeadParticipantsCard'
 
 interface LeadDetailProps {
   lead: Lead
@@ -113,6 +114,9 @@ export function LeadDetail({ lead, users, gestionnaires, formateurs = [], curren
         formateurs={formateurs}
         currentUserRole={currentUserRole}
       />
+
+      {/* Participants prévus (futurs apprenants) */}
+      <LeadParticipantsCard leadId={lead.id} nombreStagiaires={lead.nombre_stagiaires} />
 
       {/* Status progression */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
