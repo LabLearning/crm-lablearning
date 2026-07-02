@@ -26,10 +26,21 @@ function dureeCreneau(d?: string | null, f?: string | null): string {
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`
 }
 
-// Retire tout caractère de puce en tête de ligne (•, ·, -, *), même combinés
-// comme "• ·", pour éviter les doubles puces (le PDF ajoute déjà sa propre puce).
+// Caractères de puce à retirer : puces standard + puces de police Symbol/Wingdings
+// collées depuis Word (zone Private Use U+F000–U+F0FF, ex. U+F0B7 qui s'affiche "·").
+const BULLET_CHARS = '\\u2022\\u00b7\\u2219\\u25cf\\u25aa\\u25e6\\u2043\\u2013\\u2014\\uf000-\\uf0ff*\\-'
+const LEADING_BULLETS = new RegExp(`^(?:\\s*[${BULLET_CHARS}]+)+\\s*`)
+
+// Retire toute puce en tête de ligne (même combinées comme "• ·") pour éviter
+// les doubles puces (le PDF ajoute déjà sa propre puce).
 function stripBullet(s: string): string {
-  return s.replace(/^(?:\s*[•·*\-•·]+)+\s*/, '').trim()
+  return s.replace(LEADING_BULLETS, '').trim()
+}
+
+// Nettoie un champ texte multi-ligne : supprime les puces parasites de Word
+// (Private Use) partout, pour les sections rendues en texte brut.
+function cleanText(s: string | null | undefined): string {
+  return (s || '').replace(/[-]/g, '').replace(/[ \t]{2,}/g, ' ')
 }
 
 // Parse le programme_detaille en semaines → modules (objectif + contenu)
@@ -149,7 +160,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {formation.public_vise ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="users">Public visé</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{formation.public_vise}</Text>
+            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{cleanText(formation.public_vise)}</Text>
           </View>
         ) : null}
 
@@ -158,7 +169,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
           <View style={shared.section}>
             <PdfSectionTitle icon="target">Objectifs pédagogiques</PdfSectionTitle>
             <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 6 }}>À l'issue de la formation, le participant sera capable de :</Text>
-            {objectifs.map((o, i) => <CheckItem key={i}>{o}</CheckItem>)}
+            {objectifs.map((o, i) => <CheckItem key={i}>{cleanText(o)}</CheckItem>)}
           </View>
         ) : null}
 
@@ -166,7 +177,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {formation.prerequis ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="clipboardCheck">Prérequis</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{formation.prerequis}</Text>
+            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{cleanText(formation.prerequis)}</Text>
           </View>
         ) : null}
 
@@ -203,14 +214,14 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         ) : (formation.programme_detaille ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="list">Programme détaillé</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>{formation.programme_detaille}</Text>
+            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>{cleanText(formation.programme_detaille)}</Text>
           </View>
         ) : null)}
 
         {/* Méthodes & moyens — évite le doublon si les 2 champs se recouvrent */}
         {(() => {
-          const meth = (formation.methodes_pedagogiques || '').trim()
-          const moy = (formation.moyens_techniques || '').trim()
+          const meth = cleanText(formation.methodes_pedagogiques)
+          const moy = cleanText(formation.moyens_techniques)
           const norm = (s: string) => s.replace(/\s+/g, ' ').toLowerCase()
           const showMoy = !!moy && !norm(meth).includes(norm(moy))
           if (!meth && !moy) return null
@@ -227,7 +238,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         <View style={shared.section}>
           <PdfSectionTitle icon="award">Modalités d'évaluation et de suivi</PdfSectionTitle>
           <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>
-            {formation.modalites_evaluation || 'Évaluation des acquis par QCM et mise en situation pratique. Évaluation de satisfaction en fin de formation.'}
+            {cleanText(formation.modalites_evaluation) || 'Évaluation des acquis par QCM et mise en situation pratique. Évaluation de satisfaction en fin de formation.'}
           </Text>
         </View>
 
@@ -235,7 +246,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {formation.modalites_admission ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="userCheck">Modalités d'admission</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{formation.modalites_admission}</Text>
+            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{cleanText(formation.modalites_admission)}</Text>
           </View>
         ) : null}
 
