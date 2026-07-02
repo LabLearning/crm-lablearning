@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, UserPlus, Trash2, Loader2, Mail, Phone } from 'lucide-react'
+import { Users, UserPlus, Trash2, Loader2, Mail, Phone, Pencil } from 'lucide-react'
 import { Button, Input, Select, useToast } from '@/components/ui'
-import { getLeadParticipantsAction, addLeadParticipantAction, deleteLeadParticipantAction } from './actions'
+import { getLeadParticipantsAction, addLeadParticipantAction, updateLeadParticipantAction, deleteLeadParticipantAction } from './actions'
 
 interface Participant {
   id: string; civilite: string | null; prenom: string | null; nom: string
@@ -33,12 +33,51 @@ const NIVEAU_OPTIONS = [
   { value: 'Niveau 8 (Doctorat)', label: 'Niveau 8 (Doctorat)' },
 ]
 
+// Formulaire partagé (ajout + édition) — pré-rempli si un participant est fourni
+function ParticipantForm({ participant, busy, onSubmit, onCancel }: {
+  participant?: Participant
+  busy: boolean
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
+  onCancel: () => void
+}) {
+  const p = participant
+  return (
+    <form onSubmit={onSubmit} className="space-y-2.5 rounded-xl bg-surface-50 p-3">
+      <div className="grid grid-cols-2 gap-2">
+        <Input name="prenom" placeholder="Prénom" defaultValue={p?.prenom || ''} />
+        <Input name="nom" placeholder="Nom *" defaultValue={p?.nom || ''} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Input name="email" type="email" placeholder="Email" defaultValue={p?.email || ''} />
+        <Input name="telephone" placeholder="Téléphone" defaultValue={p?.telephone || ''} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 items-end">
+        <div>
+          <label className="block text-2xs text-surface-400 mb-0.5">Date de naissance</label>
+          <Input name="date_naissance" type="date" defaultValue={p?.date_naissance || ''} />
+        </div>
+        <Select name="type_contrat" options={CONTRAT_OPTIONS} defaultValue={p?.type_contrat || ''} />
+      </div>
+      <Input name="adresse" placeholder="Adresse" defaultValue={p?.adresse || ''} />
+      <div className="grid grid-cols-2 gap-2">
+        <Input name="numero_securite_sociale" placeholder="N° sécurité sociale" defaultValue={p?.numero_securite_sociale || ''} />
+        <Select name="niveau_diplome" options={NIVEAU_OPTIONS} defaultValue={p?.niveau_diplome || ''} />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={onCancel}>Annuler</Button>
+        <Button type="submit" size="sm" isLoading={busy}>{participant ? 'Enregistrer' : 'Ajouter'}</Button>
+      </div>
+    </form>
+  )
+}
+
 export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: string; nombreStagiaires: number | null }) {
   const { toast } = useToast()
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -51,23 +90,37 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setAdding(true)
+    setBusy(true)
     const form = e.currentTarget
     const res = await addLeadParticipantAction(leadId, new FormData(form))
     if (res.success && res.data) {
       setParticipants((p) => [...p, res.data as Participant])
-      form.reset()
       setShowForm(false)
       toast('success', 'Participant ajouté')
     } else {
       toast('error', res.error || 'Erreur')
     }
-    setAdding(false)
+    setBusy(false)
+  }
+
+  async function handleUpdate(id: string, e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setBusy(true)
+    const res = await updateLeadParticipantAction(id, new FormData(e.currentTarget))
+    if (res.success && res.data) {
+      setParticipants((list) => list.map((x) => x.id === id ? (res.data as Participant) : x))
+      setEditingId(null)
+      toast('success', 'Participant mis à jour')
+    } else {
+      toast('error', res.error || 'Erreur')
+    }
+    setBusy(false)
   }
 
   async function handleDelete(id: string) {
+    if (!confirm('Retirer ce participant ?')) return
     const res = await deleteLeadParticipantAction(id)
-    if (res.success) setParticipants((p) => p.filter((x) => x.id !== id))
+    if (res.success) { setParticipants((p) => p.filter((x) => x.id !== id)); setEditingId(null) }
     else toast('error', res.error || 'Erreur')
   }
 
@@ -86,7 +139,7 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
           </span>
         </div>
         {!showForm && (
-          <Button size="sm" variant="secondary" onClick={() => setShowForm(true)} icon={<UserPlus className="h-3.5 w-3.5" />}>
+          <Button size="sm" variant="secondary" onClick={() => { setShowForm(true); setEditingId(null) }} icon={<UserPlus className="h-3.5 w-3.5" />}>
             Ajouter
           </Button>
         )}
@@ -99,27 +152,41 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
           {participants.length > 0 ? (
             <div className="divide-y divide-surface-100">
               {participants.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 py-2">
-                  <div className="h-8 w-8 rounded-lg bg-surface-100 flex items-center justify-center shrink-0 text-2xs font-semibold text-surface-500">
-                    {(p.prenom?.[0] || '') + (p.nom?.[0] || '')}
+                editingId === p.id ? (
+                  <div key={p.id} className="py-2">
+                    <ParticipantForm participant={p} busy={busy} onSubmit={(e) => handleUpdate(p.id, e)} onCancel={() => setEditingId(null)} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-surface-900 truncate">
-                      {[p.civilite, p.prenom, p.nom].filter(Boolean).join(' ')}
-                      {p.poste && <span className="text-surface-400 font-normal"> · {p.poste}</span>}
-                    </div>
-                    <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
-                      {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
-                      {p.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telephone}</span>}
-                      {p.type_contrat && <span>{p.type_contrat}</span>}
-                      {p.niveau_diplome && <span>{p.niveau_diplome}</span>}
-                      {p.date_naissance && <span>né(e) le {new Date(p.date_naissance).toLocaleDateString('fr-FR')}</span>}
-                    </div>
+                ) : (
+                  <div key={p.id} className="flex items-center gap-3 py-2 group">
+                    <button
+                      onClick={() => { setEditingId(p.id); setShowForm(false) }}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-surface-100 flex items-center justify-center shrink-0 text-2xs font-semibold text-surface-500">
+                        {(p.prenom?.[0] || '') + (p.nom?.[0] || '')}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-surface-900 truncate group-hover:text-brand-600 transition-colors">
+                          {[p.civilite, p.prenom, p.nom].filter(Boolean).join(' ')}
+                          {p.poste && <span className="text-surface-400 font-normal"> · {p.poste}</span>}
+                        </div>
+                        <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
+                          {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
+                          {p.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telephone}</span>}
+                          {p.type_contrat && <span>{p.type_contrat}</span>}
+                          {p.niveau_diplome && <span>{p.niveau_diplome}</span>}
+                          {p.date_naissance && <span>né(e) le {new Date(p.date_naissance).toLocaleDateString('fr-FR')}</span>}
+                        </div>
+                      </div>
+                    </button>
+                    <button onClick={() => setEditingId(p.id)} className="text-surface-300 hover:text-brand-600 transition-colors shrink-0" title="Modifier">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => handleDelete(p.id)} className="text-surface-300 hover:text-danger-600 transition-colors shrink-0" title="Retirer">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button onClick={() => handleDelete(p.id)} className="text-surface-300 hover:text-danger-600 transition-colors shrink-0" title="Retirer">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                )
               ))}
             </div>
           ) : (
@@ -127,32 +194,7 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
           )}
 
           {showForm && (
-            <form onSubmit={handleAdd} className="space-y-2.5 rounded-xl bg-surface-50 p-3">
-              <div className="grid grid-cols-2 gap-2">
-                <Input name="prenom" placeholder="Prénom" />
-                <Input name="nom" placeholder="Nom *" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Input name="email" type="email" placeholder="Email" />
-                <Input name="telephone" placeholder="Téléphone" />
-              </div>
-              <div className="grid grid-cols-2 gap-2 items-end">
-                <div>
-                  <label className="block text-2xs text-surface-400 mb-0.5">Date de naissance</label>
-                  <Input name="date_naissance" type="date" />
-                </div>
-                <Select name="type_contrat" options={CONTRAT_OPTIONS} />
-              </div>
-              <Input name="adresse" placeholder="Adresse" />
-              <div className="grid grid-cols-2 gap-2">
-                <Input name="numero_securite_sociale" placeholder="N° sécurité sociale" />
-                <Select name="niveau_diplome" options={NIVEAU_OPTIONS} />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setShowForm(false)}>Annuler</Button>
-                <Button type="submit" size="sm" isLoading={adding}>Ajouter</Button>
-              </div>
-            </form>
+            <ParticipantForm busy={busy} onSubmit={handleAdd} onCancel={() => setShowForm(false)} />
           )}
         </>
       )}

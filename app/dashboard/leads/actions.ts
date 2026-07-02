@@ -678,6 +678,35 @@ export async function addLeadParticipantAction(leadId: string, formData: FormDat
   return { success: true, data }
 }
 
+export async function updateLeadParticipantAction(id: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const nom = (formData.get('nom') as string || '').trim()
+  if (!nom) return { success: false, error: 'Nom requis' }
+  const { data, error } = await supabase
+    .from('lead_participants')
+    .update({
+      civilite: (formData.get('civilite') as string) || null,
+      prenom: (formData.get('prenom') as string) || null,
+      nom,
+      email: (formData.get('email') as string) || null,
+      telephone: (formData.get('telephone') as string) || null,
+      poste: (formData.get('poste') as string) || null,
+      date_naissance: (formData.get('date_naissance') as string) || null,
+      adresse: (formData.get('adresse') as string) || null,
+      type_contrat: (formData.get('type_contrat') as string) || null,
+      numero_securite_sociale: (formData.get('numero_securite_sociale') as string) || null,
+      niveau_diplome: (formData.get('niveau_diplome') as string) || null,
+    })
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+    .select()
+    .single()
+  if (error) return { success: false, error: 'Erreur' }
+  revalidatePath('/dashboard/leads')
+  return { success: true, data }
+}
+
 export async function deleteLeadParticipantAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
