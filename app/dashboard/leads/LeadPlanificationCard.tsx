@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CalendarCheck, CalendarClock, Presentation, ArrowRight } from 'lucide-react'
+import { CalendarCheck, CalendarClock, Presentation, ArrowRight, FileSignature } from 'lucide-react'
 import { Button, Badge, Select, useToast } from '@/components/ui'
-import { confirmLeadDateAction, proposeLeadDateAction } from './actions'
+import { confirmLeadDateAction, proposeLeadDateAction, generateConventionFromLeadAction } from './actions'
 import { formatDate } from '@/lib/utils'
 import type { Lead } from '@/lib/types/crm'
 
@@ -32,11 +32,12 @@ export function LeadPlanificationCard({ lead, formateurs, currentUserRole }: {
   const { toast } = useToast()
   const [date, setDate] = useState(lead.date_confirmee || lead.date_souhaitee || '')
   const [formateurId, setFormateurId] = useState(lead.formateur_id || '')
-  const [busy, setBusy] = useState<'confirm' | 'propose' | null>(null)
+  const [busy, setBusy] = useState<'confirm' | 'propose' | 'convention' | null>(null)
 
   const isManager = MANAGER_ROLES.includes(currentUserRole)
   const status = lead.planification_status || 'a_planifier'
-  const confirmed = status === 'date_confirmee' && !!lead.session_id
+  const confirmed = (status === 'date_confirmee' || status === 'convention_generee') && !!lead.session_id
+  const conventionGenerated = status === 'convention_generee' || lead.status === 'gagne'
 
   async function confirm() {
     if (!date) { toast('error', 'Choisissez une date'); return }
@@ -58,6 +59,14 @@ export function LeadPlanificationCard({ lead, formateurs, currentUserRole }: {
     fd.set('date', date)
     const res = await proposeLeadDateAction(lead.id, fd)
     if (res.success) { toast('success', 'Autre date proposée'); router.refresh() }
+    else toast('error', res.error || 'Erreur')
+    setBusy(null)
+  }
+
+  async function generateConvention() {
+    setBusy('convention')
+    const res = await generateConventionFromLeadAction(lead.id)
+    if (res.success) { toast('success', 'Convention générée — lead converti en client'); router.refresh() }
     else toast('error', res.error || 'Erreur')
     setBusy(null)
   }
@@ -100,6 +109,21 @@ export function LeadPlanificationCard({ lead, formateurs, currentUserRole }: {
               <Presentation className="h-3.5 w-3.5" /> Session créée — voir les sessions <ArrowRight className="h-3 w-3" />
             </a>
           )}
+
+          {/* Étape suivante : générer la convention (Option A → conversion en client) */}
+          <div className="pt-2 mt-1 border-t border-success-100">
+            {conventionGenerated ? (
+              <a href="/dashboard/conventions" className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium">
+                <FileSignature className="h-3.5 w-3.5" /> Convention générée — client créé <ArrowRight className="h-3 w-3" />
+              </a>
+            ) : isManager ? (
+              <Button size="sm" onClick={generateConvention} isLoading={busy === 'convention'} icon={<FileSignature className="h-3.5 w-3.5" />}>
+                Générer la convention &amp; convertir en client
+              </Button>
+            ) : (
+              <span className="text-xs text-surface-500">En attente de génération de la convention.</span>
+            )}
+          </div>
         </div>
       ) : !lead.formation_id ? (
         <p className="text-xs text-surface-500 rounded-lg bg-surface-50 px-3 py-2">

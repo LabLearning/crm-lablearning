@@ -822,6 +822,164 @@ export async function proposeLeadDateAction(leadId: string, formData: FormData):
   return { success: true }
 }
 
+// Option A : génère la convention depuis le lead.
+// → convertit le lead en client, crée les apprenants (participants prévus) rattachés
+//   au client, les inscrit dans la session, et crée la convention prête à envoyer.
+export async function generateConventionFromLeadAction(leadId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', leadId)
+    .eq('organization_id', session.organization.id)
+    .single()
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+  if (!lead.formation_id) return { success: false, error: 'Aucune formation liée au lead' }
+
+  // 1. Convertir en client (réutilise la logique existante) ou récupérer le client déjà lié
+  let clientId = lead.converted_client_id as string | null
+  if (!clientId) {
+    const conv = await convertLeadToClientAction(leadId)
+    if (!conv.success) return { success: false, error: conv.error || 'Erreur conversion client' }
+    clientId = (conv.data as any)?.client_id || null
+  }
+  if (!clientId) return { success: false, error: 'Client introuvable après conversion' }
+
+  // 2. Participants prévus → apprenants rattachés au client
+  const { data: participants } = await supabase
+    .from('lead_participants')
+    .select('*')
+    .eq('lead_id', leadId)
+    .eq('organization_id', session.organization.id)
+
+  const apprenantIds: string[] = []
+  for (const p of participants || []) {
+    // Idempotence : ne pas recréer un apprenant déjà présent (même email chez ce client)
+    if (p.email) {
+      const { data: existing } = await supabase
+        .from('apprenants')
+        .select('id')
+        .eq('organization_id', session.organization.id)
+        .eq('client_id', clientId)
+        .eq('email', p.email)
+        .maybeSingle()
+      if (existing) { apprenantIds.push(existing.id); continue }
+    }
+    const { data: appr } = await supabase
+      .from('apprenants')
+      .insert({
+        organization_id: session.organization.id,
+        client_id: clientId,
+        civilite: p.civilite || null,
+        prenom: p.prenom || p.nom,
+        nom: p.nom,
+        email: p.email || null,
+        telephone: p.telephone || null,
+        entreprise: lead.entreprise || null,
+        poste: p.poste || null,
+      })
+      .select('id')
+      .single()
+    if (appr) apprenantIds.push(appr.id)
+  }
+
+  // 3. Inscriptions dans la session (si une session a été créée à la confirmation)
+  if (lead.session_id && apprenantIds.length > 0) {
+    for (const aid of apprenantIds) {
+      const { data: existingInsc } = await supabase
+        .from('inscriptions')
+        .select('id')
+        .eq('session_id', lead.session_id)
+        .eq('apprenant_id', aid)
+        .maybeSingle()
+      if (!existingInsc) {
+        await supabase.from('inscriptions').insert({
+          organization_id: session.organization.id,
+          session_id: lead.session_id,
+          apprenant_id: aid,
+          status: 'inscrit',
+        })
+      }
+    }
+    // Rattacher la session au client désormais créé
+    await supabase.from('sessions').update({ client_id: clientId }).eq('id', lead.session_id)
+  }
+
+  // 4. Créer la convention (prête à envoyer / signer)
+  const { data: formation } = await supabase
+    .from('formations')
+    .select('intitule, duree_heures, tarif_intra_ht')
+    .eq('id', lead.formation_id)
+    .single()
+
+  const { count } = await supabase
+    .from('conventions')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', session.organization.id)
+  const numero = `CONV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+  const montantHt = Number(formation?.tarif_intra_ht) || 0
+
+  const { data: convention, error: cErr } = await supabase
+    .from('conventions')
+    .insert({
+      organization_id: session.organization.id,
+      numero,
+      type: 'intra_entreprise',
+      client_id: clientId,
+      formation_id: lead.formation_id,
+      session_id: lead.session_id || null,
+      objet: formation?.intitule || null,
+      nombre_stagiaires: lead.nombre_stagiaires || (apprenantIds.length || 1),
+      duree_heures: formation?.duree_heures || null,
+      dates_formation: lead.date_confirmee ? formatFrDate(lead.date_confirmee) : null,
+      montant_ht: montantHt,
+      taux_tva: 20,
+      montant_ttc: Math.round(montantHt * 1.2 * 100) / 100,
+      financeur_type: lead.financeur_type || null,
+      status: 'brouillon',
+      created_by: session.user.id,
+    })
+    .select()
+    .single()
+  if (cErr) {
+    console.error('[generateConvention]', cErr)
+    return { success: false, error: 'Client créé, mais erreur lors de la création de la convention' }
+  }
+
+  await supabase.from('leads').update({ planification_status: 'convention_generee' }).eq('id', leadId)
+
+  // Notifier les managers
+  const { createNotification } = await import('@/lib/email')
+  const { data: managers } = await supabase
+    .from('users')
+    .select('id')
+    .eq('organization_id', session.organization.id)
+    .eq('status', 'active')
+    .in('role', ['super_admin', 'gestionnaire'])
+  for (const m of managers || []) {
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: m.id,
+      titre: 'Convention générée',
+      message: `Convention ${numero} créée pour ${leadLabel(lead)} (${apprenantIds.length} participant(s)).`,
+      type: 'convention',
+      lienUrl: '/dashboard/conventions',
+      lienLabel: 'Voir la convention',
+      entityType: 'convention',
+      entityId: convention.id,
+    })
+  }
+
+  await logAudit({ action: 'generate_convention', entity_type: 'lead', entity_id: leadId, details: { convention_id: convention.id, client_id: clientId, apprenants: apprenantIds.length } })
+  revalidatePath('/dashboard/leads')
+  revalidatePath('/dashboard/conventions')
+  revalidatePath('/dashboard/clients')
+  revalidatePath('/dashboard/apprenants')
+  return { success: true, data: { convention_id: convention.id, client_id: clientId } }
+}
+
 export async function bulkImportLeadsAction(leads: Array<{
   contact_nom: string; contact_prenom?: string; contact_email?: string
   contact_telephone?: string; entreprise?: string; source?: string
