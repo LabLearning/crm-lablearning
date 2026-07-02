@@ -118,6 +118,7 @@ export function LeadDetail({ lead, users, gestionnaires, formateurs = [], format
         catalog={formations}
         formateurs={formateurs}
         currentUserRole={currentUserRole}
+        companyAddress={[(lead as any).adresse, [(lead as any).code_postal, (lead as any).ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') || undefined}
       />
 
       {/* Status progression */}

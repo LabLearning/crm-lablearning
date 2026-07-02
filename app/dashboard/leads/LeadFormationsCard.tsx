@@ -18,7 +18,7 @@ const PLANIF_LABELS: Record<string, string> = { a_planifier: 'À planifier', dat
 const PLANIF_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'info'> = { a_planifier: 'warning', date_confirmee: 'success', autre_date_proposee: 'default', convention_generee: 'info' }
 
 interface CatalogFormation { id: string; intitule: string }
-interface Formateur { id: string; prenom: string; nom: string }
+interface Formateur { id: string; prenom: string; nom: string; zone_intervention?: string | null }
 interface Participant { id: string; prenom: string | null; nom: string }
 interface LeadFormation {
   id: string; formation_id: string | null; date_souhaitee: string | null; date_confirmee: string | null
@@ -28,8 +28,8 @@ interface LeadFormation {
   assignments?: { lead_participant_id: string }[]
 }
 
-export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRole }: {
-  leadId: string; catalog: CatalogFormation[]; formateurs: Formateur[]; currentUserRole: string
+export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRole, companyAddress }: {
+  leadId: string; catalog: CatalogFormation[]; formateurs: Formateur[]; currentUserRole: string; companyAddress?: string
 }) {
   const { toast } = useToast()
   const [formations, setFormations] = useState<LeadFormation[]>([])
@@ -94,6 +94,13 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
         {!showAdd && <Button size="sm" variant="secondary" onClick={() => setShowAdd(true)} icon={<Plus className="h-3.5 w-3.5" />}>Ajouter</Button>}
       </div>
 
+      {companyAddress && (
+        <div className="flex items-start gap-1.5 text-xs text-surface-500 rounded-lg bg-surface-50 px-3 py-2">
+          <MapPin className="h-3.5 w-3.5 text-surface-400 shrink-0 mt-0.5" />
+          <span>Adresse société : <strong className="text-surface-700">{companyAddress}</strong> — utile pour choisir un formateur proche.</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-surface-400 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>
       ) : (
@@ -116,10 +123,6 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
                 <label className="block text-2xs text-surface-400 mb-0.5">Date souhaitée</label>
                 <input type="date" name="date_souhaitee" className="input-base w-full" />
               </div>
-              <div>
-                <label className="block text-2xs text-surface-400 mb-0.5">Lieu / adresse de la formation</label>
-                <input type="text" name="lieu" placeholder="Ex. 12 rue des Fleurs, 67000 Strasbourg (ou visio)" className="input-base w-full" />
-              </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" size="sm" variant="secondary" onClick={() => setShowAdd(false)}>Annuler</Button>
                 <Button type="submit" size="sm" isLoading={adding}>Ajouter</Button>
@@ -141,7 +144,6 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
   const router = useRouter()
   const [date, setDate] = useState(lf.date_confirmee || lf.date_souhaitee || '')
   const [formateurId, setFormateurId] = useState(lf.formateur_id || '')
-  const [lieu, setLieu] = useState(lf.lieu || '')
   const [busy, setBusy] = useState<string | null>(null)
   const [assigned, setAssigned] = useState<Set<string>>(new Set((lf.assignments || []).map((a) => a.lead_participant_id)))
   const [showAddPart, setShowAddPart] = useState(false)
@@ -167,7 +169,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
     if (!date) { toast('error', 'Choisissez une date'); return }
     if (!formateurId) { toast('error', 'Choisissez un formateur'); return }
     setBusy('confirm')
-    const fd = new FormData(); fd.set('date', date); fd.set('formateur_id', formateurId); fd.set('lieu', lieu)
+    const fd = new FormData(); fd.set('date', date); fd.set('formateur_id', formateurId)
     const res = await confirmLeadFormationDateAction(lf.id, fd)
     if (res.success) { toast('success', 'Date confirmée — session créée'); router.refresh() }
     else toast('error', res.error || 'Erreur')
@@ -196,7 +198,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
     await setLeadFormationParticipantsAction(lf.id, Array.from(next))
   }
 
-  const formateurOptions = [{ value: '', label: '— Formateur —' }, ...formateurs.map((f) => ({ value: f.id, label: `${f.prenom} ${f.nom}` }))]
+  const formateurOptions = [{ value: '', label: '— Formateur —' }, ...formateurs.map((f) => ({ value: f.id, label: `${f.prenom} ${f.nom}${f.zone_intervention ? ` — ${f.zone_intervention}` : ''}` }))]
 
   return (
     <div className="rounded-xl border border-surface-200/70 p-3 space-y-2.5">
@@ -204,7 +206,6 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
         <div className="min-w-0">
           <div className="text-sm font-semibold text-surface-900 truncate">{lf.formation?.intitule || 'Formation'}</div>
           {lf.date_souhaitee && <div className="text-2xs text-surface-400">Souhaitée : {formatDate(lf.date_souhaitee, { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
-          {lf.lieu && <div className="text-2xs text-surface-400 flex items-center gap-1"><MapPin className="h-3 w-3 shrink-0" />{lf.lieu}</div>}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Badge variant={PLANIF_VARIANTS[status] || 'default'}>{PLANIF_LABELS[status] || status}</Badge>
@@ -280,11 +281,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
               <label className="block text-2xs text-surface-400 mb-0.5">Date de session</label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-base w-full" />
             </div>
-            <Select label="Formateur" options={formateurOptions} value={formateurId} onChange={(e) => setFormateurId(e.target.value)} />
-          </div>
-          <div>
-            <label className="block text-2xs text-surface-400 mb-0.5">Lieu / adresse de la formation</label>
-            <input type="text" value={lieu} onChange={(e) => setLieu(e.target.value)} placeholder="Ex. 12 rue des Fleurs, 67000 Strasbourg (ou visio)" className="input-base w-full" />
+            <Select label="Formateur (zone)" options={formateurOptions} value={formateurId} onChange={(e) => setFormateurId(e.target.value)} />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={confirm} isLoading={busy === 'confirm'} icon={<CalendarCheck className="h-3.5 w-3.5" />}>Confirmer &amp; créer la session</Button>

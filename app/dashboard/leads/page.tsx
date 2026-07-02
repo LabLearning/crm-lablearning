@@ -67,7 +67,7 @@ export default async function LeadsPage() {
     // Formateurs actifs (pour la désignation à la confirmation de date)
     supabase
       .from('formateurs')
-      .select('id, prenom, nom')
+      .select('id, prenom, nom, zone_intervention')
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('nom'),

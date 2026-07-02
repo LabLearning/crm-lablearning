@@ -1100,7 +1100,6 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
   const supabase = await createServiceRoleClient()
   const date = (formData.get('date') as string) || ''
   const formateurId = (formData.get('formateur_id') as string) || ''
-  const lieu = (formData.get('lieu') as string) || null
   if (!date) return { success: false, error: 'Date requise' }
   if (!formateurId) return { success: false, error: 'Formateur requis' }
 
@@ -1110,6 +1109,8 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
   if (lf.session_id) return { success: false, error: 'Une session existe déjà pour cette formation' }
 
   const { data: lead } = await supabase.from('leads').select('*').eq('id', lf.lead_id).single()
+  // Lieu de la session = adresse de la société (intra chez le client)
+  const companyLieu = [lead?.adresse, [lead?.code_postal, lead?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null
 
   const { data: formation } = await supabase.from('formations').select('intitule, duree_jours').eq('id', lf.formation_id).single()
   const dureeJours = Number(formation?.duree_jours) || 1
@@ -1130,7 +1131,7 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
       intitule: formation?.intitule || null,
       date_debut: date,
       date_fin: dateFin,
-      lieu: lieu || lf.lieu || null,
+      lieu: companyLieu,
       places_min: 1,
       places_max: lead?.nombre_stagiaires || null,
       status: 'planifiee',
@@ -1146,7 +1147,6 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
 
   await supabase.from('lead_formations').update({
     date_confirmee: date, formateur_id: formateurId, planification_status: 'date_confirmee', session_id: newSession.id,
-    lieu: lieu || lf.lieu || null,
   }).eq('id', leadFormationId)
 
   if (lead?.assigned_to) {
