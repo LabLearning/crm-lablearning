@@ -16,10 +16,14 @@ export interface Document {
   file_url: string | null
   file_name: string | null
   file_size: number | null
+  mime_type: string | null
+  storage_path: string | null
   requires_signature: boolean
   client_id: string | null
   session_id: string | null
   dossier_id: string | null
+  formateur_id: string | null
+  apprenant_id: string | null
   version: number
   tags: string[]
   created_by: string | null

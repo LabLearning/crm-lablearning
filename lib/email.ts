@@ -401,7 +401,9 @@ export async function sendDocumentEmail(params: {
   footerNote?: string
   pdfBuffer?: Buffer | Uint8Array
   pdfFilename?: string
+  attachmentContentType?: string  // défaut application/pdf
 }): Promise<{ success: boolean; error?: string }> {
+  const fileExt = (params.pdfFilename?.split('.').pop() || 'DOC').toUpperCase().slice(0, 4)
   const metaRows = (params.metadata || [])
     .map(([k, v]) => `<tr><td style="padding:6px 0;color:#71717a;font-size:12px;width:130px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">${k}</td><td style="padding:6px 0;color:#18181b;font-size:14px;">${v}</td></tr>`)
     .join('')
@@ -423,7 +425,7 @@ export async function sendDocumentEmail(params: {
       <tr><td style="background-color:#eef7f3;border:1px solid #cfe3db;border-radius:8px;padding:12px 16px;">
         <table role="presentation" cellspacing="0" cellpadding="0"><tr>
           <td style="vertical-align:middle;padding-right:10px;">
-            <div style="width:28px;height:28px;background-color:#195144;border-radius:6px;text-align:center;line-height:28px;color:#fff;font-size:11px;font-weight:800;">PDF</div>
+            <div style="width:28px;height:28px;background-color:#195144;border-radius:6px;text-align:center;line-height:28px;color:#fff;font-size:10px;font-weight:800;">${fileExt}</div>
           </td>
           <td><span style="color:#195144;font-size:13px;font-weight:600;">${params.pdfFilename}</span><br><span style="color:#71717a;font-size:11px;">Document joint à cet email</span></td>
         </tr></table>
@@ -444,7 +446,7 @@ export async function sendDocumentEmail(params: {
     ? [{
         filename: params.pdfFilename,
         content: Buffer.from(params.pdfBuffer).toString('base64'),
-        contentType: 'application/pdf',
+        contentType: params.attachmentContentType || 'application/pdf',
       }]
     : undefined
 
