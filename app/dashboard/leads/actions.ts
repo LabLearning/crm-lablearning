@@ -325,6 +325,7 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
       code_idcc: lead.code_idcc,
       convention_collective: lead.convention_collective,
       numero_opco: lead.numero_opco,
+      assigned_to: lead.assigned_to || session.user.id,
       created_by: session.user.id,
     })
     .select()

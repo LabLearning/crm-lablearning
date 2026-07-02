@@ -32,6 +32,13 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
   if (!client) redirect('/dashboard/clients')
 
+  // Contrôle d'accès : un commercial ne peut voir que ses clients assignés
+  const role = session.user.role
+  const canAssign = ['super_admin', 'gestionnaire', 'directeur_commercial', 'comptable'].includes(role)
+  if (role === 'commercial' && (client as any).assigned_to !== session.user.id) {
+    redirect('/dashboard/clients')
+  }
+
   // Données liées — toutes indépendantes (ne dépendent que de l'id client) → en parallèle
   const [
     { data: contacts },
@@ -39,15 +46,21 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     { data: dossiers },
     { data: devis },
     { data: factures },
+    { data: users },
   ] = await Promise.all([
     supabase.from('contacts').select('*').eq('client_id', params.id).order('est_principal', { ascending: false }),
     supabase.from('leads').select('*').eq('converted_client_id', params.id).order('created_at', { ascending: false }),
     supabase.from('dossiers_formation').select('*').eq('client_id', params.id).order('created_at', { ascending: false }),
     supabase.from('devis').select('*').eq('client_id', params.id).order('created_at', { ascending: false }),
     supabase.from('factures').select('*').eq('client_id', params.id).order('date_emission', { ascending: false }),
+    canAssign
+      ? supabase.from('users').select('id, first_name, last_name').eq('organization_id', session.organization.id).eq('status', 'active').order('first_name')
+      : Promise.resolve({ data: [] as any[] }),
   ])
 
   const c = client as Client
+  const assignee = (users || []).find((u: any) => u.id === c.assigned_to)
+  const assignedName = assignee ? `${assignee.first_name || ''} ${assignee.last_name || ''}`.trim() : null
   const contactsList = (contacts || []) as any[]
   const dossiersList = (dossiers || []) as any[]
   const devisList = (devis || []) as any[]
@@ -87,7 +100,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         <Link href="/dashboard/clients" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700">
           <ArrowLeft className="h-4 w-4" /> Clients
         </Link>
-        <ClientEditButton client={c} />
+        <ClientEditButton client={c} users={(users || []) as any[]} canAssign={canAssign} />
       </div>
 
       {/* En-tête */}
@@ -100,6 +113,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <Badge variant={isEntreprise ? 'info' : 'default'}>{CLIENT_TYPE_LABELS[c.type]}</Badge>
             {c.financeur_type && <Badge variant="warning">{FINANCEUR_LABELS[c.financeur_type]}</Badge>}
+            {canAssign && assignedName && <Badge variant="default">Assigné à {assignedName}</Badge>}
             {(c.tags || []).map((t) => <Badge key={t} variant="default">{t}</Badge>)}
           </div>
           <div className="flex items-center gap-4 mt-2.5 text-sm text-surface-500 flex-wrap">

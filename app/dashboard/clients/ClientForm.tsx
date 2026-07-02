@@ -13,6 +13,8 @@ interface ClientFormProps {
   client?: Client
   onSuccess: () => void
   onCancel: () => void
+  users?: { id: string; first_name: string | null; last_name: string | null }[]
+  canAssign?: boolean
 }
 
 const typeOptions = Object.entries(CLIENT_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))
@@ -25,7 +27,7 @@ const tailleOptions = [
   { value: 'GE', label: 'Grande entreprise (5000+)' },
 ]
 
-export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
+export function ClientForm({ client, onSuccess, onCancel, users = [], canAssign = false }: ClientFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [clientType, setClientType] = useState(client?.type || 'entreprise')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
@@ -157,6 +159,19 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
         value={clientType}
         onChange={(e) => setClientType(e.target.value as 'entreprise' | 'particulier')}
       />
+
+      {canAssign && (
+        <Select
+          id="assigned_to"
+          name="assigned_to"
+          label="Assigné à"
+          options={[
+            { value: '', label: '— Non assigné —' },
+            ...users.map((u) => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Utilisateur' })),
+          ]}
+          defaultValue={client?.assigned_to || ''}
+        />
+      )}
 
       {clientType === 'entreprise' ? (
         <>

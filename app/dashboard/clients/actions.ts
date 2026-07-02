@@ -61,6 +61,7 @@ export async function createClientAction(formData: FormData): Promise<ActionResu
     est_qualiopi: parsed.data.est_qualiopi === true,
     est_organisme_formation: parsed.data.est_organisme_formation === true,
     notes: parsed.data.notes || null,
+    assigned_to: parsed.data.assigned_to || session.user.id,
     created_by: session.user.id,
   }
 
@@ -142,6 +143,13 @@ export async function updateClientAction(id: string, formData: FormData): Promis
     est_qualiopi: parsed.data.est_qualiopi === true,
     est_organisme_formation: parsed.data.est_organisme_formation === true,
     notes: parsed.data.notes || null,
+  } as Record<string, unknown>
+
+  // N'écrase l'assignation que si le champ est présent dans le formulaire.
+  // (Les commerciaux ne voient pas ce champ → il est absent → assignation préservée.
+  //  Les managers l'envoient toujours, vide = désassigner.)
+  if (parsed.data.assigned_to !== undefined) {
+    updateData.assigned_to = parsed.data.assigned_to || null
   }
 
   const { error } = await supabase

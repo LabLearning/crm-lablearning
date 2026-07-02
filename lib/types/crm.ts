@@ -170,12 +170,14 @@ export interface Client {
   tags: string[]
   notes: string | null
   score: number
+  assigned_to: string | null
   created_by: string | null
   created_at: string
   updated_at: string
   // Virtual
   _contacts_count?: number
   _display_name?: string
+  assigned_user?: { first_name: string | null; last_name: string | null } | null
 }
 
 export interface Contact {

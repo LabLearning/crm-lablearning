@@ -112,6 +112,7 @@ export const createClientSchema = z.object({
   dirigeant_prenom: z.string().optional(),
   dirigeant_nom: z.string().optional(),
   dirigeant_qualite: z.string().optional(),
+  assigned_to: z.string().uuid().optional().or(z.literal('')),
   notes: z.string().optional(),
 }).refine((data) => {
   if (data.type === 'entreprise' && !data.raison_sociale) {

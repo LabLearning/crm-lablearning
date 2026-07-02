@@ -10,11 +10,15 @@ import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import { formatDate } from '@/lib/utils'
 import type { Client } from '@/lib/types/crm'
 
+interface OrgUser { id: string; first_name: string | null; last_name: string | null; role?: string }
+
 interface ClientsListProps {
   clients: Client[]
+  users?: OrgUser[]
+  canAssign?: boolean
 }
 
-export function ClientsList({ clients }: ClientsListProps) {
+export function ClientsList({ clients, users = [], canAssign = false }: ClientsListProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [search, setSearch] = useState('')
@@ -188,13 +192,13 @@ export function ClientsList({ clients }: ClientsListProps) {
 
       {/* Create Modal */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouveau client" size="lg">
-        <ClientForm onSuccess={() => { setCreateOpen(false); toast('success', 'Client créé') }} onCancel={() => setCreateOpen(false)} />
+        <ClientForm users={users} canAssign={canAssign} onSuccess={() => { setCreateOpen(false); toast('success', 'Client créé') }} onCancel={() => setCreateOpen(false)} />
       </Modal>
 
       {/* Edit Modal */}
       <Modal isOpen={!!editClient} onClose={() => setEditClient(null)} title="Modifier le client" size="lg">
         {editClient && (
-          <ClientForm client={editClient} onSuccess={() => { setEditClient(null); toast('success', 'Client mis à jour') }} onCancel={() => setEditClient(null)} />
+          <ClientForm client={editClient} users={users} canAssign={canAssign} onSuccess={() => { setEditClient(null); toast('success', 'Client mis à jour') }} onCancel={() => setEditClient(null)} />
         )}
       </Modal>
     </div>
