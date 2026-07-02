@@ -1099,6 +1099,7 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
   const supabase = await createServiceRoleClient()
   const date = (formData.get('date') as string) || ''
   const formateurId = (formData.get('formateur_id') as string) || ''
+  const lieu = (formData.get('lieu') as string) || null
   if (!date) return { success: false, error: 'Date requise' }
   if (!formateurId) return { success: false, error: 'Formateur requis' }
 
@@ -1128,6 +1129,7 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
       intitule: formation?.intitule || null,
       date_debut: date,
       date_fin: dateFin,
+      lieu,
       places_min: 1,
       places_max: lead?.nombre_stagiaires || null,
       status: 'planifiee',

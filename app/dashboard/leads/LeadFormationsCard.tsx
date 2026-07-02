@@ -122,6 +122,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
   const router = useRouter()
   const [date, setDate] = useState(lf.date_confirmee || lf.date_souhaitee || '')
   const [formateurId, setFormateurId] = useState(lf.formateur_id || '')
+  const [lieu, setLieu] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [assigned, setAssigned] = useState<Set<string>>(new Set((lf.assignments || []).map((a) => a.lead_participant_id)))
 
@@ -133,7 +134,7 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
     if (!date) { toast('error', 'Choisissez une date'); return }
     if (!formateurId) { toast('error', 'Choisissez un formateur'); return }
     setBusy('confirm')
-    const fd = new FormData(); fd.set('date', date); fd.set('formateur_id', formateurId)
+    const fd = new FormData(); fd.set('date', date); fd.set('formateur_id', formateurId); fd.set('lieu', lieu)
     const res = await confirmLeadFormationDateAction(lf.id, fd)
     if (res.success) { toast('success', 'Date confirmée — session créée'); router.refresh() }
     else toast('error', res.error || 'Erreur')
@@ -222,6 +223,10 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete }: {
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-base w-full" />
             </div>
             <Select label="Formateur" options={formateurOptions} value={formateurId} onChange={(e) => setFormateurId(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-2xs text-surface-400 mb-0.5">Lieu / adresse de la formation</label>
+            <input type="text" value={lieu} onChange={(e) => setLieu(e.target.value)} placeholder="Ex. 12 rue des Fleurs, 67000 Strasbourg (ou visio)" className="input-base w-full" />
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={confirm} isLoading={busy === 'confirm'} icon={<CalendarCheck className="h-3.5 w-3.5" />}>Confirmer &amp; créer la session</Button>
