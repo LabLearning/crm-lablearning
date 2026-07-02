@@ -61,6 +61,7 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     apporteur_id: apporteurId,
     assigned_to: parsed.data.assigned_to || (session.user.role === 'apporteur_affaires' ? null : session.user.id),
     source: session.user.role === 'apporteur_affaires' ? 'apporteur_affaires' : (parsed.data.source || 'autre'),
+    formation_id: (() => { const f = formData.get('formation_id') as string; return f && f !== '__custom' ? f : null })(),
     status: 'nouveau' as const,
   }
 
@@ -173,6 +174,7 @@ export async function updateLeadAction(id: string, formData: FormData): Promise<
     est_organisme_formation: parsed.data.est_organisme_formation === true,
     apporteur_id: parsed.data.apporteur_id || null,
     assigned_to: parsed.data.assigned_to || null,
+    formation_id: (() => { const f = formData.get('formation_id') as string; return f && f !== '__custom' ? f : null })(),
   }
 
   const { error } = await supabase
