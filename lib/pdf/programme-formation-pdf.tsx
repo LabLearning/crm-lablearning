@@ -207,14 +207,21 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
           </View>
         ) : null)}
 
-        {/* Méthodes & moyens */}
-        {(formation.methodes_pedagogiques || formation.moyens_techniques) ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="monitor">Méthodes et moyens pédagogiques</PdfSectionTitle>
-            {formation.methodes_pedagogiques ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5, marginBottom: 5 }}>{formation.methodes_pedagogiques}</Text> : null}
-            {formation.moyens_techniques ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{formation.moyens_techniques}</Text> : null}
-          </View>
-        ) : null}
+        {/* Méthodes & moyens — évite le doublon si les 2 champs se recouvrent */}
+        {(() => {
+          const meth = (formation.methodes_pedagogiques || '').trim()
+          const moy = (formation.moyens_techniques || '').trim()
+          const norm = (s: string) => s.replace(/\s+/g, ' ').toLowerCase()
+          const showMoy = !!moy && !norm(meth).includes(norm(moy))
+          if (!meth && !moy) return null
+          return (
+            <View style={shared.section}>
+              <PdfSectionTitle icon="monitor">Méthodes et moyens pédagogiques</PdfSectionTitle>
+              {meth ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5, marginBottom: 5 }}>{meth}</Text> : null}
+              {showMoy ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{moy}</Text> : null}
+            </View>
+          )
+        })()}
 
         {/* Évaluation */}
         <View style={shared.section}>
