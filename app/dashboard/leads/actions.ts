@@ -76,15 +76,17 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     return { success: false, error: `Erreur : ${error.message}` }
   }
 
-  // Modèle multi-formations : la formation choisie devient la 1re formation demandée
-  if (insertData.formation_id) {
-    await supabase.from('lead_formations').insert({
+  // Modèle multi-formations : une lead_formation par formation sélectionnée
+  const rawFids = ((formData.get('formation_ids') as string) || '').split(',').map((s) => s.trim()).filter(Boolean)
+  const fids = Array.from(new Set(rawFids.length ? rawFids : (insertData.formation_id ? [insertData.formation_id] : [])))
+  if (fids.length > 0) {
+    await supabase.from('lead_formations').insert(fids.map((fid) => ({
       organization_id: session.organization.id,
       lead_id: data.id,
-      formation_id: insertData.formation_id,
+      formation_id: fid,
       date_souhaitee: parsed.data.date_souhaitee || null,
       planification_status: 'a_planifier',
-    })
+    })))
   }
 
   await logAudit({
@@ -1057,7 +1059,6 @@ export async function addLeadFormationAction(leadId: string, formData: FormData)
       lead_id: leadId,
       formation_id: formationId,
       date_souhaitee: (formData.get('date_souhaitee') as string) || null,
-      lieu: (formData.get('lieu') as string) || null,
       planification_status: 'a_planifier',
     })
     .select('*, formation:formations(intitule, reference, duree_jours, duree_heures, tarif_intra_ht), assignments:lead_formation_participants(lead_participant_id)')

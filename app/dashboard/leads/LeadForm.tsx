@@ -58,8 +58,9 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
   const initialMatchedFormation = lead?.formation_souhaitee
     ? formations.find(f => f.intitule === lead.formation_souhaitee)
     : null
-  const [selectedFormation, setSelectedFormation] = useState(
-    initialMatchedFormation ? initialMatchedFormation.id : (lead?.formation_souhaitee ? '__custom' : '')
+  // Multi-sélection de formations du catalogue
+  const [selectedFormationIds, setSelectedFormationIds] = useState<string[]>(
+    initialMatchedFormation ? [initialMatchedFormation.id] : []
   )
   const [isCustomFormation, setIsCustomFormation] = useState(
     !!lead?.formation_souhaitee && !initialMatchedFormation
@@ -138,10 +139,15 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
     { value: '__custom', label: 'Autre (formation spéciale)' },
   ]
 
-  function handleFormationChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  function addFormation(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value
-    setSelectedFormation(val)
-    setIsCustomFormation(val === '__custom')
+    if (!val) return
+    if (val === '__custom') { setIsCustomFormation(true); e.target.value = ''; return }
+    setSelectedFormationIds((ids) => ids.includes(val) ? ids : [...ids, val])
+    e.target.value = ''
+  }
+  function removeFormation(id: string) {
+    setSelectedFormationIds((ids) => ids.filter((x) => x !== id))
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -155,19 +161,20 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
     formData.set('est_qualiopi', estQualiopi ? 'true' : 'false')
     formData.set('est_organisme_formation', estOrgFormation ? 'true' : 'false')
 
-    // Formation souhaitée : depuis le catalogue ou champ libre
-    if (selectedFormation && selectedFormation !== '__custom') {
-      const formation = formations.find(f => f.id === selectedFormation)
-      if (formation) {
-        formData.set('formation_souhaitee', formation.intitule)
-        // Pour l'apporteur, calculer un montant indicatif (tarif intra OU inter × nb)
-        const tarif = formation.tarif_intra_ht || formation.tarif_inter_ht
-        if (isApporteur && tarif) {
-          const nbStagiaires = parseInt(formData.get('nombre_stagiaires') as string) || 1
-          formData.set('montant_estime', String(tarif * nbStagiaires))
-        }
+    // Formations souhaitées : multi-sélection du catalogue (+ éventuel champ libre)
+    formData.set('formation_ids', selectedFormationIds.join(','))
+    if (selectedFormationIds.length > 0) {
+      const first = formations.find(f => f.id === selectedFormationIds[0])
+      const labels = selectedFormationIds.map(id => formations.find(f => f.id === id)?.intitule).filter(Boolean)
+      formData.set('formation_id', selectedFormationIds[0])
+      formData.set('formation_souhaitee', labels.join(', '))
+      // Montant indicatif (apporteur) sur la 1re formation
+      const tarif = first?.tarif_intra_ht || first?.tarif_inter_ht
+      if (isApporteur && tarif) {
+        const nbStagiaires = parseInt(formData.get('nombre_stagiaires') as string) || 1
+        formData.set('montant_estime', String(tarif * nbStagiaires))
       }
-    } else if (selectedFormation === '__custom') {
+    } else if (isCustomFormation && customFormationText) {
       formData.set('formation_souhaitee', customFormationText)
     } else {
       formData.set('formation_souhaitee', '')
@@ -301,27 +308,36 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
       {/* ── Recueil du besoin ── */}
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Recueil du besoin</div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="formation_id" className="text-sm font-medium text-surface-700">
-          Formation souhaitée{isApporteur ? ' *' : ''}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-surface-700">
+          Formation(s) souhaitée(s){isApporteur ? ' *' : ''}
         </label>
-        <select
-          id="formation_id"
-          name="formation_id"
-          value={selectedFormation}
-          onChange={handleFormationChange}
-          className="input-base"
-        >
+        {/* Chips des formations sélectionnées */}
+        {selectedFormationIds.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {selectedFormationIds.map((id) => {
+              const f = formations.find((x) => x.id === id)
+              return (
+                <span key={id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium border border-brand-100">
+                  {f?.intitule || 'Formation'}
+                  <button type="button" onClick={() => removeFormation(id)} className="text-brand-400 hover:text-brand-700">×</button>
+                </span>
+              )
+            })}
+          </div>
+        )}
+        <select onChange={addFormation} defaultValue="" className="input-base">
           <option value="">
             {formations.length === 0
-              ? 'Aucune formation dans le catalogue — saisie libre uniquement'
-              : `Sélectionner une formation (${formations.length} disponible${formations.length > 1 ? 's' : ''})`}
+              ? 'Aucune formation au catalogue — saisie libre uniquement'
+              : `+ Ajouter une formation (${formations.length} disponible${formations.length > 1 ? 's' : ''})`}
           </option>
-          {formations.map(f => (
+          {formations.filter((f) => !selectedFormationIds.includes(f.id)).map(f => (
             <option key={f.id} value={f.id}>{f.intitule}</option>
           ))}
           <option value="__custom">— Autre formation (saisie libre) —</option>
         </select>
+        <p className="text-2xs text-surface-400">Vous pouvez en sélectionner plusieurs — chacune aura sa session et sa convention.</p>
       </div>
 
       {isCustomFormation && (
