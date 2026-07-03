@@ -106,15 +106,16 @@ function sessionTooltip(s: Session, date: string): string {
 const ROW_H = 48            // hauteur d'une heure (px)
 const DAY_START_H = 8       // l'agenda commence à 08:00 (voir HEURES)
 function toMin(t?: string): number { const [h, m] = String(t || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0) }
-// Palette pour différencier les sessions simultanées
+// Palette pour différencier les sessions simultanées (ordonnée pour un contraste
+// maximal entre colonnes voisines)
 const AGENDA_PALETTE = [
-  'bg-brand-100 border-brand-300 text-brand-800',
   'bg-emerald-100 border-emerald-300 text-emerald-800',
+  'bg-purple-100 border-purple-300 text-purple-800',
   'bg-amber-100 border-amber-300 text-amber-800',
   'bg-sky-100 border-sky-300 text-sky-800',
-  'bg-purple-100 border-purple-300 text-purple-800',
   'bg-rose-100 border-rose-300 text-rose-800',
   'bg-teal-100 border-teal-300 text-teal-800',
+  'bg-brand-100 border-brand-300 text-brand-800',
 ]
 function colorFor(id: string): string {
   let h = 0
@@ -144,7 +145,9 @@ function layoutDay(sessions: Session[], date: string): Positioned[] {
       const top = Math.max(0, (it.startMin - DAY_START_H * 60) / 60 * ROW_H)
       const height = Math.max((it.endMin - it.startMin) / 60 * ROW_H - 2, 22)
       const widthPct = 100 / ncols
-      out.push({ s: it.s, top, height, leftPct: it.col * widthPct, widthPct, color: colorFor(it.s.id), debut: it.debut, fin: it.fin })
+      // Couleur par colonne de chevauchement → sessions simultanées toujours distinctes
+      const color = ncols > 1 ? AGENDA_PALETTE[it.col % AGENDA_PALETTE.length] : colorFor(it.s.id)
+      out.push({ s: it.s, top, height, leftPct: it.col * widthPct, widthPct, color, debut: it.debut, fin: it.fin })
     })
     cluster = []; clusterEnd = -1
   }
