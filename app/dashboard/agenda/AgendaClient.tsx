@@ -32,12 +32,12 @@ function SessionTooltipCard({ s, date, className }: { s: Session; date: string; 
 }
 
 // Pastille compacte (vue mois)
-function SessionChip({ s, date }: { s: Session; date: string }) {
+function SessionChip({ s, date, color }: { s: Session; date: string; color?: string }) {
   const c = creneauForDate(s, date)
   return (
     <div className="relative group/chip">
       <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
-        className={cn('block px-1.5 py-0.5 rounded text-[9px] mb-0.5 border font-medium truncate hover:brightness-95', colorFor(s.id))}>
+        className={cn('block px-1.5 py-0.5 rounded text-[9px] mb-0.5 border font-medium truncate hover:brightness-95', color || colorFor(s.id))}>
         {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold mr-0.5">POEI</span>}
         {c && <span className="font-mono opacity-80">{c.debut}</span>} {s.titre}
       </Link>
@@ -128,9 +128,25 @@ function colorFor(id: string): string {
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
   return AGENDA_PALETTE[h % AGENDA_PALETTE.length]
 }
+// Couleur STABLE par session (même couleur sur toute sa durée) — coloration gloutonne :
+// deux sessions dont les dates se recouvrent reçoivent des couleurs différentes.
+function assignSessionColors(sessions: Session[]): Map<string, string> {
+  const sorted = [...sessions].sort((a, b) => a.dateDebut.localeCompare(b.dateDebut) || a.dateFin.localeCompare(b.dateFin) || a.id.localeCompare(b.id))
+  const map = new Map<string, string>()
+  const assigned: { dd: string; df: string; idx: number }[] = []
+  for (const s of sorted) {
+    const used = new Set<number>()
+    for (const a of assigned) { if (a.dd <= s.dateFin && a.df >= s.dateDebut) used.add(a.idx) }
+    let idx = 0
+    while (used.has(idx)) idx++
+    map.set(s.id, AGENDA_PALETTE[idx % AGENDA_PALETTE.length])
+    assigned.push({ dd: s.dateDebut, df: s.dateFin, idx })
+  }
+  return map
+}
 interface Positioned { s: Session; top: number; height: number; leftPct: number; widthPct: number; color: string; debut: string; fin: string }
 // Positionne les sessions d'un jour : hauteur = durée, colonnes côte à côte si chevauchement
-function layoutDay(sessions: Session[], date: string): Positioned[] {
+function layoutDay(sessions: Session[], date: string, colorMap: Map<string, string>): Positioned[] {
   const items = sessions
     .map((s) => { const c = creneauForDate(s, date); if (!c) return null; const startMin = toMin(c.debut); const endMin = Math.max(toMin(c.fin), startMin + 30); return { s, startMin, endMin, debut: c.debut, fin: c.fin, col: 0, ncols: 1 } })
     .filter(Boolean) as { s: Session; startMin: number; endMin: number; debut: string; fin: string; col: number; ncols: number }[]
@@ -151,8 +167,8 @@ function layoutDay(sessions: Session[], date: string): Positioned[] {
       const top = Math.max(0, (it.startMin - DAY_START_H * 60) / 60 * ROW_H)
       const height = Math.max((it.endMin - it.startMin) / 60 * ROW_H - 2, 22)
       const widthPct = 100 / ncols
-      // Couleur par colonne de chevauchement → sessions simultanées toujours distinctes
-      const color = ncols > 1 ? AGENDA_PALETTE[it.col % AGENDA_PALETTE.length] : colorFor(it.s.id)
+      // Couleur STABLE par session (identique sur toute sa durée)
+      const color = colorMap.get(it.s.id) || colorFor(it.s.id)
       out.push({ s: it.s, top, height, leftPct: it.col * widthPct, widthPct, color, debut: it.debut, fin: it.fin })
     })
     cluster = []; clusterEnd = -1
@@ -456,6 +472,8 @@ function FormationsView({
   sessions: Session[]
   getSessionsForDate: (d: string) => Session[]
 }) {
+  // Couleur stable par session (calculée une fois sur l'ensemble visible)
+  const colorMap = useMemo(() => assignSessionColors(sessions), [sessions])
   return (
     <>
       {/* SEMAINE */}
@@ -486,7 +504,7 @@ function FormationsView({
             {/* Colonnes des jours */}
             {weekDates.map(d => {
               const isToday = d === today
-              const positioned = layoutDay(getSessionsForDate(d), d)
+              const positioned = layoutDay(getSessionsForDate(d), d, colorMap)
               return (
                 <div key={d} className={cn('relative border-l border-surface-100', isToday && 'bg-brand-50/10')} style={{ height: HEURES.length * ROW_H }}>
                   {HEURES.map((h, i) => (
@@ -525,7 +543,7 @@ function FormationsView({
                     {date.getDate()}
                   </div>
                   {sess.slice(0, 3).map(s => (
-                    <SessionChip key={s.id} s={s} date={d} />
+                    <SessionChip key={s.id} s={s} date={d} color={colorMap.get(s.id)} />
                   ))}
                   {sess.length > 3 && <div className="text-[9px] text-surface-400 px-1">+{sess.length - 3}</div>}
                 </div>
