@@ -10,27 +10,50 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Pastille de session dans le calendrier + tooltip d'informations au survol
+// Carte d'infos affichée au survol (réutilisée par la pastille et le bloc)
+function SessionTooltipCard({ s, date, className }: { s: Session; date: string; className?: string }) {
+  const c = creneauForDate(s, date)
+  return (
+    <div className={cn('pointer-events-none hidden group-hover/chip:block absolute z-[60] w-56 rounded-xl bg-white shadow-modal border border-surface-200 p-3 text-left', className)}>
+      <div className="text-xs font-semibold text-surface-900 mb-1.5 leading-snug">{s.titre}</div>
+      <div className="space-y-1 text-2xs text-surface-500">
+        {c && <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 shrink-0" />{c.debut} – {c.fin}</div>}
+        <div className="flex items-center gap-1.5"><CalIcon className="h-3 w-3 shrink-0" />{frShort(s.dateDebut)}{s.dateFin !== s.dateDebut ? ` → ${frShort(s.dateFin)}` : ''}</div>
+        {s.lieu && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" />{s.lieu}</div>}
+        {s.formateurNom && <div className="flex items-center gap-1.5"><User className="h-3 w-3 shrink-0" />{s.formateurNom}</div>}
+      </div>
+      <div className="mt-2">
+        <span className="inline-block px-2 py-0.5 rounded-full bg-surface-100 text-surface-600 text-2xs font-medium">{SESSION_STATUS_FR[s.status] || s.status}</span>
+      </div>
+    </div>
+  )
+}
+
+// Pastille compacte (vue mois)
 function SessionChip({ s, date }: { s: Session; date: string }) {
   const c = creneauForDate(s, date)
   return (
     <div className="relative group/chip">
       <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
-        className="block px-1.5 py-1 rounded text-[10px] mb-0.5 bg-brand-50 text-brand-700 border border-brand-200 font-medium truncate hover:bg-brand-100">
-        {c && <span className="font-mono text-brand-500">{c.debut}</span>} {s.titre}
+        className={cn('block px-1.5 py-0.5 rounded text-[9px] mb-0.5 border font-medium truncate hover:brightness-95', colorFor(s.id))}>
+        {c && <span className="font-mono opacity-80">{c.debut}</span>} {s.titre}
       </Link>
-      <div className="pointer-events-none hidden group-hover/chip:block absolute z-[60] left-0 top-full mt-1 w-56 rounded-xl bg-white shadow-modal border border-surface-200 p-3 text-left">
-        <div className="text-xs font-semibold text-surface-900 mb-1.5 leading-snug">{s.titre}</div>
-        <div className="space-y-1 text-2xs text-surface-500">
-          {c && <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 shrink-0" />{c.debut} – {c.fin}</div>}
-          <div className="flex items-center gap-1.5"><CalIcon className="h-3 w-3 shrink-0" />{frShort(s.dateDebut)}{s.dateFin !== s.dateDebut ? ` → ${frShort(s.dateFin)}` : ''}</div>
-          {s.lieu && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" />{s.lieu}</div>}
-          {s.formateurNom && <div className="flex items-center gap-1.5"><User className="h-3 w-3 shrink-0" />{s.formateurNom}</div>}
-        </div>
-        <div className="mt-2">
-          <span className="inline-block px-2 py-0.5 rounded-full bg-surface-100 text-surface-600 text-2xs font-medium">{SESSION_STATUS_FR[s.status] || s.status}</span>
-        </div>
-      </div>
+      <SessionTooltipCard s={s} date={date} className="left-0 top-full mt-1" />
+    </div>
+  )
+}
+
+// Bloc positionné (vue semaine) : s'étend sur toute la plage horaire
+function SessionBlock({ p, date }: { p: Positioned; date: string }) {
+  const s = p.s
+  return (
+    <div className="absolute group/chip px-0.5" style={{ top: p.top, height: p.height, left: `${p.leftPct}%`, width: `${p.widthPct}%` }}>
+      <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
+        className={cn('flex flex-col h-full rounded-md border px-1.5 py-1 overflow-hidden hover:brightness-95 transition', p.color)}>
+        <span className="text-[9px] font-mono leading-none opacity-80">{p.debut}–{p.fin}</span>
+        <span className="text-[10px] font-medium leading-tight mt-0.5 line-clamp-3">{s.titre}</span>
+      </Link>
+      <SessionTooltipCard s={s} date={date} className="left-full top-0 ml-1" />
     </div>
   )
 }
@@ -77,6 +100,57 @@ function sessionTooltip(s: Session, date: string): string {
   if (s.formateurNom) lines.push(`Formateur : ${s.formateurNom}`)
   lines.push(`Statut : ${SESSION_STATUS_FR[s.status] || s.status}`)
   return lines.join('\n')
+}
+
+// ── Layout calendrier (blocs qui s'étendent sur leur plage + colonnes si chevauchement) ──
+const ROW_H = 48            // hauteur d'une heure (px)
+const DAY_START_H = 8       // l'agenda commence à 08:00 (voir HEURES)
+function toMin(t?: string): number { const [h, m] = String(t || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0) }
+// Palette pour différencier les sessions simultanées
+const AGENDA_PALETTE = [
+  'bg-brand-100 border-brand-300 text-brand-800',
+  'bg-emerald-100 border-emerald-300 text-emerald-800',
+  'bg-amber-100 border-amber-300 text-amber-800',
+  'bg-sky-100 border-sky-300 text-sky-800',
+  'bg-purple-100 border-purple-300 text-purple-800',
+  'bg-rose-100 border-rose-300 text-rose-800',
+  'bg-teal-100 border-teal-300 text-teal-800',
+]
+function colorFor(id: string): string {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
+  return AGENDA_PALETTE[h % AGENDA_PALETTE.length]
+}
+interface Positioned { s: Session; top: number; height: number; leftPct: number; widthPct: number; color: string; debut: string; fin: string }
+// Positionne les sessions d'un jour : hauteur = durée, colonnes côte à côte si chevauchement
+function layoutDay(sessions: Session[], date: string): Positioned[] {
+  const items = sessions
+    .map((s) => { const c = creneauForDate(s, date); if (!c) return null; const startMin = toMin(c.debut); const endMin = Math.max(toMin(c.fin), startMin + 30); return { s, startMin, endMin, debut: c.debut, fin: c.fin, col: 0, ncols: 1 } })
+    .filter(Boolean) as { s: Session; startMin: number; endMin: number; debut: string; fin: string; col: number; ncols: number }[]
+  items.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
+
+  const out: Positioned[] = []
+  let cluster: typeof items = []
+  let clusterEnd = -1
+  const flush = () => {
+    const colEnds: number[] = []
+    cluster.forEach((it) => {
+      let placed = false
+      for (let ci = 0; ci < colEnds.length; ci++) { if (colEnds[ci] <= it.startMin) { it.col = ci; colEnds[ci] = it.endMin; placed = true; break } }
+      if (!placed) { it.col = colEnds.length; colEnds.push(it.endMin) }
+    })
+    const ncols = colEnds.length
+    cluster.forEach((it) => {
+      const top = Math.max(0, (it.startMin - DAY_START_H * 60) / 60 * ROW_H)
+      const height = Math.max((it.endMin - it.startMin) / 60 * ROW_H - 2, 22)
+      const widthPct = 100 / ncols
+      out.push({ s: it.s, top, height, leftPct: it.col * widthPct, widthPct, color: colorFor(it.s.id), debut: it.debut, fin: it.fin })
+    })
+    cluster = []; clusterEnd = -1
+  }
+  items.forEach((it) => { if (cluster.length && it.startMin >= clusterEnd) flush(); cluster.push(it); clusterEnd = Math.max(clusterEnd, it.endMin) })
+  if (cluster.length) flush()
+  return out
 }
 interface User {
   id: string; first_name: string | null; last_name: string | null; email: string
@@ -393,22 +467,27 @@ function FormationsView({
               )
             })}
           </div>
-          {HEURES.map(h => (
-            <div key={h} className="grid grid-cols-8 border-b border-surface-100 last:border-0 min-h-[48px]">
-              <div className="p-2 text-[11px] text-surface-400 font-mono text-right pr-3 pt-1">{h}</div>
-              {weekDates.map(d => {
-                const sess = getSessionsForDate(d)
-                const isToday = d === today
-                return (
-                  <div key={d} className={cn('border-l border-surface-100 p-0.5 min-h-[48px]', isToday && 'bg-brand-50/10')}>
-                    {sess.filter(s => startRowForDate(s, d) === h).map(s => (
-                      <SessionChip key={s.id} s={s} date={d} />
-                    ))}
-                  </div>
-                )
-              })}
+          <div className="grid grid-cols-8">
+            {/* Colonne des heures */}
+            <div className="relative" style={{ height: HEURES.length * ROW_H }}>
+              {HEURES.map((h, i) => (
+                <div key={h} className="absolute right-3 text-[11px] text-surface-400 font-mono" style={{ top: i * ROW_H - 6 }}>{h}</div>
+              ))}
             </div>
-          ))}
+            {/* Colonnes des jours */}
+            {weekDates.map(d => {
+              const isToday = d === today
+              const positioned = layoutDay(getSessionsForDate(d), d)
+              return (
+                <div key={d} className={cn('relative border-l border-surface-100', isToday && 'bg-brand-50/10')} style={{ height: HEURES.length * ROW_H }}>
+                  {HEURES.map((h, i) => (
+                    <div key={h} className="absolute left-0 right-0 border-b border-surface-100/70" style={{ top: i * ROW_H, height: ROW_H }} />
+                  ))}
+                  {positioned.map(p => <SessionBlock key={p.s.id} p={p} date={d} />)}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
