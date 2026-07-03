@@ -8,7 +8,7 @@ import {
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
   Star, ListChecks, FileSignature, Award,
 } from 'lucide-react'
-import { Badge } from '@/components/ui'
+import { Badge, PoeiBadge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction } from './actions'
 import { SignaturePad } from './SignaturePad'
@@ -36,6 +36,7 @@ interface Props {
   evaluationsAppr?: any[]
   isFormateur: boolean
   userRole: string
+  isPoei?: boolean
 }
 
 const SESSION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'danger' }> = {
@@ -54,7 +55,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], evaluationsAppr = [], isFormateur, userRole }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], evaluationsAppr = [], isFormateur, userRole, isPoei }: Props) {
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -144,9 +145,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           <ArrowLeft className="h-5 w-5 text-surface-500" />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading truncate">
-            {formation?.intitule || session.reference}
-          </h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading truncate">
+              {formation?.intitule || session.reference}
+            </h1>
+            {isPoei && <PoeiBadge />}
+          </div>
           <div className="flex items-center gap-4 mt-1 text-sm text-surface-500 flex-wrap">
             <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />
               {formatDate(session.date_debut, { day: 'numeric', month: 'long' })} — {formatDate(session.date_fin, { day: 'numeric', month: 'long', year: 'numeric' })}

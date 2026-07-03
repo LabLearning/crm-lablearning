@@ -13,7 +13,7 @@ export default async function SessionsPage() {
     .from('sessions')
     .select(`
       *,
-      formation:formation_id(intitule, reference, modalite, duree_heures),
+      formation:formation_id(intitule, reference, modalite, duree_heures, is_poei),
       formateur:formateurs(prenom, nom),
       client:client_id(raison_sociale)
     `)
@@ -31,6 +31,7 @@ export default async function SessionsPage() {
     { data: formateurs },
     { data: clients },
     { data: apprenants },
+    { data: poeiLinks },
   ] = await Promise.all([
     sessionIds.length > 0
       ? supabase.from('inscriptions').select('session_id, apprenant_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")')
@@ -61,6 +62,12 @@ export default async function SessionsPage() {
       .select('id, prenom, nom, email, client_id')
       .eq('organization_id', session.organization.id)
       .order('nom'),
+    // Sessions rattachées à un projet POEI
+    supabase
+      .from('poei')
+      .select('session_id')
+      .eq('organization_id', session.organization.id)
+      .not('session_id', 'is', null),
   ])
 
   // Regroupement en mémoire (rapide) — préserve l'ordre par 'ordre' déjà appliqué côté SQL
@@ -73,6 +80,8 @@ export default async function SessionsPage() {
     ;(formationsBySession[f.session_id] ||= []).push(f.formation_id)
   }
 
+  const poeiSessionIds = new Set((poeiLinks || []).map((p: any) => p.session_id))
+
   const sessionsWithCounts = (sessions || []).map((s) => {
     const inscritsIds = inscritsBySession[s.id] || []
     return {
@@ -80,6 +89,7 @@ export default async function SessionsPage() {
       _nb_inscrits: inscritsIds.length,
       _inscrits_ids: inscritsIds,
       _formation_ids: formationsBySession[s.id] || [],
+      _is_poei: !!((s as any).formation?.is_poei) || poeiSessionIds.has(s.id),
     }
   })
 

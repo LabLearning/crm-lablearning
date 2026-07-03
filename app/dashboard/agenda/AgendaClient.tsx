@@ -9,6 +9,7 @@ import {
   AlertCircle, User,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PoeiBadge } from '@/components/ui'
 
 // Carte d'infos affichée au survol (réutilisée par la pastille et le bloc)
 function SessionTooltipCard({ s, date, className }: { s: Session; date: string; className?: string }) {
@@ -22,8 +23,9 @@ function SessionTooltipCard({ s, date, className }: { s: Session; date: string; 
         {s.lieu && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" />{s.lieu}</div>}
         {s.formateurNom && <div className="flex items-center gap-1.5"><User className="h-3 w-3 shrink-0" />{s.formateurNom}</div>}
       </div>
-      <div className="mt-2">
+      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
         <span className="inline-block px-2 py-0.5 rounded-full bg-surface-100 text-surface-600 text-2xs font-medium">{SESSION_STATUS_FR[s.status] || s.status}</span>
+        {s.isPoei && <PoeiBadge />}
       </div>
     </div>
   )
@@ -36,6 +38,7 @@ function SessionChip({ s, date }: { s: Session; date: string }) {
     <div className="relative group/chip">
       <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
         className={cn('block px-1.5 py-0.5 rounded text-[9px] mb-0.5 border font-medium truncate hover:brightness-95', colorFor(s.id))}>
+        {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold mr-0.5">POEI</span>}
         {c && <span className="font-mono opacity-80">{c.debut}</span>} {s.titre}
       </Link>
       <SessionTooltipCard s={s} date={date} className="left-0 top-full mt-1" />
@@ -50,7 +53,10 @@ function SessionBlock({ p, date }: { p: Positioned; date: string }) {
     <div className="absolute group/chip px-0.5" style={{ top: p.top, height: p.height, left: `${p.leftPct}%`, width: `${p.widthPct}%` }}>
       <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
         className={cn('flex flex-col h-full rounded-md border px-1.5 py-1 overflow-hidden hover:brightness-95 transition', p.color)}>
-        <span className="text-[9px] font-mono leading-none opacity-80">{p.debut}–{p.fin}</span>
+        <span className="text-[9px] font-mono leading-none opacity-80 flex items-center gap-1">
+          {p.debut}–{p.fin}
+          {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold leading-tight">POEI</span>}
+        </span>
         <span className="text-[10px] font-medium leading-tight mt-0.5 line-clamp-3">{s.titre}</span>
       </Link>
       <SessionTooltipCard s={s} date={date} className="left-full top-0 ml-1" />
@@ -66,7 +72,7 @@ interface HoraireJour { date: string; matin_debut?: string; matin_fin?: string; 
 interface Session {
   id: string; titre: string; dateDebut: string; dateFin: string
   horaires: string; lieu: string; status: string
-  reference?: string; formateurNom?: string | null; horairesJours?: HoraireJour[]
+  reference?: string; formateurNom?: string | null; horairesJours?: HoraireJour[]; isPoei?: boolean
 }
 
 // Créneau (début / fin) d'une session pour une date donnée, depuis horaires_jours

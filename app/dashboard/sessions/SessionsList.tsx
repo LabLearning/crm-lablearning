@@ -5,7 +5,7 @@ import {
   Plus, Search, Pencil, Trash2, Users, QrCode,
   Calendar, MapPin, Video, Clock, User as UserIcon, Building2,
 } from 'lucide-react'
-import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Modal, useToast, RowMenu, PoeiBadge } from '@/components/ui'
 import { SessionForm } from './SessionForm'
 import { deleteSessionAction, updateSessionStatusAction } from './actions'
 import {
@@ -155,6 +155,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {(s as any)._is_poei && <PoeiBadge />}
                     <Badge variant={SESSION_STATUS_COLORS[s.status]} dot>{SESSION_STATUS_LABELS[s.status]}</Badge>
                     {isToday(s) && <Badge variant="info">Aujourd&apos;hui</Badge>}
                   </div>

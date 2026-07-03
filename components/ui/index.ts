@@ -14,3 +14,4 @@ export { PageHeader, SearchBar, FilterPills, EmptyState, DropdownMenu, StatCard,
 export { ProgressRing } from './ProgressRing'
 export { RowMenu } from './RowMenu'
 export type { RowMenuItem } from './RowMenu'
+export { PoeiBadge } from './PoeiBadge'

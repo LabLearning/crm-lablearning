@@ -9,7 +9,7 @@ export default async function AgendaPage() {
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 
-  const [interactionsRes, sessionsRes, tachesRes, usersRes] = await Promise.all([
+  const [interactionsRes, sessionsRes, tachesRes, usersRes, poeiRes] = await Promise.all([
     supabase
       .from('lead_interactions')
       .select('*, lead:leads(contact_nom, contact_prenom, entreprise)')
@@ -17,7 +17,7 @@ export default async function AgendaPage() {
       .order('date', { ascending: true }),
     supabase
       .from('sessions')
-      .select('id, reference, date_debut, date_fin, horaires, horaires_jours, lieu, status, formation:formation_id(intitule), formateur:formateurs(prenom, nom)')
+      .select('id, reference, date_debut, date_fin, horaires, horaires_jours, lieu, status, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom)')
       .eq('organization_id', orgId)
       .in('status', ['planifiee', 'confirmee', 'en_cours']),
     supabase
@@ -34,7 +34,15 @@ export default async function AgendaPage() {
       .select('id, first_name, last_name, email')
       .eq('organization_id', orgId)
       .eq('status', 'active'),
+    // Sessions rattachées à un projet POEI
+    supabase
+      .from('poei')
+      .select('session_id')
+      .eq('organization_id', orgId)
+      .not('session_id', 'is', null),
   ])
+
+  const poeiSessionIds = new Set((poeiRes.data || []).map((p: any) => p.session_id))
 
   return (
     <div className="animate-fade-in">
@@ -60,6 +68,7 @@ export default async function AgendaPage() {
           lieu: s.lieu || '',
           status: s.status,
           formateurNom: s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null,
+          isPoei: !!(s.formation?.is_poei) || poeiSessionIds.has(s.id),
         }))}
         taches={(tachesRes.data || []).map((t: any) => ({
           id: t.id,

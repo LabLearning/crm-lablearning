@@ -11,12 +11,22 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
   // Session avec formation et formateur
   const { data: sessionData } = await supabase
     .from('sessions')
-    .select('*, formation:formation_id(intitule, reference, duree_heures, categorie, modalite), formateur:formateurs(id, prenom, nom, email, telephone, user_id)')
+    .select('*, formation:formation_id(intitule, reference, duree_heures, categorie, modalite, is_poei), formateur:formateurs(id, prenom, nom, email, telephone, user_id)')
     .eq('id', params.id)
     .eq('organization_id', session.organization.id)
     .single()
 
   if (!sessionData) redirect('/dashboard/sessions')
+
+  // POEI : formation éligible OU projet POEI rattaché à la session
+  const { data: poeiLink } = await supabase
+    .from('poei')
+    .select('id')
+    .eq('session_id', params.id)
+    .eq('organization_id', session.organization.id)
+    .limit(1)
+    .maybeSingle()
+  const isPoei = !!((sessionData as any).formation?.is_poei) || !!poeiLink
 
   // Inscriptions avec apprenants
   const { data: inscriptions } = await supabase
@@ -142,6 +152,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         evaluationsAppr={(evaluationsAppr || []) as any[]}
         isFormateur={isFormateur}
         userRole={session.user.role}
+        isPoei={isPoei}
       />
     </div>
   )
