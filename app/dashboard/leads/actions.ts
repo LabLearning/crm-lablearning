@@ -1246,10 +1246,28 @@ export async function generateConventionForFormationAction(leadFormationId: stri
   }).select().single()
   if (cErr) { console.error('[generateConventionForFormation]', cErr); return { success: false, error: 'Client créé, mais erreur convention' } }
 
+  // 5. Dossier de formation (visible sur la fiche client) lié à la convention
+  const { count: dosCount } = await supabase.from('dossiers_formation').select('*', { count: 'exact', head: true }).eq('organization_id', session.organization.id)
+  const dosNumero = `DOS-${new Date().getFullYear()}-${String((dosCount || 0) + 1).padStart(3, '0')}`
+  const { data: dossier } = await supabase.from('dossiers_formation').insert({
+    organization_id: session.organization.id,
+    numero: dosNumero,
+    client_id: clientId,
+    formation_id: lf.formation_id,
+    session_id: lf.session_id || null,
+    financeur_type: lead.financeur_type || null,
+    montant_prise_en_charge: montantHt || null,
+    notes: `Généré depuis le lead ${leadLabel(lead)} (convention ${numero})`,
+    created_by: session.user.id,
+  }).select('id').single()
+  if (dossier) {
+    await supabase.from('conventions').update({ dossier_id: dossier.id }).eq('id', convention.id)
+  }
+
   await supabase.from('lead_formations').update({ convention_id: convention.id, planification_status: 'convention_generee' }).eq('id', leadFormationId)
 
   await logAudit({ action: 'generate_convention', entity_type: 'lead_formation', entity_id: leadFormationId, details: { convention_id: convention.id, client_id: clientId, apprenants: apprenantIds.length } })
-  revalidatePath('/dashboard/leads'); revalidatePath('/dashboard/conventions'); revalidatePath('/dashboard/clients'); revalidatePath('/dashboard/apprenants')
+  revalidatePath('/dashboard/leads'); revalidatePath('/dashboard/conventions'); revalidatePath('/dashboard/clients'); revalidatePath('/dashboard/apprenants'); revalidatePath('/dashboard/dossiers')
   return { success: true, data: { convention_id: convention.id, client_id: clientId } }
 }
 
