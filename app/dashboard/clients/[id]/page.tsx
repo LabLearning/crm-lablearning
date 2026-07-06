@@ -50,13 +50,27 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   ] = await Promise.all([
     supabase.from('contacts').select('*').eq('client_id', params.id).order('est_principal', { ascending: false }),
     supabase.from('leads').select('*').eq('converted_client_id', params.id).order('created_at', { ascending: false }),
-    supabase.from('dossiers_formation').select('*').eq('client_id', params.id).order('created_at', { ascending: false }),
+    supabase.from('dossiers_formation').select('*, formation:formation_id(intitule), session:session_id(id, reference, date_debut, date_fin, formateur:formateurs(prenom, nom))').eq('client_id', params.id).order('created_at', { ascending: false }),
     supabase.from('devis').select('*').eq('client_id', params.id).order('created_at', { ascending: false }),
     supabase.from('factures').select('*').eq('client_id', params.id).order('date_emission', { ascending: false }),
     canAssign
       ? supabase.from('users').select('id, first_name, last_name').eq('organization_id', session.organization.id).eq('status', 'active').order('first_name')
       : Promise.resolve({ data: [] as any[] }),
   ])
+
+  // Nb d'apprenants inscrits par session (pour les dossiers liés à une session)
+  const dossierSessionIds = (dossiers || []).map((d: any) => d.session?.id).filter(Boolean)
+  const inscritsBySession: Record<string, number> = {}
+  if (dossierSessionIds.length > 0) {
+    const { data: inscRows } = await supabase
+      .from('inscriptions')
+      .select('session_id')
+      .in('session_id', dossierSessionIds)
+      .not('status', 'in', '("annule","abandonne")')
+    for (const r of inscRows || []) {
+      inscritsBySession[r.session_id] = (inscritsBySession[r.session_id] || 0) + 1
+    }
+  }
 
   const c = client as Client
   const assignee = (users || []).find((u: any) => u.id === c.assigned_to)
@@ -218,16 +232,30 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <div className="text-center py-8 text-sm text-surface-400">Aucun dossier</div>
             ) : (
               <div className="divide-y divide-surface-100">
-                {dossiersList.slice(0, 10).map((d) => (
-                  <Link key={d.id} href={`/dashboard/dossiers/${d.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                    <FileText className="h-4 w-4 text-surface-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-surface-900 truncate">{d.reference || d.intitule || 'Dossier'}</div>
-                      <div className="text-xs text-surface-400">{formatDate(d.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                    </div>
-                    {d.statut && <Badge variant="default">{String(d.statut).replace(/_/g, ' ')}</Badge>}
-                  </Link>
-                ))}
+                {dossiersList.slice(0, 10).map((d) => {
+                  const sess = d.session
+                  const nbApprenants = sess?.id ? (inscritsBySession[sess.id] || 0) : 0
+                  const formateurNom = sess?.formateur ? `${sess.formateur.prenom || ''} ${sess.formateur.nom || ''}`.trim() : null
+                  return (
+                    <Link key={d.id} href={`/dashboard/dossiers/${d.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                      <FileText className="h-4 w-4 text-surface-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-surface-900 truncate">
+                          {d.formation?.intitule || d.reference || d.numero || 'Dossier'}
+                        </div>
+                        <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap mt-0.5">
+                          {d.numero && <span className="font-mono text-surface-400">{d.numero}</span>}
+                          {sess?.date_debut && (
+                            <span>{formatDate(sess.date_debut, { day: 'numeric', month: 'short' })}{sess.date_fin && sess.date_fin !== sess.date_debut ? ` → ${formatDate(sess.date_fin, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</span>
+                          )}
+                          {formateurNom && <span className="flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{formateurNom}</span>}
+                          {sess?.id && <span className="flex items-center gap-1"><Users className="h-3 w-3 shrink-0" />{nbApprenants} apprenant{nbApprenants > 1 ? 's' : ''}</span>}
+                        </div>
+                      </div>
+                      {d.statut && <Badge variant="default">{String(d.statut).replace(/_/g, ' ')}</Badge>}
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </div>
