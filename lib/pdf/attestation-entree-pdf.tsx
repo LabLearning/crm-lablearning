@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Document, Page, View, Text } from '@react-pdf/renderer'
+import { Document, Page, View, Text, Image } from '@react-pdf/renderer'
 import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
 interface AttestationEntreeProps {
@@ -34,9 +34,9 @@ export function AttestationEntreePDF({ apprenant, formation, org, dateDebut, dat
         <PdfDocHeader docTitle="Attestation d'entrée en formation" numero={numero} date={today} org={org} />
 
         <View style={shared.section}>
+          {/* Chaîne unique : les interpolations en segments provoquent des chevauchements/espaces avalés */}
           <Text style={{ fontSize: 10, color: SURFACE_700, lineHeight: 1.8, marginBottom: 10 }}>
-            Je soussigné(e), représentant(e) de {org.name}, organisme de formation
-            {org.numero_da ? ` (n° de déclaration d'activité ${org.numero_da})` : ''}, atteste que :
+            {`Je soussigné(e), représentant(e) de ${org.name}, organisme de formation${org.numero_da ? ` (n° de déclaration d'activité ${org.numero_da})` : ''}, atteste que :`}
           </Text>
         </View>
 
@@ -44,14 +44,14 @@ export function AttestationEntreePDF({ apprenant, formation, org, dateDebut, dat
           <Text style={{ fontSize: 10, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, marginBottom: 4 }}>
             {apprenant.civilite ? `${apprenant.civilite} ` : ''}{apprenant.prenom} {apprenant.nom}
           </Text>
-          {apprenant.date_naissance && <Text style={shared.infoBoxText}>Né(e) le {frDate(apprenant.date_naissance)}</Text>}
-          {poei?.identifiant_ft && <Text style={shared.infoBoxText}>Identifiant France Travail : {poei.identifiant_ft}</Text>}
-          {apprenant.entreprise && <Text style={shared.infoBoxText}>Entreprise : {apprenant.entreprise}</Text>}
+          {apprenant.date_naissance && <Text style={shared.infoBoxText}>{`Né(e) le ${frDate(apprenant.date_naissance)}`}</Text>}
+          {poei?.identifiant_ft && <Text style={shared.infoBoxText}>{`Identifiant France Travail : ${poei.identifiant_ft}`}</Text>}
+          {apprenant.entreprise && <Text style={shared.infoBoxText}>{`Entreprise : ${apprenant.entreprise}`}</Text>}
         </View>
 
         <View style={shared.section}>
           <Text style={{ fontSize: 10, color: SURFACE_700, lineHeight: 1.8 }}>
-            est bien entré(e) en formation à compter du {frDate(dateDebut)}, pour suivre la formation suivante :
+            {`est bien entré(e) en formation à compter du ${frDate(dateDebut)}, pour suivre la formation suivante :`}
           </Text>
         </View>
 
@@ -81,10 +81,16 @@ export function AttestationEntreePDF({ apprenant, formation, org, dateDebut, dat
         </View>
 
         <View style={{ marginTop: 30 }}>
-          <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || org.ville || '___________'}, le {today}</Text>
+          <Text style={{ fontSize: 8, color: SURFACE_500 }}>{`Fait à ${org.city || org.ville || '___________'}, le ${today}`}</Text>
           <View style={{ marginTop: 15 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name}</Text>
-            <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#d6d3d1', width: 200 }} />
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>{`Pour ${org.name}`}</Text>
+            <View style={{ height: 90, width: 220 }}>
+              <View style={{ position: 'absolute', bottom: 18, left: 0, height: 0.5, backgroundColor: '#d6d3d1', width: 200 }} />
+              {/* Cachet de l'organisme posé sur la zone signature */}
+              {org.tampon_signature_url ? (
+                <Image src={org.tampon_signature_url} style={{ position: 'absolute', top: 0, left: 10, width: 170, height: 85, objectFit: 'contain' }} />
+              ) : null}
+            </View>
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
           </View>
         </View>
