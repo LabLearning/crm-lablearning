@@ -84,8 +84,8 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
 
         <View style={shared.section}>
           <PdfSectionTitle>{session ? 'Article 6' : 'Article 5'} — Rémunération</PdfSectionTitle>
-          {formateur.tarif_journalier && <View style={shared.row}><Text style={shared.label}>Tarif journalier HT :</Text><Text style={shared.value}>{Number(formateur.tarif_journalier).toLocaleString('fr-FR')} EUR</Text></View>}
-          {formateur.tarif_horaire && <View style={shared.row}><Text style={shared.label}>Tarif horaire HT :</Text><Text style={shared.value}>{Number(formateur.tarif_horaire).toLocaleString('fr-FR')} EUR</Text></View>}
+          {formateur.tarif_journalier && <View style={shared.row}><Text style={shared.label}>Tarif journalier HT :</Text><Text style={shared.value}>{Number(formateur.tarif_journalier).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} EUR</Text></View>}
+          {formateur.tarif_horaire && <View style={shared.row}><Text style={shared.label}>Tarif horaire HT :</Text><Text style={shared.value}>{Number(formateur.tarif_horaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} EUR</Text></View>}
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
             Le paiement sera effectué sur présentation d'une facture du prestataire, dans un délai de 30 jours suivant la fin de la prestation et la remise du rapport de session. La facture devra être accompagnée des justificatifs de réalisation (émargements, rapport).
           </Text>

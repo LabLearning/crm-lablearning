@@ -5,7 +5,7 @@ import type { Facture } from '@/lib/types/facture'
 
 function fmt(n: number | string | null | undefined): string {
   if (n == null) return '—'
-  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, " ")
 }
 
 function fmtDate(s: string | null | undefined): string {
@@ -72,7 +72,7 @@ export function FacturePDF({ facture, org }: { facture: Facture; org?: any }) {
             {org?.numero_tva_intra && <Text style={{ fontSize: 8, color: '#57534e' }}>TVA : {org.numero_tva_intra}</Text>}
             {(org?.forme_juridique || org?.capital_social) && (
               <Text style={{ fontSize: 8, color: '#57534e' }}>
-                {org.forme_juridique || ''}{org.capital_social ? ` au capital de ${Number(org.capital_social).toLocaleString('fr-FR')} €` : ''}
+                {org.forme_juridique || ''}{org.capital_social ? ` au capital de ${Number(org.capital_social).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} €` : ''}
               </Text>
             )}
             {org?.numero_da && <Text style={{ fontSize: 8, color: '#57534e' }}>N° déclaration d'activité : {org.numero_da}</Text>}

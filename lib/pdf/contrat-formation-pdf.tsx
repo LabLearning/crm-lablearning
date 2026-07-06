@@ -12,7 +12,7 @@ interface ContratFormationProps {
 }
 
 const euro = (n: number | null | undefined) =>
-  (n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
+  (n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }).replace(/[\u202F\u00A0]/g, " ")
 
 function Article({ titre, children }: { titre: string; children: React.ReactNode }) {
   return (

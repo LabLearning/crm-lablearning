@@ -254,8 +254,8 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {(formation.tarif_inter_ht || formation.tarif_intra_ht) ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="banknote">Tarifs</PdfSectionTitle>
-            {formation.tarif_inter_ht ? <View style={shared.row}><Text style={shared.label}>Inter-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_inter_ht).toLocaleString('fr-FR')} € HT / personne</Text></View> : null}
-            {formation.tarif_intra_ht ? <View style={shared.row}><Text style={shared.label}>Intra-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_intra_ht).toLocaleString('fr-FR')} € HT / groupe</Text></View> : null}
+            {formation.tarif_inter_ht ? <View style={shared.row}><Text style={shared.label}>Inter-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_inter_ht).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} € HT / personne</Text></View> : null}
+            {formation.tarif_intra_ht ? <View style={shared.row}><Text style={shared.label}>Intra-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_intra_ht).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} € HT / groupe</Text></View> : null}
           </View>
         ) : null}
 

@@ -5,7 +5,7 @@ import type { Devis } from '@/lib/types/dossier'
 
 function fmt(n: number | string | null | undefined): string {
   if (n == null) return '—'
-  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, " ")
 }
 
 function fmtDate(s: string | null | undefined): string {

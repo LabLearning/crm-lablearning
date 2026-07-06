@@ -6,7 +6,27 @@ import { PdfSectionTitle, shared, PdfDocHeader, PdfDocFooter, PdfSignatureCards,
 
 function fmt(n: number | string | null | undefined): string {
   if (n == null) return '—'
-  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // Remplace les espaces insécables (U+202F/U+00A0) du format fr-FR : glyphe absent
+  // de la police → rendu "/" dans le PDF
+  return Number(n)
+    .toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .replace(/[\u202F\u00A0]/g, " ")
+}
+
+// Nettoie le HTML éventuel (contenus importés de Dendreo : <p>, <ul>, <li>, <strong>…)
+function cleanHtml(v: string): string {
+  return v
+    .replace(/<\s*(br|\/p|\/li|\/ul|\/ol|\/div|\/h[1-6])[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c, 10)))
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{2,}/g, '\n')
+    .trim()
 }
 
 function fmtDate(s: string | null | undefined): string {
@@ -102,8 +122,8 @@ function eurosEnLettres(amount: number | string | null | undefined): string {
 
 function toList(v: any): string[] | null {
   if (v == null) return null
-  if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean)
-  const parts = String(v).split(/\r?\n|•|;/).map((x) => x.trim()).filter(Boolean)
+  if (Array.isArray(v)) return v.flatMap((x) => cleanHtml(String(x)).split(/\r?\n/)).map((x) => x.trim()).filter(Boolean)
+  const parts = cleanHtml(String(v)).split(/\r?\n|•|;/).map((x) => x.trim()).filter(Boolean)
   return parts.length ? parts : null
 }
 
@@ -201,7 +221,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     'QCM final de validation des connaissances.',
   ]
   const modalitesPeda = (typeof formation.methodes_pedagogiques === 'string' && formation.methodes_pedagogiques.trim())
-    ? formation.methodes_pedagogiques.trim()
+    ? cleanHtml(formation.methodes_pedagogiques)
     : "La formation est animée selon une approche active, participative et opérationnelle. Elle alterne des apports théoriques courts, des échanges avec les participants, des analyses de situations professionnelles, des études de cas, des exercices pratiques et des mises en situation."
 
   // Financement
@@ -216,8 +236,8 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     : "L'inscription doit être finalisée au plus tard 7 jours ouvrés avant le démarrage de la formation, sous réserve des places disponibles."
 
   // Détails formation
-  const prerequis = (typeof formation.prerequis === 'string' && formation.prerequis.trim()) ? formation.prerequis.trim() : (toList(formation.prerequis)?.join(' ') || null)
-  const publicVise = (typeof formation.public_vise === 'string' && formation.public_vise.trim()) ? formation.public_vise.trim() : (toList(formation.public_vise)?.join(' ') || null)
+  const prerequis = (typeof formation.prerequis === 'string' && formation.prerequis.trim()) ? cleanHtml(formation.prerequis) : (toList(formation.prerequis)?.join(' ') || null)
+  const publicVise = (typeof formation.public_vise === 'string' && formation.public_vise.trim()) ? cleanHtml(formation.public_vise) : (toList(formation.public_vise)?.join(' ') || null)
   const programme = toList(formation.programme_detaille)
 
   // Texte d'intro (construit en JS pour garantir les espaces)
@@ -226,8 +246,9 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     : ''
   const introText = `Établie entre l'organisme de formation et le bénéficiaire désignés ci-dessous.${qualiopiPhrase}`
 
-  // « Fait à … le … » avant signatures
-  const dateFait = convention.signature_of_date || convention.signature_client_date || dateFin || convention.date_emission
+  // « Fait à … le … » avant signatures — date de signature si signée, sinon date d'émission
+  // (jamais la date de session : une convention émise avant la formation portait une date passée/future incohérente)
+  const dateFait = convention.signature_of_date || convention.signature_client_date || convention.date_emission || convention.created_at || new Date().toISOString()
 
   return (
     <Document title={`Convention ${convention.numero || ''}`} author={ofName}>
