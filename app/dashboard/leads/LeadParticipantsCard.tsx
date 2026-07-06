@@ -14,6 +14,7 @@ interface Participant {
 
 const CONTRAT_OPTIONS = [
   { value: '', label: 'Type de contrat' },
+  { value: 'Dirigeant', label: 'Dirigeant' },
   { value: 'CDI', label: 'CDI' },
   { value: 'CDD', label: 'CDD' },
   { value: 'Intérim', label: 'Intérim' },
