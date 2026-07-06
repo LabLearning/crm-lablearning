@@ -44,7 +44,7 @@ export const createConventionSchema = z.object({
   lieu: z.string().optional(),
   dates_formation: z.string().optional(),
   montant_ht: z.coerce.number().min(0),
-  taux_tva: z.coerce.number().min(0).max(100).default(20),
+  taux_tva: z.coerce.number().min(0).max(100).default(0),
   financeur_type: z.string().optional().or(z.literal('')),
   financeur_nom: z.string().optional(),
 })

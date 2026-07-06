@@ -986,8 +986,9 @@ export async function generateConventionFromLeadAction(leadId: string): Promise<
       duree_heures: formation?.duree_heures || null,
       dates_formation: lead.date_confirmee ? formatFrDate(lead.date_confirmee) : null,
       montant_ht: montantHt,
-      taux_tva: 20,
-      montant_ttc: Math.round(montantHt * 1.2 * 100) / 100,
+      // Organisme de formation exonéré de TVA (art. 261-4-4°a du CGI)
+      taux_tva: 0,
+      montant_ttc: montantHt,
       financeur_type: lead.financeur_type || null,
       status: 'brouillon',
       created_by: session.user.id,
@@ -1240,7 +1241,7 @@ export async function generateConventionForFormationAction(leadFormationId: stri
     client_id: clientId, formation_id: lf.formation_id, session_id: lf.session_id || null,
     objet: formation?.intitule || null, nombre_stagiaires: apprenantIds.length || 1,
     duree_heures: formation?.duree_heures || null, dates_formation: lf.date_confirmee ? formatFrDate(lf.date_confirmee) : null,
-    montant_ht: montantHt, taux_tva: 20, montant_ttc: Math.round(montantHt * 1.2 * 100) / 100,
+    montant_ht: montantHt, taux_tva: 0, montant_ttc: montantHt, // OF exonéré de TVA (art. 261-4-4°a CGI)
     financeur_type: lead.financeur_type || null, status: 'brouillon', created_by: session.user.id,
   }).select().single()
   if (cErr) { console.error('[generateConventionForFormation]', cErr); return { success: false, error: 'Client créé, mais erreur convention' } }

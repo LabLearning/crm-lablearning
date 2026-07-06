@@ -444,7 +444,7 @@ export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard
             <View style={{ backgroundColor: SURFACE_50, paddingVertical: 6, paddingHorizontal: 10, borderBottomWidth: 0.5, borderBottomColor: SURFACE_200 }}>
               <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{it.title}</Text>
             </View>
-            <View style={{ padding: 10, minHeight: 96 }}>
+            <View style={{ padding: 10, minHeight: 114 }}>
               {it.name ? <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{it.name}</Text> : null}
               {it.mention ? <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 8 }}>{it.mention}</Text> : null}
               {it.signed ? (
@@ -456,8 +456,8 @@ export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard
               ) : (
                 <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 4 }}>{it.hint || 'Signature et cachet'}</Text>
               )}
-              {/* Tampon de l'organisme dans la zone signature */}
-              {it.stamp ? <Image src={it.stamp} style={{ width: 100, height: 50, objectFit: 'contain', marginTop: 6, alignSelf: 'flex-start' }} /> : null}
+              {/* Tampon de l'organisme : grand, posé par-dessus la zone signature (comme un vrai cachet) */}
+              {it.stamp ? <Image src={it.stamp} style={{ position: 'absolute', top: 22, left: 14, width: 170, height: 85, objectFit: 'contain' }} /> : null}
             </View>
           </View>
         ))}

@@ -232,7 +232,7 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
           <Input id="dates_formation" name="dates_formation" label="Dates de formation" placeholder="Du 15/03 au 17/03/2024" />
           <div className="grid grid-cols-2 gap-3">
             <Input id="montant_ht" name="montant_ht" type="number" label="Montant HT (€) *" error={errors.montant_ht?.[0]} />
-            <Input id="taux_tva" name="taux_tva" type="number" label="Taux TVA (%)" defaultValue="20" />
+            <Input id="taux_tva" name="taux_tva" type="number" label="Taux TVA (%)" defaultValue="0" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Select id="financeur_type" name="financeur_type" label="Financeur" options={financeurOptions} />

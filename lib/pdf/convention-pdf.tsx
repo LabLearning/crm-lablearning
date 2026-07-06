@@ -322,7 +322,8 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
                   { d: j.aprem_debut, f: j.aprem_fin },
                 ].filter((c) => c.d && c.f)
                 return creneaux.map((c, ci) => (
-                  <View key={`${idx}-${ci}`} style={{ ...shared.tableRow, ...((idx + ci) % 2 === 1 ? shared.tableRowAlt : {}) }}>
+                  // wrap={false} : une ligne du tableau ne se coupe jamais au saut de page
+                  <View key={`${idx}-${ci}`} wrap={false} style={{ ...shared.tableRow, ...((idx + ci) % 2 === 1 ? shared.tableRowAlt : {}) }}>
                     <Text style={{ ...shared.tableCell, width: '22%' }}>{ci === 0 ? fmtLongDate(j.date) : ''}</Text>
                     <Text style={{ ...shared.tableCell, width: '22%' }}>{fmtHeure(c.d)} - {fmtHeure(c.f)}</Text>
                     <Text style={{ ...shared.tableCell, width: '12%' }}>{dureeCreneau(c.d, c.f)}</Text>
