@@ -71,14 +71,14 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
             - moyens humains, techniques et pédagogiques adaptés ;{'\n'}
             - actualisation des compétences et veille (légale, métier, pédagogique) ;{'\n'}
             - traitement des appréciations et des réclamations recueillies en séance.{'\n'}
-            Le prestataire tient à disposition de {org.name} les justificatifs correspondants en cas d'audit.
+            {`Le prestataire tient à disposition de ${org.name} les justificatifs correspondants en cas d'audit.`}
           </Text>
         </View>
 
         <View style={shared.section}>
           <PdfSectionTitle>{session ? 'Article 5' : 'Article 4'} — Lutte contre le travail dissimulé</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
-            Pour toute prestation d'un montant égal ou supérieur à 5 000 € HT, le prestataire remettra à {org.name} son attestation de vigilance URSSAF (art. L.8222-1 et D.8222-5 du Code du travail) au moment de la conclusion du contrat puis tous les six mois jusqu'à son terme. Le prestataire atteste être à jour de ses déclarations et paiements sociaux et fiscaux.
+            {`Pour toute prestation d'un montant égal ou supérieur à 5 000 € HT, le prestataire remettra à ${org.name} son attestation de vigilance URSSAF (art. L.8222-1 et D.8222-5 du Code du travail) au moment de la conclusion du contrat puis tous les six mois jusqu'à son terme. Le prestataire atteste être à jour de ses déclarations et paiements sociaux et fiscaux.`}
           </Text>
         </View>
 
@@ -111,7 +111,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
         <View style={shared.section}>
           <PdfSectionTitle>{session ? 'Article 7' : 'Article 6'} — Propriété intellectuelle</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
-            Les supports pédagogiques créés dans le cadre de cette prestation restent la propriété de {org.name}. Le prestataire autorise leur utilisation et reproduction dans le cadre des activités de formation de l'organisme.
+            {`Les supports pédagogiques créés dans le cadre de cette prestation restent la propriété de ${org.name}. Le prestataire autorise leur utilisation et reproduction dans le cadre des activités de formation de l'organisme.`}
           </Text>
         </View>
 
@@ -125,7 +125,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
         <View style={shared.section}>
           <PdfSectionTitle>{session ? 'Article 9' : 'Article 8'} — Protection des données (RGPD)</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
-            Le prestataire agit en qualité de sous-traitant au sens de l'article 28 du RGPD pour les traitements de données personnelles des apprenants effectués pour le compte de {org.name}. Il ne traite ces données que sur instruction documentée du responsable du traitement, garantit la confidentialité, met en œuvre les mesures de sécurité appropriées et supprime ou restitue les données à l'issue de la mission.
+            {`Le prestataire agit en qualité de sous-traitant au sens de l'article 28 du RGPD pour les traitements de données personnelles des apprenants effectués pour le compte de ${org.name}. Il ne traite ces données que sur instruction documentée du responsable du traitement, garantit la confidentialité, met en œuvre les mesures de sécurité appropriées et supprime ou restitue les données à l'issue de la mission.`}
           </Text>
         </View>
 
@@ -133,7 +133,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
           <PdfSectionTitle>{session ? 'Article 10' : 'Article 9'} — Durée, résiliation et litiges</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le présent contrat prend effet à sa signature. Il peut être résilié par l'une ou l'autre des parties par lettre recommandée avec accusé de réception moyennant un préavis de 30 jours. En cas de manquement grave de l'une des parties à ses obligations, l'autre partie pourra résilier le contrat sans préavis après mise en demeure restée infructueuse pendant 15 jours.{'\n'}
-            En cas de litige, et après tentative de règlement amiable, les juridictions du ressort du siège de {org.name} seront seules compétentes.
+            {`En cas de litige, et après tentative de règlement amiable, les juridictions du ressort du siège de ${org.name} seront seules compétentes.`}
           </Text>
         </View>
 
@@ -141,7 +141,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
           <PdfSignatureCards
             faitMention={`Fait à ${org?.city || '___________'}, le ${today}, en deux exemplaires.`}
             items={[
-              { title: "Le donneur d'ordre", name: org.name, mention: 'Représentant légal', hint: 'Signature et cachet' },
+              { title: "Le donneur d'ordre", name: org.name, mention: 'Représentant légal', hint: 'Signature et cachet', stamp: org?.tampon_signature_url || null },
               { title: 'Le prestataire', name: `${formateur.prenom} ${formateur.nom}`, mention: 'Mention « Lu et approuvé »', hint: 'Signature précédée de la date' },
             ]}
           />

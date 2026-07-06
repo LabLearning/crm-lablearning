@@ -429,6 +429,7 @@ export interface SignatoryCard {
   signed?: boolean
   signedBy?: string | null
   signedDate?: string | null  // déjà formatée
+  stamp?: string | null       // URL du tampon/cachet (côté OF) — affiché dans la zone signature
 }
 
 export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard[]; faitMention?: string }) {
@@ -455,6 +456,8 @@ export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard
               ) : (
                 <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 4 }}>{it.hint || 'Signature et cachet'}</Text>
               )}
+              {/* Tampon de l'organisme dans la zone signature */}
+              {it.stamp ? <Image src={it.stamp} style={{ width: 100, height: 50, objectFit: 'contain', marginTop: 6, alignSelf: 'flex-start' }} /> : null}
             </View>
           </View>
         ))}

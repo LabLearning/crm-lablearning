@@ -428,8 +428,9 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Accessibilité handicap */}
         <View style={shared.section}>
           <PdfSectionTitle>Accessibilité — situation de handicap</PdfSectionTitle>
+          {/* Chaîne unique : les interpolations en plusieurs segments provoquent des chevauchements de lettres dans react-pdf */}
           <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>
-            Les formations sont accessibles aux personnes en situation de handicap. Pour étudier les adaptations nécessaires, contacter {refHandicap || ofEmail}.
+            {`Les formations sont accessibles aux personnes en situation de handicap. Pour étudier les adaptations nécessaires, contacter ${refHandicap || ofEmail}.`}
           </Text>
         </View>
 
@@ -446,7 +447,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </Text>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Litiges — </Text>
-            À défaut de règlement amiable (le cas échéant via un conciliateur désigné par les parties), le tribunal de {ville} sera seul compétent.
+            {`À défaut de règlement amiable (le cas échéant via un conciliateur désigné par les parties), le tribunal de ${ville} sera seul compétent.`}
           </Text>
         </View>
 
@@ -469,6 +470,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               signed: !!convention.signature_of_date,
               signedBy: ofName,
               signedDate: convention.signature_of_date ? fmtDate(convention.signature_of_date) : null,
+              stamp: org?.tampon_signature_url || null,
             },
           ]}
         />
