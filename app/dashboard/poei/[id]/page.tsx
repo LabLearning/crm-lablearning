@@ -30,7 +30,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   const [{ data: candidatsRaw }, { data: clients }, { data: formations }, { data: apprenants }] = await Promise.all([
     supabase
       .from('poei_candidats')
-      .select('*, apprenant:apprenants(nom, prenom, email, telephone)')
+      .select('*, apprenant:apprenants(nom, prenom, email, telephone, date_naissance)')
       .eq('poei_id', params.id)
       .order('created_at', { ascending: true }),
     supabase

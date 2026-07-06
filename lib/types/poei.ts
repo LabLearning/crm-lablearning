@@ -57,7 +57,7 @@ export interface PoeiCandidat {
   date_embauche_prevue: string | null
   statut: string  // inscrit | en_formation | embauche | abandonne
   created_at: string
-  apprenant?: { nom: string | null; prenom: string | null; email: string | null; telephone: string | null } | null
+  apprenant?: { nom: string | null; prenom: string | null; email: string | null; telephone: string | null; date_naissance?: string | null } | null
 }
 
 export const CANDIDAT_STATUT_LABELS: Record<string, string> = {
