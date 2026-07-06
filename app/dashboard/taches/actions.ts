@@ -14,9 +14,11 @@ async function notifyAssignee(
   message: string,
   tacheId: string,
   type: string = 'action',
+  sendEmail: boolean = false,
 ) {
   if (!assigneeId || assigneeId === actorId) return
   try {
+    // Notification in-app : apparaît en pop-up temps réel (toast) via la cloche
     await createNotification({
       organizationId,
       userId: assigneeId,
@@ -28,6 +30,29 @@ async function notifyAssignee(
       entityType: 'crm_tache',
       entityId: tacheId,
     })
+
+    // Email (uniquement pour les assignations, pas les commentaires/déplacements)
+    if (sendEmail) {
+      const supabase = await createServiceRoleClient()
+      const { data: assignee } = await supabase.from('users').select('email, first_name, last_name').eq('id', assigneeId).single()
+      if (assignee?.email) {
+        const { data: org } = await supabase.from('organizations').select('*').eq('id', organizationId).single()
+        const { sendDocumentEmail } = await import('@/lib/email')
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+        await sendDocumentEmail({
+          to: assignee.email,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: (org as any)?.email_contact || org?.email,
+          orgLogoUrl: (org as any)?.logo_url,
+          recipientName: [assignee.first_name, assignee.last_name].filter(Boolean).join(' ') || 'Bonjour',
+          subject: `${titre} — CRM Lab Learning`,
+          docTitle: titre,
+          intro: `${message}. Connectez-vous au CRM pour voir le détail et traiter la tâche.`,
+          ctaLabel: 'Ouvrir mes tâches',
+          ctaUrl: `${appUrl}/dashboard/taches`,
+        })
+      }
+    }
   } catch (e) {
     console.error('[notify]', e)
   }
@@ -116,6 +141,8 @@ export async function createTacheAction(formData: FormData): Promise<ActionResul
       'Nouvelle tâche assignée',
       `${actorName} vous a assigné « ${titre} »`,
       data.id,
+      'action',
+      true, // pop-up + email
     )
   }
 
@@ -189,6 +216,8 @@ export async function updateTacheAction(id: string, formData: FormData): Promise
       'Tâche assignée',
       `${actorName} vous a assigné « ${titre} »`,
       id,
+      'action',
+      true, // pop-up + email
     )
   }
 
