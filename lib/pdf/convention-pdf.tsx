@@ -16,6 +16,7 @@ function fmt(n: number | string | null | undefined): string {
 // Nettoie le HTML éventuel (contenus importés de Dendreo : <p>, <ul>, <li>, <strong>…)
 function cleanHtml(v: string): string {
   return v
+    .replace(/\r\n?/g, '\n')  // fins de ligne Windows → \n (sinon doubles sauts de ligne)
     .replace(/<\s*(br|\/p|\/li|\/ul|\/ol|\/div|\/h[1-6])[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/gi, ' ')
@@ -25,6 +26,7 @@ function cleanHtml(v: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c, 10)))
     .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]+/g, '\n')
     .replace(/\n{2,}/g, '\n')
     .trim()
 }
@@ -139,7 +141,9 @@ function Bullets({ items }: { items: string[] }) {
   return (
     <>
       {items.map((it, i) => (
-        <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
+        // wrap={false} : la puce et son texte restent solidaires (pas de "•" orphelin
+        // en bas de page, l'item passe entier à la page suivante)
+        <View key={i} wrap={false} style={{ flexDirection: 'row', marginBottom: 3 }}>
           <Text style={{ fontSize: 8.5, color: BRAND_GREEN, width: 12 }}>•</Text>
           <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{it}</Text>
         </View>
