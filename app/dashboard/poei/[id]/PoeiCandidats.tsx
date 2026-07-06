@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send } from 'lucide-react'
+import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
 import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
@@ -12,12 +12,37 @@ interface Props {
   poeiId: string
   candidats: PoeiCandidat[]
   apprenants: { id: string; nom: string | null; prenom: string | null }[]
+  emailStatus?: Record<string, { status: string; date: string | null }>
 }
 
 const contratOptions = [{ value: '', label: '—' }, ...Object.entries(TYPE_CONTRAT_LABELS).map(([v, l]) => ({ value: v, label: l as string }))]
 const statutOptions = Object.entries(CANDIDAT_STATUT_LABELS).map(([v, l]) => ({ value: v, label: l }))
 
-export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
+// Bouton/lien d'action avec tooltip visible au survol
+function IconAction({ label, onClick, href, disabled, className, children }: {
+  label: string; onClick?: () => void; href?: string; disabled?: boolean; className?: string; children: React.ReactNode
+}) {
+  const base = `p-1.5 rounded-lg text-surface-400 transition-colors shrink-0 disabled:opacity-50 ${className || 'hover:bg-surface-100 hover:text-surface-700'}`
+  return (
+    <div className="relative group/tip shrink-0">
+      {href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={base}>{children}</a>
+      ) : (
+        <button onClick={onClick} disabled={disabled} className={base}>{children}</button>
+      )}
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/tip:block whitespace-nowrap rounded-lg bg-surface-900 text-white text-[10px] font-medium px-2 py-1 z-30 shadow-elevated">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function fmtDateTime(d: string | null): string {
+  if (!d) return ''
+  try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
+}
+
+export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -25,10 +50,41 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [editCand, setEditCand] = useState<PoeiCandidat | null>(null)
-  const [sendingId, setSendingId] = useState<string | null>(null)
-  const [sendingAll, setSendingAll] = useState(false)
+  // Aperçu email avant envoi
+  const [previewTargets, setPreviewTargets] = useState<PoeiCandidat[] | null>(null)
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
 
   const apprenantOptions = [{ value: '', label: 'Sélectionner…' }, ...apprenants.map((a) => ({ value: a.id, label: `${a.prenom || ''} ${a.nom || ''}`.trim() || a.id }))]
+
+  function statusFor(c: PoeiCandidat): { status: string; date: string | null } | null {
+    const email = (c.apprenant?.email || '').toLowerCase()
+    return email ? (emailStatus[email] || null) : null
+  }
+
+  function openPreview(targets: PoeiCandidat[]) {
+    setPreviewTargets(targets)
+    setSubject("Votre attestation d'entrée en formation")
+    setMessage("Vous trouverez ci-joint votre attestation d'entrée en formation, à transmettre à France Travail si nécessaire.")
+  }
+
+  async function confirmSend() {
+    if (!previewTargets) return
+    const withEmail = previewTargets.filter((c) => c.apprenant?.email)
+    if (withEmail.length === 0) { toast('error', 'Aucun destinataire avec email'); return }
+    setSending(true)
+    const r = await sendAttestationsEntreeAction(poeiId, withEmail.map((c) => c.id), { subject, message })
+    if (!r.success) toast('error', r.error || 'Erreur')
+    else {
+      const { sent, skipped } = (r.data || {}) as { sent: number; skipped: string[] }
+      if (sent > 0) toast('success', `${sent} attestation${sent > 1 ? 's' : ''} envoyée${sent > 1 ? 's' : ''}`)
+      if (skipped?.length) toast('error', `Échec : ${skipped.join(', ')}`)
+      setPreviewTargets(null)
+      router.refresh()
+    }
+    setSending(false)
+  }
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -64,29 +120,6 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
     else toast('error', r.error || 'Erreur')
   }
 
-  function reportSendResult(r: any) {
-    if (!r.success) { toast('error', r.error || 'Erreur'); return }
-    const { sent, skipped } = (r.data || {}) as { sent: number; skipped: string[] }
-    if (sent > 0) toast('success', `${sent} attestation${sent > 1 ? 's' : ''} envoyée${sent > 1 ? 's' : ''}`)
-    if (skipped?.length) toast('error', `Non envoyé (email manquant ou erreur) : ${skipped.join(', ')}`)
-    if (!sent && !skipped?.length) toast('error', 'Aucun envoi effectué')
-  }
-
-  async function handleSendOne(c: PoeiCandidat) {
-    if (!c.apprenant?.email) { toast('error', 'Ce candidat n\'a pas d\'email — modifiez sa fiche d\'abord'); return }
-    setSendingId(c.id)
-    reportSendResult(await sendAttestationsEntreeAction(poeiId, [c.id]))
-    setSendingId(null)
-  }
-
-  async function handleSendAll() {
-    if (candidats.length === 0) return
-    if (!confirm(`Envoyer l'attestation d'entrée en formation par email aux ${candidats.length} candidats ?`)) return
-    setSendingAll(true)
-    reportSendResult(await sendAttestationsEntreeAction(poeiId, candidats.map((c) => c.id)))
-    setSendingAll(false)
-  }
-
   const nom = (c: PoeiCandidat) => `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || '—'
 
   return (
@@ -98,7 +131,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
         </div>
         <div className="flex items-center gap-2">
           {candidats.length > 0 && (
-            <Button onClick={handleSendAll} size="sm" variant="secondary" isLoading={sendingAll} icon={<Send className="h-4 w-4" />}>
+            <Button onClick={() => openPreview(candidats)} size="sm" variant="secondary" icon={<Send className="h-4 w-4" />}>
               Envoyer attestations d&apos;entrée à tous
             </Button>
           )}
@@ -113,29 +146,115 @@ export function PoeiCandidats({ poeiId, candidats, apprenants }: Props) {
         </div>
       ) : (
         <div className="divide-y divide-surface-100">
-          {candidats.map((c) => (
-            <div key={c.id} className="flex items-center gap-3 py-2.5">
-              <button onClick={() => setEditCand(c)} className="flex-1 min-w-0 text-left group">
-                <div className="text-sm font-medium text-surface-900 truncate group-hover:text-sky-700 transition-colors">{nom(c)}</div>
-                <div className="text-xs text-surface-500 truncate">
-                  {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null].filter(Boolean).join(' · ') || '—'}
-                </div>
-              </button>
-              <button onClick={() => handleSendOne(c)} disabled={sendingId === c.id} title="Envoyer l'attestation d'entrée par email"
-                className="p-1.5 rounded-lg text-surface-400 hover:bg-emerald-50 hover:text-emerald-600 shrink-0 disabled:opacity-50">
-                <Mail className="h-4 w-4" />
-              </button>
-              <a href={`/api/pdf/attestation-entree/${c.apprenant_id}?poei=${poeiId}&candidat=${c.id}`} target="_blank" rel="noopener noreferrer" title="Télécharger l'attestation d'entrée" className="p-1.5 rounded-lg text-surface-400 hover:bg-emerald-50 hover:text-emerald-600 shrink-0"><GraduationCap className="h-4 w-4" /></a>
-              <a href={`/api/pdf/pdc/${c.id}`} target="_blank" rel="noopener noreferrer" title="Plan de développement de compétences (France Travail)" className="p-1.5 rounded-lg text-surface-400 hover:bg-sky-50 hover:text-sky-600 shrink-0"><FileText className="h-4 w-4" /></a>
-              <button onClick={() => setEditCand(c)} title="Modifier" className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0"><Pencil className="h-4 w-4" /></button>
-              <select value={c.statut} onChange={(e) => handleStatut(c.id, e.target.value)} className="text-xs rounded-lg border border-surface-200 px-2 py-1 bg-white">
-                {statutOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <button onClick={() => handleRemove(c.id)} className="p-1.5 rounded-lg text-surface-400 hover:bg-danger-50 hover:text-danger-600 shrink-0"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          ))}
+          {candidats.map((c) => {
+            const st = statusFor(c)
+            return (
+              <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+                <button onClick={() => setEditCand(c)} className="flex-1 min-w-0 text-left group">
+                  <div className="text-sm font-medium text-surface-900 truncate group-hover:text-sky-700 transition-colors">{nom(c)}</div>
+                  <div className="text-xs text-surface-500 truncate">
+                    {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null].filter(Boolean).join(' · ') || '—'}
+                  </div>
+                </button>
+
+                {/* Statut d'envoi de l'attestation */}
+                {st?.status === 'sent' ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-2xs font-medium shrink-0" title={`Attestation envoyée le ${fmtDateTime(st.date)}`}>
+                    <CheckCircle2 className="h-3 w-3 shrink-0" /> Envoyée
+                  </span>
+                ) : st?.status === 'failed' ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-50 text-danger-700 text-2xs font-medium shrink-0" title="Le dernier envoi a échoué">
+                    <XCircle className="h-3 w-3 shrink-0" /> Échec
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-100 text-surface-400 text-2xs font-medium shrink-0" title={c.apprenant?.email ? 'Attestation pas encore envoyée' : 'Pas d\'email renseigné'}>
+                    Non envoyée
+                  </span>
+                )}
+
+                <IconAction label={c.apprenant?.email ? "Envoyer l'attestation par email" : 'Pas d\'email — cliquez sur le nom pour en ajouter un'} onClick={() => c.apprenant?.email ? openPreview([c]) : toast('error', 'Ce candidat n\'a pas d\'email — modifiez sa fiche d\'abord')} className="hover:bg-emerald-50 hover:text-emerald-600">
+                  <Mail className="h-4 w-4" />
+                </IconAction>
+                <IconAction label="Télécharger l'attestation d'entrée" href={`/api/pdf/attestation-entree/${c.apprenant_id}?poei=${poeiId}&candidat=${c.id}`} className="hover:bg-emerald-50 hover:text-emerald-600">
+                  <GraduationCap className="h-4 w-4" />
+                </IconAction>
+                <IconAction label="Plan de développement des compétences (France Travail)" href={`/api/pdf/pdc/${c.id}`} className="hover:bg-sky-50 hover:text-sky-600">
+                  <FileText className="h-4 w-4" />
+                </IconAction>
+                <IconAction label="Modifier les informations" onClick={() => setEditCand(c)}>
+                  <Pencil className="h-4 w-4" />
+                </IconAction>
+                <select value={c.statut} onChange={(e) => handleStatut(c.id, e.target.value)} className="text-xs rounded-lg border border-surface-200 px-2 py-1 bg-white" title="Statut du candidat">
+                  {statutOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <IconAction label="Retirer du projet" onClick={() => handleRemove(c.id)} className="hover:bg-danger-50 hover:text-danger-600">
+                  <Trash2 className="h-4 w-4" />
+                </IconAction>
+              </div>
+            )
+          })}
         </div>
       )}
+
+      {/* Aperçu de l'email avant envoi */}
+      <Modal isOpen={!!previewTargets} onClose={() => setPreviewTargets(null)} title="Aperçu de l'email — attestation d'entrée" size="lg">
+        {previewTargets && (
+          <div className="space-y-4">
+            {/* Destinataires */}
+            <div>
+              <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-1.5">
+                Destinataires ({previewTargets.filter((c) => c.apprenant?.email).length}/{previewTargets.length})
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {previewTargets.map((c) => c.apprenant?.email ? (
+                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-100">
+                    {nom(c)} <span className="text-emerald-500">({c.apprenant.email})</span>
+                  </span>
+                ) : (
+                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-danger-50 text-danger-600 text-xs border border-danger-100" title="Sans email — ne recevra pas l'attestation">
+                    <XCircle className="h-3 w-3 shrink-0" /> {nom(c)} — sans email
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <Input label="Objet" value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <div>
+              <label className="block text-sm font-medium text-surface-700 mb-1.5">Message</label>
+              <textarea rows={3} className="input-base resize-none w-full" value={message} onChange={(e) => setMessage(e.target.value)} />
+            </div>
+
+            {/* Aperçu visuel de l'email */}
+            <div>
+              <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-1.5">Aperçu</div>
+              <div className="rounded-xl border border-surface-200 overflow-hidden">
+                <div className="bg-[#195144] text-white px-4 py-3 text-sm font-bold">Lab Learning</div>
+                <div className="p-4 space-y-3 bg-white">
+                  <div className="text-sm font-bold text-surface-900">Attestation d&apos;entrée en formation</div>
+                  <p className="text-sm text-surface-600">
+                    Bonjour <strong>{previewTargets.length === 1 ? nom(previewTargets[0]) : 'Prénom Nom'}</strong>,<br />
+                    {message}
+                  </p>
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+                    <Paperclip className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-medium text-emerald-700">
+                      attestation-entree-{previewTargets.length === 1 ? (previewTargets[0].apprenant?.nom || 'NOM') : 'NOM'}.pdf
+                    </span>
+                    <span className="text-2xs text-surface-400">— personnalisée pour chaque candidat</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1">
+              <Button variant="secondary" onClick={() => setPreviewTargets(null)}>Annuler</Button>
+              <Button onClick={confirmSend} isLoading={sending} icon={<Send className="h-4 w-4" />}>
+                Envoyer {previewTargets.filter((c) => c.apprenant?.email).length > 1 ? `aux ${previewTargets.filter((c) => c.apprenant?.email).length} candidats` : ''}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Ajout */}
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Ajouter un candidat" size="md">

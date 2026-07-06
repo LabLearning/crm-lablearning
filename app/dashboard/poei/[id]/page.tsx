@@ -27,7 +27,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   if (!poei) redirect('/dashboard/poei')
   const p = poei as Poei
 
-  const [{ data: candidatsRaw }, { data: clients }, { data: formations }, { data: apprenants }] = await Promise.all([
+  const [{ data: candidatsRaw }, { data: clients }, { data: formations }, { data: apprenants }, { data: emailLogs }] = await Promise.all([
     supabase
       .from('poei_candidats')
       .select('*, apprenant:apprenants(nom, prenom, email, telephone, date_naissance)')
@@ -39,8 +39,24 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       .from('formations').select('id, intitule').eq('organization_id', session.organization.id).eq('is_active', true).order('intitule'),
     supabase
       .from('apprenants').select('id, nom, prenom').eq('organization_id', session.organization.id).order('nom').limit(1000),
+    // Historique des envois d'attestations (statut par candidat)
+    supabase
+      .from('email_logs')
+      .select('to_email, status, sent_at, created_at')
+      .eq('organization_id', session.organization.id)
+      .eq('entity_type', 'poei')
+      .eq('entity_id', params.id)
+      .eq('template', 'attestation_entree')
+      .order('created_at', { ascending: false }),
   ])
   const candidats = (candidatsRaw || []) as PoeiCandidat[]
+
+  // Dernier statut d'envoi par adresse email (le plus récent gagne)
+  const emailStatus: Record<string, { status: string; date: string | null }> = {}
+  for (const log of emailLogs || []) {
+    const key = (log.to_email || '').toLowerCase()
+    if (key && !emailStatus[key]) emailStatus[key] = { status: log.status, date: log.sent_at || log.created_at }
+  }
 
   return (
     <div className="space-y-5 animate-fade-in max-w-4xl">
@@ -67,7 +83,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
 
       <PoeiStatusBar poeiId={p.id} statut={p.statut} />
 
-      <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} />
+      <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} />
 
       <PoeiEditor poei={p} clients={clients || []} formations={formations || []} />
     </div>

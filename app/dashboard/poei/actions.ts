@@ -309,7 +309,11 @@ export async function updatePoeiCandidatAction(candidatId: string, poeiId: strin
 
 // Envoie l'attestation d'entrée en formation par email aux candidats sélectionnés
 // (individuel = un seul id, groupé = tous). Chaque candidat reçoit SA propre attestation.
-export async function sendAttestationsEntreeAction(poeiId: string, candidatIds: string[]): Promise<ActionResult> {
+export async function sendAttestationsEntreeAction(
+  poeiId: string,
+  candidatIds: string[],
+  custom?: { subject?: string; message?: string },
+): Promise<ActionResult> {
   const session = await getSession()
   if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
@@ -364,9 +368,9 @@ export async function sendAttestationsEntreeAction(poeiId: string, candidatIds: 
       orgLogoUrl: (org as any)?.logo_url,
       qualiopiCertified: (org as any)?.is_qualiopi !== false,
       recipientName: `${a.prenom || ''} ${a.nom || ''}`.trim(),
-      subject: `Votre attestation d'entrée en formation — ${formation.intitule}`,
+      subject: custom?.subject?.trim() || `Votre attestation d'entrée en formation — ${formation.intitule}`,
       docTitle: "Attestation d'entrée en formation",
-      intro: `Vous trouverez ci-joint votre attestation d'entrée en formation « ${formation.intitule} », à transmettre à France Travail si nécessaire.`,
+      intro: custom?.message?.trim() || `Vous trouverez ci-joint votre attestation d'entrée en formation « ${formation.intitule} », à transmettre à France Travail si nécessaire.`,
       metadata: [
         ['Formation', formation.intitule],
         ['Dates', p.date_debut ? `Du ${new Date(p.date_debut).toLocaleDateString('fr-FR')} au ${new Date(p.date_fin || p.date_debut).toLocaleDateString('fr-FR')}` : '—'],
@@ -379,7 +383,7 @@ export async function sendAttestationsEntreeAction(poeiId: string, candidatIds: 
       organization_id: session.organization.id,
       to_email: a.email,
       to_name: `${a.prenom || ''} ${a.nom || ''}`.trim() || null,
-      subject: `Attestation d'entrée — ${formation.intitule}`,
+      subject: custom?.subject?.trim() || `Attestation d'entrée — ${formation.intitule}`,
       template: 'attestation_entree',
       entity_type: 'poei',
       entity_id: poeiId,
