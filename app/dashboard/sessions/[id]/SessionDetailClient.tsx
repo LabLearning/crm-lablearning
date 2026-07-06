@@ -59,6 +59,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [showMontantModal, setShowMontantModal] = useState(false)
+  const [montantValue, setMontantValue] = useState('')
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({})
   const [createDate, setCreateDate] = useState('')
   const [createCreneau, setCreateCreneau] = useState('journee')
@@ -110,7 +112,20 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
 
   function handleStatusChange(newStatus: string) {
     setShowStatusMenu(false)
+    // Validation de la session → le montant formateur doit être confirmé (il est figé sur la session)
+    if (newStatus === 'confirmee' && !isFormateur) {
+      setMontantValue(session.cout_formateur != null ? String(session.cout_formateur) : (formateur?.tarif_journalier != null ? String(formateur.tarif_journalier) : ''))
+      setShowMontantModal(true)
+      return
+    }
     startTransition(async () => { await updateSessionStatusAction(session.id, newStatus) })
+  }
+
+  function confirmWithMontant() {
+    const montant = montantValue === '' ? null : Number(montantValue)
+    if (montantValue !== '' && !Number.isFinite(montant)) return
+    setShowMontantModal(false)
+    startTransition(async () => { await updateSessionStatusAction(session.id, 'confirmee', montant) })
   }
 
   function handleTogglePresence(emargementId: string, current: boolean) {
@@ -189,6 +204,32 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           )}
         </div>
       </div>
+
+      {/* Validation du montant formateur à la confirmation de la session */}
+      {showMontantModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/40 p-4">
+          <div className="bg-white rounded-2xl shadow-modal w-full max-w-sm p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-heading font-bold text-surface-900">Valider la session</h3>
+              <p className="text-xs text-surface-500 mt-1">
+                Confirmez le montant de la prestation formateur pour cette session — c&apos;est ce montant qui figurera sur le contrat de prestation.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-surface-600 mb-1">Montant formateur (€ HT)</label>
+              <input type="number" min="0" step="0.01" value={montantValue} onChange={(e) => setMontantValue(e.target.value)}
+                className="input-base w-full" placeholder="Ex. 450" autoFocus />
+              {formateur?.tarif_journalier != null && (
+                <p className="text-2xs text-surface-400 mt-1">Tarif indicatif de la fiche formateur : {formateur.tarif_journalier} €/j</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowMontantModal(false)} className="px-3 py-2 rounded-xl text-sm text-surface-600 bg-surface-100 hover:bg-surface-200 transition-colors">Annuler</button>
+              <button onClick={confirmWithMontant} className="px-3 py-2 rounded-xl text-sm font-medium text-white bg-surface-900 hover:bg-surface-800 transition-colors">Valider la session</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Onglets */}
       <div className="flex gap-1 bg-surface-100 rounded-lg p-0.5 overflow-x-auto">

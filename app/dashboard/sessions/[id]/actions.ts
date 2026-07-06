@@ -6,13 +6,20 @@ import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
 
-export async function updateSessionStatusAction(sessionId: string, newStatus: string): Promise<ActionResult> {
+export async function updateSessionStatusAction(sessionId: string, newStatus: string, coutFormateur?: number | null): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
+  // À la validation de la session, le montant formateur négocié est figé sur la session
+  // (le tarif de la fiche formateur n'est qu'indicatif et peut changer jusqu'au dernier moment)
+  const updateData: Record<string, unknown> = { status: newStatus }
+  if (coutFormateur != null && Number.isFinite(Number(coutFormateur))) {
+    updateData.cout_formateur = Number(coutFormateur)
+  }
+
   const { error } = await supabase
     .from('sessions')
-    .update({ status: newStatus })
+    .update(updateData)
     .eq('id', sessionId)
     .eq('organization_id', session.organization.id)
 

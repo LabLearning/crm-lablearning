@@ -84,8 +84,25 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
 
         <View style={shared.section}>
           <PdfSectionTitle>{session ? 'Article 6' : 'Article 5'} — Rémunération</PdfSectionTitle>
-          {formateur.tarif_journalier && <View style={shared.row}><Text style={shared.label}>Tarif journalier HT :</Text><Text style={shared.value}>{Number(formateur.tarif_journalier).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} EUR</Text></View>}
-          {formateur.tarif_horaire && <View style={shared.row}><Text style={shared.label}>Tarif horaire HT :</Text><Text style={shared.value}>{Number(formateur.tarif_horaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} EUR</Text></View>}
+          {session?.cout_formateur != null && Number(session.cout_formateur) > 0 ? (
+            <>
+              {/* Montant validé à la validation de la session — montant contractuel */}
+              <View style={shared.row}><Text style={shared.label}>Montant de la prestation (HT) :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{Number(session.cout_formateur).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, ' ')} EUR</Text></View>
+              <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 2 }}>
+                Montant forfaitaire convenu entre les parties et validé pour la présente session.
+              </Text>
+            </>
+          ) : (
+            <>
+              {formateur.tarif_journalier && <View style={shared.row}><Text style={shared.label}>Tarif journalier HT :</Text><Text style={shared.value}>{Number(formateur.tarif_journalier).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} EUR</Text></View>}
+              {formateur.tarif_horaire && <View style={shared.row}><Text style={shared.label}>Tarif horaire HT :</Text><Text style={shared.value}>{Number(formateur.tarif_horaire).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} EUR</Text></View>}
+              {session ? (
+                <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 2 }}>
+                  Tarifs indicatifs — le montant définitif de la prestation est arrêté lors de la validation de la session.
+                </Text>
+              ) : null}
+            </>
+          )}
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
             Le paiement sera effectué sur présentation d'une facture du prestataire, dans un délai de 30 jours suivant la fin de la prestation et la remise du rapport de session. La facture devra être accompagnée des justificatifs de réalisation (émargements, rapport).
           </Text>
