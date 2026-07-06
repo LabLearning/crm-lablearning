@@ -22,7 +22,9 @@ const statutOptions = Object.entries(CANDIDAT_STATUT_LABELS).map(([v, l]) => ({ 
 function IconAction({ label, onClick, href, disabled, className, children }: {
   label: string; onClick?: () => void; href?: string; disabled?: boolean; className?: string; children: React.ReactNode
 }) {
-  const base = `p-1.5 rounded-lg text-surface-400 transition-colors shrink-0 disabled:opacity-50 ${className || 'hover:bg-surface-100 hover:text-surface-700'}`
+  // flex : force la même boîte pour <a> (inline par défaut) et <button>, sinon le
+  // tooltip centré sur le conteneur est décalé sur les icônes-liens
+  const base = `flex items-center justify-center p-1.5 rounded-lg text-surface-400 transition-colors shrink-0 disabled:opacity-50 ${className || 'hover:bg-surface-100 hover:text-surface-700'}`
   return (
     <div className="relative group/tip shrink-0">
       {href ? (
@@ -153,7 +155,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} 
                 <button onClick={() => setEditCand(c)} className="flex-1 min-w-0 text-left group">
                   <div className="text-sm font-medium text-surface-900 truncate group-hover:text-sky-700 transition-colors">{nom(c)}</div>
                   <div className="text-xs text-surface-500 truncate">
-                    {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null].filter(Boolean).join(' · ') || '—'}
+                    {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null, (c as any).numero_convention ? `Conv. ${(c as any).numero_convention}` : null].filter(Boolean).join(' · ') || '—'}
                   </div>
                 </button>
 
@@ -292,6 +294,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} 
               <Select id="type_contrat" name="type_contrat" label="Type de contrat" options={contratOptions} />
               <Input id="date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue" />
             </div>
+            <Input id="numero_convention" name="numero_convention" label="N° de convention" placeholder="Ex. CONV-2026-001 ou n° France Travail" />
           </div>
 
           <div className="flex justify-end gap-3 pt-1">
@@ -323,6 +326,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} 
                 <Select id="e_type_contrat" name="type_contrat" label="Type de contrat" options={contratOptions} defaultValue={editCand.type_contrat || ''} />
                 <Input id="e_date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue" defaultValue={editCand.date_embauche_prevue || ''} />
               </div>
+              <Input id="e_numero_convention" name="numero_convention" label="N° de convention" defaultValue={(editCand as any).numero_convention || ''} />
             </div>
             <div className="flex justify-end gap-3 pt-1">
               <Button type="button" variant="secondary" onClick={() => setEditCand(null)}>Annuler</Button>

@@ -243,11 +243,12 @@ export async function addPoeiCandidatAction(poeiId: string, formData: FormData):
       poei_id: poeiId,
       apprenant_id,
       inscription_id,
-      identifiant_ft: str(formData, 'identifiant_ft'),
-      poste_vise: str(formData, 'poste_vise'),
-      type_contrat: str(formData, 'type_contrat'),
-      date_embauche_prevue: str(formData, 'date_embauche_prevue'),
-      statut: 'inscrit',
+      identifiant_ft: str(formData, "identifiant_ft"),
+      poste_vise: str(formData, "poste_vise"),
+      type_contrat: str(formData, "type_contrat"),
+      date_embauche_prevue: str(formData, "date_embauche_prevue"),
+      numero_convention: str(formData, "numero_convention"),
+      statut: "inscrit",
     })
   if (error) return { success: false, error: 'Erreur lors de l\'ajout du candidat' }
 
@@ -294,11 +295,12 @@ export async function updatePoeiCandidatAction(candidatId: string, poeiId: strin
   }
 
   // Champs POEI du candidat
-  const { error } = await supabase.from('poei_candidats').update({
-    identifiant_ft: str(formData, 'identifiant_ft'),
-    poste_vise: str(formData, 'poste_vise'),
-    type_contrat: str(formData, 'type_contrat'),
-    date_embauche_prevue: str(formData, 'date_embauche_prevue'),
+  const { error } = await supabase.from("poei_candidats").update({
+    identifiant_ft: str(formData, "identifiant_ft"),
+    poste_vise: str(formData, "poste_vise"),
+    type_contrat: str(formData, "type_contrat"),
+    date_embauche_prevue: str(formData, "date_embauche_prevue"),
+    numero_convention: str(formData, "numero_convention"),
   }).eq('id', candidatId).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur mise à jour candidat' }
 

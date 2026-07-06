@@ -21,6 +21,7 @@ export interface Poei {
   poste_vise: string | null
   type_contrat: TypeContrat | null
   date_embauche_prevue: string | null
+  numero_convention?: string | null
   tuteur_nom: string | null
   formation_id: string | null
   session_id: string | null
