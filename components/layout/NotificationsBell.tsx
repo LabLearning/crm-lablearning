@@ -50,8 +50,16 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
   const [toasts, setToasts] = useState<ToastNotif[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Ids déjà connus : évite de re-toaster au chargement initial et déduplique realtime/polling
+  const knownIdsRef = useRef<Set<string> | null>(null)
 
-  const fetchNotifications = useCallback(async () => {
+  const pushToast = useCallback((n: Notification) => {
+    setToasts((prev) => prev.some((t) => t.id === n.id)
+      ? prev
+      : [...prev, { id: n.id, titre: n.titre, message: n.message, type: n.type, lien_url: n.lien_url }])
+  }, [])
+
+  const fetchNotifications = useCallback(async (notifyNew = false) => {
     try {
       const supabase = createClient()
       const { data } = await supabase
@@ -64,74 +72,87 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
       if (data) {
         setNotifications(data as Notification[])
         setUnreadCount(data.filter((n) => !n.is_read).length)
+        const known = knownIdsRef.current
+        if (notifyNew && known) {
+          for (const n of data) {
+            if (!n.is_read && !known.has(n.id)) pushToast(n as Notification)
+          }
+        }
+        knownIdsRef.current = new Set(data.map((d: any) => d.id))
       }
     } catch {
       // Silently fail
     }
-  }, [userId])
+  }, [userId, pushToast])
 
-  // Realtime subscription
+  // Realtime subscription + polling de secours
   useEffect(() => {
     fetchNotifications()
 
     const supabase = createClient()
-    const channel = supabase
-      .channel(`notifications:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const n = payload.new as Notification
-          setNotifications((prev) => [n, ...prev].slice(0, 20))
-          setUnreadCount((c) => c + 1)
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
 
-          // Toast slide-in
-          setToasts((prev) => [...prev, {
-            id: n.id,
-            titre: n.titre,
-            message: n.message,
-            type: n.type,
-            lien_url: n.lien_url,
-          }])
+    ;(async () => {
+      // Authentifie le socket realtime avec la session utilisateur — sans ça, la RLS
+      // (user_id = auth.uid()) filtre tous les événements et rien n'arrive au navigateur
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) supabase.realtime.setAuth(session.access_token)
+      } catch { /* ignore */ }
+      if (cancelled) return
 
-          // Auto-dismiss toast after 6s
-          setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== n.id))
-          }, 6000)
+      channel = supabase
+        .channel(`notifications:${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const n = payload.new as Notification
+            if (knownIdsRef.current?.has(n.id)) return // déjà vu via polling
+            knownIdsRef.current?.add(n.id)
+            setNotifications((prev) => prev.some((p) => p.id === n.id) ? prev : [n, ...prev].slice(0, 20))
+            setUnreadCount((c) => c + 1)
+            pushToast(n)
+            if (audioRef.current) {
+              audioRef.current.play().catch(() => {})
+            }
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const n = payload.new as Notification
+            setNotifications((prev) => prev.map((p) => (p.id === n.id ? n : p)))
+            setUnreadCount((c) =>
+              (payload.old as Notification)?.is_read === false && n.is_read ? Math.max(c - 1, 0) : c,
+            )
+          },
+        )
+        .subscribe()
+    })()
 
-          // Petit "ding" optionnel (silencieux par défaut sans fichier audio)
-          if (audioRef.current) {
-            audioRef.current.play().catch(() => {})
-          }
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const n = payload.new as Notification
-          setNotifications((prev) => prev.map((p) => (p.id === n.id ? n : p)))
-          setUnreadCount((c) =>
-            (payload.old as Notification)?.is_read === false && n.is_read ? Math.max(c - 1, 0) : c,
-          )
-        },
-      )
-      .subscribe()
+    // Filet de sécurité : si le websocket ne délivre pas (proxy, veille...), le polling
+    // détecte les nouvelles notifications non lues et déclenche les mêmes pop-ups
+    const interval = setInterval(() => fetchNotifications(true), 30000)
 
     return () => {
-      supabase.removeChannel(channel)
+      cancelled = true
+      if (channel) supabase.removeChannel(channel)
+      clearInterval(interval)
     }
-  }, [userId, fetchNotifications])
+  }, [userId, fetchNotifications, pushToast])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -215,6 +236,7 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
             key={t.id}
             toast={t}
             onClose={() => setToasts((prev) => prev.filter((p) => p.id !== t.id))}
+            onOpen={() => markAsRead(t.id)}
           />
         ))}
       </div>
@@ -273,7 +295,7 @@ function NotifRow({
   )
 }
 
-function ToastCard({ toast, onClose }: { toast: ToastNotif; onClose: () => void }) {
+function ToastCard({ toast, onClose, onOpen }: { toast: ToastNotif; onClose: () => void; onOpen?: () => void }) {
   const Inner = (
     <div className="bg-white border border-surface-200 shadow-modal rounded-2xl w-80 p-4 pointer-events-auto animate-slide-up">
       <div className="flex items-start gap-3">
@@ -307,7 +329,7 @@ function ToastCard({ toast, onClose }: { toast: ToastNotif; onClose: () => void 
   )
 
   if (toast.lien_url) {
-    return <Link href={toast.lien_url} onClick={onClose}>{Inner}</Link>
+    return <Link href={toast.lien_url} onClick={() => { onOpen?.(); onClose() }}>{Inner}</Link>
   }
   return Inner
 }
