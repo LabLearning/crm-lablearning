@@ -20,6 +20,21 @@ interface Props {
   hasPoeiCatalog: boolean
 }
 
+
+// Badge de suivi du paiement France Travail (visible des que le dossier est accordé)
+function PaiementBadge({ p }: { p: any }) {
+  const total = Number(p.montant_total) || 0
+  const paye = Number(p.montant_paye) || 0
+  const accorde = !!p.date_accord_ft || ["accorde", "en_formation", "embauche", "termine", "cloture"].includes(p.statut)
+  if (p.date_paiement || (total > 0 && paye >= total)) {
+    return <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold mt-1">Payé</span>
+  }
+  if (accorde) {
+    return <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold mt-1">Paiement en attente</span>
+  }
+  return null
+}
+
 const statusOptions = Object.entries(POEI_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))
 
 export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
@@ -168,9 +183,9 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
                     <span className="inline-flex items-center justify-center min-w-[24px] px-2 py-0.5 rounded-full bg-surface-100 text-surface-700 text-xs font-semibold">{p.candidats_count || 0}</span>
                   </td>
                   <td className="px-5 py-3">
-                    <select value={p.statut} onChange={(e) => handleStatut(p.id, e.target.value)} className="text-xs rounded-lg border border-surface-200 px-2 py-1 bg-white">
+                    <div><select value={p.statut} onChange={(e) => handleStatut(p.id, e.target.value)} className="text-xs rounded-lg border border-surface-200 px-2 py-1 bg-white">
                       {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
+                    </select><div><PaiementBadge p={p} /></div></div>
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="inline-flex items-center gap-1">
