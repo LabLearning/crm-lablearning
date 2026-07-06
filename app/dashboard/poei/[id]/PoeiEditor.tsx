@@ -49,7 +49,6 @@ export function PoeiEditor({ poei, clients, formations }: Props) {
         <div className="section-label mb-3">Financement France Travail</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Input id="montant_horaire" name="montant_horaire" type="number" label="Taux horaire (€)" defaultValue={poei.montant_horaire != null ? String(poei.montant_horaire) : ''} />
-          <Input id="numero_dossier_ft" name="numero_dossier_ft" label="N° dossier France Travail" defaultValue={d(poei.numero_dossier_ft)} />
           <div className="flex items-end text-sm text-surface-500">
             {poei.montant_total != null ? `Total : ${Number(poei.montant_total).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €` : 'Total = durée × taux'}
           </div>

@@ -212,7 +212,6 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
             <div className="section-label mb-2">Financement France Travail</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Input id="montant_horaire" name="montant_horaire" type="number" label="Taux horaire (€)" placeholder="8.00" />
-              <Input id="numero_dossier_ft" name="numero_dossier_ft" label="N° dossier France Travail" />
               <Select id="statut" name="statut" label="Statut" options={statusOptions} defaultValue="montage" />
             </div>
           </div>
