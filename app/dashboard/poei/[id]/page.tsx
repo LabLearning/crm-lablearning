@@ -85,7 +85,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
 
       <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} />
 
-      <PoeiEditor poei={p} clients={clients || []} formations={formations || []} />
+      <PoeiEditor poei={p} clients={clients || []} formations={formations || []} nbCandidats={candidats.length} />
     </div>
   )
 }

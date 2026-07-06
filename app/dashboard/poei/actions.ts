@@ -21,6 +21,18 @@ function num(fd: FormData, key: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+
+// Recalcule le montant total du projet : taux horaire × durée (h) × nombre de candidats
+async function recalcPoeiTotal(supabase: any, orgId: string, poeiId: string) {
+  const { data: p } = await supabase.from("poei").select("duree_heures, montant_horaire").eq("id", poeiId).eq("organization_id", orgId).single()
+  if (!p) return
+  const { count } = await supabase.from("poei_candidats").select("*", { count: "exact", head: true }).eq("poei_id", poeiId).eq("organization_id", orgId)
+  const total = (p.duree_heures != null && p.montant_horaire != null && (count || 0) > 0)
+    ? Math.round(Number(p.duree_heures) * Number(p.montant_horaire) * (count || 0) * 100) / 100
+    : null
+  await supabase.from("poei").update({ montant_total: total }).eq("id", poeiId)
+}
+
 // ─── Projet POEI ──────────────────────────────────────────────────────────────
 
 export async function createPoeiAction(formData: FormData): Promise<ActionResult> {
@@ -73,9 +85,7 @@ export async function createPoeiAction(formData: FormData): Promise<ActionResult
   }
 
   const montantHoraire = num(formData, 'montant_horaire')
-  const montantTotal = (dureeHeures != null && montantHoraire != null)
-    ? Math.round(dureeHeures * montantHoraire * 100) / 100
-    : null
+  const montantTotal = null // calculé automatiquement : taux × heures × nb candidats
 
   const { data, error } = await supabase
     .from('poei')
@@ -89,7 +99,6 @@ export async function createPoeiAction(formData: FormData): Promise<ActionResult
       date_debut,
       date_fin,
       montant_horaire: montantHoraire,
-      montant_total: montantTotal,
       numero_dossier_ft: str(formData, 'numero_dossier_ft'),
       statut: str(formData, 'statut') || 'montage',
       notes: str(formData, 'notes'),
@@ -133,9 +142,7 @@ export async function updatePoeiAction(id: string, formData: FormData): Promise<
 
   const dureeHeures = num(formData, 'duree_heures')
   const montantHoraire = num(formData, 'montant_horaire')
-  const montantTotal = (dureeHeures != null && montantHoraire != null)
-    ? Math.round(dureeHeures * montantHoraire * 100) / 100 : null
-  const date_debut = str(formData, 'date_debut')
+    const date_debut = str(formData, 'date_debut')
   const date_fin = str(formData, 'date_fin')
 
   const { data: poei } = await supabase
@@ -160,6 +167,9 @@ export async function updatePoeiAction(id: string, formData: FormData): Promise<
     })
     .eq('id', id).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  // Total = taux × heures × nb candidats (recalculé)
+  await recalcPoeiTotal(supabase, session.organization.id, id)
 
   // Répercute les dates sur la session liée
   if (poei?.session_id && date_debut && date_fin) {
@@ -257,6 +267,7 @@ export async function addPoeiCandidatAction(poeiId: string, formData: FormData):
     })
   if (error) return { success: false, error: 'Erreur lors de l\'ajout du candidat' }
 
+  await recalcPoeiTotal(supabase, orgId, poeiId)
   await logAudit({ action: 'add_candidat', entity_type: 'poei', entity_id: poeiId })
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true }
@@ -425,6 +436,9 @@ export async function removePoeiCandidatAction(candidatId: string, poeiId: strin
   const { error } = await supabase
     .from('poei_candidats').delete().eq('id', candidatId).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur' }
+
+  // Total = taux × heures × nb candidats (recalculé après retrait)
+  await recalcPoeiTotal(supabase, session.organization.id, poeiId)
 
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true }

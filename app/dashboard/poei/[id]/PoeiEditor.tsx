@@ -11,9 +11,10 @@ interface Props {
   poei: Poei
   clients: { id: string; raison_sociale: string | null }[]
   formations: { id: string; intitule: string }[]
+  nbCandidats?: number
 }
 
-export function PoeiEditor({ poei, clients, formations }: Props) {
+export function PoeiEditor({ poei, clients, formations, nbCandidats = 0 }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -75,7 +76,9 @@ export function PoeiEditor({ poei, clients, formations }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <Input id="montant_horaire" name="montant_horaire" type="number" label="Taux horaire (€)" defaultValue={poei.montant_horaire != null ? String(poei.montant_horaire) : ''} />
           <div className="flex items-end text-sm text-surface-500 pb-2.5">
-            {poei.montant_total != null ? `Total : ${Number(poei.montant_total).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €` : 'Total = durée × taux'}
+            {poei.montant_total != null
+              ? `Total : ${Number(poei.montant_total).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € (${poei.montant_horaire ?? "?"} € × ${poei.duree_heures ?? "?"} h × ${nbCandidats} candidat${nbCandidats > 1 ? "s" : ""})`
+              : `Total = taux × durée × nb candidats (${nbCandidats} candidat${nbCandidats > 1 ? "s" : ""} actuellement)`}
           </div>
         </div>
 
