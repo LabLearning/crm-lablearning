@@ -296,16 +296,24 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <Select id="modalite_select" label="Modalité *" options={modaliteOptions} value={modalite} onChange={e => setModalite(e.target.value as any)} />
       </div>
 
-      {/* ── Client (si intra) ── */}
-      {typeSession === 'intra' && (
-        <div className="rounded-xl bg-brand-50/50 border border-brand-200 px-4 py-3 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-brand-900">
-            <Building2 className="h-4 w-4" /> Client commanditaire
-          </div>
-          <Select id="client_id_select" label="Client *" options={clientOptions} value={clientId} onChange={e => setClientId(e.target.value)} />
-          <div className="text-xs text-brand-700">L'adresse sera pré-remplie avec celle du client (modifiable).</div>
+      {/* ── Client : obligatoire en intra (chez le client), optionnel en inter ── */}
+      <div className="rounded-xl bg-brand-50/50 border border-brand-200 px-4 py-3 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-brand-900">
+          <Building2 className="h-4 w-4" /> Client commanditaire
         </div>
-      )}
+        <Select
+          id="client_id_select"
+          label={typeSession === 'intra' ? 'Client *' : 'Client (optionnel)'}
+          options={clientOptions}
+          value={clientId}
+          onChange={e => setClientId(e.target.value)}
+        />
+        {typeSession === 'intra' ? (
+          <div className="text-xs text-brand-700">L'adresse sera pré-remplie avec celle du client (modifiable).</div>
+        ) : (
+          <div className="text-xs text-brand-700">En inter, vous pouvez rattacher la session à un client existant (facultatif).</div>
+        )}
+      </div>
 
       {/* ── Planning : ajout de jours individuels ── */}
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2 flex items-center gap-2">
