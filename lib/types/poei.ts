@@ -33,6 +33,9 @@ export interface Poei {
   numero_dossier_ft: string | null
   date_depot_ft: string | null
   date_accord_ft: string | null
+  date_mise_en_paiement?: string | null
+  date_paiement?: string | null
+  montant_paye?: number | null
   statut: PoeiStatus
   notes: string | null
   created_by: string | null

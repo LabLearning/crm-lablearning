@@ -150,8 +150,13 @@ export async function updatePoeiAction(id: string, formData: FormData): Promise<
       date_debut, date_fin,
       montant_horaire: montantHoraire,
       montant_total: montantTotal,
-      numero_dossier_ft: str(formData, 'numero_dossier_ft'),
-      notes: str(formData, 'notes'),
+      numero_dossier_ft: str(formData, "numero_dossier_ft"),
+      date_depot_ft: str(formData, "date_depot_ft"),
+      date_accord_ft: str(formData, "date_accord_ft"),
+      date_mise_en_paiement: str(formData, "date_mise_en_paiement"),
+      date_paiement: str(formData, "date_paiement"),
+      montant_paye: num(formData, "montant_paye"),
+      notes: str(formData, "notes"),
     })
     .eq('id', id).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
