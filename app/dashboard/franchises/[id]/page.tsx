@@ -116,7 +116,7 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-brand-50 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${franchise.logo_url ? 'bg-white border border-surface-200' : 'bg-brand-50'}`}>
             {franchise.logo_url ? (
               <img src={franchise.logo_url} alt={name} className="h-full w-full object-contain p-1" />
             ) : (
@@ -132,6 +132,7 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
             </p>
           </div>
         </div>
+        <LinkEtablissementClient franchiseId={franchise.id} allClients={(allClients || []) as any[]} variant="button" />
       </div>
 
       {/* Logo co-branding */}
@@ -223,7 +224,6 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
           <div className="text-sm font-heading font-semibold text-surface-900">
             Établissements ({(etablissements || []).length})
           </div>
-          <LinkEtablissementClient franchiseId={franchise.id} allClients={(allClients || []) as any[]} />
         </div>
         {(etablissements || []).length === 0 ? (
           <div className="card p-6 text-center text-sm text-surface-400">

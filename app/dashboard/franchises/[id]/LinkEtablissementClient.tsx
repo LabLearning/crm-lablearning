@@ -2,14 +2,14 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, X, Loader2, Check, Unlink } from 'lucide-react'
+import { Plus, Search, X, Loader2, Unlink } from 'lucide-react'
 import { linkClientToFranchiseAction } from '../actions'
 
 interface Client { id: string; raison_sociale: string; ville: string | null; franchise_id: string | null }
 
 export default function LinkEtablissementClient({
-  franchiseId, allClients,
-}: { franchiseId: string; allClients: Client[] }) {
+  franchiseId, allClients, variant = 'link',
+}: { franchiseId: string; allClients: Client[]; variant?: 'link' | 'button' }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
@@ -35,17 +35,8 @@ export default function LinkEtablissementClient({
     })
   }
 
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700">
-        <Plus className="h-3.5 w-3.5" /> Rattacher un établissement
-      </button>
-    )
-  }
-
-  return (
-    <div className="card p-3 mt-2">
+  const panel = (
+    <>
       <div className="flex items-center gap-2 mb-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
@@ -71,8 +62,35 @@ export default function LinkEtablissementClient({
           </button>
         ))}
       </div>
-    </div>
+    </>
   )
+
+  // Variante bouton (header de page) : panneau en menu déroulant
+  if (variant === 'button') {
+    return (
+      <div className="relative">
+        <button onClick={() => setOpen(!open)} className="btn-primary inline-flex items-center gap-1.5 text-sm">
+          <Plus className="h-4 w-4" /> Rattacher un établissement
+        </button>
+        {open && (
+          <div className="absolute right-0 top-full mt-2 w-[380px] max-w-[90vw] z-30 card p-3 shadow-lg">
+            {panel}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700">
+        <Plus className="h-3.5 w-3.5" /> Rattacher un établissement
+      </button>
+    )
+  }
+
+  return <div className="card p-3 mt-2">{panel}</div>
 }
 
 export function UnlinkButton({ clientId }: { clientId: string }) {

@@ -84,7 +84,7 @@ export default function FranchisesClient({
                 className="card p-5 hover:border-brand-300 transition-colors group">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="h-9 w-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0 overflow-hidden">
+                    <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden ${f.logo_url ? 'bg-white border border-surface-200' : 'bg-brand-50'}`}>
                       {f.logo_url ? (
                         <img src={f.logo_url} alt={f.nom} className="h-full w-full object-contain p-0.5" />
                       ) : (
