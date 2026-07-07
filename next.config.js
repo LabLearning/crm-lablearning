@@ -2,6 +2,16 @@ const { withSentryConfig } = require('@sentry/nextjs')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Cache client du routeur : une page déjà visitée est réaffichée
+    // instantanément pendant 60s au lieu de refaire l'aller-retour serveur.
+    // Les Server Actions purgent ce cache (revalidatePath), donc les
+    // modifications restent visibles immédiatement.
+    staleTimes: {
+      dynamic: 60,
+      static: 300,
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
