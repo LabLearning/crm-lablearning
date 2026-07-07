@@ -34,10 +34,25 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
 
   // 1 page = 1 jour (2 créneaux : matin + après-midi). Toujours portrait.
   // Lisibilité maximale : 2 colonnes signatures larges + carte récap complète sur chaque page.
-  const pages: typeof allCreneaux[] = []
+  const jours: typeof allCreneaux[] = []
   for (let i = 0; i < allCreneaux.length; i += 2) {
-    pages.push(allCreneaux.slice(i, i + 2))
+    jours.push(allCreneaux.slice(i, i + 2))
   }
+
+  // Au-delà de ROWS_PER_PAGE stagiaires, le contenu déborderait de la page A4
+  // et couperait le bloc signatures : on découpe en plusieurs feuilles par jour.
+  // 5 = maximum pour qu'une feuille complète (récap + tableau + signatures)
+  // tienne sur UNE page A4 sans jamais être coupée.
+  const ROWS_PER_PAGE = 5
+  const sourceApprenants: any[] = apprenants.length > 0 ? apprenants : Array(5).fill(null)
+  const appChunks: any[][] = []
+  for (let i = 0; i < sourceApprenants.length; i += ROWS_PER_PAGE) {
+    appChunks.push(sourceApprenants.slice(i, i + ROWS_PER_PAGE))
+  }
+
+  const pages = jours.flatMap((creneaux, dayIdx) =>
+    appChunks.map((chunk, chunkIdx) => ({ creneaux, dayIdx, chunk, chunkIdx }))
+  )
 
   // Portrait A4 : 595 - 90 = 505 pt utiles ; nom 140 → 365 / 2 = 182 pt par créneau
   const pageWidth = 505
@@ -45,37 +60,29 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
 
   return (
     <Document>
-      {pages.map((creneaux, pageIdx) => {
+      {pages.map(({ creneaux, dayIdx, chunk, chunkIdx }, pageIdx) => {
       const creneauW = creneaux.length > 0 ? (pageWidth - nameW) / creneaux.length : 60
-      const isMultiPage = pages.length > 1
+      const isMultiPage = jours.length > 1
+      const suite = appChunks.length > 1 ? ` — feuille ${chunkIdx + 1}/${appChunks.length}` : ''
       // Date de cette page (= 1 jour) pour le bandeau
       const startDateForPage = new Date(session.date_debut)
-      startDateForPage.setDate(startDateForPage.getDate() + pageIdx)
+      startDateForPage.setDate(startDateForPage.getDate() + dayIdx)
       const jourLabel = startDateForPage.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       return (
       <Page key={pageIdx} size="A4" orientation="portrait" style={shared.page}>
         <PdfDocHeader
           docTitle="Feuille d'émargement"
           numero={numero}
-          date={isMultiPage ? `Jour ${pageIdx + 1} / ${pages.length}` : `Éditée le ${today}`}
+          date={isMultiPage ? `Jour ${dayIdx + 1} / ${jours.length}${suite}` : `Éditée le ${today}${suite}`}
           org={org}
         />
 
-        {/* Carte récap session — jour mis en avant si multi-jours */}
+        {/* Carte récap session — compacte pour que la feuille tienne sur 1 page */}
         <View style={shared.card}>
           <PdfSectionTitle>Action de formation</PdfSectionTitle>
-          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{formation?.intitule || '—'}</Text></View>
-          {formation?.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée totale</Text><Text style={shared.value}>{formation.duree_heures} heures</Text></View> : null}
-          {isMultiPage ? (
-            <>
-              <View style={shared.row}><Text style={shared.label}>Période</Text><Text style={shared.value}>Du {new Date(session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} au {new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}</Text></View>
-              <View style={shared.row}><Text style={shared.label}>Jour de cette feuille</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{jourLabel}</Text></View>
-            </>
-          ) : (
-            <View style={shared.row}><Text style={shared.label}>Date</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{jourLabel}</Text></View>
-          )}
-          {session.horaires && <View style={shared.row}><Text style={shared.label}>Horaires</Text><Text style={shared.value}>{session.horaires}</Text></View>}
-          <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{lieu}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Intitulé</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{`${formation?.intitule || '—'}${formation?.duree_heures ? ` (${formation.duree_heures} heures)` : ''}`}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>{isMultiPage ? 'Jour de cette feuille' : 'Date'}</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{`${jourLabel}${isMultiPage ? ` — du ${new Date(session.date_debut).toLocaleDateString('fr-FR')} au ${new Date(session.date_fin || session.date_debut).toLocaleDateString('fr-FR')}` : ''}`}</Text></View>
+          <View style={shared.row}><Text style={shared.label}>Lieu{session.horaires ? ' / horaires' : ''}</Text><Text style={shared.value}>{`${lieu}${session.horaires ? ` — ${session.horaires}` : ''}`}</Text></View>
           <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
         </View>
 
@@ -95,8 +102,8 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
           </View>
 
           {/* Lignes stagiaires (signature) */}
-          {(apprenants.length > 0 ? apprenants : Array(5).fill(null)).map((a, idx) => (
-            <View key={idx} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
+          {chunk.map((a, idx) => (
+            <View key={idx} wrap={false} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
               <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
                 <Text style={{ fontSize: 8, color: SURFACE_900, fontFamily: 'Satoshi', fontWeight: 700 }}>{a ? `${a.nom || ''}`.toUpperCase().trim() : ''}</Text>
                 <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 1 }}>{a?.prenom || ''}</Text>
@@ -121,21 +128,21 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
         </View>
 
         {/* Mention légale */}
-        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 18, lineHeight: 1.55 }}>
+        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 10, lineHeight: 1.5 }}>
           Chaque stagiaire et le formateur signent dans la case correspondant à la demi-journée de présence. Cette feuille atteste de la réalité de l'action de formation (art. L.6353-1 du Code du travail) et fait foi des présences enregistrées.
         </Text>
 
-        {/* Signatures finales — cartes neutres */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14 }}>
-          <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
-            <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Cachet de l'organisme</Text>
-            <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 6 }}>{org?.name || 'Lab Learning'}</Text>
-            <View style={{ height: 62, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
+        {/* Signatures finales — cartes neutres, bloc insécable (jamais coupé par un saut de page) */}
+        <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14 }}>
+          <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 8 }}>
+            <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Cachet de l'organisme</Text>
+            <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 5 }}>{org?.name || 'Lab Learning'}</Text>
+            <View style={{ height: 48, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
           </View>
-          <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
-            <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 }}>Signature du formateur</Text>
-            {formateur && <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 6 }}>{formateur.prenom} {formateur.nom}</Text>}
-            <View style={{ height: 62, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
+          <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 8 }}>
+            <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Signature du formateur</Text>
+            {formateur && <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 5 }}>{formateur.prenom} {formateur.nom}</Text>}
+            <View style={{ height: 48, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 3, backgroundColor: '#fff' }} />
           </View>
         </View>
 
