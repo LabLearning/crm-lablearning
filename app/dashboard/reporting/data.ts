@@ -40,6 +40,12 @@ export interface DashboardData {
   inscriptions_mensuelles: { mois: string; count: number }[]
 }
 
+// Libellé français d'un mois "YYYY-MM" → "juil. 26"
+function moisLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
+}
+
 export async function getDashboardData(): Promise<DashboardData> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
@@ -48,6 +54,45 @@ export async function getDashboardData(): Promise<DashboardData> {
   const startOfYear = `${now.getFullYear()}-01-01`
   const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
   const today = now.toISOString().split('T')[0]
+
+  // ── Voie rapide : toutes les agrégations en UNE requête SQL (RPC dashboard_kpis) ──
+  // Repli automatique sur l'ancienne implémentation si la fonction n'est pas en base.
+  try {
+    const { data: k, error } = await supabase.rpc('dashboard_kpis', { org: orgId })
+    if (!error && k && typeof k === 'object') {
+      const ca_realise = Number(k.ca_realise) || 0
+      const devis_valeur = Number(k.devis_valeur) || 0
+      return {
+        ca_realise,
+        ca_previsionnel: ca_realise + devis_valeur,
+        ca_mois: Number(k.ca_mois) || 0,
+        encaisse: Number(k.encaisse) || 0,
+        impaye: Number(k.impaye) || 0,
+        leads_total: Number(k.leads_total) || 0,
+        leads_par_status: (k.leads_par_status || {}) as Record<string, number>,
+        leads_valeur: Number(k.leads_valeur) || 0,
+        devis_en_attente: Number(k.devis_en_attente) || 0,
+        devis_valeur,
+        taux_transformation: Number(k.leads_total) > 0 ? Math.round((Number(k.leads_gagnes) / Number(k.leads_total)) * 100) : 0,
+        sessions_en_cours: Number(k.sessions_en_cours) || 0,
+        sessions_a_venir: Number(k.sessions_a_venir) || 0,
+        sessions_terminees: Number(k.sessions_terminees) || 0,
+        apprenants_formes: Number(k.apprenants_formes) || 0,
+        apprenants_en_cours: Number(k.apprenants_en_cours) || 0,
+        heures_dispensees: 0,
+        taux_satisfaction: Number(k.taux_satisfaction) || 0,
+        taux_reussite: Number(k.taux_reussite) || 0,
+        reclamations_ouvertes: Number(k.reclamations_ouvertes) || 0,
+        conformite_qualiopi: Number(k.conformite_qualiopi) || 0,
+        factures_en_retard: Number(k.factures_en_retard) || 0,
+        documents_en_attente: 0,
+        habilitations_a_renouveler: Number(k.habilitations_a_renouveler) || 0,
+        activite_recente: (k.activite_recente || []) as DashboardData['activite_recente'],
+        ca_mensuel: ((k.ca_mensuel || []) as { mois: string; montant: number }[]).map((x) => ({ mois: moisLabel(x.mois), montant: Number(x.montant) || 0 })),
+        inscriptions_mensuelles: ((k.inscriptions_mensuelles || []) as { mois: string; count: number }[]).map((x) => ({ mois: moisLabel(x.mois), count: Number(x.count) || 0 })),
+      }
+    }
+  } catch { /* repli legacy ci-dessous */ }
 
   // Toutes les requêtes ci-dessous sont indépendantes → exécutées en parallèle
   // (1 aller-retour réseau au lieu de 13 en séquence)
