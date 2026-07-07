@@ -12,6 +12,103 @@ function splitComma(text: string | undefined): string[] {
   return text.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
+// Provisionne l'accès à l'outil Audit Hygiène & DUERP (projet Supabase séparé).
+// Renvoie le lien d'activation à inclure dans l'email, ou null si non configuré/échec.
+async function provisionAuditToolAccess(email: string, prenom: string, nom: string): Promise<string | null> {
+  const url = process.env.AUDIT_SUPABASE_URL
+  const serviceKey = process.env.AUDIT_SUPABASE_SERVICE_ROLE_KEY
+  const appUrl = process.env.AUDIT_TOOL_APP_URL
+  if (!url || !serviceKey) return null
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const audit = createClient(url, serviceKey, { auth: { persistSession: false } })
+    // Crée le compte (ignore s'il existe déjà)
+    await audit.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { prenom, nom, source: 'crm-lablearning' },
+    }).catch(() => null)
+    // Lien d'activation (définition du mot de passe) vers l'outil
+    const { data: linkData } = await audit.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: appUrl ? { redirectTo: appUrl } : undefined,
+    })
+    return (linkData as any)?.properties?.action_link || appUrl || null
+  } catch (e) {
+    console.error('[audit tool provisioning]', e)
+    return null
+  }
+}
+
+// Onboarding complet du formateur : compte CRM (invitation) + outil audit + email de bienvenue
+async function onboardFormateur(
+  supabase: any,
+  session: any,
+  formateurId: string,
+  data: { email: string; prenom: string; nom: string },
+  withAuditTool: boolean,
+): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+
+  // 1. Invitation (token de setup)
+  const { data: invitation } = await supabase
+    .from('invitations')
+    .insert({
+      organization_id: session.organization.id,
+      email: data.email,
+      role: 'formateur',
+      invited_by: session.user.id,
+    })
+    .select()
+    .single()
+  if (!invitation) return
+
+  // 2. Compte Supabase Auth
+  const { data: authData } = await supabase.auth.admin.createUser({
+    email: data.email,
+    email_confirm: false,
+    user_metadata: { invitation_token: invitation.token },
+  }).catch(() => ({ data: null }))
+  let authUserId = authData?.user?.id || ''
+  if (!authUserId) {
+    const { data: { users: allUsers } } = await supabase.auth.admin.listUsers()
+    authUserId = ((allUsers || []).find((u: any) => u.email === data.email))?.id || ''
+  }
+  if (!authUserId) return
+
+  // 3. Ligne users (status invited) + liaison de la fiche formateur existante
+  await supabase.from('users').upsert({
+    id: authUserId,
+    organization_id: session.organization.id,
+    email: data.email,
+    first_name: data.prenom,
+    last_name: data.nom,
+    role: 'formateur',
+    status: 'invited',
+  }, { onConflict: 'id' })
+  await supabase.from('formateurs').update({ user_id: authUserId }).eq('id', formateurId)
+
+  // 4. Outil Audit Hygiène & DUERP (si demandé)
+  const auditUrl = withAuditTool
+    ? await provisionAuditToolAccess(data.email, data.prenom, data.nom)
+    : null
+
+  // 5. Email de bienvenue unique
+  const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
+  const { sendFormateurWelcomeEmail } = await import('@/lib/email')
+  await sendFormateurWelcomeEmail({
+    toEmail: data.email,
+    prenom: data.prenom,
+    orgName: org?.name || 'Lab Learning',
+    orgEmail: (org as any)?.email_contact || org?.email,
+    orgLogoUrl: (org as any)?.logo_url,
+    qualiopiCertified: (org as any)?.is_qualiopi !== false,
+    inviteUrl: `${appUrl}/setup-account?token=${invitation.token}&uid=${authUserId}`,
+    auditUrl,
+  })
+}
+
 export async function createFormateurAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
   const raw: Record<string, unknown> = {}
@@ -47,6 +144,21 @@ export async function createFormateurAction(formData: FormData): Promise<ActionR
     .single()
 
   if (error) return { success: false, error: 'Erreur lors de la création' }
+
+  // Onboarding : compte CRM + outil audit (si coché) + email de bienvenue unique
+  if (parsed.data.email) {
+    try {
+      await onboardFormateur(
+        supabase,
+        session,
+        data.id,
+        { email: parsed.data.email, prenom: parsed.data.prenom, nom: parsed.data.nom },
+        formData.get('audit_tool_access') === 'true',
+      )
+    } catch (e) {
+      console.error('[onboard formateur]', e) // la fiche est créée même si l'onboarding échoue
+    }
+  }
 
   await logAudit({ action: 'create', entity_type: 'formateur', entity_id: data.id })
   revalidatePath('/dashboard/formateurs')

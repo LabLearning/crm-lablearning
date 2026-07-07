@@ -657,6 +657,59 @@ function buildPortalAccessHtml(params: {
   })
 }
 
+
+/**
+ * Email de bienvenue formateur : création de compte CRM + accès optionnel
+ * à l outil Audit Hygiène & DUERP — un seul email, deux boutons.
+ */
+export async function sendFormateurWelcomeEmail(params: {
+  toEmail: string
+  prenom: string
+  orgName: string
+  orgEmail?: string
+  orgLogoUrl?: string | null
+  qualiopiCertified?: boolean
+  inviteUrl: string
+  auditUrl?: string | null
+}): Promise<{ success: boolean; error?: string }> {
+  const auditSection = params.auditUrl ? `
+    <div style="border-top:1px solid #e4e4e7;margin:26px 0 0;padding-top:22px;">
+      <h2 style="margin:0 0 6px;color:#18181b;font-size:16px;font-weight:700;">Outil Audit Hygiène &amp; DUERP</h2>
+      <p style="margin:0 0 16px;color:#71717a;font-size:14px;line-height:1.6;">
+        Vous intervenez sur les audits d hygiène et la prévention des risques : un accès à notre outil de
+        rapports d audit (hygiène &amp; DUERP) a été créé pour vous. Activez-le ici :
+      </p>
+      ${ctaButton(params.auditUrl, "Activer mon accès à l outil d audit")}
+    </div>` : ''
+  const body = `
+    <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">Bienvenue chez ${params.orgName} !</h1>
+    <p style="margin:0 0 18px;color:#71717a;font-size:15px;line-height:1.7;">
+      Bonjour <strong style="color:#18181b;">${params.prenom}</strong>,<br>
+      Nous sommes ravis de vous compter parmi nos formateurs. Votre espace personnel vous permet de
+      consulter vos sessions, gérer les émargements, vos apprenants et vos documents.
+    </p>
+    <p style="margin:0 0 16px;color:#71717a;font-size:14px;">Commencez par créer votre mot de passe :</p>
+    ${ctaButton(params.inviteUrl, "Créer mon compte")}
+    ${auditSection}
+    <p style="margin:24px 0 0;color:#a1a1aa;font-size:12px;line-height:1.6;">
+      Ces liens vous sont personnels. En cas de question, répondez simplement à cet email.
+    </p>`
+  const html = emailShell({
+    body,
+    orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    orgLogoUrl: params.orgLogoUrl || undefined,
+    qualiopiCertified: params.qualiopiCertified,
+  })
+  return sendBrandedEmail({
+    to: params.toEmail,
+    orgName: params.orgName,
+    orgEmail: params.orgEmail,
+    subject: `Bienvenue chez ${params.orgName} — votre accès formateur`,
+    html,
+  })
+}
+
 export async function sendPortalAccessEmail(params: {
   toEmail: string
   firstName: string

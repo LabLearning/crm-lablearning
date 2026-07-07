@@ -28,10 +28,16 @@ const contratLabels: Record<string, string> = {
 
 const contratOptions = Object.entries(contratLabels).map(([v, l]) => ({ value: v, label: l }))
 
+// Mots-clés qui suggèrent l'accès à l'outil Audit Hygiène & DUERP
+const AUDIT_KEYWORDS = /hygi|haccp|duerp|pr[ée]vention|s[ée]curit|pms|risqu/i
+
 function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: () => void }) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const [auditAccess, setAuditAccess] = useState(
+    AUDIT_KEYWORDS.test((formateur?.domaines_expertise || []).join(' '))
+  )
   const [photoUrl, setPhotoUrl] = useState<string | null>((formateur as any)?.photo_url || null)
   const [uploading, setUploading] = useState(false)
   const photoRef = useRef<HTMLInputElement>(null)
@@ -100,7 +106,23 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Qualifications (Qualiopi C5)</div>
       <textarea id="qualifications" name="qualifications" rows={3} className="input-base resize-none" placeholder="Diplômes, formations, expériences..." defaultValue={formateur?.qualifications || ''} />
-      <Input id="domaines_expertise" name="domaines_expertise" label="Domaines d'expertise" placeholder="Management, Bureautique, Sécurité (séparés par des virgules)" defaultValue={formateur?.domaines_expertise?.join(', ') || ''} />
+      <Input id="domaines_expertise" name="domaines_expertise" label="Domaines d'expertise" placeholder="Management, Bureautique, Sécurité (séparés par des virgules)" defaultValue={formateur?.domaines_expertise?.join(', ') || ''}
+        onChange={(e) => { if (AUDIT_KEYWORDS.test(e.target.value)) setAuditAccess(true) }} />
+
+      {/* Onboarding : uniquement à la création */}
+      {!formateur && (
+        <div className="rounded-xl bg-sky-50/60 border border-sky-100 px-4 py-3 space-y-1.5">
+          <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">
+            <input type="checkbox" name="audit_tool_access" value="true" checked={auditAccess} onChange={(e) => setAuditAccess(e.target.checked)}
+              className="h-4 w-4 rounded border-surface-300 text-sky-600 focus:ring-sky-500" />
+            Donner accès à l&apos;outil <strong>Audit Hygiène &amp; DUERP</strong>
+          </label>
+          <p className="text-2xs text-surface-500 pl-6">
+            Coché automatiquement si les domaines contiennent hygiène, HACCP, DUERP, prévention ou sécurité.
+            Le formateur recevra un email de bienvenue unique : création de compte CRM{auditAccess ? ' + activation de l\'outil d\'audit' : ''}.
+          </p>
+        </div>
+      )}
       <Input id="certifications" name="certifications" label="Certifications" placeholder="PMP, ITIL, PSM (séparés par des virgules)" defaultValue={formateur?.certifications?.join(', ') || ''} />
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Contrat</div>
