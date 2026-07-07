@@ -234,10 +234,24 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
         )}
       </div>
 
-      {/* Toasts slide-in — rendus dans <body> via portal pour un vrai bas-droite viewport */}
+      {/* Toasts slide-in — rendus dans <body> via portal pour un vrai bas-droite viewport.
+          Empilés (max 4 visibles) + compteur "+N autres" + bouton Tout fermer. */}
       {mounted && createPortal(
-        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
-          {toasts.map((t) => (
+        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none items-end">
+          {toasts.length > 1 && (
+            <button
+              onClick={() => setToasts([])}
+              className="pointer-events-auto text-2xs font-medium text-surface-500 bg-white border border-surface-200 rounded-full px-3 py-1 shadow-sm hover:text-surface-700 hover:border-surface-300 transition-colors"
+            >
+              Tout fermer ({toasts.length})
+            </button>
+          )}
+          {toasts.length > 4 && (
+            <div className="pointer-events-none text-2xs font-medium text-surface-400 bg-surface-100/90 rounded-full px-3 py-1">
+              +{toasts.length - 4} autre{toasts.length - 4 > 1 ? 's' : ''} notification{toasts.length - 4 > 1 ? 's' : ''} — voir la cloche
+            </div>
+          )}
+          {toasts.slice(-4).map((t) => (
             <ToastCard
               key={t.id}
               toast={t}
