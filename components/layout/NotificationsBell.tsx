@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Bell, Check, ExternalLink, X } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -52,6 +53,10 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
   const audioRef = useRef<HTMLAudioElement | null>(null)
   // Ids déjà connus : évite de re-toaster au chargement initial et déduplique realtime/polling
   const knownIdsRef = useRef<Set<string> | null>(null)
+  // Portal (les toasts sont rendus dans <body> : le backdrop-blur du header piège
+  // les éléments fixed → ils s'affichaient en haut au lieu du bas de l'écran)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const pushToast = useCallback((n: Notification) => {
     setToasts((prev) => prev.some((t) => t.id === n.id)
@@ -229,17 +234,20 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
         )}
       </div>
 
-      {/* Toasts slide-in (incoming notifications) */}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
-        {toasts.map((t) => (
-          <ToastCard
-            key={t.id}
-            toast={t}
-            onClose={() => setToasts((prev) => prev.filter((p) => p.id !== t.id))}
-            onOpen={() => markAsRead(t.id)}
-          />
-        ))}
-      </div>
+      {/* Toasts slide-in — rendus dans <body> via portal pour un vrai bas-droite viewport */}
+      {mounted && createPortal(
+        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
+          {toasts.map((t) => (
+            <ToastCard
+              key={t.id}
+              toast={t}
+              onClose={() => setToasts((prev) => prev.filter((p) => p.id !== t.id))}
+              onOpen={() => markAsRead(t.id)}
+            />
+          ))}
+        </div>,
+        document.body,
+      )}
     </>
   )
 }
