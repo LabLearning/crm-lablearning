@@ -32,27 +32,14 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
   const lieu = session.lieu || session.adresse || [session.code_postal, session.ville].filter(Boolean).join(' ') || '—'
   const numero = session.reference || `SESS-${String(session.id || '').slice(0, 8)}`
 
-  // 1 page = 1 jour (2 créneaux : matin + après-midi). Toujours portrait.
-  // Lisibilité maximale : 2 colonnes signatures larges + carte récap complète sur chaque page.
+  // 1 feuille = 1 jour (2 créneaux : matin + après-midi), TOUS les stagiaires.
+  // Si le tableau dépasse la page A4, il se coupe proprement entre deux lignes
+  // (lignes et bloc signatures insécables via wrap={false}).
   const jours: typeof allCreneaux[] = []
   for (let i = 0; i < allCreneaux.length; i += 2) {
     jours.push(allCreneaux.slice(i, i + 2))
   }
-
-  // Au-delà de ROWS_PER_PAGE stagiaires, le contenu déborderait de la page A4
-  // et couperait le bloc signatures : on découpe en plusieurs feuilles par jour.
-  // 5 = maximum pour qu'une feuille complète (récap + tableau + signatures)
-  // tienne sur UNE page A4 sans jamais être coupée.
-  const ROWS_PER_PAGE = 5
-  const sourceApprenants: any[] = apprenants.length > 0 ? apprenants : Array(5).fill(null)
-  const appChunks: any[][] = []
-  for (let i = 0; i < sourceApprenants.length; i += ROWS_PER_PAGE) {
-    appChunks.push(sourceApprenants.slice(i, i + ROWS_PER_PAGE))
-  }
-
-  const pages = jours.flatMap((creneaux, dayIdx) =>
-    appChunks.map((chunk, chunkIdx) => ({ creneaux, dayIdx, chunk, chunkIdx }))
-  )
+  const chunk: any[] = apprenants.length > 0 ? apprenants : Array(5).fill(null)
 
   // Portrait A4 : 595 - 90 = 505 pt utiles ; nom 140 → 365 / 2 = 182 pt par créneau
   const pageWidth = 505
@@ -60,20 +47,19 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
 
   return (
     <Document>
-      {pages.map(({ creneaux, dayIdx, chunk, chunkIdx }, pageIdx) => {
+      {jours.map((creneaux, dayIdx) => {
       const creneauW = creneaux.length > 0 ? (pageWidth - nameW) / creneaux.length : 60
       const isMultiPage = jours.length > 1
-      const suite = appChunks.length > 1 ? ` — feuille ${chunkIdx + 1}/${appChunks.length}` : ''
-      // Date de cette page (= 1 jour) pour le bandeau
+      // Date de cette feuille (= 1 jour) pour le bandeau
       const startDateForPage = new Date(session.date_debut)
       startDateForPage.setDate(startDateForPage.getDate() + dayIdx)
       const jourLabel = startDateForPage.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       return (
-      <Page key={pageIdx} size="A4" orientation="portrait" style={shared.page}>
+      <Page key={dayIdx} size="A4" orientation="portrait" style={shared.page}>
         <PdfDocHeader
           docTitle="Feuille d'émargement"
           numero={numero}
-          date={isMultiPage ? `Jour ${dayIdx + 1} / ${jours.length}${suite}` : `Éditée le ${today}${suite}`}
+          date={isMultiPage ? `Jour ${dayIdx + 1} / ${jours.length}` : `Éditée le ${today}`}
           org={org}
         />
 
@@ -86,8 +72,10 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
           <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : '—'}</Text></View>
         </View>
 
-        {/* Tableau d'émargement — moderne, coins arrondis, header propre */}
-        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, overflow: 'hidden', marginBottom: 12 }}>
+        {/* Tableau d'émargement — moderne, header propre.
+            Pas d'overflow:hidden : le conteneur doit pouvoir se couper
+            proprement entre deux lignes quand il dépasse la page. */}
+        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, marginBottom: 12 }}>
           {/* En-tête colonnes */}
           <View style={{ flexDirection: 'row', backgroundColor: BRAND_GREEN }}>
             <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
