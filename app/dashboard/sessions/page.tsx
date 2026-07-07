@@ -5,18 +5,39 @@ import type { Session } from '@/lib/types/formation'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SessionsPage() {
+type Periode = 'actives' | 'passees' | 'toutes'
+
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: { periode?: string }
+}) {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
+
+  // Par défaut : uniquement les sessions en cours et à venir
+  // (les 350+ sessions passées ne sont chargées que sur demande)
+  const periode: Periode = ['passees', 'toutes'].includes(searchParams.periode || '')
+    ? (searchParams.periode as Periode)
+    : 'actives'
+  const today = new Date().toISOString().slice(0, 10)
+  const depuis = periode === 'actives' ? today : null
+  const jusqua = periode === 'passees' ? today : null
+
+  // Vue par défaut : ordre chronologique (prochaine session en premier)
+  const sortSessions = (list: any[]) =>
+    periode === 'actives'
+      ? [...list].sort((a, b) => (a.date_debut || '').localeCompare(b.date_debut || ''))
+      : list
 
   // ── Voie rapide : tout en 1 requête SQL (RPC sessions_page_data).
   // Évite 8 allers-retours, les .in() à 371 UUIDs dans l'URL et le
   // plafond PostgREST de 1000 lignes (1705 inscriptions, 1220 apprenants).
   try {
-    const { data, error } = await supabase.rpc('sessions_page_data', { org: orgId })
+    const { data, error } = await supabase.rpc('sessions_page_data', { org: orgId, depuis, jusqua })
     if (!error && data && Array.isArray(data.sessions)) {
-      const sessionsWithCounts = data.sessions.map((s: any) => ({
+      const sessionsWithCounts = sortSessions(data.sessions).map((s: any) => ({
         ...s,
         _nb_inscrits: (s._inscrits_ids || []).length,
         _inscrits_ids: s._inscrits_ids || [],
@@ -31,14 +52,15 @@ export default async function SessionsPage() {
             formateurs={(data.formateurs || []) as any[]}
             clients={(data.clients || []) as any[]}
             apprenants={(data.apprenants || []) as any[]}
+            periode={periode}
           />
         </div>
       )
     }
   } catch { /* repli legacy ci-dessous */ }
 
-  // ── Repli : requêtes classiques tant que la migration 066 n'est pas appliquée ──
-  const { data: sessions } = await supabase
+  // ── Repli : requêtes classiques tant que la migration 067 n'est pas appliquée ──
+  let sessionsQuery = supabase
     .from('sessions')
     .select(`
       *,
@@ -48,6 +70,9 @@ export default async function SessionsPage() {
     `)
     .eq('organization_id', orgId)
     .order('date_debut', { ascending: false })
+  if (depuis) sessionsQuery = sessionsQuery.or(`date_fin.gte.${depuis},date_fin.is.null`)
+  if (jusqua) sessionsQuery = sessionsQuery.lt('date_fin', jusqua)
+  const { data: sessions } = await sessionsQuery
 
   const sessionIds = (sessions || []).map((s) => s.id)
 
@@ -108,7 +133,7 @@ export default async function SessionsPage() {
 
   const poeiSessionIds = new Set((poeiLinks || []).map((p: any) => p.session_id))
 
-  const sessionsWithCounts = (sessions || []).map((s) => {
+  const sessionsWithCounts = sortSessions(sessions || []).map((s) => {
     const inscritsIds = inscritsBySession[s.id] || []
     return {
       ...s,
@@ -127,6 +152,7 @@ export default async function SessionsPage() {
         formateurs={(formateurs || []) as any[]}
         clients={(clients || []) as any[]}
         apprenants={(apprenants || []) as any[]}
+        periode={periode}
       />
     </div>
   )

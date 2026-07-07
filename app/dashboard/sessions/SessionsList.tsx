@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Users, QrCode,
   Calendar, MapPin, Video, Clock, User as UserIcon, Building2,
@@ -38,6 +39,13 @@ interface SessionsListProps {
   formateurs: (Pick<Formateur, 'id' | 'prenom' | 'nom'> & { tarif_journalier?: number | null })[]
   clients?: ClientLite[]
   apprenants?: ApprenantLite[]
+  periode?: 'actives' | 'passees' | 'toutes'
+}
+
+const PERIODE_LABELS: Record<string, string> = {
+  actives: 'En cours & à venir',
+  passees: 'Passées',
+  toutes: 'Toutes',
 }
 
 // Pastille de couleur stable par session (repère visuel, style Dendreo)
@@ -61,9 +69,16 @@ function timeRange(s: any): string {
 
 const KANBAN_ORDER: string[] = ['planifiee', 'en_attente_signatures', 'validee', 'confirmee', 'en_cours', 'terminee', 'annulee']
 
-export function SessionsList({ sessions, formations, formateurs, clients = [], apprenants = [] }: SessionsListProps) {
+export function SessionsList({ sessions, formations, formateurs, clients = [], apprenants = [], periode = 'actives' }: SessionsListProps) {
   const { toast } = useToast()
+  const router = useRouter()
+  const pathname = usePathname()
   const [search, setSearch] = useState('')
+
+  // Période chargée côté serveur (URL ?periode=)
+  function handlePeriode(p: string) {
+    router.replace(p === 'actives' ? pathname : `${pathname}?periode=${p}`)
+  }
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [view, setView] = useState<'liste' | 'kanban'>('liste')
   const [createOpen, setCreateOpen] = useState(false)
@@ -175,7 +190,10 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Sessions de formation</h1>
-          <p className="text-surface-500 mt-1 text-sm">{sessions.length} session{sessions.length > 1 ? 's' : ''}</p>
+          <p className="text-surface-500 mt-1 text-sm">
+            {sessions.length} session{sessions.length > 1 ? 's' : ''}
+            {periode !== 'toutes' && <span className="text-surface-400"> · {PERIODE_LABELS[periode].toLowerCase()}</span>}
+          </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>
           Nouvelle session
@@ -184,6 +202,15 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
 
       {/* Filtres + switch de vue */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        {/* Période (chargement serveur : les sessions passées ne sont pas chargées par défaut) */}
+        <div className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start">
+          {(['actives', 'passees', 'toutes'] as const).map((p) => (
+            <button key={p} onClick={() => handlePeriode(p)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${periode === p ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
+              {PERIODE_LABELS[p]}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 max-w-md">
           <Search className="h-4 w-4 text-surface-400 shrink-0" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher (formation, client, formateur, lieu...)" className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1" />
