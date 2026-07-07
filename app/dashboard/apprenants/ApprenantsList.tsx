@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useRef } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Save,
   UserCheck, Building2, Mail, Phone, Accessibility,
   GraduationCap, Calendar, AlertTriangle,
 } from 'lucide-react'
-import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu, PaginationBar } from '@/components/ui'
 import {
   createApprenantAction, updateApprenantAction,
   deleteApprenantAction, inscrireApprenantAction,
@@ -21,6 +22,10 @@ interface ApprenantsListProps {
   clients: Pick<Client, 'id' | 'raison_sociale'>[]
   sessions: Pick<Session, 'id' | 'reference' | 'date_debut' | 'date_fin' | 'formation'>[]
   inscriptions: Inscription[]
+  total: number
+  page: number
+  perPage: number
+  initialSearch: string
 }
 
 function ApprenantForm({
@@ -118,22 +123,32 @@ function ApprenantForm({
   )
 }
 
-export function ApprenantsList({ apprenants, clients, sessions, inscriptions }: ApprenantsListProps) {
+export function ApprenantsList({ apprenants, clients, sessions, inscriptions, total, page, perPage, initialSearch }: ApprenantsListProps) {
   const { toast } = useToast()
-  const [search, setSearch] = useState('')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [search, setSearch] = useState(initialSearch)
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
   const [createOpen, setCreateOpen] = useState(false)
   const [editApprenant, setEditApprenant] = useState<Apprenant | null>(null)
   const [inscrireApprenant, setInscrireApprenant] = useState<Apprenant | null>(null)
   const [parcourApprenant, setParcourApprenant] = useState<Apprenant | null>(null)
 
-  const filtered = useMemo(() => {
-    if (!search) return apprenants
-    const s = search.toLowerCase()
-    return apprenants.filter((a) =>
-      a.prenom.toLowerCase().includes(s) || a.nom.toLowerCase().includes(s) ||
-      (a.email || '').toLowerCase().includes(s) || (a.entreprise || '').toLowerCase().includes(s)
-    )
-  }, [apprenants, search])
+  // Recherche côté serveur (URL ?q=), débouncée
+  function handleSearch(value: string) {
+    setSearch(value)
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value.trim()) params.set('q', value.trim())
+      else params.delete('q')
+      params.delete('page')
+      router.replace(`${pathname}${params.toString() ? `?${params}` : ''}`)
+    }, 350)
+  }
+
+  const filtered = apprenants
 
   function getInscriptions(apprenantId: string) {
     return inscriptions.filter((i) => i.apprenant_id === apprenantId)
@@ -157,14 +172,14 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions }: 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Apprenants</h1>
-          <p className="text-surface-500 mt-1 text-sm">{apprenants.length} apprenant{apprenants.length > 1 ? 's' : ''}</p>
+          <p className="text-surface-500 mt-1 text-sm">{new Intl.NumberFormat('fr-FR').format(total)} apprenant{total > 1 ? 's' : ''}</p>
         </div>
         <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Nouvel apprenant</Button>
       </div>
 
       <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 max-w-md mb-5">
         <Search className="h-4 w-4 text-surface-400" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1" />
+        <input type="text" value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1" />
       </div>
 
       {/* Table */}
@@ -252,6 +267,7 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions }: 
             {search ? 'Aucun apprenant trouvé' : 'Aucun apprenant enregistré'}
           </div>
         )}
+        <PaginationBar total={total} page={page} perPage={perPage} />
       </div>
 
       {/* Create / Edit */}

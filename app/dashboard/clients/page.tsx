@@ -6,17 +6,44 @@ import type { Client } from '@/lib/types/crm'
 // Rôles qui voient TOUS les clients de l'organisation
 const MANAGER_ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial', 'comptable']
 
-export default async function ClientsPage() {
+const PER_PAGE = 50
+
+// Échappe les caractères réservés de la syntaxe .or() de PostgREST
+function sanitizeSearch(q: string) {
+  return q.replace(/[,()"]/g, ' ').trim()
+}
+
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; q?: string; type?: string }
+}) {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
   const role = session.user.role
   const canAssign = MANAGER_ROLES.includes(role)
 
+  const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1)
+  const q = sanitizeSearch(searchParams.q || '')
+  const typeFilter = ['entreprise', 'particulier'].includes(searchParams.type || '') ? searchParams.type : null
+  const from = (page - 1) * PER_PAGE
+  const to = from + PER_PAGE - 1
+
   let clientsQuery = supabase
     .from('clients')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('organization_id', session.organization.id)
     .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (q) {
+    clientsQuery = clientsQuery.or(
+      `raison_sociale.ilike.%${q}%,nom.ilike.%${q}%,prenom.ilike.%${q}%,email.ilike.%${q}%`
+    )
+  }
+  if (typeFilter) {
+    clientsQuery = clientsQuery.eq('type', typeFilter)
+  }
 
   // Commercial : ne voit que les clients qui lui sont assignés
   if (role === 'commercial') {
@@ -55,7 +82,7 @@ export default async function ClientsPage() {
         .order('first_name')
     : Promise.resolve({ data: [] as any[] })
 
-  const [{ data: clients }, { data: users }] = await Promise.all([clientsQuery, usersPromise])
+  const [{ data: clients, count }, { data: users }] = await Promise.all([clientsQuery, usersPromise])
 
   // Attache le nom de l'assigné pour l'affichage
   const userMap = new Map((users || []).map((u: any) => [u.id, u]))
@@ -72,6 +99,11 @@ export default async function ClientsPage() {
         clients={clientsWithAssignee as Client[]}
         users={(users || []) as any[]}
         canAssign={canAssign}
+        total={count || 0}
+        page={page}
+        perPage={PER_PAGE}
+        initialSearch={searchParams.q || ''}
+        initialType={typeFilter || 'all'}
       />
     </div>
   )

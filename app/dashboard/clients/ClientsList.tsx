@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useRef } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, Search, Building2, User, Pencil, Trash2, Mail, Phone, MapPin } from 'lucide-react'
-import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Modal, useToast, RowMenu, PaginationBar } from '@/components/ui'
 import { ClientForm } from './ClientForm'
 import { deleteClientAction } from './actions'
 import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
@@ -16,27 +16,51 @@ interface ClientsListProps {
   clients: Client[]
   users?: OrgUser[]
   canAssign?: boolean
+  total: number
+  page: number
+  perPage: number
+  initialSearch: string
+  initialType: string
 }
 
-export function ClientsList({ clients, users = [], canAssign = false }: ClientsListProps) {
+export function ClientsList({ clients, users = [], canAssign = false, total, page, perPage, initialSearch, initialType }: ClientsListProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
-  const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [search, setSearch] = useState(initialSearch)
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>()
+  const typeFilter = initialType
   const [createOpen, setCreateOpen] = useState(false)
   const [editClient, setEditClient] = useState<Client | null>(null)
 
-  const filtered = useMemo(() => {
-    return clients.filter((c) => {
-      const matchSearch =
-        (c.raison_sociale || '').toLowerCase().includes(search.toLowerCase()) ||
-        (c.nom || '').toLowerCase().includes(search.toLowerCase()) ||
-        (c.prenom || '').toLowerCase().includes(search.toLowerCase()) ||
-        (c.email || '').toLowerCase().includes(search.toLowerCase())
-      const matchType = typeFilter === 'all' || c.type === typeFilter
-      return matchSearch && matchType
+  // Recherche et filtre côté serveur, pilotés par l'URL (?q=, ?type=)
+  function updateParams(mutate: (params: URLSearchParams) => void) {
+    const params = new URLSearchParams(searchParams.toString())
+    mutate(params)
+    params.delete('page')
+    router.replace(`${pathname}${params.toString() ? `?${params}` : ''}`)
+  }
+
+  function handleSearch(value: string) {
+    setSearch(value)
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => {
+      updateParams((params) => {
+        if (value.trim()) params.set('q', value.trim())
+        else params.delete('q')
+      })
+    }, 350)
+  }
+
+  function handleTypeFilter(t: string) {
+    updateParams((params) => {
+      if (t === 'all') params.delete('type')
+      else params.set('type', t)
     })
-  }, [clients, search, typeFilter])
+  }
+
+  const filtered = clients
 
   function getDisplayName(c: Client): string {
     if (c.type === 'entreprise') return c.raison_sociale || 'Sans nom'
@@ -57,7 +81,7 @@ export function ClientsList({ clients, users = [], canAssign = false }: ClientsL
         <div>
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Clients</h1>
           <p className="text-surface-500 mt-1 text-sm">
-            {clients.length} client{clients.length > 1 ? 's' : ''} enregistré{clients.length > 1 ? 's' : ''}
+            {new Intl.NumberFormat('fr-FR').format(total)} client{total > 1 ? 's' : ''} enregistré{total > 1 ? 's' : ''}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>
@@ -72,7 +96,7 @@ export function ClientsList({ clients, users = [], canAssign = false }: ClientsL
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Rechercher un client..."
             className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1"
           />
@@ -81,7 +105,7 @@ export function ClientsList({ clients, users = [], canAssign = false }: ClientsL
           {['all', 'entreprise', 'particulier'].map((t) => (
             <button
               key={t}
-              onClick={() => setTypeFilter(t)}
+              onClick={() => handleTypeFilter(t)}
               className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
                 typeFilter === t
                   ? 'bg-surface-900 text-white shadow-xs'
@@ -188,6 +212,7 @@ export function ClientsList({ clients, users = [], canAssign = false }: ClientsL
             {search ? 'Aucun client trouvé pour cette recherche' : 'Aucun client. Créez votre premier client !'}
           </div>
         )}
+        <PaginationBar total={total} page={page} perPage={perPage} />
       </div>
 
       {/* Create Modal */}
