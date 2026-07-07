@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Settings2, Check, Loader2, RefreshCw, BadgeCheck, Wallet, Clock, X, ExternalLink, Banknote,
+  ChevronRight, Building2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { commissionTypeLabel } from '@/lib/commission'
@@ -54,6 +55,17 @@ const STATUS_META: Record<CommStatus, { label: string; bg: string; text: string;
   annulee: { label: 'Annulée', bg: 'bg-rose-50', text: 'text-rose-700', icon: X },
 }
 
+interface EtabGroup {
+  key: string
+  clientId: string | null
+  nom: string
+  dossiers: Dossier[]
+  pec: number
+  cout: number
+  commission: number
+  nbParStatut: Record<CommStatus, number>
+}
+
 export default function FranchiseDetailClient({
   franchiseId, commissionType, taux, commAVenir, commValidee, commPayee, dossiers,
 }: Props) {
@@ -63,6 +75,43 @@ export default function FranchiseDetailClient({
   const [type, setType] = useState<CommissionType>(commissionType)
   const [tauxVal, setTauxVal] = useState(String(taux))
   const [saving, setSaving] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  // Regroupement des dossiers par établissement (client)
+  const groups = useMemo<EtabGroup[]>(() => {
+    const map = new Map<string, EtabGroup>()
+    for (const d of dossiers) {
+      const key = d.client?.id || 'sans'
+      let g = map.get(key)
+      if (!g) {
+        g = {
+          key,
+          clientId: d.client?.id || null,
+          nom: d.client?.raison_sociale || 'Sans établissement',
+          dossiers: [],
+          pec: 0, cout: 0, commission: 0,
+          nbParStatut: { a_venir: 0, validee: 0, payee: 0, annulee: 0 },
+        }
+        map.set(key, g)
+      }
+      g.dossiers.push(d)
+      g.pec += Number(d.montant_prise_en_charge) || 0
+      g.cout += Number(d.cout_formateur) || 0
+      const cs = (d.commission_status || 'a_venir') as CommStatus
+      if (cs !== 'annulee') g.commission += Number(d.commission_montant) || 0
+      g.nbParStatut[cs]++
+    }
+    return Array.from(map.values()).sort((a, b) => b.commission - a.commission || a.nom.localeCompare(b.nom))
+  }, [dossiers])
+
+  const toggleGroup = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const handleSaveConfig = () => {
     setSaving(true)
@@ -201,84 +250,116 @@ export default function FranchiseDetailClient({
         </div>
       </div>
 
-      {/* Tableau dossiers */}
+      {/* Commissions par établissement */}
       <div>
         <div className="text-sm font-heading font-semibold text-surface-900 mb-2">
-          Dossiers & commissions ({dossiers.length})
+          Commissions par établissement ({groups.length})
         </div>
         {dossiers.length === 0 ? (
           <div className="card p-6 text-center text-sm text-surface-400">Aucun dossier pour cette franchise.</div>
         ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-surface-50/60 border-b border-surface-200">
-                <tr className="text-[11px] uppercase tracking-wider text-surface-500 font-semibold">
-                  <th className="px-4 py-3 text-left">Dossier</th>
-                  <th className="px-4 py-3 text-left">Établissement</th>
-                  <th className="px-4 py-3 text-right">PEC</th>
-                  <th className="px-4 py-3 text-right">Coût form.</th>
-                  <th className="px-4 py-3 text-right">Commission</th>
-                  <th className="px-4 py-3 text-left">Statut</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dossiers.map((d) => {
-                  const cs = (d.commission_status || 'a_venir') as CommStatus
-                  const meta = STATUS_META[cs]
-                  const Icon = meta.icon
-                  return (
-                    <tr key={d.id} className="border-b border-surface-100 last:border-0 hover:bg-surface-50/40">
-                      <td className="px-4 py-3">
-                        <Link href={`/dashboard/dossiers/${d.id}`} className="text-sm font-medium text-surface-900 hover:text-brand-600 inline-flex items-center gap-1">
-                          {d.numero}
-                          <ExternalLink className="h-3 w-3 opacity-50" />
-                        </Link>
-                        {d.formation && <div className="text-xs text-surface-400 truncate max-w-[160px]">{d.formation.intitule}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-surface-700 truncate max-w-[160px]">
-                        {d.client?.raison_sociale || '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-700">{fmtEuro(d.montant_prise_en_charge)}</td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-500">{fmtEuro(d.cout_formateur)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="text-sm font-bold text-amber-600 tabular-nums">{fmtEuro(d.commission_montant)}</div>
-                        {d.commission_taux != null && (
-                          <div className="text-[10px] text-surface-400">{d.commission_taux}% · {d.commission_type === 'budget_net' ? 'net' : 'débloqué'}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold', meta.bg, meta.text)}>
-                          <Icon className="h-3 w-3" /> {meta.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="inline-flex items-center gap-1">
-                          {cs === 'a_venir' && (
-                            <button onClick={() => doAction(() => updateCommissionStatusAction(d.id, 'validee'))}
-                              className="text-[11px] font-semibold px-2 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100">Valider</button>
-                          )}
-                          {cs === 'validee' && (
-                            <button onClick={() => doAction(() => updateCommissionStatusAction(d.id, 'payee'))}
-                              className="text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">Payer</button>
-                          )}
-                          {(cs === 'a_venir' || cs === 'validee') && (
-                            <button onClick={() => doAction(() => recalcCommissionAction(d.id))}
-                              title="Recalculer" className="p-1.5 rounded-md text-surface-400 hover:text-surface-700 hover:bg-surface-100">
-                              <RefreshCw className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {cs === 'payee' && (
-                            <button onClick={() => doAction(() => updateCommissionStatusAction(d.id, 'a_venir'))}
-                              className="text-[11px] text-surface-400 hover:text-surface-700">Annuler paiement</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="card divide-y divide-surface-100 overflow-hidden">
+            {groups.map((g) => {
+              const isOpen = expanded.has(g.key)
+              return (
+                <div key={g.key}>
+                  {/* Ligne de synthèse établissement */}
+                  <button
+                    onClick={() => toggleGroup(g.key)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-50/60 transition-colors"
+                  >
+                    <ChevronRight className={cn('h-4 w-4 text-surface-400 shrink-0 transition-transform', isOpen && 'rotate-90')} />
+                    <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
+                      <Building2 className="h-4 w-4 text-surface-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-surface-900 truncate">
+                        {g.clientId ? (
+                          <Link
+                            href={`/dashboard/clients/${g.clientId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:text-brand-600"
+                          >
+                            {g.nom}
+                          </Link>
+                        ) : g.nom}
+                      </div>
+                      <div className="text-xs text-surface-500">
+                        {g.dossiers.length} dossier{g.dossiers.length > 1 ? 's' : ''}
+                        {g.nbParStatut.a_venir > 0 && <span> · {g.nbParStatut.a_venir} à venir</span>}
+                        {g.nbParStatut.validee > 0 && <span className="text-blue-600"> · {g.nbParStatut.validee} validée{g.nbParStatut.validee > 1 ? 's' : ''}</span>}
+                        {g.nbParStatut.payee > 0 && <span className="text-emerald-600"> · {g.nbParStatut.payee} payée{g.nbParStatut.payee > 1 ? 's' : ''}</span>}
+                      </div>
+                    </div>
+                    <div className="hidden sm:block text-right shrink-0">
+                      <div className="text-[10px] uppercase tracking-wider text-surface-400">PEC</div>
+                      <div className="text-sm tabular-nums text-surface-700">{fmtEuro(g.pec)}</div>
+                    </div>
+                    <div className="hidden md:block text-right shrink-0 w-24">
+                      <div className="text-[10px] uppercase tracking-wider text-surface-400">Coût form.</div>
+                      <div className="text-sm tabular-nums text-surface-500">{fmtEuro(g.cout)}</div>
+                    </div>
+                    <div className="text-right shrink-0 w-24">
+                      <div className="text-[10px] uppercase tracking-wider text-surface-400">Commission</div>
+                      <div className="text-sm font-bold text-amber-600 tabular-nums">{fmtEuro(g.commission)}</div>
+                    </div>
+                  </button>
+
+                  {/* Détail des dossiers de l'établissement */}
+                  {isOpen && (
+                    <div className="bg-surface-50/40 divide-y divide-surface-100 border-t border-surface-100">
+                      {g.dossiers.map((d) => {
+                        const cs = (d.commission_status || 'a_venir') as CommStatus
+                        const meta = STATUS_META[cs]
+                        const Icon = meta.icon
+                        return (
+                          <div key={d.id} className="flex flex-wrap items-center gap-3 pl-12 pr-4 py-2.5">
+                            <div className="flex-1 min-w-[160px]">
+                              <Link href={`/dashboard/dossiers/${d.id}`} className="text-sm font-medium text-surface-900 hover:text-brand-600 inline-flex items-center gap-1">
+                                {d.numero}
+                                <ExternalLink className="h-3 w-3 opacity-50" />
+                              </Link>
+                              {d.formation && <div className="text-xs text-surface-400 truncate max-w-[220px]">{d.formation.intitule}</div>}
+                            </div>
+                            <div className="hidden sm:block text-right w-20 text-sm tabular-nums text-surface-700">{fmtEuro(d.montant_prise_en_charge)}</div>
+                            <div className="hidden md:block text-right w-20 text-sm tabular-nums text-surface-500">{fmtEuro(d.cout_formateur)}</div>
+                            <div className="text-right w-24">
+                              <div className="text-sm font-bold text-amber-600 tabular-nums">{fmtEuro(d.commission_montant)}</div>
+                              {d.commission_taux != null && (
+                                <div className="text-[10px] text-surface-400">{d.commission_taux}% · {d.commission_type === 'budget_net' ? 'net' : 'débloqué'}</div>
+                              )}
+                            </div>
+                            <span className={cn('inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold shrink-0', meta.bg, meta.text)}>
+                              <Icon className="h-3 w-3" /> {meta.label}
+                            </span>
+                            <div className="inline-flex items-center gap-1 shrink-0">
+                              {cs === 'a_venir' && (
+                                <button onClick={() => doAction(() => updateCommissionStatusAction(d.id, 'validee'))}
+                                  className="text-[11px] font-semibold px-2 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100">Valider</button>
+                              )}
+                              {cs === 'validee' && (
+                                <button onClick={() => doAction(() => updateCommissionStatusAction(d.id, 'payee'))}
+                                  className="text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">Payer</button>
+                              )}
+                              {(cs === 'a_venir' || cs === 'validee') && (
+                                <button onClick={() => doAction(() => recalcCommissionAction(d.id))}
+                                  title="Recalculer" className="p-1.5 rounded-md text-surface-400 hover:text-surface-700 hover:bg-surface-100">
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              {cs === 'payee' && (
+                                <button onClick={() => doAction(() => updateCommissionStatusAction(d.id, 'a_venir'))}
+                                  className="text-[11px] text-surface-400 hover:text-surface-700">Annuler paiement</button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
