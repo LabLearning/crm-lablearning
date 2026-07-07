@@ -2,23 +2,24 @@
 
 import { useState, useMemo } from 'react'
 import {
-  PieChart, TrendingUp, TrendingDown, Users, Euro, Target,
-  AlertTriangle, CheckCircle2, Clock, BarChart3, FileText,
-  GraduationCap, Layers,
+  Users, Euro, Target, AlertTriangle, CheckCircle2, GraduationCap,
 } from 'lucide-react'
-import { Badge } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
-interface Lead { id: string; status: string; montant_estime: number | null; created_at: string; converted_at: string | null }
-interface Session { id: string; status: string; date_debut: string; date_fin: string; capacite_max: number | null }
-interface Devis { id: string; status: string; montant_ht: number | null; created_at: string }
-interface Facture { id: string; status: string; montant_ht: number | null; montant_ttc: number | null; date_emission: string }
-interface Inscription { id: string; status: string; session_id: string }
-interface Dossier { id: string; status: string; created_at: string }
-
-interface ManagerClientProps {
-  leads: Lead[]; sessions: Session[]; devis: Devis[]; factures: Facture[]
-  apprenants: number; inscriptions: Inscription[]; dossiers: Dossier[]
+export interface ManagerStats {
+  leadsTotal: number
+  leadsMois: number
+  leadsParStatut: Record<string, { count: number; montant: number }>
+  devisTotal: number
+  devisAcceptes: number
+  devisMontant: number
+  facturesParStatut: Record<string, number>
+  caFacture: number
+  caPaye: number
+  impayes: number
+  sessionsParStatut: Record<string, number>
+  dossiersParStatut: Record<string, number>
+  apprenants: number
   reclamationsOuvertes: number
 }
 
@@ -35,59 +36,56 @@ const PIPELINE_STATUTS = [
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(Math.round(n))
 const fmtK = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n))
 
-export function ManagerClient({ leads, sessions, devis, factures, apprenants, inscriptions, dossiers, reclamationsOuvertes }: ManagerClientProps) {
+export function ManagerClient({ stats }: { stats: ManagerStats }) {
   const [tab, setTab] = useState<'general' | 'pipeline' | 'finance' | 'formation'>('general')
 
-  // ─── Calculs ───
+  const sc = (key: string) => stats.sessionsParStatut[key] || 0
+  const dc = (key: string) => stats.dossiersParStatut[key] || 0
+  const fc = (key: string) => stats.facturesParStatut[key] || 0
+
+  // ─── Calculs dérivés des agrégats (tout est pré-calculé côté SQL) ───
   const kpi = useMemo(() => {
-    const now = new Date()
-    const thisMonth = now.toISOString().substring(0, 7)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString()
-
-    const totalLeads = leads.length
-    const leadsThisMonth = leads.filter(l => l.created_at?.startsWith(thisMonth)).length
-    const gagnes = leads.filter(l => l.status === 'gagne').length
-    const perdus = leads.filter(l => l.status === 'perdu').length
-    const enCours = leads.filter(l => !['gagne', 'perdu'].includes(l.status)).length
-    const tauxConversion = totalLeads > 0 ? Math.round((gagnes / totalLeads) * 100) : 0
+    const ls = stats.leadsParStatut
+    const gagnes = ls['gagne']?.count || 0
+    const perdus = ls['perdu']?.count || 0
+    const enCours = stats.leadsTotal - gagnes - perdus
+    const tauxConversion = stats.leadsTotal > 0 ? Math.round((gagnes / stats.leadsTotal) * 100) : 0
     const ratioGP = (gagnes + perdus) > 0 ? (gagnes / (gagnes + perdus) * 100).toFixed(0) : '—'
+    const montantPipeline = Object.entries(ls)
+      .filter(([k]) => k !== 'gagne' && k !== 'perdu')
+      .reduce((sum, [, v]) => sum + (Number(v.montant) || 0), 0)
 
-    const montantPipeline = leads.filter(l => !['gagne', 'perdu'].includes(l.status)).reduce((sum, l) => sum + (l.montant_estime || 0), 0)
+    const tauxDevis = stats.devisTotal > 0 ? Math.round((stats.devisAcceptes / stats.devisTotal) * 100) : 0
 
-    const totalDevis = devis.length
-    const devisAcceptes = devis.filter(d => d.status === 'accepte').length
-    const tauxDevis = totalDevis > 0 ? Math.round((devisAcceptes / totalDevis) * 100) : 0
-    const devisMontant = devis.reduce((sum, d) => sum + (d.montant_ht || 0), 0)
+    const sessionsEnCours = sc('en_cours')
+    const sessionsAVenir = sc('planifiee') + sc('confirmee')
+    const sessionsTerminees = sc('terminee')
 
-    const caFacture = factures.filter(f => f.status !== 'annulee').reduce((sum, f) => sum + (f.montant_ht || 0), 0)
-    const caPayé = factures.filter(f => f.status === 'payee').reduce((sum, f) => sum + (f.montant_ht || 0), 0)
-    const impayés = factures.filter(f => f.status === 'en_retard' || f.status === 'relancee').reduce((sum, f) => sum + (f.montant_ht || 0), 0)
-
-    const sessionsEnCours = sessions.filter(s => s.status === 'en_cours').length
-    const sessionsAVenir = sessions.filter(s => s.status === 'planifiee' || s.status === 'confirmee').length
-    const sessionsTerminees = sessions.filter(s => s.status === 'terminee').length
-
-    const dossiersEnCours = dossiers.filter(d => !['cloture', 'facture'].includes(d.status)).length
+    const dossiersTotal = Object.values(stats.dossiersParStatut).reduce((s, n) => s + n, 0)
+    const dossiersEnCours = dossiersTotal - dc('cloture') - dc('facture')
 
     return {
-      totalLeads, leadsThisMonth, gagnes, perdus, enCours, tauxConversion, ratioGP, montantPipeline,
-      totalDevis, devisAcceptes, tauxDevis, devisMontant,
-      caFacture, caPayé, impayés,
+      totalLeads: stats.leadsTotal, leadsThisMonth: stats.leadsMois,
+      gagnes, perdus, enCours, tauxConversion, ratioGP, montantPipeline,
+      totalDevis: stats.devisTotal, devisAcceptes: stats.devisAcceptes, tauxDevis, devisMontant: stats.devisMontant,
+      caFacture: stats.caFacture, caPayé: stats.caPaye, impayés: stats.impayes,
       sessionsEnCours, sessionsAVenir, sessionsTerminees,
-      apprenants, dossiersEnCours, reclamationsOuvertes,
+      apprenants: stats.apprenants, dossiersEnCours, reclamationsOuvertes: stats.reclamationsOuvertes,
     }
-  }, [leads, devis, factures, sessions, dossiers, apprenants, reclamationsOuvertes])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats])
 
   // Pipeline distribution
   const pipeline = useMemo(() => {
     return PIPELINE_STATUTS.map(s => ({
       ...s,
-      count: leads.filter(l => l.status === s.key).length,
-      montant: leads.filter(l => l.status === s.key).reduce((sum, l) => sum + (l.montant_estime || 0), 0),
+      count: stats.leadsParStatut[s.key]?.count || 0,
+      montant: Number(stats.leadsParStatut[s.key]?.montant) || 0,
     }))
-  }, [leads])
+  }, [stats])
 
   const maxPipeline = Math.max(...pipeline.map(p => p.count), 1)
+  const totalFactures = Object.values(stats.facturesParStatut).reduce((s, n) => s + n, 0)
 
   return (
     <div>
@@ -232,13 +230,13 @@ export function ManagerClient({ leads, sessions, devis, factures, apprenants, in
             <div className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-4">Répartition factures</div>
             <div className="space-y-2">
               {[
-                { label: 'Brouillons', count: factures.filter(f => f.status === 'brouillon').length, color: '#94A3B8' },
-                { label: 'Envoyées', count: factures.filter(f => f.status === 'envoyee').length, color: '#6366F1' },
-                { label: 'Payées', count: factures.filter(f => f.status === 'payee').length, color: '#10B981' },
-                { label: 'En retard', count: factures.filter(f => f.status === 'en_retard').length, color: '#EF4444' },
-                { label: 'Relancées', count: factures.filter(f => f.status === 'relancee').length, color: '#F59E0B' },
+                { label: 'Brouillons', count: fc('brouillon'), color: '#94A3B8' },
+                { label: 'Envoyées', count: fc('envoyee'), color: '#6366F1' },
+                { label: 'Payées', count: fc('payee'), color: '#10B981' },
+                { label: 'En retard', count: fc('en_retard'), color: '#EF4444' },
+                { label: 'Relancées', count: fc('relancee'), color: '#F59E0B' },
               ].filter(s => s.count > 0).map(s => {
-                const max = Math.max(...factures.length > 0 ? [factures.length] : [1])
+                const max = Math.max(totalFactures, 1)
                 return (
                   <div key={s.label} className="flex items-center gap-3">
                     <div className="w-24 text-xs text-surface-600 text-right">{s.label}</div>
@@ -268,10 +266,10 @@ export function ManagerClient({ leads, sessions, devis, factures, apprenants, in
             <div className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-4">Statut sessions</div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'Planifiées', count: sessions.filter(s => s.status === 'planifiee').length, color: 'bg-blue-50 text-blue-700' },
-                { label: 'Confirmées', count: sessions.filter(s => s.status === 'confirmee').length, color: 'bg-violet-50 text-violet-700' },
-                { label: 'En cours', count: sessions.filter(s => s.status === 'en_cours').length, color: 'bg-amber-50 text-amber-700' },
-                { label: 'Terminées', count: sessions.filter(s => s.status === 'terminee').length, color: 'bg-emerald-50 text-emerald-700' },
+                { label: 'Planifiées', count: sc('planifiee'), color: 'bg-blue-50 text-blue-700' },
+                { label: 'Confirmées', count: sc('confirmee'), color: 'bg-violet-50 text-violet-700' },
+                { label: 'En cours', count: sc('en_cours'), color: 'bg-amber-50 text-amber-700' },
+                { label: 'Terminées', count: sc('terminee'), color: 'bg-emerald-50 text-emerald-700' },
               ].map(s => (
                 <div key={s.label} className={cn('p-4 rounded-xl text-center', s.color)}>
                   <div className="text-2xl font-heading font-bold">{s.count}</div>
@@ -285,12 +283,12 @@ export function ManagerClient({ leads, sessions, devis, factures, apprenants, in
             <div className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-4">Statut dossiers</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
-                { label: 'En création', count: dossiers.filter(d => d.status === 'en_creation').length },
-                { label: 'Devis envoyé', count: dossiers.filter(d => d.status === 'devis_envoye').length },
-                { label: 'Convention signée', count: dossiers.filter(d => d.status === 'convention_signee').length },
-                { label: 'En cours', count: dossiers.filter(d => d.status === 'en_cours').length },
-                { label: 'Réalisé', count: dossiers.filter(d => d.status === 'realise').length },
-                { label: 'Clôturé', count: dossiers.filter(d => d.status === 'cloture').length },
+                { label: 'En création', count: dc('en_creation') },
+                { label: 'Devis envoyé', count: dc('devis_envoye') },
+                { label: 'Convention signée', count: dc('convention_signee') },
+                { label: 'En cours', count: dc('en_cours') },
+                { label: 'Réalisé', count: dc('realise') },
+                { label: 'Clôturé', count: dc('cloture') },
               ].map(s => (
                 <div key={s.label} className="flex items-center justify-between p-3 rounded-xl bg-surface-50">
                   <span className="text-sm text-surface-600">{s.label}</span>
