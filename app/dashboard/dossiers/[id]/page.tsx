@@ -31,6 +31,7 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
         formateur:formateurs(id, prenom, nom, email)
       ),
       opco:opco(id, code, nom, site_web),
+      franchise:franchises(id, nom, taux_commission, commission_type),
       checklist:dossier_checklist(*),
       timeline:dossier_timeline(*, user:users(first_name, last_name))
     `)
@@ -159,7 +160,7 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
             <div className="flex items-center gap-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">
               <Calendar className="h-3.5 w-3.5" /> Session
             </div>
-            <Link href={`/dashboard/sessions`} className="text-xs text-brand-600 hover:underline">Voir la session →</Link>
+            <Link href={`/dashboard/sessions/${sess.id}`} className="text-xs text-brand-600 hover:underline">Voir la session →</Link>
           </div>
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div><span className="text-surface-500">Référence :</span> <strong>{sess.reference}</strong></div>
@@ -282,7 +283,7 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
           <div className="flex items-center gap-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">
             <Euro className="h-3.5 w-3.5" /> Financier
           </div>
-          <div className="grid sm:grid-cols-3 gap-4 text-sm">
+          <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
             <div>
               <div className="text-xs text-surface-500">Total HT</div>
               <div className="text-lg font-bold text-surface-900">{Number(d.montant_total_ht || 0).toLocaleString('fr-FR')} €</div>
@@ -297,6 +298,54 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
                 <div className="text-lg font-bold text-emerald-600">{Number(d.montant_prise_en_charge).toLocaleString('fr-FR')} €</div>
               </div>
             )}
+            {(Number(d.cout_formateur) > 0 || Number(sess?.cout_formateur) > 0) && (
+              <div>
+                <div className="text-xs text-surface-500">Coût formateur</div>
+                <div className="text-lg font-bold text-surface-700">{Number(d.cout_formateur || sess?.cout_formateur || 0).toLocaleString('fr-FR')} €</div>
+              </div>
+            )}
+            {d.montant_prise_en_charge > 0 && Number(d.montant_total_ttc) > Number(d.montant_prise_en_charge) && (
+              <div>
+                <div className="text-xs text-surface-500">Reste à charge client</div>
+                <div className="text-lg font-bold text-amber-600">{(Number(d.montant_total_ttc) - Number(d.montant_prise_en_charge)).toLocaleString('fr-FR')} €</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Commission franchise */}
+      {d.franchise && (
+        <div className="card p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+              <Euro className="h-3.5 w-3.5" /> Commission franchise
+            </div>
+            <Link href={`/dashboard/franchises/${d.franchise.id}`} className="text-xs text-brand-600 hover:underline">
+              {d.franchise.nom} →
+            </Link>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <div className="text-xs text-surface-500">Montant</div>
+              <div className="text-lg font-bold text-amber-600">{Number(d.commission_montant || 0).toLocaleString('fr-FR')} €</div>
+            </div>
+            <div>
+              <div className="text-xs text-surface-500">Calcul</div>
+              <div className="text-sm font-medium text-surface-800 pt-1.5">
+                {d.commission_taux != null ? `${d.commission_taux}%` : '—'}
+                {' · '}
+                {d.commission_type === 'budget_net' ? 'budget net (PEC − coût formateur)' : 'budget débloqué (PEC)'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-surface-500">Statut</div>
+              <div className="pt-1">
+                <Badge variant={d.commission_status === 'payee' ? 'success' : d.commission_status === 'validee' ? 'info' : d.commission_status === 'annulee' ? 'danger' : 'default'}>
+                  {d.commission_status === 'payee' ? 'Payée' : d.commission_status === 'validee' ? 'Validée' : d.commission_status === 'annulee' ? 'Annulée' : 'À venir'}
+                </Badge>
+              </div>
+            </div>
           </div>
         </div>
       )}
