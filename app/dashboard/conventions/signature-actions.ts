@@ -20,6 +20,16 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
     .single()
   if (!conv) return { success: false, error: 'Convention introuvable' }
 
+  // ── Contrôle de complétude : blocage si mention obligatoire manquante ──
+  const { checkConventionCompleteness, formatConventionIssues } = await import('@/lib/convention-checklist')
+  const check = await checkConventionCompleteness(supabase, conventionId)
+  if (check && !check.ok) {
+    return {
+      success: false,
+      error: `Convention incomplète : impossible de l'envoyer en signature. Merci de compléter les champs obligatoires suivants → ${formatConventionIssues(check.blocking)}`,
+    }
+  }
+
   // Si un token existe déjà, on le réutilise
   let token = conv.signature_token
   if (!token) {

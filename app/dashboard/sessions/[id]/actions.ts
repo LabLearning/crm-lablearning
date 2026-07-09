@@ -243,8 +243,9 @@ export async function sendConventionForSignatureAction(
       lieu: sess.lieu || null,
       dates_formation: `Du ${fmtFr(sess.date_debut)} au ${fmtFr(sess.date_fin)}`,
       montant_ht: montantHt,
-      taux_tva: 20,
-      montant_ttc: montantHt ? montantHt * 1.2 : null,
+      // Organisme de formation exonéré de TVA (art. 261-4-4° a du CGI)
+      taux_tva: 0,
+      montant_ttc: montantHt,
       created_by: session.user.id,
     }).select('id').single()
     if (createErr || !created) return { success: false, error: 'Impossible de créer la convention' }
