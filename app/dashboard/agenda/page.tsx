@@ -9,7 +9,7 @@ export default async function AgendaPage() {
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 
-  const [interactionsRes, sessionsRes, tachesRes, usersRes, poeiRes] = await Promise.all([
+  const [interactionsRes, sessionsRes, tachesRes, usersRes, poeiRes, leadFormationsRes] = await Promise.all([
     supabase
       .from('lead_interactions')
       .select('*, lead:leads(contact_nom, contact_prenom, entreprise)')
@@ -40,9 +40,41 @@ export default async function AgendaPage() {
       .select('session_id')
       .eq('organization_id', orgId)
       .not('session_id', 'is', null),
+    // Formations de leads avec une date mais pas encore de session → prévisionnel
+    supabase
+      .from('lead_formations')
+      .select('id, lead_id, date_souhaitee, date_confirmee, formation:formation_id(intitule, duree_jours), lead:leads(id, entreprise, status)')
+      .eq('organization_id', orgId)
+      .is('session_id', null),
   ])
 
   const poeiSessionIds = new Set((poeiRes.data || []).map((p: any) => p.session_id))
+
+  // Blocs prévisionnels : date confirmée ou souhaitée, lead encore actif
+  const previsionnels = (leadFormationsRes.data || [])
+    .filter((lf: any) => (lf.date_confirmee || lf.date_souhaitee) && lf.lead && !['perdu'].includes(lf.lead.status))
+    .map((lf: any) => {
+      const dateDebut = (lf.date_confirmee || lf.date_souhaitee).split('T')[0]
+      const dureeJours = Math.max(1, Number(lf.formation?.duree_jours) || 1)
+      const fin = new Date(dateDebut)
+      fin.setDate(fin.getDate() + dureeJours - 1)
+      return {
+        id: `prev-${lf.id}`,
+        titre: lf.formation?.intitule || 'Formation (lead)',
+        reference: '',
+        dateDebut,
+        dateFin: fin.toISOString().split('T')[0],
+        horaires: '',
+        horairesJours: [],
+        lieu: '',
+        status: 'previsionnel',
+        formateurNom: null,
+        isPoei: false,
+        isPrevisionnel: true,
+        leadId: lf.lead_id,
+        entreprise: lf.lead?.entreprise || '',
+      }
+    })
 
   return (
     <div className="animate-fade-in">
@@ -57,7 +89,7 @@ export default async function AgendaPage() {
           leadEntreprise: i.lead?.entreprise || '',
           done: false,
         }))}
-        sessions={(sessionsRes.data || []).map((s: any) => ({
+        sessions={[...previsionnels, ...(sessionsRes.data || []).map((s: any) => ({
           id: s.id,
           titre: s.formation?.intitule || s.reference || 'Session',
           reference: s.reference || '',
@@ -69,7 +101,7 @@ export default async function AgendaPage() {
           status: s.status,
           formateurNom: s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null,
           isPoei: !!(s.formation?.is_poei) || poeiSessionIds.has(s.id),
-        }))}
+        }))]}
         taches={(tachesRes.data || []).map((t: any) => ({
           id: t.id,
           titre: t.titre,

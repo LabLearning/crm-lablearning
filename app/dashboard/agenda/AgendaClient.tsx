@@ -21,12 +21,14 @@ function SessionTooltipCard({ s, date, className }: { s: Session; date: string; 
         {c && <div className="flex items-center gap-1.5"><Clock className="h-3 w-3 shrink-0" />{c.debut} – {c.fin}</div>}
         <div className="flex items-center gap-1.5"><CalIcon className="h-3 w-3 shrink-0" />{frShort(s.dateDebut)}{s.dateFin !== s.dateDebut ? ` → ${frShort(s.dateFin)}` : ''}</div>
         {s.lieu && <div className="flex items-center gap-1.5"><MapPin className="h-3 w-3 shrink-0" />{s.lieu}</div>}
+        {s.entreprise && <div className="flex items-center gap-1.5"><User className="h-3 w-3 shrink-0" />{s.entreprise}</div>}
         {s.formateurNom && <div className="flex items-center gap-1.5"><User className="h-3 w-3 shrink-0" />{s.formateurNom}</div>}
       </div>
       <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-        <span className="inline-block px-2 py-0.5 rounded-full bg-surface-100 text-surface-600 text-2xs font-medium">{SESSION_STATUS_FR[s.status] || s.status}</span>
+        <span className={cn('inline-block px-2 py-0.5 rounded-full text-2xs font-medium', s.isPrevisionnel ? 'bg-amber-50 text-amber-700' : 'bg-surface-100 text-surface-600')}>{SESSION_STATUS_FR[s.status] || s.status}</span>
         {s.isPoei && <PoeiBadge />}
       </div>
+      {s.isPrevisionnel && <div className="mt-1.5 text-2xs text-surface-400">Date non confirmée — cliquez pour ouvrir le lead</div>}
     </div>
   )
 }
@@ -36,8 +38,9 @@ function SessionChip({ s, date, color }: { s: Session; date: string; color?: str
   const c = creneauForDate(s, date)
   return (
     <div className="relative group/chip">
-      <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
-        className={cn('block px-1.5 py-0.5 rounded text-[9px] mb-0.5 border font-medium truncate hover:brightness-95', color || colorFor(s.id))}>
+      <Link href={sessionHref(s)} title={sessionTooltip(s, date)}
+        className={cn('block px-1.5 py-0.5 rounded text-[9px] mb-0.5 border font-medium truncate hover:brightness-95', s.isPrevisionnel ? PREV_COLOR : (color || colorFor(s.id)))}>
+        {s.isPrevisionnel && <span className="px-1 rounded bg-surface-400 text-white text-[8px] font-bold mr-0.5">PRÉV.</span>}
         {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold mr-0.5">POEI</span>}
         {c && <span className="font-mono opacity-80">{c.debut}</span>} {s.titre}
       </Link>
@@ -51,10 +54,11 @@ function SessionBlock({ p, date }: { p: Positioned; date: string }) {
   const s = p.s
   return (
     <div className="absolute group/chip px-0.5" style={{ top: p.top, height: p.height, left: `${p.leftPct}%`, width: `${p.widthPct}%` }}>
-      <Link href={`/dashboard/sessions/${s.id}`} title={sessionTooltip(s, date)}
-        className={cn('flex flex-col h-full rounded-md border px-1.5 py-1 overflow-hidden hover:brightness-95 transition', p.color)}>
+      <Link href={sessionHref(s)} title={sessionTooltip(s, date)}
+        className={cn('flex flex-col h-full rounded-md border px-1.5 py-1 overflow-hidden hover:brightness-95 transition', s.isPrevisionnel ? 'border-dashed' : '', p.color)}>
         <span className="text-[9px] font-mono leading-none opacity-80 flex items-center gap-1">
           {p.debut}–{p.fin}
+          {s.isPrevisionnel && <span className="px-1 rounded bg-surface-400 text-white text-[8px] font-bold leading-tight">PRÉV.</span>}
           {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold leading-tight">POEI</span>}
         </span>
         <span className="text-[10px] font-medium leading-tight mt-0.5 line-clamp-3">{s.titre}</span>
@@ -73,7 +77,14 @@ interface Session {
   id: string; titre: string; dateDebut: string; dateFin: string
   horaires: string; lieu: string; status: string
   reference?: string; formateurNom?: string | null; horairesJours?: HoraireJour[]; isPoei?: boolean
+  // Formation encore au stade lead (pas de session créée) : bloc prévisionnel
+  isPrevisionnel?: boolean; leadId?: string; entreprise?: string
 }
+
+// Style des blocs prévisionnels : gris, bordure pointillée — jamais confondus
+// avec une session réelle
+const PREV_COLOR = 'bg-surface-50 border-dashed border-surface-400 text-surface-600'
+const sessionHref = (s: Session) => s.isPrevisionnel && s.leadId ? `/dashboard/leads?lead=${s.leadId}` : `/dashboard/sessions/${s.id}`
 
 // Créneau (début / fin) d'une session pour une date donnée, depuis horaires_jours
 function creneauForDate(s: Session, date: string): { debut: string; fin: string } | null {
@@ -94,7 +105,7 @@ function startRowForDate(s: Session, date: string): string {
   const h = parseInt(c.debut.split(':')[0], 10)
   return `${String(isNaN(h) ? 9 : h).padStart(2, '0')}:00`
 }
-const SESSION_STATUS_FR: Record<string, string> = { planifiee: 'Planifiée', confirmee: 'Confirmée', en_cours: 'En cours', terminee: 'Terminée', annulee: 'Annulée' }
+const SESSION_STATUS_FR: Record<string, string> = { planifiee: 'Planifiée', confirmee: 'Confirmée', en_cours: 'En cours', terminee: 'Terminée', annulee: 'Annulée', previsionnel: 'Prévisionnel (lead)' }
 function frShort(d: string): string { try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) } catch { return d } }
 // Texte multi-ligne du tooltip (survol) d'une session
 function sessionTooltip(s: Session, date: string): string {
@@ -167,8 +178,8 @@ function layoutDay(sessions: Session[], date: string, colorMap: Map<string, stri
       const top = Math.max(0, (it.startMin - DAY_START_H * 60) / 60 * ROW_H)
       const height = Math.max((it.endMin - it.startMin) / 60 * ROW_H - 2, 22)
       const widthPct = 100 / ncols
-      // Couleur STABLE par session (identique sur toute sa durée)
-      const color = colorMap.get(it.s.id) || colorFor(it.s.id)
+      // Couleur STABLE par session (identique sur toute sa durée) — gris pointillé pour le prévisionnel
+      const color = it.s.isPrevisionnel ? PREV_COLOR : (colorMap.get(it.s.id) || colorFor(it.s.id))
       out.push({ s: it.s, top, height, leftPct: it.col * widthPct, widthPct, color, debut: it.debut, fin: it.fin })
     })
     cluster = []; clusterEnd = -1
@@ -256,7 +267,15 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
   const [refDate, setRefDate] = useState(new Date())
   // 'all' = tout · 'me' = moi · userId = un membre
   const [tacheFilter, setTacheFilter] = useState<string>('all')
+  // Affichage des formations encore au stade lead (prévisionnel)
+  const [showPrev, setShowPrev] = useState(true)
   const today = toDateStr(new Date())
+
+  const prevCount = useMemo(() => sessions.filter(s => s.isPrevisionnel).length, [sessions])
+  const visibleSessions = useMemo(
+    () => (showPrev ? sessions : sessions.filter(s => !s.isPrevisionnel)),
+    [sessions, showPrev],
+  )
 
   const weekDates = useMemo(() => getWeekDates(refDate), [refDate])
   const monthGrid = useMemo(() => getMonthGrid(refDate.getFullYear(), refDate.getMonth()), [refDate])
@@ -270,7 +289,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
 
   // ────── DATA HELPERS ──────
   function getSessionsForDate(date: string) {
-    return sessions.filter(s => s.dateDebut <= date && s.dateFin >= date)
+    return visibleSessions.filter(s => s.dateDebut <= date && s.dateFin >= date)
   }
 
   const filteredTaches = useMemo(() => {
@@ -286,7 +305,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
   }
 
   // ────── STATS HEADER ──────
-  const sessionsCount = sessions.length
+  const sessionsCount = sessions.filter(s => !s.isPrevisionnel).length
   const tachesActives = taches.filter(t => t.status !== 'terminee').length
   const tachesEnRetard = taches.filter(t => t.status !== 'terminee' && t.dueDate < today).length
 
@@ -304,7 +323,10 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Agenda</h1>
           <p className="text-surface-500 mt-1 text-sm">
             {tab === 'formations' ? (
-              <span>{sessionsCount} session{sessionsCount > 1 ? 's' : ''} planifiée{sessionsCount > 1 ? 's' : ''}</span>
+              <span>
+                {sessionsCount} session{sessionsCount > 1 ? 's' : ''} planifiée{sessionsCount > 1 ? 's' : ''}
+                {prevCount > 0 && <span className="text-surface-400"> · {prevCount} prévisionnelle{prevCount > 1 ? 's' : ''} (leads)</span>}
+              </span>
             ) : (
               <>
                 {tachesEnRetard > 0 && <span className="text-rose-600 font-medium">{tachesEnRetard} en retard</span>}
@@ -385,6 +407,21 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
           {periodLabel}
         </div>
 
+        {tab === 'formations' && prevCount > 0 && (
+          <button
+            onClick={() => setShowPrev(!showPrev)}
+            className={cn(
+              'shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-semibold transition-all border',
+              showPrev
+                ? 'bg-surface-100 text-surface-700 border-dashed border-surface-400'
+                : 'bg-white text-surface-400 border-surface-200 hover:text-surface-600',
+            )}
+          >
+            <span className={cn('h-2 w-2 rounded-full', showPrev ? 'bg-surface-500' : 'bg-surface-300')} />
+            Prévisionnel ({prevCount})
+          </button>
+        )}
+
         {tab === 'taches' && users.length > 0 && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
             <button
@@ -440,7 +477,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
           monthGrid={monthGrid}
           refDate={refDate}
           today={today}
-          sessions={sessions}
+          sessions={visibleSessions}
           getSessionsForDate={getSessionsForDate}
         />
       ) : (
