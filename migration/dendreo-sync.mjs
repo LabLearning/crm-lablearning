@@ -11,6 +11,7 @@
  * Ordre : entreprises → formateurs → modules → contacts → participants → actions.
  */
 import { config } from 'dotenv'
+import { fieldItems, htmlFieldToText } from './html-clean.mjs'
 config({ path: '.env.local' })
 
 const DRY = !process.argv.includes('--apply')
@@ -148,12 +149,14 @@ const formationByName = new Map()
       intitule, categorie: clean(m.categorie && m.categorie.intitule) || (typeof m.categorie === 'string' ? clean(m.categorie) : null),
       modalite: 'presentiel',
       duree_heures: Number(m.duree_heures) || 0, duree_jours: m.duree_jours != null ? Number(m.duree_jours) : null,
-      objectifs_pedagogiques: clean(m.objectif) ? [clean(m.objectif)] : null, prerequis: clean(m.pre_requis), public_vise: clean(m.public_vise),
-      methodes_pedagogiques: clean(m.modalites_pedagogiques), moyens_techniques: clean(m.moyens_supports_pedagogiques),
-      modalites_evaluation: clean(m.modalites_devaluation), accessibilite_handicap: clean(m.accessibilite),
+      // htmlFieldToText : les champs Dendreo arrivent en HTML (<ul><li class=…>)
+      objectifs_pedagogiques: (() => { const o = fieldItems(m.objectif); return o.length ? o : null })(),
+      prerequis: htmlFieldToText(m.pre_requis), public_vise: htmlFieldToText(m.public_vise),
+      methodes_pedagogiques: htmlFieldToText(m.modalites_pedagogiques), moyens_techniques: htmlFieldToText(m.moyens_supports_pedagogiques),
+      modalites_evaluation: htmlFieldToText(m.modalites_devaluation), accessibilite_handicap: htmlFieldToText(m.accessibilite),
       programme_detaille: clean(String(m.description || '').replace(/<\s*li[^>]*>/gi, '\n• ').replace(/<\s*\/\s*(p|div|h[1-6]|tr)\s*>/gi, '\n').replace(/<\s*br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').split('\n').map((l) => l.trim()).filter((l) => l && l !== '•').join('\n')),
       tarif_inter_ht: m.prix != null ? Number(m.prix) : null, tarif_intra_ht: m.prix_intra != null ? Number(m.prix_intra) : null,
-      modalites_admission: clean(m.infos_admission), is_active: true,
+      modalites_admission: htmlFieldToText(m.infos_admission), is_active: true,
     })
   }
   const created = await insertBatch('formations', toInsert)
