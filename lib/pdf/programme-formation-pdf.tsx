@@ -43,6 +43,98 @@ function cleanText(s: string | null | undefined): string {
   return (s || '').replace(/[-]/g, '').replace(/[ \t]{2,}/g, ' ')
 }
 
+// ── Champs HTML (import Dendreo / éditeur riche) ──
+const HTML_ENTITIES: Record<string, string> = {
+  '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"',
+  '&#39;': "'", '&apos;': "'", '&eacute;': 'é', '&egrave;': 'è', '&agrave;': 'à', '&ccedil;': 'ç',
+}
+function decodeEntities(s: string): string {
+  return s.replace(/&[a-z#0-9]+;/gi, (m) => HTML_ENTITIES[m.toLowerCase()] ?? ' ')
+}
+
+// Fusionne les lignes de continuation : une ligne qui commence en minuscule
+// (ou par une parenthèse) alors que la précédente ne finit pas sa phrase est
+// la suite de la même phrase, coupée par l'export Word/Dendreo.
+function mergeContinuations(lines: string[]): string[] {
+  const out: string[] = []
+  const endsSentence = (s: string) => /[.!?:)\]]$/.test(s)
+  const isUpper = (s: string) => s === s.toUpperCase() && /[A-ZÀ-Ý]/.test(s)
+  for (const line of lines) {
+    const prev = out[out.length - 1]
+    const startsLower = /^[a-zà-ÿ(]/.test(line)
+    if (
+      prev && !endsSentence(prev) && !/^jour\s*\d/i.test(prev) &&
+      (startsLower || (isUpper(prev) && isUpper(line)))
+    ) {
+      out[out.length - 1] = `${prev} ${line}`
+    } else {
+      out.push(line)
+    }
+  }
+  return out
+}
+
+// Transforme un champ (HTML ou texte brut) en liste d'items propres.
+// Gère le HTML Dendreo où une même phrase est éclatée sur plusieurs balises :
+//   <ul><li class="p1">Comprendre la méthode</li></ul><p class="p1">HACCP.</p>
+// → un <li> ouvre un nouvel item, tout le texte qui suit (p, texte nu)
+//   s'accroche à l'item courant jusqu'au <li> suivant.
+function fieldItems(s: string | null | undefined): string[] {
+  const raw = (s || '').replace(/\r\n?/g, '\n').trim()
+  if (!raw) return []
+
+  if (/<[a-z][^>]*>/i.test(raw)) {
+    const hasLi = /<li\b/i.test(raw)
+    if (hasLi) {
+      const items: string[] = []
+      let current = ''
+      for (const token of raw.split(/(<[^>]+>)/)) {
+        if (!token) continue
+        if (token.startsWith('<')) {
+          if (/^<li\b/i.test(token)) {
+            if (current.trim()) items.push(current.trim())
+            current = ''
+          }
+        } else {
+          const text = decodeEntities(token).replace(/\s+/g, ' ').trim()
+          if (text) current += (current ? ' ' : '') + text
+        }
+      }
+      if (current.trim()) items.push(current.trim())
+      return items.map((i) => stripBullet(cleanText(i))).filter(Boolean)
+    }
+    // HTML sans liste : paragraphes → lignes
+    const text = decodeEntities(
+      raw.replace(/<\/(p|div|h[1-6])>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' ')
+    )
+    return mergeContinuations(text.split('\n').map((l) => stripBullet(cleanText(l)).trim()).filter(Boolean))
+  }
+
+  // Texte brut : lignes non vides, puces normalisées
+  return mergeContinuations(raw.split('\n').map((l) => stripBullet(cleanText(l)).trim()).filter(Boolean))
+}
+
+// Rendu d'un champ : liste à puces si plusieurs items, texte simple sinon
+function FieldText({ value, fallback }: { value: string | null | undefined; fallback?: string }) {
+  const items = fieldItems(value)
+  if (items.length === 0) {
+    return fallback ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{fallback}</Text> : null
+  }
+  if (items.length === 1) {
+    return <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{items[0]}</Text>
+  }
+  return (
+    <View>
+      {items.map((item, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: 5, marginBottom: 2 }}>
+          <Text style={{ fontSize: 8.5, color: BRAND_GREEN }}>•</Text>
+          <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{item}</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 // Parse le programme_detaille en semaines → modules (objectif + contenu)
 function parseProgramme(text: string) {
   const weeks: { titre: string; duree: string; modules: { titre: string; duree: string; objectif: string; bullets: string[] }[] }[] = []
@@ -106,7 +198,9 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
   const sessionLieu = session ? [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') : ''
   const sessionFormateur = session?.formateur ? `${session.formateur.prenom || ''} ${session.formateur.nom || ''}`.trim() : ''
   const weeks = parseProgramme(formation.programme_detaille || '')
-  const objectifs: string[] = Array.isArray(formation.objectifs_pedagogiques) ? formation.objectifs_pedagogiques : []
+  const objectifs: string[] = Array.isArray(formation.objectifs_pedagogiques)
+    ? formation.objectifs_pedagogiques.flatMap((o: any) => fieldItems(String(o ?? '')))
+    : fieldItems(formation.objectifs_pedagogiques)
   const refHandicap = [org?.referent_handicap_nom, org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
   const contact = [org?.email_contact || org?.email, org?.telephone_contact || org?.phone].filter(Boolean).join(' · ')
 
@@ -160,7 +254,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {formation.public_vise ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="users">Public visé</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{cleanText(formation.public_vise)}</Text>
+            <FieldText value={formation.public_vise} />
           </View>
         ) : null}
 
@@ -169,7 +263,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
           <View style={shared.section}>
             <PdfSectionTitle icon="target">Objectifs pédagogiques</PdfSectionTitle>
             <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 6 }}>À l'issue de la formation, le participant sera capable de :</Text>
-            {objectifs.map((o, i) => <CheckItem key={i}>{cleanText(o)}</CheckItem>)}
+            {objectifs.map((o, i) => <CheckItem key={i}>{o}</CheckItem>)}
           </View>
         ) : null}
 
@@ -177,7 +271,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {formation.prerequis ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="clipboardCheck">Prérequis</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{cleanText(formation.prerequis)}</Text>
+            <FieldText value={formation.prerequis} />
           </View>
         ) : null}
 
@@ -214,22 +308,33 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         ) : (formation.programme_detaille ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="list">Programme détaillé</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>{cleanText(formation.programme_detaille)}</Text>
+            <FieldText value={formation.programme_detaille} />
           </View>
         ) : null)}
 
         {/* Méthodes & moyens — évite le doublon si les 2 champs se recouvrent */}
         {(() => {
-          const meth = cleanText(formation.methodes_pedagogiques)
-          const moy = cleanText(formation.moyens_techniques)
+          const methItems = fieldItems(formation.methodes_pedagogiques)
+          const moyItems = fieldItems(formation.moyens_techniques)
           const norm = (s: string) => s.replace(/\s+/g, ' ').toLowerCase()
-          const showMoy = !!moy && !norm(meth).includes(norm(moy))
-          if (!meth && !moy) return null
+          const showMoy = moyItems.length > 0 && !norm(methItems.join(' ')).includes(norm(moyItems.join(' ')))
+          const items = [...methItems, ...(showMoy ? moyItems : [])]
+          if (items.length === 0) return null
           return (
             <View style={shared.section}>
               <PdfSectionTitle icon="monitor">Méthodes et moyens pédagogiques</PdfSectionTitle>
-              {meth ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5, marginBottom: 5 }}>{meth}</Text> : null}
-              {showMoy ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{moy}</Text> : null}
+              {items.length === 1 ? (
+                <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{items[0]}</Text>
+              ) : (
+                <View>
+                  {items.map((item, i) => (
+                    <View key={i} style={{ flexDirection: 'row', gap: 5, marginBottom: 2 }}>
+                      <Text style={{ fontSize: 8.5, color: BRAND_GREEN }}>•</Text>
+                      <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )
         })()}
@@ -237,16 +342,14 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
         {/* Évaluation */}
         <View style={shared.section}>
           <PdfSectionTitle icon="award">Modalités d'évaluation et de suivi</PdfSectionTitle>
-          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>
-            {cleanText(formation.modalites_evaluation) || 'Évaluation des acquis par QCM et mise en situation pratique. Évaluation de satisfaction en fin de formation.'}
-          </Text>
+          <FieldText value={formation.modalites_evaluation} fallback="Évaluation des acquis par QCM et mise en situation pratique. Évaluation de satisfaction en fin de formation." />
         </View>
 
         {/* Admission */}
         {formation.modalites_admission ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="userCheck">Modalités d'admission</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{cleanText(formation.modalites_admission)}</Text>
+            <FieldText value={formation.modalites_admission} />
           </View>
         ) : null}
 
@@ -271,7 +374,7 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
           </Text>
           <Text style={{ ...shared.infoBoxText, marginBottom: 2 }}>
             <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Situation de handicap : </Text>
-            {formation.accessibilite_handicap || "Formation accessible aux personnes en situation de handicap ; contactez notre référent pour étudier les adaptations."}
+            {fieldItems(formation.accessibilite_handicap).join(' ') || "Formation accessible aux personnes en situation de handicap ; contactez notre référent pour étudier les adaptations."}
             {refHandicap ? ` (${refHandicap})` : ''}
           </Text>
           {contact ? <Text style={shared.infoBoxText}><Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Contact : </Text>{contact}</Text> : null}
