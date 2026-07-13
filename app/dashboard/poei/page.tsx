@@ -9,7 +9,7 @@ export default async function PoeiPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const [{ data: poeiRaw }, { data: clients }, { data: formationsPoei }] = await Promise.all([
+  const [{ data: poeiRaw }, { data: clients }, { data: formationsPoei }, { data: previsions }] = await Promise.all([
     supabase
       .from('poei')
       .select(`
@@ -33,6 +33,12 @@ export default async function PoeiPage() {
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('intitule'),
+    // Pipeline "à planifier" (pré-projets) — les plus proches en premier
+    supabase
+      .from('poei_previsions')
+      .select('*, client:clients(raison_sociale)')
+      .eq('organization_id', session.organization.id)
+      .order('date_debut_formation_prevue', { ascending: true, nullsFirst: false }),
   ])
 
   const poei = (poeiRaw || []).map((p: any) => ({ ...p, candidats_count: (p.candidats || []).length })) as Poei[]
@@ -44,6 +50,7 @@ export default async function PoeiPage() {
     <div className="animate-fade-in">
       <PoeiList
         poei={poei}
+        previsions={(previsions || []) as any[]}
         clients={clients || []}
         formations={formations}
         hasPoeiCatalog={onlyPoei.length > 0}

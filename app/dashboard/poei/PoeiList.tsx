@@ -5,16 +5,18 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Plus, Search, Briefcase, Building2, GraduationCap, Trash2,
-  ChevronRight, CheckCircle2, Clock, Users,
+  ChevronRight, CheckCircle2, Clock, Users, CalendarClock,
 } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
 import { createPoeiAction, updatePoeiStatutAction, deletePoeiAction } from './actions'
 import { POEI_STATUS_LABELS, POEI_STATUS_COLORS } from '@/lib/types/poei'
-import { formatDate } from '@/lib/utils'
-import type { Poei } from '@/lib/types/poei'
+import { formatDate, cn } from '@/lib/utils'
+import type { Poei, PoeiPrevision } from '@/lib/types/poei'
+import { PoeiPrevisions } from './PoeiPrevisions'
 
 interface Props {
   poei: Poei[]
+  previsions: PoeiPrevision[]
   clients: { id: string; raison_sociale: string | null }[]
   formations: { id: string; intitule: string; duree_heures?: number | null }[]
   hasPoeiCatalog: boolean
@@ -37,9 +39,10 @@ function PaiementBadge({ p }: { p: any }) {
 
 const statusOptions = Object.entries(POEI_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))
 
-export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
+export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog }: Props) {
   const { toast } = useToast()
   const router = useRouter()
+  const [tab, setTab] = useState<'projets' | 'planifier'>('projets')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [createOpen, setCreateOpen] = useState(false)
@@ -110,9 +113,40 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
             <p className="text-sm text-surface-500 mt-0.5">Préparation Opérationnelle à l'Emploi — projets collectifs France Travail</p>
           </div>
         </div>
-        <Button onClick={() => { setErrors({}); setCreateOpen(true) }} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Nouveau projet</Button>
+        {tab === 'projets' && (
+          <Button onClick={() => { setErrors({}); setCreateOpen(true) }} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Nouveau projet</Button>
+        )}
       </div>
 
+      {/* Onglets Projets / À planifier */}
+      <div className="flex items-center gap-1 border-b border-surface-200">
+        {([
+          { id: 'projets' as const, label: 'Projets', icon: Briefcase, count: poei.length },
+          { id: 'planifier' as const, label: 'À planifier', icon: CalendarClock, count: previsions.filter((p) => !['transforme', 'abandonne'].includes(p.statut)).length },
+        ]).map((t) => {
+          const Icon = t.icon
+          const active = tab === t.id
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={cn(
+                'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all relative -mb-px border-b-2',
+                active ? 'text-surface-900 border-surface-900' : 'text-surface-500 border-transparent hover:text-surface-700',
+              )}>
+              <Icon className="h-4 w-4" />
+              {t.label}
+              {t.count > 0 && (
+                <span className={cn('text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md', active ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-500')}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {tab === 'planifier' && <PoeiPrevisions previsions={previsions} clients={clients} />}
+
+      {tab === 'projets' && (<>
       {!hasPoeiCatalog && (
         <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Aucune formation marquée « Éligible POEI » dans le catalogue. Coche la case sur une fiche formation pour filtrer les programmes POEI. En attendant, toutes les formations sont proposées.
@@ -205,6 +239,7 @@ export function PoeiList({ poei, clients, formations, hasPoeiCatalog }: Props) {
           </div>
         )}
       </div>
+      </>)}
 
       {/* Modal création projet */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouveau projet POEI" size="lg">

@@ -103,6 +103,57 @@ export const POEI_WORKFLOW: PoeiStatus[] = [
   'en_formation', 'terminee', 'embauche',
 ]
 
+// ─── Pipeline "POEI à planifier" (pré-projets) ───
+
+export type PrevisionStatut = 'a_planifier' | 'en_preparation' | 'pret' | 'transforme' | 'abandonne'
+export type RecrutementStatut = 'a_lancer' | 'annonce_en_ligne' | 'entretiens' | 'candidats_trouves'
+export type CompteFtStatut = 'non_cree' | 'en_cours' | 'cree'
+
+export interface PoeiPrevision {
+  id: string
+  organization_id: string
+  entreprise: string
+  client_id: string | null
+  date_ouverture_prevue: string | null
+  date_debut_formation_prevue: string | null
+  statut: PrevisionStatut
+  recrutement_statut: RecrutementStatut
+  compte_ft_statut: CompteFtStatut
+  nb_candidats_prevus: number | null
+  notes: string | null
+  poei_id: string | null
+  created_at: string
+  client?: { raison_sociale: string | null } | null
+}
+
+export const PREVISION_STATUT_LABELS: Record<PrevisionStatut, string> = {
+  a_planifier: 'À planifier',
+  en_preparation: 'En préparation',
+  pret: 'Prêt à démarrer',
+  transforme: 'Transformé en projet',
+  abandonne: 'Abandonné',
+}
+export const PREVISION_STATUT_COLORS: Record<PrevisionStatut, BadgeVariant> = {
+  a_planifier: 'default',
+  en_preparation: 'info',
+  pret: 'success',
+  transforme: 'success',
+  abandonne: 'danger',
+}
+
+export const RECRUTEMENT_STATUT_LABELS: Record<RecrutementStatut, string> = {
+  a_lancer: 'À lancer',
+  annonce_en_ligne: 'Annonce en ligne',
+  entretiens: 'Entretiens en cours',
+  candidats_trouves: 'Candidats trouvés',
+}
+
+export const COMPTE_FT_STATUT_LABELS: Record<CompteFtStatut, string> = {
+  non_cree: 'Non créé',
+  en_cours: 'En cours',
+  cree: 'Créé',
+}
+
 export const TYPE_CONTRAT_LABELS: Record<TypeContrat, string> = {
   cdi: 'CDI',
   cdd: 'CDD',
