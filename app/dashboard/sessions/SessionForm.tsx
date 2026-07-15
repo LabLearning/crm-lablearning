@@ -86,6 +86,11 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
   const [lieu, setLieu] = useState(session?.lieu || '')
   const [coutFormateur, setCoutFormateur] = useState<string>(session?.cout_formateur?.toString() || '')
   const [selectedApprenants, setSelectedApprenants] = useState<string[]>(initialInscrits)
+  // Participants créés à la volée depuis le formulaire (sans passer par la fiche entreprise)
+  const [extraApprenants, setExtraApprenants] = useState<ApprenantLite[]>([])
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [quickAdd, setQuickAdd] = useState({ prenom: '', nom: '', email: '' })
+  const [quickAddLoading, setQuickAddLoading] = useState(false)
 
   // Formations choisies (multi) → somme des durées
   const formationsChoisies = formationIds.map(id => formations.find(f => f.id === id)).filter((f): f is NonNullable<typeof f> => !!f)
@@ -169,9 +174,35 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
    *  - Inter : pas de restriction, des apprenants de différentes entreprises
    *    peuvent être inscrits ensemble (c'est le principe de l'inter)
    */
+  const allApprenants = [...apprenants, ...extraApprenants]
   const filteredApprenants = (typeSession === 'intra' && clientId)
-    ? apprenants.filter(a => a.client_id === clientId)
-    : apprenants
+    ? allApprenants.filter(a => a.client_id === clientId)
+    : allApprenants
+
+  async function handleQuickAdd() {
+    if (!quickAdd.prenom.trim() || !quickAdd.nom.trim()) return
+    setQuickAddLoading(true)
+    try {
+      const { createApprenantAction } = await import('@/app/dashboard/apprenants/actions')
+      const fd = new FormData()
+      fd.set('prenom', quickAdd.prenom.trim())
+      fd.set('nom', quickAdd.nom.trim())
+      if (quickAdd.email.trim()) fd.set('email', quickAdd.email.trim())
+      if (clientId) fd.set('client_id', clientId)
+      const r = await createApprenantAction(fd)
+      if (r.success && (r.data as any)?.id) {
+        const created = r.data as any
+        setExtraApprenants(prev => [...prev, { id: created.id, prenom: created.prenom, nom: created.nom, email: created.email, client_id: created.client_id }])
+        setSelectedApprenants(prev => [...prev, created.id])
+        setQuickAdd({ prenom: '', nom: '', email: '' })
+        setQuickAddOpen(false)
+      } else {
+        alert((r as any).error || 'Erreur lors de la création du participant')
+      }
+    } finally {
+      setQuickAddLoading(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -449,8 +480,8 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
       {filteredApprenants.length === 0 ? (
         <div className="rounded-xl bg-surface-50 border border-surface-200 px-4 py-3 text-xs text-surface-500">
           {typeSession === 'intra' && clientId
-            ? 'Aucun apprenant lié à ce client. Créez-les depuis la page Apprenants en les liant à l\'entreprise.'
-            : 'Aucun apprenant disponible. Créez-les depuis la page Apprenants.'}
+            ? 'Aucun apprenant lié à ce client — ajoutez le premier participant ci-dessous.'
+            : 'Aucun apprenant disponible — ajoutez le premier participant ci-dessous.'}
         </div>
       ) : (
         <div className="rounded-xl border border-surface-200 max-h-48 overflow-y-auto divide-y divide-surface-100">
@@ -466,6 +497,41 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
               </label>
             )
           })}
+        </div>
+      )}
+
+      {/* Ajout rapide d'un participant (créé et sélectionné à la volée) */}
+      {!quickAddOpen ? (
+        <button
+          type="button"
+          onClick={() => setQuickAddOpen(true)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700"
+        >
+          <Plus className="h-3.5 w-3.5" /> Ajouter un nouveau participant
+        </button>
+      ) : (
+        <div className="rounded-xl bg-surface-50 border border-surface-200 p-3 space-y-2">
+          <div className="text-xs font-semibold text-surface-600">
+            Nouveau participant
+            {typeSession === 'intra' && clientId && (
+              <span className="font-normal text-surface-400"> — rattaché à {clients.find(c => c.id === clientId)?.raison_sociale}</span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={quickAdd.prenom} onChange={e => setQuickAdd({ ...quickAdd, prenom: e.target.value })}
+              placeholder="Prénom *" className="input-base text-sm" />
+            <input value={quickAdd.nom} onChange={e => setQuickAdd({ ...quickAdd, nom: e.target.value })}
+              placeholder="Nom *" className="input-base text-sm" />
+          </div>
+          <input value={quickAdd.email} onChange={e => setQuickAdd({ ...quickAdd, email: e.target.value })}
+            type="email" placeholder="Email (optionnel)" className="input-base text-sm w-full" />
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={handleQuickAdd} isLoading={quickAddLoading}
+              disabled={!quickAdd.prenom.trim() || !quickAdd.nom.trim()}>
+              Créer et sélectionner
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setQuickAddOpen(false)}>Annuler</Button>
+          </div>
         </div>
       )}
 

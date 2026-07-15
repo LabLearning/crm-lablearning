@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
 import { NotificationsBell } from './NotificationsBell'
+import { GlobalSearch } from './GlobalSearch'
 import { ROLE_LABELS } from '@/lib/types'
 import type { User } from '@/lib/types'
 
@@ -66,18 +67,8 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
 
-        {/* Search */}
-        <div className="hidden md:flex items-center gap-2.5 bg-surface-50 rounded-xl px-3.5 py-2 w-72 border border-surface-200/60 hover:border-surface-300 transition-colors">
-          <Search className="h-3.5 w-3.5 text-surface-400" />
-          <input
-            type="text"
-            placeholder="Rechercher..."
-            className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1"
-          />
-          <kbd className="hidden sm:inline-flex text-[10px] text-surface-400 bg-white border border-surface-200 rounded-md px-1.5 py-0.5 font-mono leading-none">
-            /
-          </kbd>
-        </div>
+        {/* Recherche globale */}
+        <GlobalSearch />
       </div>
 
       {/* Right */}
