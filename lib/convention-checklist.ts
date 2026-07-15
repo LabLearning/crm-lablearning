@@ -95,13 +95,13 @@ export async function checkConventionCompleteness(
     warn(S3, 'Aucune session liée : horaires détaillés non vérifiables')
   }
 
-  // ── 4. Participants ──
+  // ── 4. Participants — BLOQUANT : la convention ne se génère pas tant
+  // que tous les participants ne sont pas inscrits sur la session ──
   const S4 = 'Participants'
-  if (!(Number(convention.nombre_stagiaires) > 0) && participants.length === 0) {
-    miss(S4, 'Nombre de participants')
-  }
   if (participants.length === 0) {
-    warn(S4, 'Liste des participants non renseignée (aucune inscription sur la session)')
+    miss(S4, 'Aucun participant inscrit sur la session (inscrivez les stagiaires avant de générer la convention)')
+  } else if (Number(convention.nombre_stagiaires) > participants.length) {
+    miss(S4, `Participants incomplets : ${participants.length} inscrit${participants.length > 1 ? 's' : ''} sur ${convention.nombre_stagiaires} prévus`)
   }
 
   // ── 5. Modalités pédagogiques et encadrement ──

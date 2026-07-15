@@ -123,6 +123,12 @@ export async function inscrireApprenantAction(apprenantId: string, sessionId: st
     return { success: false, error: 'Erreur lors de l\'inscription' }
   }
 
+  // Convention déjà envoyée/signée ? → avenant automatique
+  try {
+    const { syncConventionAvenant } = await import('@/lib/convention-avenants')
+    await syncConventionAvenant(supabase, sessionId, session.user.id)
+  } catch (e) { console.error('[avenant]', e) }
+
   await logAudit({
     action: 'inscription',
     entity_type: 'inscription',

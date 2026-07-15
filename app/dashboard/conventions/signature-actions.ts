@@ -14,7 +14,7 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
 
   const { data: conv } = await supabase
     .from('conventions')
-    .select('id, organization_id, signature_token, status')
+    .select('id, organization_id, signature_token, status, session_id, participants_snapshot')
     .eq('id', conventionId)
     .eq('organization_id', session.organization.id)
     .single()
@@ -28,6 +28,24 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
       success: false,
       error: `Convention incomplète : impossible de l'envoyer en signature. Merci de compléter les champs obligatoires suivants → ${formatConventionIssues(check.blocking)}`,
     }
+  }
+
+  // Fige la liste des participants au moment de l'envoi : c'est la référence
+  // contractuelle — toute modification ultérieure génèrera un avenant
+  if (conv.session_id && !Array.isArray(conv.participants_snapshot)) {
+    const { data: inscriptions } = await supabase
+      .from('inscriptions')
+      .select('apprenant:apprenants(id, nom, prenom)')
+      .eq('session_id', conv.session_id)
+      .not('status', 'in', '("annule","abandonne")')
+    const snapshot = (inscriptions || [])
+      .map((i: any) => i.apprenant)
+      .filter(Boolean)
+      .map((a: any) => ({ apprenant_id: a.id, nom: a.nom, prenom: a.prenom }))
+    await supabase
+      .from('conventions')
+      .update({ participants_snapshot: snapshot })
+      .eq('id', conventionId)
   }
 
   // Si un token existe déjà, on le réutilise

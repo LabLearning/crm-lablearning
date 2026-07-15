@@ -46,6 +46,13 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
   const signatureUrl = c.signature_token ? `${appUrl}/convention/${c.signature_token}/signer` : null
 
+  // Avenants (modifications de participants après envoi/signature)
+  const { data: avenants } = await supabase
+    .from('convention_avenants')
+    .select('id, numero, motif, nombre_avant, nombre_apres, created_at')
+    .eq('convention_id', c.id)
+    .order('numero', { ascending: true })
+
   return (
     <div className="space-y-5 animate-fade-in max-w-5xl">
       {/* Header */}
@@ -89,6 +96,30 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         signatureOfNom={c.signature_of_nom}
         signatureTokenExpiresAt={c.signature_token_expires_at}
       />
+
+      {/* Avenants */}
+      {(avenants || []).length > 0 && (
+        <div className="card p-5 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-surface-400 uppercase tracking-wider">
+            <Download className="h-3.5 w-3.5" /> Avenants ({(avenants || []).length})
+          </div>
+          <div className="divide-y divide-surface-100">
+            {(avenants || []).map((a: any) => (
+              <div key={a.id} className="flex items-center gap-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-surface-900">Avenant n°{a.numero} — effectif {a.nombre_avant} → {a.nombre_apres}</div>
+                  {a.motif && <div className="text-xs text-surface-500 truncate">{a.motif}</div>}
+                  <div className="text-xs text-surface-400">{new Date(a.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                </div>
+                <a href={`/api/pdf/avenant/${a.id}`} target="_blank" rel="noreferrer"
+                  className="text-xs text-brand-600 hover:underline flex items-center gap-1 shrink-0">
+                  <Download className="h-3 w-3" /> PDF
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Client + Formation */}
       <div className="grid md:grid-cols-2 gap-4">

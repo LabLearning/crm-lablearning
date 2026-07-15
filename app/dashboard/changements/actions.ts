@@ -78,6 +78,12 @@ export async function validateChangeAction(id: string, reponse?: string): Promis
     return { success: false, error: 'Erreur lors de l\'application : ' + (e?.message || '') }
   }
 
+  // Convention déjà envoyée/signée ? → avenant automatique
+  try {
+    const { syncConventionAvenant } = await import('@/lib/convention-avenants')
+    await syncConventionAvenant(supabase, d.session_id, session.user.id)
+  } catch (e) { console.error('[avenant]', e) }
+
   await supabase
     .from('demandes_changement_participants')
     .update({ statut: 'validee', validated_by: session.user.id, validated_at: new Date().toISOString(), reponse_gestionnaire: reponse || null })

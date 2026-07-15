@@ -485,6 +485,11 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
           status: 'inscrit',
         }))
       )
+      // Convention déjà envoyée/signée ? → avenant automatique
+      try {
+        const { syncConventionAvenant } = await import('@/lib/convention-avenants')
+        await syncConventionAvenant(supabase, id, session.user.id)
+      } catch (e) { console.error('[avenant]', e) }
     }
   }
 
