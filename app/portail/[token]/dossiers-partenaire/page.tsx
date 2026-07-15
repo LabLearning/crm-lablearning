@@ -15,6 +15,9 @@ const DOSSIER_STATUS: Record<string, { label: string; variant: 'default' | 'info
   cloture: { label: 'Cloture', variant: 'default' },
 }
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function PartenaireDossiersPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')

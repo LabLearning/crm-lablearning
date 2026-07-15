@@ -5,6 +5,9 @@ import { Receipt, Euro, CheckCircle2, Clock, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function ApporteurCommissionsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')

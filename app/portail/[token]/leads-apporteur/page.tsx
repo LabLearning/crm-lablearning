@@ -16,6 +16,9 @@ const SV: Record<string, 'default' | 'info' | 'success' | 'warning' | 'danger'> 
   proposition_envoyee: 'info', negociation: 'warning', gagne: 'success', perdu: 'danger',
 }
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function ApporteurLeadsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')

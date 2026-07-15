@@ -7,6 +7,9 @@ import { formatDate } from '@/lib/utils'
 import { Calendar, MapPin, Video, Users, Clock } from 'lucide-react'
 import type { SessionStatus } from '@/lib/types/formation'
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function PortalSessionsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'formateur') redirect('/portail/expired')

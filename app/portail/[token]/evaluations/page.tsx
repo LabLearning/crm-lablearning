@@ -6,6 +6,9 @@ import { QCM_TYPE_LABELS, QCM_TYPE_COLORS } from '@/lib/types/evaluation'
 import { formatDate } from '@/lib/utils'
 import { CheckCircle2, XCircle, Clock, Star } from 'lucide-react'
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function PortalEvaluationsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context) redirect('/portail/expired')

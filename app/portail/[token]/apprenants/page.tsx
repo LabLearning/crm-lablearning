@@ -7,6 +7,9 @@ import { Accessibility, Mail, Building2 } from 'lucide-react'
 import type { InscriptionStatus } from '@/lib/types/formation'
 import { DeclareChangeButton } from './DeclareChangeButton'
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function PortalApprenantsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'formateur') redirect('/portail/expired')

@@ -7,6 +7,9 @@ import { DOCUMENT_TYPE_LABELS } from '@/lib/types/document'
 import { formatDate } from '@/lib/utils'
 import { PendingSignatures } from './PendingSignatures'
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function PortalDocumentsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context) redirect('/portail/expired')

@@ -6,6 +6,9 @@ import { INSCRIPTION_STATUS_LABELS, INSCRIPTION_STATUS_COLORS } from '@/lib/type
 import { formatDate } from '@/lib/utils'
 import type { InscriptionStatus } from '@/lib/types/formation'
 
+// Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
+export const dynamic = 'force-dynamic'
+
 export default async function PortalFormationsPage({ params }: { params: { token: string } }) {
   const context = await getPortalContext(params.token)
   if (!context || context.type !== 'apprenant') redirect('/portail/expired')
