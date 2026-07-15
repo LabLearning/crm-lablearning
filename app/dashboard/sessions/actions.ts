@@ -106,30 +106,65 @@ function safeParseJson(s: string): any[] {
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : [] } catch { return [] }
 }
 
-/** Helper : créer la notif "mission proposée" pour le formateur */
+/** Helper : notif in-app + email "mission proposée" pour le formateur */
 async function notifyFormateurOfMission(formateurId: string, sessionId: string, supabase: any, session: any) {
-  const { createNotification } = await import('@/lib/email')
-  // Récupérer l'user_id lié au formateur (pour la notif in-app)
+  const { createNotification, sendDocumentEmail } = await import('@/lib/email')
   const { data: formateur } = await supabase
-    .from('formateurs').select('user_id, prenom, nom').eq('id', formateurId).single()
-  if (!formateur?.user_id) return  // Pas de compte user lié → pas de notif (à terme : envoyer email via token)
+    .from('formateurs').select('user_id, prenom, nom, email').eq('id', formateurId).single()
+  if (!formateur) return
 
   const { data: sessionData } = await supabase
     .from('sessions')
-    .select('reference, date_debut, date_fin, formation:formation_id(intitule)')
+    .select('reference, date_debut, date_fin, lieu, horaires, formation:formation_id(intitule)')
     .eq('id', sessionId).single()
 
-  await createNotification({
-    organizationId: session.organization.id,
-    userId: formateur.user_id,
-    titre: 'Nouvelle mission proposée',
-    message: `Mission "${sessionData?.formation?.intitule || 'Formation'}" du ${new Date(sessionData?.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sessionData?.date_fin).toLocaleDateString('fr-FR')}. Acceptez ou refusez depuis votre espace.`,
-    type: 'session',
-    lienUrl: `/mon-espace`,
-    lienLabel: 'Voir la mission',
-    entityType: 'session',
-    entityId: sessionId,
-  })
+  const intitule = sessionData?.formation?.intitule || 'Formation'
+  const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : '—'
+  const periode = `du ${fmtFr(sessionData?.date_debut)} au ${fmtFr(sessionData?.date_fin)}`
+
+  // Notif in-app (cloche) si le formateur a un compte
+  if (formateur.user_id) {
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: formateur.user_id,
+      titre: 'Nouvelle mission proposée',
+      message: `Mission "${intitule}" ${periode}. Acceptez ou refusez depuis votre espace.`,
+      type: 'session',
+      lienUrl: `/mon-espace`,
+      lienLabel: 'Voir la mission',
+      entityType: 'session',
+      entityId: sessionId,
+    })
+  }
+
+  // Email de proposition de mission (dès qu'un email est renseigné)
+  if (formateur.email) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+    const { data: org } = await supabase
+      .from('organizations').select('name, email, email_contact, logo_url, is_qualiopi')
+      .eq('id', session.organization.id).single()
+    await sendDocumentEmail({
+      to: formateur.email,
+      orgName: org?.name || 'Lab Learning',
+      orgEmail: org?.email_contact || org?.email,
+      orgLogoUrl: org?.logo_url,
+      qualiopiCertified: org?.is_qualiopi !== false,
+      recipientName: formateur.prenom || 'Bonjour',
+      subject: `Nouvelle mission proposée — ${intitule}`,
+      docTitle: 'Proposition de mission',
+      intro: `Une nouvelle mission de formation vous est proposée. Connectez-vous à votre espace formateur pour l'accepter ou la refuser.`,
+      metadata: [
+        ['Formation', intitule],
+        ['Période', periode],
+        ...(sessionData?.lieu ? [['Lieu', sessionData.lieu] as [string, string]] : []),
+        ...(sessionData?.horaires ? [['Horaires', sessionData.horaires] as [string, string]] : []),
+        ['Référence', sessionData?.reference || ''],
+      ],
+      ctaLabel: 'Voir la mission dans mon espace',
+      ctaUrl: `${appUrl}/mon-espace`,
+      footerNote: 'Merci de répondre rapidement afin que nous puissions confirmer la session.',
+    })
+  }
 }
 
 // ============================================================
@@ -290,9 +325,26 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
 
   const horairesJours = parsed.data.horaires_jours ? safeParseJson(parsed.data.horaires_jours) : []
 
+  // Détecte un changement de formateur → relance le workflow mission
+  const { data: before } = await supabase
+    .from('sessions')
+    .select('formateur_id, mission_status')
+    .eq('id', id)
+    .eq('organization_id', session.organization.id)
+    .single()
+  const newFormateurId = parsed.data.formateur_id || null
+  const formateurChanged = !!newFormateurId && newFormateurId !== before?.formateur_id
+
   const { error } = await supabase
     .from('sessions')
     .update({
+      // Nouveau formateur assigné → mission à proposer
+      ...(formateurChanged ? {
+        mission_status: 'pending',
+        mission_proposed_at: new Date().toISOString(),
+        mission_proposed_by: session.user.id,
+        mission_responded_at: null,
+      } : {}),
       formation_id: parsed.data.formation_id,
       type_session: parsed.data.type_session || 'inter',
       modalite: parsed.data.modalite || 'presentiel',
@@ -322,6 +374,12 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  // Nouveau formateur assigné → notification + email de proposition de mission
+  if (formateurChanged && newFormateurId) {
+    try { await notifyFormateurOfMission(newFormateurId, id, supabase, session) }
+    catch (e) { console.error('[notify mission update]', e) }
+  }
 
   // Synchroniser les formations liées : remplace tout
   const newFormationIds = (parsed.data.formation_ids || parsed.data.formation_id || '').split(',').filter(Boolean)
