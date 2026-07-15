@@ -671,7 +671,17 @@ export async function sendFormateurWelcomeEmail(params: {
   qualiopiCertified?: boolean
   inviteUrl: string
   auditUrl?: string | null
+  portalUrl?: string | null
 }): Promise<{ success: boolean; error?: string }> {
+  const portalSection = params.portalUrl ? `
+    <div style="border-top:1px solid #e4e4e7;margin:26px 0 0;padding-top:22px;">
+      <h2 style="margin:0 0 6px;color:#18181b;font-size:16px;font-weight:700;">Votre espace formateur</h2>
+      <p style="margin:0 0 16px;color:#71717a;font-size:14px;line-height:1.6;">
+        Retrouvez vos sessions, vos apprenants et les feuilles d émargement numériques dans votre
+        espace personnel — accessible directement, sans mot de passe, via ce lien qui vous est propre :
+      </p>
+      ${ctaButton(params.portalUrl, 'Accéder à mon espace formateur')}
+    </div>` : ''
   const auditSection = params.auditUrl ? `
     <div style="border-top:1px solid #e4e4e7;margin:26px 0 0;padding-top:22px;">
       <h2 style="margin:0 0 6px;color:#18181b;font-size:16px;font-weight:700;">Outil Audit Hygiène &amp; DUERP</h2>
@@ -690,6 +700,7 @@ export async function sendFormateurWelcomeEmail(params: {
     </p>
     <p style="margin:0 0 16px;color:#71717a;font-size:14px;">Commencez par créer votre mot de passe :</p>
     ${ctaButton(params.inviteUrl, "Créer mon compte")}
+    ${portalSection}
     ${auditSection}
     <p style="margin:24px 0 0;color:#a1a1aa;font-size:12px;line-height:1.6;">
       Ces liens vous sont personnels. En cas de question, répondez simplement à cet email.

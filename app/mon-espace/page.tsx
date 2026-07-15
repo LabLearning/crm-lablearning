@@ -32,10 +32,40 @@ export default async function MonEspacePage() {
   // ── FORMATEUR ──
   if (role === 'formateur') {
     const { data: formateur } = await supabase
-      .from('formateurs').select('id, prenom, nom').eq('user_id', session.user.id).single()
+      .from('formateurs').select('id, prenom, nom, email').eq('user_id', session.user.id).single()
 
     if (!formateur) {
       return <AccountNotLinked roleName="Formateur" userName={userName} />
+    }
+
+    // Pont vers le portail formateur (émargement, apprenants) : le compte
+    // connecté suffit, le token est résolu (et créé si besoin) côté serveur
+    let portalToken: string | null = null
+    {
+      const { data: tok } = await supabase
+        .from('portal_access_tokens')
+        .select('token')
+        .eq('organization_id', session.organization.id)
+        .eq('type', 'formateur')
+        .eq('formateur_id', formateur.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
+      portalToken = tok?.token || null
+      if (!portalToken) {
+        const { data: created } = await supabase
+          .from('portal_access_tokens')
+          .insert({
+            organization_id: session.organization.id,
+            type: 'formateur',
+            formateur_id: formateur.id,
+            email: formateur.email || session.user.email,
+            created_by: session.user.id,
+          })
+          .select('token')
+          .single()
+        portalToken = created?.token || null
+      }
     }
 
     // Requêtes indépendantes en parallèle : missions en attente, sessions actives, sessions+tâches
@@ -142,6 +172,34 @@ export default async function MonEspacePage() {
           </div>
         </div>
 
+        {/* Accès rapides : émargement + apprenants (portail formateur) */}
+        {portalToken && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Link href={`/portail/${portalToken}/emargement`}
+              className="card p-5 flex items-center gap-4 hover:shadow-card transition-all">
+              <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                <ClipboardCheck className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <div className="text-base font-heading font-semibold text-surface-900">Feuilles d'émargement</div>
+                <div className="text-sm text-surface-500 mt-0.5">Signatures numériques par demi-journée</div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-surface-300" />
+            </Link>
+            <Link href={`/portail/${portalToken}/apprenants`}
+              className="card p-5 flex items-center gap-4 hover:shadow-card transition-all">
+              <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <Users className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <div className="text-base font-heading font-semibold text-surface-900">Mes apprenants</div>
+                <div className="text-sm text-surface-500 mt-0.5">Listes par session, déclarer un changement</div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-surface-300" />
+            </Link>
+          </div>
+        )}
+
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-surface-100">
             <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Mes prochaines sessions</div>
@@ -149,7 +207,7 @@ export default async function MonEspacePage() {
           {allSessions.length > 0 ? (
             <div className="divide-y divide-surface-100">
               {allSessions.map((s: any) => (
-                <Link key={s.id} href={`/dashboard/sessions/${s.id}`}
+                <Link key={s.id} href={portalToken ? `/portail/${portalToken}/sessions` : '#'}
                   className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-50 transition-colors">
                   <div className="h-10 w-10 rounded-xl bg-surface-100 flex items-center justify-center shrink-0">
                     <Calendar className="h-5 w-5 text-surface-500" />
