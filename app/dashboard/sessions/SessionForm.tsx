@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Save, Building2, Users, X, Plus, CalendarDays, Clock } from 'lucide-react'
-import { Button, Input, Select, FormateurDispoBadge, CalendarPicker } from '@/components/ui'
+import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect } from '@/components/ui'
 import { createSessionAction, updateSessionAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
 import type { Session, Formation, Formateur, HoraireJour } from '@/lib/types/formation'
@@ -301,12 +301,13 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <div className="flex items-center gap-2 text-sm font-medium text-brand-900">
           <Building2 className="h-4 w-4" /> Client commanditaire
         </div>
-        <Select
+        <SearchSelect
           id="client_id_select"
           label={typeSession === 'intra' ? 'Client *' : 'Client (optionnel)'}
-          options={clientOptions}
+          options={clientOptions.filter(o => o.value !== '')}
           value={clientId}
-          onChange={e => setClientId(e.target.value)}
+          onChange={setClientId}
+          placeholder="Rechercher un client…"
         />
         {typeSession === 'intra' ? (
           <div className="text-xs text-brand-700">L'adresse sera pré-remplie avec celle du client (modifiable).</div>
