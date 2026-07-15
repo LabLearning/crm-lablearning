@@ -96,14 +96,14 @@ export function GlobalSearch() {
           ) : (
             Object.entries(groups).map(([group, items]) => (
               <div key={group} className="mb-1">
-                <div className="px-4 pt-2 pb-1 text-[10px] font-bold text-surface-400 uppercase tracking-wider">{group}</div>
+                <div className="px-4 pt-2 pb-1 text-[11px] font-bold text-surface-900 uppercase tracking-wider">{group}</div>
                 {items.map((r, i) => (
                   <button
                     key={`${group}-${i}`}
                     onClick={() => go(r.href)}
                     className="w-full flex items-center justify-between gap-3 px-4 py-2 text-left hover:bg-surface-50 transition-colors"
                   >
-                    <span className="text-sm font-semibold text-surface-900 truncate">{r.label}</span>
+                    <span className="text-sm text-surface-700 truncate">{r.label}</span>
                     {r.sublabel && <span className="text-xs text-surface-500 shrink-0 truncate max-w-[140px]">{r.sublabel}</span>}
                   </button>
                 ))}
