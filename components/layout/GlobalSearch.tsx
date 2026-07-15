@@ -103,8 +103,8 @@ export function GlobalSearch() {
                     onClick={() => go(r.href)}
                     className="w-full flex items-center justify-between gap-3 px-4 py-2 text-left hover:bg-surface-50 transition-colors"
                   >
-                    <span className="text-sm text-surface-800 truncate">{r.label}</span>
-                    {r.sublabel && <span className="text-xs text-surface-400 shrink-0 truncate max-w-[140px]">{r.sublabel}</span>}
+                    <span className="text-sm font-semibold text-surface-900 truncate">{r.label}</span>
+                    {r.sublabel && <span className="text-xs text-surface-500 shrink-0 truncate max-w-[140px]">{r.sublabel}</span>}
                   </button>
                 ))}
               </div>
