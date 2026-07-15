@@ -40,33 +40,10 @@ export default async function MonEspacePage() {
 
     // Pont vers le portail formateur (émargement, apprenants) : le compte
     // connecté suffit, le token est résolu (et créé si besoin) côté serveur
-    let portalToken: string | null = null
-    {
-      const { data: tok } = await supabase
-        .from('portal_access_tokens')
-        .select('token')
-        .eq('organization_id', session.organization.id)
-        .eq('type', 'formateur')
-        .eq('formateur_id', formateur.id)
-        .eq('is_active', true)
-        .limit(1)
-        .maybeSingle()
-      portalToken = tok?.token || null
-      if (!portalToken) {
-        const { data: created } = await supabase
-          .from('portal_access_tokens')
-          .insert({
-            organization_id: session.organization.id,
-            type: 'formateur',
-            formateur_id: formateur.id,
-            email: formateur.email || session.user.email,
-            created_by: session.user.id,
-          })
-          .select('token')
-          .single()
-        portalToken = created?.token || null
-      }
-    }
+    const { getFormateurPortalToken } = await import('@/lib/formateur-portal')
+    const portalToken = await getFormateurPortalToken(
+      supabase, session.organization.id, session.user.id, session.user.email,
+    )
 
     // Requêtes indépendantes en parallèle : missions en attente, sessions actives, sessions+tâches
     const [

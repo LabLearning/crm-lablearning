@@ -27,10 +27,8 @@ const apprenantNav: NavItem[] = [
 const formateurNav: NavItem[] = [
   { label: 'Accueil', short: 'Accueil', href: '', icon: LayoutDashboard },
   { label: 'Mes sessions', short: 'Sessions', href: '/sessions', icon: Calendar },
-  { label: 'Planning', short: 'Planning', href: '/planning', icon: Calendar },
-  { label: 'Pointages', short: 'Pointage', href: '/pointages', icon: CheckSquare },
-  { label: 'Mon profil', short: 'Profil', href: '/profil', icon: Users },
-  { label: 'Rapports', short: 'Rapports', href: '/rapports', icon: FileText },
+  { label: 'Émargement', short: 'Émargement', href: '/emargement', icon: CheckSquare },
+  { label: 'Mes apprenants', short: 'Apprenants', href: '/apprenants', icon: Users },
 ]
 
 const apporteurNav: NavItem[] = [
