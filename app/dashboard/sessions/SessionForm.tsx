@@ -387,7 +387,14 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
       {/* ── Formateur ── */}
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Formateur</div>
 
-      <Select id="formateur_id_select" label="Formateur" options={formateurOptions} value={formateurId} onChange={(e) => setFormateurId(e.target.value)} />
+      <SearchSelect
+        id="formateur_id_select"
+        label="Formateur"
+        options={formateurOptions.filter(o => o.value !== '')}
+        value={formateurId}
+        onChange={setFormateurId}
+        placeholder="Rechercher un formateur…"
+      />
 
       {formateurId && dateDebut && dateFin && (
         <FormateurDispoBadge formateurId={formateurId} dateDebut={dateDebut} dateFin={dateFin} excludeSessionId={session?.id} />
