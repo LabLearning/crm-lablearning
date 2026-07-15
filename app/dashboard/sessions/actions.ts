@@ -178,12 +178,12 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
   // Vérifier que le user est bien le formateur de la session
   const { data: sess } = await supabase
     .from('sessions')
-    .select('id, formateur_id, mission_status, organization_id, mission_proposed_by, formation_id, client_id, type_session, date_debut, date_fin, lieu, formation:formation_id(intitule, duree_heures, tarif_inter_ht, tarif_intra_ht)')
+    .select('id, formateur_id, mission_status, organization_id, mission_proposed_by, formation_id, client_id, type_session, date_debut, date_fin, lieu, cout_formateur, formation:formation_id(intitule, duree_heures, duree_jours, tarif_inter_ht, tarif_intra_ht)')
     .eq('id', sessionId).single()
   if (!sess) return { success: false, error: 'Session introuvable' }
 
   const { data: formateur } = await supabase
-    .from('formateurs').select('id').eq('user_id', session.user.id).single()
+    .from('formateurs').select('id, prenom, nom, email').eq('user_id', session.user.id).single()
   if (!formateur || formateur.id !== sess.formateur_id) {
     return { success: false, error: 'Cette mission ne vous est pas adressée' }
   }
@@ -229,11 +229,89 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
       lieu: sess.lieu || null,
       dates_formation: `Du ${sess.date_debut} au ${sess.date_fin}`,
       montant_ht: montantHt,
-      taux_tva: 20,
-      montant_ttc: montantHt ? montantHt * 1.2 : null,
+      // Organisme de formation exonéré de TVA (art. 261-4-4° a du CGI)
+      taux_tva: 0,
+      montant_ttc: montantHt,
       created_by: sess.mission_proposed_by || session.user.id,
     })
   }
+
+  // ── AUTO : contrat de prestation prêt à signer immédiatement ──
+  let contratSignUrl: string | null = null
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+    const { data: existingContrat } = await supabase
+      .from('contrats_formateur')
+      .select('id, signature_token, status')
+      .eq('session_id', sessionId)
+      .maybeSingle()
+
+    let contratToken = existingContrat?.signature_token
+    if (!existingContrat) {
+      const { count: contratCount } = await supabase
+        .from('contrats_formateur')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', sess.organization_id)
+      const numero = `CT-${new Date().getFullYear()}-${String((contratCount || 0) + 1).padStart(3, '0')}`
+
+      const { data: formateurRow } = await supabase
+        .from('formateurs').select('tarif_journalier').eq('id', sess.formateur_id).single()
+      const tarif = formateurRow?.tarif_journalier || null
+      const duree = (sess as any).formation?.duree_jours || null
+      const montantContrat = (tarif && duree) ? Number(tarif) * Number(duree) : (sess.cout_formateur || null)
+
+      const { randomBytes, createHash } = await import('crypto')
+      contratToken = createHash('sha256').update(randomBytes(32)).digest('hex')
+      const expires = new Date()
+      expires.setDate(expires.getDate() + 30)
+
+      await supabase.from('contrats_formateur').insert({
+        organization_id: sess.organization_id,
+        session_id: sessionId,
+        formateur_id: sess.formateur_id,
+        numero,
+        status: 'envoye',
+        tarif_journalier: tarif,
+        nombre_jours: duree,
+        montant_ht: montantContrat,
+        signature_token: contratToken,
+        signature_token_expires_at: expires.toISOString(),
+        sent_at: new Date().toISOString(),
+        created_by: sess.mission_proposed_by || session.user.id,
+      })
+    }
+    if (contratToken && existingContrat?.status !== 'signe') {
+      contratSignUrl = `${appUrl}/contrat-formateur/${contratToken}/signer`
+
+      // Email avec le lien de signature (s'il ne signe pas immédiatement)
+      if (formateur.email) {
+        const { sendDocumentEmail } = await import('@/lib/email')
+        const { data: org } = await supabase
+          .from('organizations').select('name, email, email_contact, logo_url, is_qualiopi')
+          .eq('id', sess.organization_id).single()
+        const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : '—'
+        await sendDocumentEmail({
+          to: formateur.email,
+          orgName: org?.name || 'Lab Learning',
+          orgEmail: org?.email_contact || org?.email,
+          orgLogoUrl: org?.logo_url,
+          qualiopiCertified: org?.is_qualiopi !== false,
+          recipientName: formateur.prenom || 'Bonjour',
+          subject: `Contrat de prestation à signer — ${(sess as any).formation?.intitule || 'Formation'}`,
+          docTitle: 'Contrat de prestation à signer',
+          intro: `Merci d'avoir accepté la mission. Votre contrat de prestation est prêt : signez-le en ligne en quelques secondes.`,
+          metadata: [
+            ['Formation', (sess as any).formation?.intitule || ''],
+            ['Période', `du ${fmtFr(sess.date_debut)} au ${fmtFr(sess.date_fin)}`],
+            ...(sess.lieu ? [['Lieu', sess.lieu] as [string, string]] : []),
+          ],
+          ctaLabel: 'Signer mon contrat',
+          ctaUrl: contratSignUrl,
+          footerNote: 'Lien valable 30 jours. La session sera confirmée dès la signature du contrat et de la convention client.',
+        })
+      }
+    }
+  } catch (e) { console.error('[accept mission — contrat]', e) }
 
   // Notifier le gestionnaire qui a proposé
   if (sess.mission_proposed_by) {
@@ -255,7 +333,8 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
   revalidatePath('/mon-espace')
   revalidatePath('/dashboard/sessions')
   revalidatePath('/dashboard/conventions')
-  return { success: true }
+  // Le formateur est redirigé directement vers la signature de son contrat
+  return { success: true, data: { contratSignUrl } }
 }
 
 export async function refuseMissionAction(sessionId: string, comment: string): Promise<ActionResult> {

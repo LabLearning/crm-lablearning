@@ -26,8 +26,15 @@ export function MissionPendingCard({ mission }: { mission: PendingMission }) {
   async function handleAccept() {
     setIsLoading(true)
     const r = await acceptMissionAction(mission.id)
-    if (r.success) toast('success', 'Mission acceptée — le gestionnaire est notifié')
-    else toast('error', r.error || 'Erreur')
+    if (r.success) {
+      const signUrl = (r.data as any)?.contratSignUrl
+      if (signUrl) {
+        toast('success', 'Mission acceptée — signez votre contrat de prestation')
+        window.location.href = signUrl
+        return
+      }
+      toast('success', 'Mission acceptée — le gestionnaire est notifié')
+    } else toast('error', r.error || 'Erreur')
     setIsLoading(false)
   }
 
