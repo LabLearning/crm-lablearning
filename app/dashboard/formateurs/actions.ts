@@ -94,6 +94,36 @@ async function onboardFormateur(
     ? await provisionAuditToolAccess(data.email, data.prenom, data.nom)
     : null
 
+  // 4bis. Lien portail formateur (sessions, émargement, apprenants)
+  let portalUrl: string | null = null
+  try {
+    const { data: existingTok } = await supabase
+      .from('portal_access_tokens')
+      .select('token')
+      .eq('organization_id', session.organization.id)
+      .eq('type', 'formateur')
+      .eq('formateur_id', formateurId)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle()
+    let token = existingTok?.token
+    if (!token) {
+      const { data: created } = await supabase
+        .from('portal_access_tokens')
+        .insert({
+          organization_id: session.organization.id,
+          type: 'formateur',
+          formateur_id: formateurId,
+          email: data.email,
+          created_by: session.user.id,
+        })
+        .select('token')
+        .single()
+      token = created?.token
+    }
+    if (token) portalUrl = `${appUrl}/portail/${token}`
+  } catch (e) { console.error('[onboard formateur — portail]', e) }
+
   // 5. Email de bienvenue unique
   const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
   const { sendFormateurWelcomeEmail } = await import('@/lib/email')
@@ -106,7 +136,47 @@ async function onboardFormateur(
     qualiopiCertified: (org as any)?.is_qualiopi !== false,
     inviteUrl: `${appUrl}/setup-account?token=${invitation.token}&uid=${authUserId}`,
     auditUrl,
+    portalUrl,
   })
+}
+
+/**
+ * Envoie (ou renvoie) l'accès complet à un formateur existant :
+ * compte + email de bienvenue + lien portail. Pour les fiches créées
+ * sans email ou importées (Dendreo) avant le système d'onboarding.
+ */
+export async function sendFormateurAccessAction(formateurId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  const { data: formateur } = await supabase
+    .from('formateurs')
+    .select('id, prenom, nom, email, domaines_expertise')
+    .eq('id', formateurId)
+    .eq('organization_id', session.organization.id)
+    .single()
+  if (!formateur) return { success: false, error: 'Formateur introuvable' }
+  if (!formateur.email) return { success: false, error: "Renseignez d'abord l'email du formateur sur sa fiche" }
+
+  try {
+    await onboardFormateur(
+      supabase,
+      session,
+      formateur.id,
+      { email: formateur.email, prenom: formateur.prenom, nom: formateur.nom },
+      false,
+    )
+  } catch (e) {
+    console.error('[send formateur access]', e)
+    return { success: false, error: "Échec de l'envoi de l'accès" }
+  }
+
+  await logAudit({ action: 'send_access', entity_type: 'formateur', entity_id: formateurId })
+  revalidatePath('/dashboard/formateurs')
+  return { success: true, data: { email: formateur.email } }
 }
 
 export async function createFormateurAction(formData: FormData): Promise<ActionResult> {

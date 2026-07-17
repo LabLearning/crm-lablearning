@@ -108,7 +108,7 @@ export default async function PortalSessionsPage({ params }: { params: { token: 
         <div className="card p-12 text-center text-sm text-surface-500">
           Aucune session assignée
           {/* SONDE DEBUG TEMPORAIRE — à retirer */}
-          {error && <div data-debug-error className="hidden">{JSON.stringify({ code: (error as any).code, message: (error as any).message, details: (error as any).details, hint: (error as any).hint, fid: context.formateur.id })}</div>}
+          <div data-debug className="hidden">{JSON.stringify({ n: sessions?.length ?? -1, fid: context.formateur.id, err: error ? { code: (error as any).code, message: (error as any).message, details: (error as any).details, hint: (error as any).hint } : null })}</div>
         </div>
       )}
     </div>

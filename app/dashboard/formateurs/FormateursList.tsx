@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Save, Camera, Loader2,
   Presentation, Star, Award, Clock, Calendar, Euro,
-  CheckCircle2, XCircle, ShieldCheck, AlertTriangle, MapPin,
+  CheckCircle2, XCircle, ShieldCheck, AlertTriangle, MapPin, KeyRound,
 } from 'lucide-react'
 import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu } from '@/components/ui'
 import {
   createFormateurAction, updateFormateurAction, deleteFormateurAction,
-  toggleFormateurAction, updateHabilitationAction,
+  toggleFormateurAction, updateHabilitationAction, sendFormateurAccessAction,
 } from './actions'
 import { formatDate } from '@/lib/utils'
 import type { Formateur } from '@/lib/types/formation'
@@ -228,6 +228,13 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
     if (result.success) toast('success', !current ? 'Formateur activé' : 'Formateur désactivé')
   }
 
+  async function handleSendAccess(id: string, nom: string) {
+    if (!confirm(`Envoyer l'accès à son espace (compte + lien portail) à ${nom} par email ?`)) return
+    const result = await sendFormateurAccessAction(id)
+    if (result.success) toast('success', `Accès envoyé à ${(result.data as any)?.email || nom}`)
+    else toast('error', result.error || 'Erreur')
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -273,6 +280,7 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
                   width={208}
                   items={[
                     { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormateur(f) },
+                    { label: "Envoyer l'accès à son espace", icon: <KeyRound className="h-4 w-4 text-brand-600" />, onClick: () => handleSendAccess(f.id, `${f.prenom} ${f.nom}`), hidden: !f.email },
                     { label: 'Habilitations', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, onClick: () => setHabilitationFormateur(f) },
                     {
                       label: f.is_active ? 'Désactiver' : 'Activer',
