@@ -31,6 +31,14 @@ export async function createServiceRoleClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      // no-store : empêche le Data Cache de Next/Vercel de mémoriser les
+      // réponses Supabase (il persiste entre déploiements et servait des
+      // données figées sur les pages sans cookies, ex. portails par token)
+      global: {
+        fetch: (url: any, options: any = {}) => fetch(url, { ...options, cache: 'no-store' }),
+      },
+    }
   )
 }
