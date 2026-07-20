@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro, Download } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
-import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction } from '../actions'
+import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction, sendGroupEmailToCandidatsAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
 
@@ -55,6 +55,43 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
   const [apprenantId, setApprenantId] = useState('')
   const [genDevisOpen, setGenDevisOpen] = useState(false)
   const [genDevis, setGenDevis] = useState(false)
+  // Mail groupé personnalisé
+  const [mailOpen, setMailOpen] = useState(false)
+  const [mailSubject, setMailSubject] = useState('')
+  const [mailMessage, setMailMessage] = useState('')
+  const [mailJoindre, setMailJoindre] = useState(false)
+  const [mailSending, setMailSending] = useState(false)
+  const [mailTargets, setMailTargets] = useState<string[]>([])
+
+  const mailRecipients = candidats.filter((c) => mailTargets.includes(c.id))
+  const mailSansEmail = mailRecipients.filter((c) => !c.apprenant?.email)
+
+  function openGroupMail() {
+    setMailTargets(candidats.map((c) => c.id))
+    setMailSubject('')
+    setMailMessage('')
+    setMailJoindre(false)
+    setMailOpen(true)
+  }
+
+  async function handleSendGroupMail() {
+    const ids = mailRecipients.filter((c) => c.apprenant?.email).map((c) => c.id)
+    if (ids.length === 0) { toast('error', 'Aucun destinataire avec email'); return }
+    setMailSending(true)
+    const r = await sendGroupEmailToCandidatsAction(poeiId, ids, {
+      subject: mailSubject, message: mailMessage, joindreAttestation: mailJoindre,
+    })
+    setMailSending(false)
+    if (r.success) {
+      const { sent, skipped } = (r.data || {}) as { sent: number; skipped: string[] }
+      if (sent > 0) toast('success', `${sent} email${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''}`)
+      if (skipped?.length) toast('error', `Non envoyés : ${skipped.join(', ')}`)
+      setMailOpen(false)
+      router.refresh()
+    } else {
+      toast('error', r.error || 'Erreur')
+    }
+  }
 
   async function handleGenerateDevis() {
     setGenDevis(true)
@@ -163,6 +200,9 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
                   <Download className="h-4 w-4" /> Télécharger les devis (ZIP)
                 </a>
               )}
+              <Button onClick={openGroupMail} size="sm" variant="secondary" icon={<Mail className="h-4 w-4" />}>
+                Mail groupé
+              </Button>
               <Button onClick={() => openPreview(candidats)} size="sm" variant="secondary" icon={<Send className="h-4 w-4" />}>
                 Envoyer attestations d&apos;entrée à tous
               </Button>
@@ -233,6 +273,99 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
           })}
         </div>
       )}
+
+      {/* Mail groupé personnalisé */}
+      <Modal isOpen={mailOpen} onClose={() => setMailOpen(false)} title="Mail groupé aux candidats" size="lg">
+        <div className="space-y-4">
+          {/* Destinataires */}
+          <div>
+            <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-1.5">
+              Destinataires ({mailRecipients.filter((c) => c.apprenant?.email).length})
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {candidats.map((c) => {
+                const on = mailTargets.includes(c.id)
+                const sansEmail = !c.apprenant?.email
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setMailTargets((t) => on ? t.filter((x) => x !== c.id) : [...t, c.id])}
+                    title={sansEmail ? 'Pas d\'email renseigné' : c.apprenant?.email || ''}
+                    className={`px-2 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      sansEmail ? 'bg-surface-50 text-surface-300 border-surface-200 line-through'
+                        : on ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-white text-surface-500 border-surface-200'
+                    }`}
+                  >
+                    {`${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat'}
+                  </button>
+                )
+              })}
+            </div>
+            {mailSansEmail.length > 0 && (
+              <p className="text-xs text-amber-600 mt-1.5">
+                {mailSansEmail.length} candidat{mailSansEmail.length > 1 ? 's' : ''} sans email : ils ne recevront rien.
+              </p>
+            )}
+          </div>
+
+          <Input id="mail_subject" label="Objet *" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)}
+            placeholder="Ex : Votre entrée en formation {formation}" />
+
+          <div>
+            <label className="block text-sm font-medium text-surface-700 mb-1.5">Message *</label>
+            <textarea
+              rows={7} className="input-base resize-none w-full"
+              value={mailMessage}
+              onChange={(e) => setMailMessage(e.target.value)}
+              placeholder={'Bonjour {prenom},\n\nVotre formation {formation} démarre {dates}...'}
+            />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className="text-xs text-surface-400">Variables :</span>
+              {['{prenom}', '{nom}', '{formation}', '{entreprise}', '{dates}'].map((v) => (
+                <button key={v} type="button"
+                  onClick={() => setMailMessage((m) => m + v)}
+                  className="px-1.5 py-0.5 rounded bg-surface-100 text-surface-600 text-xs font-mono hover:bg-surface-200">
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-surface-700">
+            <input type="checkbox" checked={mailJoindre} onChange={(e) => setMailJoindre(e.target.checked)}
+              className="rounded border-surface-300 text-sky-600 focus:ring-sky-500" />
+            <Paperclip className="h-3.5 w-3.5 text-surface-400" />
+            Joindre l&apos;attestation d&apos;entrée de chaque candidat
+          </label>
+
+          {/* Aperçu personnalisé sur le 1er destinataire */}
+          {mailMessage.trim() && mailRecipients[0] && (
+            <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+              <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-1.5">
+                Aperçu pour {`${mailRecipients[0].apprenant?.prenom || ''} ${mailRecipients[0].apprenant?.nom || ''}`.trim()}
+              </div>
+              <div className="text-sm font-semibold text-surface-900 mb-1">
+                {mailSubject.replace(/\{prenom\}/gi, mailRecipients[0].apprenant?.prenom || '').replace(/\{nom\}/gi, mailRecipients[0].apprenant?.nom || '')}
+              </div>
+              <div className="text-sm text-surface-600 whitespace-pre-wrap">
+                {mailMessage
+                  .replace(/\{prenom\}/gi, mailRecipients[0].apprenant?.prenom || '')
+                  .replace(/\{nom\}/gi, mailRecipients[0].apprenant?.nom || '')}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
+            <Button variant="secondary" onClick={() => setMailOpen(false)}>Annuler</Button>
+            <Button onClick={handleSendGroupMail} isLoading={mailSending}
+              disabled={!mailSubject.trim() || !mailMessage.trim()}
+              icon={<Send className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">
+              Envoyer à {mailRecipients.filter((c) => c.apprenant?.email).length} candidat{mailRecipients.filter((c) => c.apprenant?.email).length > 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Confirmation génération des devis */}
       <Modal isOpen={genDevisOpen} onClose={() => setGenDevisOpen(false)} title="Générer les devis" size="md">
