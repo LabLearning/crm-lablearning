@@ -12,6 +12,7 @@ import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import type { Client } from '@/lib/types/crm'
 import { ClientEditButton } from './ClientEditButton'
 import { ClientNotes } from './ClientNotes'
+import { ClientParticipants } from './ClientParticipants'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     { data: devis },
     { data: factures },
     { data: users },
+    { data: participants },
   ] = await Promise.all([
     supabase.from('contacts').select('*').eq('client_id', params.id).order('est_principal', { ascending: false }),
     supabase.from('leads').select('*').eq('converted_client_id', params.id).order('created_at', { ascending: false }),
@@ -56,6 +58,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     canAssign
       ? supabase.from('users').select('id, first_name, last_name').eq('organization_id', session.organization.id).eq('status', 'active').order('first_name')
       : Promise.resolve({ data: [] as any[] }),
+    supabase.from('apprenants').select('id, prenom, nom, email, telephone, poste').eq('client_id', params.id).order('nom'),
   ])
 
   // Nb d'apprenants inscrits par session (pour les dossiers liés à une session)
@@ -289,6 +292,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               </div>
             )}
           </div>
+
+          {/* Employés / participants de l'entreprise */}
+          {isEntreprise && <ClientParticipants clientId={c.id} participants={(participants || []) as any[]} />}
 
           {/* Commentaires (éditable) — sous les factures */}
           <ClientNotes clientId={c.id} initialNotes={c.notes} />
