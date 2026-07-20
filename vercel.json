@@ -20,6 +20,10 @@
     {
       "path": "/api/cron/relances-factures",
       "schedule": "0 10 * * 1"
+    },
+    {
+      "path": "/api/cron/dendreo-sync",
+      "schedule": "0 5 * * *"
     }
   ]
 }
