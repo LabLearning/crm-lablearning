@@ -575,6 +575,13 @@ export async function sendGroupEmailToCandidatsAction(
   const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : ''
   const datesStr = p.date_debut ? `du ${fmtFr(p.date_debut)} au ${fmtFr(p.date_fin || p.date_debut)}` : ''
 
+  // Lieu : repris de la session liée au projet
+  let lieuStr = ''
+  if (p.session_id) {
+    const { data: sess } = await supabase.from('sessions').select('lieu, adresse, code_postal, ville').eq('id', p.session_id).single()
+    lieuStr = [sess?.lieu, sess?.adresse, [sess?.code_postal, sess?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  }
+
   // Texte saisi → HTML email : paragraphes (ligne vide), retours à la ligne,
   // **gras**. Sans ça, tout le message arriverait en un seul bloc.
   const toHtml = (txt: string) => {
@@ -604,6 +611,10 @@ export async function sendGroupEmailToCandidatsAction(
       .replace(/\{formation\}/gi, formation?.intitule || '')
       .replace(/\{entreprise\}/gi, employeur || '')
       .replace(/\{dates\}/gi, datesStr)
+      .replace(/\{lieu\}/gi, lieuStr)
+      .replace(/\{duree_heures\}/gi, p.duree_heures != null ? String(p.duree_heures) : '')
+      .replace(/\{date_debut\}/gi, fmtFr(p.date_debut))
+      .replace(/\{date_fin\}/gi, fmtFr(p.date_fin))
 
     // Pièce jointe optionnelle : attestation d'entrée du candidat
     let pdfBuffer: Buffer | undefined
@@ -663,4 +674,42 @@ export async function sendGroupEmailToCandidatsAction(
   await logAudit({ action: 'send_group_email_poei', entity_type: 'poei', entity_id: poeiId, details: { sent, skipped: skipped.length } })
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true, data: { sent, skipped } }
+}
+
+// ─── Modèles d'emails POEI (réutilisables sur chaque projet) ───────────────
+
+export async function getPoeiEmailTemplatesAction(): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const { data } = await supabase
+    .from('email_templates')
+    .select('id, slug, nom, sujet, corps_texte')
+    .eq('organization_id', session.organization.id)
+    .like('slug', 'poei_%')
+    .eq('is_active', true)
+    .order('nom')
+  return { success: true, data: data || [] }
+}
+
+export async function savePoeiEmailTemplateAction(
+  nom: string, sujet: string, corps: string, slug?: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!nom.trim() || !sujet.trim() || !corps.trim()) return { success: false, error: 'Nom, objet et message requis' }
+  const supabase = await createServiceRoleClient()
+
+  const finalSlug = slug || `poei_${nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40)}`
+  const { error } = await supabase
+    .from('email_templates')
+    .upsert({
+      organization_id: session.organization.id,
+      slug: finalSlug, nom: nom.trim(), sujet: sujet.trim(), corps_texte: corps,
+      corps_html: '', description: 'Modèle POEI', is_active: true, is_system: false,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'organization_id,slug' })
+  if (error) return { success: false, error: 'Erreur lors de l\'enregistrement du modèle' }
+
+  revalidatePath('/dashboard/poei')
+  return { success: true, data: { slug: finalSlug } }
 }

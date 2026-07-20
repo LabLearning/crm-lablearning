@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro, Download } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
-import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction, sendGroupEmailToCandidatsAction } from '../actions'
+import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction, sendGroupEmailToCandidatsAction, getPoeiEmailTemplatesAction, savePoeiEmailTemplateAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
 
@@ -64,17 +64,39 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
   const [mailTargets, setMailTargets] = useState<string[]>([])
   const [mailFiles, setMailFiles] = useState<File[]>([])
   const mailFileRef = useRef<HTMLInputElement>(null)
+  const [templates, setTemplates] = useState<{ id: string; slug: string; nom: string; sujet: string; corps_texte: string }[]>([])
+
+  function applyTemplate(slug: string) {
+    const t = templates.find((x) => x.slug === slug)
+    if (!t) return
+    setMailSubject(t.sujet || '')
+    setMailMessage(t.corps_texte || '')
+  }
+
+  async function handleSaveTemplate() {
+    const nom = prompt('Nom du modèle (il sera réutilisable sur tous les projets POEI) :')
+    if (!nom?.trim()) return
+    const r = await savePoeiEmailTemplateAction(nom, mailSubject, mailMessage)
+    if (r.success) {
+      toast('success', 'Modèle enregistré')
+      const list = await getPoeiEmailTemplatesAction()
+      if (list.success) setTemplates((list.data as any[]) || [])
+    } else toast('error', r.error || 'Erreur')
+  }
 
   const mailRecipients = candidats.filter((c) => mailTargets.includes(c.id))
   const mailSansEmail = mailRecipients.filter((c) => !c.apprenant?.email)
 
-  function openGroupMail() {
+  async function openGroupMail() {
     setMailTargets(candidats.map((c) => c.id))
     setMailSubject('')
     setMailMessage('')
     setMailJoindre(false)
     setMailFiles([])
     setMailOpen(true)
+    // Charge les modèles réutilisables (ex : « Déroulé du parcours POEI »)
+    const list = await getPoeiEmailTemplatesAction()
+    if (list.success) setTemplates((list.data as any[]) || [])
   }
 
   async function handleSendGroupMail() {
@@ -321,6 +343,19 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             )}
           </div>
 
+          {/* Modèles réutilisables */}
+          {templates.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-sky-50 border border-sky-200 px-3 py-2">
+              <span className="text-xs font-semibold text-sky-800">Modèle :</span>
+              {templates.map((t) => (
+                <button key={t.slug} type="button" onClick={() => applyTemplate(t.slug)}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-sky-200 text-xs font-medium text-sky-700 hover:bg-sky-100 transition-colors">
+                  {t.nom}
+                </button>
+              ))}
+            </div>
+          )}
+
           <Input id="mail_subject" label="Objet *" value={mailSubject} onChange={(e) => setMailSubject(e.target.value)}
             placeholder="Ex : Votre entrée en formation {formation}" />
 
@@ -334,7 +369,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               <span className="text-xs text-surface-400">Variables :</span>
-              {['{prenom}', '{nom}', '{formation}', '{entreprise}', '{dates}'].map((v) => (
+              {['{prenom}', '{nom}', '{formation}', '{entreprise}', '{dates}', '{lieu}', '{duree_heures}', '{date_debut}', '{date_fin}'].map((v) => (
                 <button key={v} type="button"
                   onClick={() => setMailMessage((m) => m + v)}
                   className="px-1.5 py-0.5 rounded bg-surface-100 text-surface-600 text-xs font-mono hover:bg-surface-200">
@@ -405,13 +440,20 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
+          <div className="flex justify-between items-center gap-3 pt-3 border-t border-surface-100">
+            <button type="button" onClick={handleSaveTemplate}
+              disabled={!mailSubject.trim() || !mailMessage.trim()}
+              className="text-xs font-medium text-surface-500 hover:text-surface-700 disabled:opacity-40">
+              Enregistrer comme modèle
+            </button>
+            <div className="flex gap-3">
             <Button variant="secondary" onClick={() => setMailOpen(false)}>Annuler</Button>
             <Button onClick={handleSendGroupMail} isLoading={mailSending}
               disabled={!mailSubject.trim() || !mailMessage.trim()}
               icon={<Send className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">
               Envoyer à {mailRecipients.filter((c) => c.apprenant?.email).length} candidat{mailRecipients.filter((c) => c.apprenant?.email).length > 1 ? 's' : ''}
             </Button>
+            </div>
           </div>
         </div>
       </Modal>
