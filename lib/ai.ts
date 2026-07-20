@@ -21,7 +21,7 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<AIR
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-5',
         max_tokens: 4096,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
@@ -237,7 +237,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, avec ces clés
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-5',
         max_tokens: 8192,
         system: systemPrompt,
         messages: [{

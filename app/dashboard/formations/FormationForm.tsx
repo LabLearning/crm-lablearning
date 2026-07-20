@@ -193,14 +193,29 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
     setSections((s) => ({ ...s, [key]: !s[key] }))
   }
 
+  // Libellés lisibles pour le récapitulatif d'erreurs
+  const FIELD_LABELS: Record<string, string> = {
+    intitule: 'Intitulé', modalite: 'Modalité', duree_heures: 'Durée (heures)',
+    duree_jours: 'Durée (jours)', tarif_inter_ht: 'Tarif inter', tarif_intra_ht: 'Tarif intra',
+    tarif_individuel_ht: 'Tarif individuel', taux_tva: 'Taux de TVA',
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsLoading(true); setErrors({}); setError(null)
     const fd = new FormData(e.currentTarget)
     const result = formation ? await updateFormationAction(formation.id, fd) : await createFormationAction(fd)
-    if (result.success) onSuccess()
-    else if (result.errors) setErrors(result.errors)
-    else setError(result.error || 'Erreur')
+    if (result.success) {
+      onSuccess()
+    } else if (result.errors) {
+      setErrors(result.errors)
+      // Récapitulatif visible + remontée en haut du formulaire
+      const champs = Object.entries(result.errors).map(([k, v]) => `${FIELD_LABELS[k] || k} : ${(v as string[])[0]}`)
+      setError(`Impossible de créer la formation. ${champs.join(' · ')}`)
+      formRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      setError(result.error || 'Erreur lors de la création')
+    }
     setIsLoading(false)
   }
 
@@ -350,6 +365,9 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
         </label>
       </div>
 
+      {error && (
+        <div className="rounded-xl bg-danger-50 border border-danger-200 px-4 py-3 text-sm text-danger-700">{error}</div>
+      )}
       <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
         <Button type="button" variant="secondary" onClick={onCancel}>Annuler</Button>
         <Button type="submit" isLoading={isLoading} icon={<Save className="h-4 w-4" />}>
