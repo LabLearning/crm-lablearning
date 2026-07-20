@@ -31,7 +31,7 @@ export function DevisPDF({ devis, org }: { devis: Devis; org?: any }) {
   const ofExonereTVA = !!org?.numero_da && (!devis.taux_tva || Number(devis.taux_tva) === 0)
 
   return (
-    <Document title={`Devis ${devis.numero}`} author="Lab Learning">
+    <Document title={devis.objet ? `Devis ${devis.numero} — ${devis.objet}` : `Devis ${devis.numero}`} author="Lab Learning">
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
           docTitle="Devis"

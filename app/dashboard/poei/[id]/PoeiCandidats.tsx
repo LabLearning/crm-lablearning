@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro } from 'lucide-react'
+import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro, Download } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
 import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
@@ -158,6 +158,11 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
               <Button onClick={() => setGenDevisOpen(true)} size="sm" variant="secondary" icon={<Euro className="h-4 w-4" />}>
                 Générer les devis
               </Button>
+              {Object.keys(devisByCandidat).length > 0 && (
+                <a href={`/api/pdf/poei-devis/${poeiId}`} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+                  <Download className="h-4 w-4" /> Télécharger les devis (ZIP)
+                </a>
+              )}
               <Button onClick={() => openPreview(candidats)} size="sm" variant="secondary" icon={<Send className="h-4 w-4" />}>
                 Envoyer attestations d&apos;entrée à tous
               </Button>
