@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/utils'
 import { PoeiStatusBar } from './PoeiStatusBar'
 import { PoeiEditor } from './PoeiEditor'
 import { PoeiCandidats } from './PoeiCandidats'
+import { PoeiEmailHistory } from './PoeiEmailHistory'
 import type { Poei, PoeiCandidat } from '@/lib/types/poei'
 
 export const dynamic = 'force-dynamic'
@@ -42,14 +43,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     (p.client_id
       ? supabase.from('apprenants').select('id, nom, prenom, email').eq('organization_id', session.organization.id).eq('client_id', p.client_id).order('nom')
       : supabase.from('apprenants').select('id, nom, prenom, email').eq('organization_id', session.organization.id).order('nom').limit(1000)),
-    // Historique des envois d'attestations (statut par candidat)
+    // Tous les emails envoyés pour ce projet (historique + statut attestations)
     supabase
       .from('email_logs')
-      .select('to_email, status, sent_at, created_at')
+      .select('id, to_email, to_name, subject, template, status, error, sent_at, created_at')
       .eq('organization_id', session.organization.id)
       .eq('entity_type', 'poei')
       .eq('entity_id', params.id)
-      .eq('template', 'attestation_entree')
       .order('created_at', { ascending: false }),
   ])
   const candidats = (candidatsRaw || []) as PoeiCandidat[]
@@ -66,9 +66,9 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     if (m) devisByCandidat[m[1]] = { id: d.id, numero: d.numero }
   }
 
-  // Dernier statut d'envoi par adresse email (le plus récent gagne)
+  // Dernier statut d'envoi d'attestation par adresse email (le plus récent gagne)
   const emailStatus: Record<string, { status: string; date: string | null }> = {}
-  for (const log of emailLogs || []) {
+  for (const log of (emailLogs || []).filter((l: any) => l.template === 'attestation_entree')) {
     const key = (log.to_email || '').toLowerCase()
     if (key && !emailStatus[key]) emailStatus[key] = { status: log.status, date: log.sent_at || log.created_at }
   }
@@ -99,6 +99,8 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       <PoeiStatusBar poeiId={p.id} statut={p.statut} />
 
       <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} clientNom={p.client?.raison_sociale || null} clientId={p.client_id} devisByCandidat={devisByCandidat} />
+
+      <PoeiEmailHistory logs={(emailLogs || []) as any[]} />
 
       <PoeiEditor poei={p} clients={clients || []} formations={formations || []} nbCandidats={candidats.length} />
     </div>
