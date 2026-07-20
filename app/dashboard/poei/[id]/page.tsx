@@ -54,6 +54,18 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   ])
   const candidats = (candidatsRaw || []) as PoeiCandidat[]
 
+  // Devis POEI existants → map candidat_id → devis (pour le bouton de téléchargement par personne)
+  const { data: devisPoei } = await supabase
+    .from('devis')
+    .select('id, numero, notes_internes')
+    .eq('organization_id', session.organization.id)
+    .ilike('notes_internes', `%[POEI:${params.id}:%`)
+  const devisByCandidat: Record<string, { id: string; numero: string | null }> = {}
+  for (const d of devisPoei || []) {
+    const m = (d.notes_internes || '').match(new RegExp(`\\[POEI:${params.id}:([^\\]]+)\\]`))
+    if (m) devisByCandidat[m[1]] = { id: d.id, numero: d.numero }
+  }
+
   // Dernier statut d'envoi par adresse email (le plus récent gagne)
   const emailStatus: Record<string, { status: string; date: string | null }> = {}
   for (const log of emailLogs || []) {
@@ -86,7 +98,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
 
       <PoeiStatusBar poeiId={p.id} statut={p.statut} />
 
-      <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} clientNom={p.client?.raison_sociale || null} clientId={p.client_id} />
+      <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} clientNom={p.client?.raison_sociale || null} clientId={p.client_id} devisByCandidat={devisByCandidat} />
 
       <PoeiEditor poei={p} clients={clients || []} formations={formations || []} nbCandidats={candidats.length} />
     </div>

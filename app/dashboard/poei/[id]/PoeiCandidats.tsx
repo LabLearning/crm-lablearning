@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Receipt } from 'lucide-react'
+import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
 import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
@@ -15,6 +15,7 @@ interface Props {
   emailStatus?: Record<string, { status: string; date: string | null }>
   clientNom?: string | null
   clientId?: string | null
+  devisByCandidat?: Record<string, { id: string; numero: string | null }>
 }
 
 const contratOptions = [{ value: '', label: '—' }, ...Object.entries(TYPE_CONTRAT_LABELS).map(([v, l]) => ({ value: v, label: l as string }))]
@@ -46,19 +47,20 @@ function fmtDateTime(d: string | null): string {
   try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
-export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {}, clientNom, clientId }: Props) {
+export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {} }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'new' | 'existing'>('new')
   const [apprenantId, setApprenantId] = useState('')
+  const [genDevisOpen, setGenDevisOpen] = useState(false)
   const [genDevis, setGenDevis] = useState(false)
 
   async function handleGenerateDevis() {
-    if (!confirm(`Générer un devis par candidat (${candidats.length}) ?`)) return
     setGenDevis(true)
     const r = await generateDevisPerCandidatAction(poeiId)
     setGenDevis(false)
+    setGenDevisOpen(false)
     if (r.success) {
       const { created, skipped } = (r.data || {}) as { created: number; skipped: number }
       if (created > 0) toast('success', `${created} devis généré${created > 1 ? 's' : ''}${skipped ? ` (${skipped} déjà existant${skipped > 1 ? 's' : ''})` : ''}`)
@@ -153,7 +155,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
         <div className="flex items-center gap-2">
           {candidats.length > 0 && (
             <>
-              <Button onClick={handleGenerateDevis} size="sm" variant="secondary" isLoading={genDevis} icon={<Receipt className="h-4 w-4" />}>
+              <Button onClick={() => setGenDevisOpen(true)} size="sm" variant="secondary" icon={<Euro className="h-4 w-4" />}>
                 Générer les devis
               </Button>
               <Button onClick={() => openPreview(candidats)} size="sm" variant="secondary" icon={<Send className="h-4 w-4" />}>
@@ -204,6 +206,11 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
                 <IconAction label="Télécharger l'attestation d'entrée" href={`/api/pdf/attestation-entree/${c.apprenant_id}?poei=${poeiId}&candidat=${c.id}`} className="hover:bg-emerald-50 hover:text-emerald-600">
                   <GraduationCap className="h-4 w-4" />
                 </IconAction>
+                {devisByCandidat[c.id] && (
+                  <IconAction label={`Télécharger le devis ${devisByCandidat[c.id].numero || ''}`} href={`/api/pdf/devis/${devisByCandidat[c.id].id}`} className="hover:bg-amber-50 hover:text-amber-600">
+                    <Euro className="h-4 w-4" />
+                  </IconAction>
+                )}
                 <IconAction label="Plan de développement des compétences (France Travail)" href={`/api/pdf/pdc/${c.id}`} className="hover:bg-sky-50 hover:text-sky-600">
                   <FileText className="h-4 w-4" />
                 </IconAction>
@@ -221,6 +228,28 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
           })}
         </div>
       )}
+
+      {/* Confirmation génération des devis */}
+      <Modal isOpen={genDevisOpen} onClose={() => setGenDevisOpen(false)} title="Générer les devis" size="md">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-200 p-4">
+            <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <Euro className="h-4 w-4 text-amber-600" />
+            </div>
+            <div className="text-sm text-surface-700">
+              Un devis va être créé pour <strong>chacun des {candidats.length} candidat{candidats.length > 1 ? 's' : ''}</strong> du projet
+              (formation × taux horaire × durée, exonéré de TVA).
+              <div className="text-xs text-surface-500 mt-1">Les candidats déjà couverts par un devis sont ignorés. Les devis créés apparaissent dans le module Devis, en brouillon.</div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <Button variant="secondary" onClick={() => setGenDevisOpen(false)}>Annuler</Button>
+            <Button onClick={handleGenerateDevis} isLoading={genDevis} icon={<Euro className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">
+              Générer {candidats.length} devis
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Aperçu de l'email avant envoi */}
       <Modal isOpen={!!previewTargets} onClose={() => setPreviewTargets(null)} title="Aperçu de l'email — attestation d'entrée" size="lg">
