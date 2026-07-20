@@ -22,11 +22,14 @@ interface SearchSelectProps {
 }
 
 function PreviewCard({ preview }: { preview: SearchSelectPreview }) {
+  const lines = preview.lines.filter((l) => l.value)
+  if (lines.length === 0) return null
+  // Affichée SOUS la liste (dans le même panneau) → jamais coupée ni sur le côté
   return (
-    <div className="pointer-events-none absolute left-full top-0 ml-2 z-[60] w-60 rounded-xl bg-white shadow-modal border border-surface-200 p-3 text-left">
+    <div className="border-t border-surface-100 bg-surface-50/60 px-3 py-2.5 text-left">
       {preview.title && <div className="text-xs font-semibold text-surface-900 mb-1.5 leading-snug">{preview.title}</div>}
       <div className="space-y-1">
-        {preview.lines.filter((l) => l.value).map((l, i) => (
+        {lines.map((l, i) => (
           <div key={i} className="flex flex-col">
             <span className="text-[10px] uppercase tracking-wider text-surface-400">{l.label}</span>
             <span className="text-xs text-surface-700">{l.value}</span>
@@ -43,6 +46,7 @@ export function SearchSelect({
 }: SearchSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [hovered, setHovered] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -125,39 +129,41 @@ export function SearchSelect({
         </button>
       )}
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-xl bg-white border border-surface-200 shadow-modal py-1">
-          {filtered.length === 0 ? (
-            <div className="px-3 py-2.5 text-sm text-surface-400">Aucun résultat</div>
-          ) : (
-            filtered.map((o) => (
-              <div key={o.value} className="relative group/opt">
-                <button
-                  type="button"
-                  onClick={() => select(o.value)}
-                  className={cn(
-                    'w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50 transition-colors',
-                    o.value === value ? 'text-surface-900 font-medium' : 'text-surface-700',
-                  )}
-                >
-                  <span className="truncate">{o.label}</span>
-                  {o.value === value && <Check className="h-4 w-4 text-brand-500 shrink-0" />}
-                </button>
-                {o.preview && (
-                  <div className="hidden group-hover/opt:block">
-                    <PreviewCard preview={o.preview} />
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-          {options.length > 100 && filtered.length === 100 && (
-            <div className="px-3 py-1.5 text-2xs text-surface-400 border-t border-surface-100">
-              Affinez la recherche pour voir plus de résultats
+      {open && (() => {
+        const hoveredOpt = filtered.find((o) => o.value === hovered)
+        return (
+          <div className="absolute z-50 mt-1 w-full rounded-xl bg-white border border-surface-200 shadow-modal overflow-hidden">
+            <div className="max-h-60 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <div className="px-3 py-2.5 text-sm text-surface-400">Aucun résultat</div>
+              ) : (
+                filtered.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => select(o.value)}
+                    onMouseEnter={() => setHovered(o.value)}
+                    className={cn(
+                      'w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50 transition-colors',
+                      o.value === value ? 'text-surface-900 font-medium' : 'text-surface-700',
+                    )}
+                  >
+                    <span className="truncate">{o.label}</span>
+                    {o.value === value && <Check className="h-4 w-4 text-brand-500 shrink-0" />}
+                  </button>
+                ))
+              )}
+              {options.length > 100 && filtered.length === 100 && (
+                <div className="px-3 py-1.5 text-2xs text-surface-400 border-t border-surface-100">
+                  Affinez la recherche pour voir plus de résultats
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+            {/* Carte d'infos de l'option survolée — sous la liste, jamais sur le côté */}
+            {hoveredOpt?.preview && <PreviewCard preview={hoveredOpt.preview} />}
+          </div>
+        )
+      })()}
 
       {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
     </div>
