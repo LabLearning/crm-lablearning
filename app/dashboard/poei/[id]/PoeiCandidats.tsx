@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip } from 'lucide-react'
+import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Receipt } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
-import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction } from '../actions'
+import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
 
@@ -52,6 +52,22 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'new' | 'existing'>('new')
   const [apprenantId, setApprenantId] = useState('')
+  const [genDevis, setGenDevis] = useState(false)
+
+  async function handleGenerateDevis() {
+    if (!confirm(`Générer un devis par candidat (${candidats.length}) ?`)) return
+    setGenDevis(true)
+    const r = await generateDevisPerCandidatAction(poeiId)
+    setGenDevis(false)
+    if (r.success) {
+      const { created, skipped } = (r.data || {}) as { created: number; skipped: number }
+      if (created > 0) toast('success', `${created} devis généré${created > 1 ? 's' : ''}${skipped ? ` (${skipped} déjà existant${skipped > 1 ? 's' : ''})` : ''}`)
+      else toast('success', r.warning || 'Aucun nouveau devis')
+      router.refresh()
+    } else {
+      toast('error', r.error || 'Erreur')
+    }
+  }
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [editCand, setEditCand] = useState<PoeiCandidat | null>(null)
@@ -136,9 +152,14 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
         </div>
         <div className="flex items-center gap-2">
           {candidats.length > 0 && (
-            <Button onClick={() => openPreview(candidats)} size="sm" variant="secondary" icon={<Send className="h-4 w-4" />}>
-              Envoyer attestations d&apos;entrée à tous
-            </Button>
+            <>
+              <Button onClick={handleGenerateDevis} size="sm" variant="secondary" isLoading={genDevis} icon={<Receipt className="h-4 w-4" />}>
+                Générer les devis
+              </Button>
+              <Button onClick={() => openPreview(candidats)} size="sm" variant="secondary" icon={<Send className="h-4 w-4" />}>
+                Envoyer attestations d&apos;entrée à tous
+              </Button>
+            </>
           )}
           <Button onClick={() => { setErrors({}); setMode('new'); setOpen(true) }} size="sm" icon={<UserPlus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Ajouter</Button>
         </div>

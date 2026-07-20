@@ -443,3 +443,81 @@ export async function removePoeiCandidatAction(candidatId: string, poeiId: strin
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true }
 }
+
+/**
+ * Génère un devis par candidat du projet POEI.
+ * Chaque devis = 1 ligne (formation × taux horaire × durée), TVA 0
+ * (organisme exonéré). Idempotent : un candidat déjà couvert par un devis
+ * POEI (marqueur dans notes_internes) est ignoré.
+ */
+export async function generateDevisPerCandidatAction(poeiId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  const supabase = await createServiceRoleClient()
+
+  const { data: poei } = await supabase
+    .from('poei')
+    .select('id, client_id, formation_id, duree_heures, montant_horaire, formation:formations(intitule)')
+    .eq('id', poeiId).eq('organization_id', orgId).single()
+  if (!poei) return { success: false, error: 'Projet introuvable' }
+  if (!poei.client_id) return { success: false, error: 'Aucune entreprise liée au projet' }
+  if (!(Number(poei.montant_horaire) > 0) || !(Number(poei.duree_heures) > 0)) {
+    return { success: false, error: 'Renseignez le taux horaire et la durée du projet avant de générer les devis' }
+  }
+
+  const { data: candidats } = await supabase
+    .from('poei_candidats')
+    .select('id, apprenant:apprenants(nom, prenom)')
+    .eq('poei_id', poeiId)
+    .order('created_at', { ascending: true })
+  if (!candidats || candidats.length === 0) return { success: false, error: 'Aucun candidat à facturer' }
+
+  const duree = Number(poei.duree_heures)
+  const taux = Number(poei.montant_horaire)
+  const montantHt = Math.round(duree * taux * 100) / 100
+  const formationNom = (poei as any).formation?.intitule || 'Formation POEI'
+  const today = new Date().toISOString().slice(0, 10)
+  const validite = new Date(); validite.setDate(validite.getDate() + 30)
+
+  let created = 0, skipped = 0
+  for (const c of candidats) {
+    const marker = `[POEI:${poeiId}:${c.id}]`
+    const { count: exists } = await supabase
+      .from('devis').select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId).ilike('notes_internes', `%${marker}%`)
+    if (exists && exists > 0) { skipped++; continue }
+
+    const nom = `${(c as any).apprenant?.prenom || ''} ${(c as any).apprenant?.nom || ''}`.trim() || 'Candidat'
+    const { data: devis, error } = await supabase
+      .from('devis')
+      .insert({
+        organization_id: orgId, numero: '', client_id: poei.client_id, formation_id: poei.formation_id,
+        objet: `POEI — ${nom} — ${formationNom}`,
+        status: 'brouillon', date_emission: today, date_validite: validite.toISOString().slice(0, 10),
+        taux_tva: 0, remise_pourcent: 0,
+        notes_internes: `Devis POEI (candidat ${nom}). ${marker}`,
+        created_by: session.user.id,
+      })
+      .select('id').single()
+    if (error || !devis) continue
+
+    await supabase.from('devis_lignes').insert({
+      devis_id: devis.id,
+      designation: `${formationNom} — ${nom}`,
+      description: `Formation POEI : ${duree} h × ${taux.toLocaleString('fr-FR')} €/h`,
+      quantite: duree, unite: 'heure', prix_unitaire_ht: taux, montant_ht: montantHt, position: 0,
+    })
+    // Totaux (TVA 0 → TTC = HT)
+    await supabase.from('devis').update({
+      montant_ht: montantHt, montant_tva: 0, montant_ttc: montantHt, remise_montant: 0,
+    }).eq('id', devis.id)
+    created++
+  }
+
+  await logAudit({ action: 'generate_devis_poei', entity_type: 'poei', entity_id: poeiId, details: { created, skipped } })
+  revalidatePath('/dashboard/devis')
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  if (created === 0 && skipped > 0) return { success: true, data: { created, skipped }, warning: 'Tous les candidats ont déjà un devis.' }
+  return { success: true, data: { created, skipped } }
+}
