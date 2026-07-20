@@ -533,7 +533,13 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
 export async function sendGroupEmailToCandidatsAction(
   poeiId: string,
   candidatIds: string[],
-  payload: { subject: string; message: string; joindreAttestation?: boolean },
+  payload: {
+    subject: string
+    message: string
+    joindreAttestation?: boolean
+    /** Pièces jointes communes à tous les destinataires */
+    attachments?: { filename: string; content: Buffer | Uint8Array; contentType?: string }[]
+  },
 ): Promise<ActionResult> {
   const session = await getSession()
   if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
@@ -633,6 +639,7 @@ export async function sendGroupEmailToCandidatsAction(
         ...(datesStr ? [['Dates', datesStr] as [string, string]] : []),
       ] : [],
       pdfBuffer, pdfFilename,
+      extraAttachments: payload.attachments,
     })
 
     await supabase.from('email_logs').insert({

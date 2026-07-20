@@ -62,6 +62,8 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
   const [mailJoindre, setMailJoindre] = useState(false)
   const [mailSending, setMailSending] = useState(false)
   const [mailTargets, setMailTargets] = useState<string[]>([])
+  const [mailFiles, setMailFiles] = useState<File[]>([])
+  const mailFileRef = useRef<HTMLInputElement>(null)
 
   const mailRecipients = candidats.filter((c) => mailTargets.includes(c.id))
   const mailSansEmail = mailRecipients.filter((c) => !c.apprenant?.email)
@@ -71,6 +73,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
     setMailSubject('')
     setMailMessage('')
     setMailJoindre(false)
+    setMailFiles([])
     setMailOpen(true)
   }
 
@@ -78,18 +81,27 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
     const ids = mailRecipients.filter((c) => c.apprenant?.email).map((c) => c.id)
     if (ids.length === 0) { toast('error', 'Aucun destinataire avec email'); return }
     setMailSending(true)
-    const r = await sendGroupEmailToCandidatsAction(poeiId, ids, {
-      subject: mailSubject, message: mailMessage, joindreAttestation: mailJoindre,
-    })
-    setMailSending(false)
-    if (r.success) {
-      const { sent, skipped } = (r.data || {}) as { sent: number; skipped: string[] }
+    try {
+      // Route API (et non Server Action) : les pièces jointes dépassent la limite de 1 Mo
+      const fd = new FormData()
+      fd.set('poeiId', poeiId)
+      fd.set('candidatIds', JSON.stringify(ids))
+      fd.set('subject', mailSubject)
+      fd.set('message', mailMessage)
+      fd.set('joindreAttestation', String(mailJoindre))
+      mailFiles.forEach((f) => fd.append('files', f))
+      const res = await fetch('/api/poei/group-email', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) { toast('error', data.error || 'Erreur'); return }
+      const { sent, skipped } = data as { sent: number; skipped: string[] }
       if (sent > 0) toast('success', `${sent} email${sent > 1 ? 's' : ''} envoyé${sent > 1 ? 's' : ''}`)
       if (skipped?.length) toast('error', `Non envoyés : ${skipped.join(', ')}`)
       setMailOpen(false)
       router.refresh()
-    } else {
-      toast('error', r.error || 'Erreur')
+    } catch {
+      toast('error', "Erreur lors de l'envoi")
+    } finally {
+      setMailSending(false)
     }
   }
 
@@ -332,12 +344,49 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-surface-700">
-            <input type="checkbox" checked={mailJoindre} onChange={(e) => setMailJoindre(e.target.checked)}
-              className="rounded border-surface-300 text-sky-600 focus:ring-sky-500" />
-            <Paperclip className="h-3.5 w-3.5 text-surface-400" />
-            Joindre l&apos;attestation d&apos;entrée de chaque candidat
-          </label>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-surface-700">
+              <input type="checkbox" checked={mailJoindre} onChange={(e) => setMailJoindre(e.target.checked)}
+                className="rounded border-surface-300 text-sky-600 focus:ring-sky-500" />
+              <Paperclip className="h-3.5 w-3.5 text-surface-400" />
+              Joindre l&apos;attestation d&apos;entrée de chaque candidat
+            </label>
+
+            {/* Pièces jointes libres (communes à tous) */}
+            <div>
+              <input
+                ref={mailFileRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const fs = Array.from(e.target.files || [])
+                  setMailFiles((prev) => [...prev, ...fs])
+                  if (mailFileRef.current) mailFileRef.current.value = ''
+                }}
+              />
+              <button type="button" onClick={() => mailFileRef.current?.click()}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-600 hover:text-sky-700">
+                <Paperclip className="h-3.5 w-3.5" /> Ajouter une pièce jointe
+              </button>
+              {mailFiles.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {mailFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-surface-600 bg-surface-50 rounded-lg px-2.5 py-1.5">
+                      <Paperclip className="h-3 w-3 text-surface-400 shrink-0" />
+                      <span className="flex-1 truncate">{f.name}</span>
+                      <span className="text-surface-400 shrink-0">{(f.size / 1024).toFixed(0)} Ko</span>
+                      <button type="button" onClick={() => setMailFiles((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-surface-400 hover:text-danger-600 shrink-0">
+                        <XCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <p className="text-2xs text-surface-400">Ces fichiers sont envoyés à tous les destinataires (20 Mo max au total).</p>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Aperçu personnalisé sur le 1er destinataire */}
           {mailMessage.trim() && mailRecipients[0] && (

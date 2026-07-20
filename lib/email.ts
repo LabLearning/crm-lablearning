@@ -402,6 +402,7 @@ export async function sendDocumentEmail(params: {
   pdfBuffer?: Buffer | Uint8Array
   pdfFilename?: string
   attachmentContentType?: string  // défaut application/pdf
+  extraAttachments?: { filename: string; content: Buffer | Uint8Array; contentType?: string }[]
 }): Promise<{ success: boolean; error?: string }> {
   const fileExt = (params.pdfFilename?.split('.').pop() || 'DOC').toUpperCase().slice(0, 4)
   const metaRows = (params.metadata || [])
@@ -442,13 +443,19 @@ export async function sendDocumentEmail(params: {
     qualiopiCertified: params.qualiopiCertified,
   })
 
-  const attachments = params.pdfBuffer && params.pdfFilename
-    ? [{
-        filename: params.pdfFilename,
-        content: Buffer.from(params.pdfBuffer).toString('base64'),
-        contentType: params.attachmentContentType || 'application/pdf',
-      }]
-    : undefined
+  const attachments = [
+    ...(params.pdfBuffer && params.pdfFilename ? [{
+      filename: params.pdfFilename,
+      content: Buffer.from(params.pdfBuffer).toString('base64'),
+      contentType: params.attachmentContentType || 'application/pdf',
+    }] : []),
+    // Pièces jointes supplémentaires (fichiers libres)
+    ...(params.extraAttachments || []).map((a) => ({
+      filename: a.filename,
+      content: Buffer.from(a.content).toString('base64'),
+      contentType: a.contentType || 'application/octet-stream',
+    })),
+  ]
 
   return sendBrandedEmail({
     to: params.to,
@@ -457,7 +464,7 @@ export async function sendDocumentEmail(params: {
     fromAddress: params.fromAddress,
     subject: params.subject,
     html,
-    attachments,
+    attachments: attachments.length > 0 ? attachments : undefined,
   })
 }
 
