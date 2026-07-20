@@ -569,6 +569,20 @@ export async function sendGroupEmailToCandidatsAction(
   const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : ''
   const datesStr = p.date_debut ? `du ${fmtFr(p.date_debut)} au ${fmtFr(p.date_fin || p.date_debut)}` : ''
 
+  // Texte saisi → HTML email : paragraphes (ligne vide), retours à la ligne,
+  // **gras**. Sans ça, tout le message arriverait en un seul bloc.
+  const toHtml = (txt: string) => {
+    const escaped = txt
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#18181b;">$1</strong>')
+    return escaped
+      .split(/\n\s*\n/)
+      .map((para) => para.trim())
+      .filter(Boolean)
+      .map((para) => `<p style="margin:0 0 14px;color:#71717a;font-size:15px;line-height:1.7;">${para.replace(/\n/g, '<br>')}</p>`)
+      .join('')
+  }
+
   let sent = 0
   const skipped: string[] = []
   for (const c of candidats || []) {
@@ -613,7 +627,7 @@ export async function sendGroupEmailToCandidatsAction(
       recipientName: nomComplet,
       subject: fill(payload.subject),
       docTitle: fill(payload.subject),
-      intro: fill(payload.message),
+      intro: toHtml(fill(payload.message)),
       metadata: formation ? [
         ['Formation', formation.intitule],
         ...(datesStr ? [['Dates', datesStr] as [string, string]] : []),
