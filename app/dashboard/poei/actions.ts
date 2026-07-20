@@ -494,7 +494,9 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
       .insert({
         organization_id: orgId, numero: '', client_id: poei.client_id, formation_id: poei.formation_id,
         objet: `POEI — ${nom} — ${formationNom}`,
-        status: 'brouillon', date_emission: today, date_validite: validite.toISOString().slice(0, 10),
+        // Devis POEI : émis directement (dossier envoyé à France Travail), pas de brouillon
+        status: 'envoye', date_emission: today, date_validite: validite.toISOString().slice(0, 10),
+        sent_at: new Date().toISOString(),
         taux_tva: 0, remise_pourcent: 0,
         notes_internes: `Devis POEI (candidat ${nom}). ${marker}`,
         created_by: session.user.id,

@@ -239,7 +239,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             <div className="text-sm text-surface-700">
               Un devis va être créé pour <strong>chacun des {candidats.length} candidat{candidats.length > 1 ? 's' : ''}</strong> du projet
               (formation × taux horaire × durée, exonéré de TVA).
-              <div className="text-xs text-surface-500 mt-1">Les candidats déjà couverts par un devis sont ignorés. Les devis créés apparaissent dans le module Devis, en brouillon.</div>
+              <div className="text-xs text-surface-500 mt-1">Les candidats déjà couverts par un devis sont ignorés. Les devis sont émis directement (statut « envoyé ») pour le dossier France Travail.</div>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-1">
