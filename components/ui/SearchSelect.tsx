@@ -4,7 +4,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search, ChevronDown, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface Option { value: string; label: string }
+export interface SearchSelectPreview {
+  title?: string
+  lines: { label: string; value: string }[]
+}
+interface Option { value: string; label: string; preview?: SearchSelectPreview }
 
 interface SearchSelectProps {
   id?: string
@@ -15,6 +19,22 @@ interface SearchSelectProps {
   placeholder?: string
   error?: string
   clearable?: boolean
+}
+
+function PreviewCard({ preview }: { preview: SearchSelectPreview }) {
+  return (
+    <div className="pointer-events-none absolute left-full top-0 ml-2 z-[60] w-60 rounded-xl bg-white shadow-modal border border-surface-200 p-3 text-left">
+      {preview.title && <div className="text-xs font-semibold text-surface-900 mb-1.5 leading-snug">{preview.title}</div>}
+      <div className="space-y-1">
+        {preview.lines.filter((l) => l.value).map((l, i) => (
+          <div key={i} className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider text-surface-400">{l.label}</span>
+            <span className="text-xs text-surface-700">{l.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /** Select avec recherche intégrée — pour les longues listes (clients, apprenants…). */
@@ -111,18 +131,24 @@ export function SearchSelect({
             <div className="px-3 py-2.5 text-sm text-surface-400">Aucun résultat</div>
           ) : (
             filtered.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => select(o.value)}
-                className={cn(
-                  'w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50 transition-colors',
-                  o.value === value ? 'text-surface-900 font-medium' : 'text-surface-700',
+              <div key={o.value} className="relative group/opt">
+                <button
+                  type="button"
+                  onClick={() => select(o.value)}
+                  className={cn(
+                    'w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50 transition-colors',
+                    o.value === value ? 'text-surface-900 font-medium' : 'text-surface-700',
+                  )}
+                >
+                  <span className="truncate">{o.label}</span>
+                  {o.value === value && <Check className="h-4 w-4 text-brand-500 shrink-0" />}
+                </button>
+                {o.preview && (
+                  <div className="hidden group-hover/opt:block">
+                    <PreviewCard preview={o.preview} />
+                  </div>
                 )}
-              >
-                <span className="truncate">{o.label}</span>
-                {o.value === value && <Check className="h-4 w-4 text-brand-500 shrink-0" />}
-              </button>
+              </div>
             ))
           )}
           {options.length > 100 && filtered.length === 100 && (

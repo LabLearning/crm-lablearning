@@ -105,7 +105,7 @@ export default async function SessionsPage({
       .order('nom'),
     supabase
       .from('clients')
-      .select('id, raison_sociale, adresse, code_postal, ville')
+      .select('id, raison_sociale, siret, adresse, code_postal, ville')
       .eq('organization_id', orgId)
       .eq('type', 'entreprise')
       .order('raison_sociale'),

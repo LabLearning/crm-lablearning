@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Search, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface SearchResult { group: string; label: string; sublabel: string; href: string }
+interface SearchPreview { title?: string; lines: { label: string; value: string }[] }
+interface SearchResult { group: string; label: string; sublabel: string; href: string; preview?: SearchPreview }
 
 export function GlobalSearch() {
   const router = useRouter()
@@ -98,14 +99,28 @@ export function GlobalSearch() {
               <div key={group} className="mb-1">
                 <div className="px-4 pt-2 pb-1 text-[11px] font-bold text-surface-900 uppercase tracking-wider">{group}</div>
                 {items.map((r, i) => (
-                  <button
-                    key={`${group}-${i}`}
-                    onClick={() => go(r.href)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-2 text-left hover:bg-surface-50 transition-colors"
-                  >
-                    <span className="text-sm text-surface-700 truncate">{r.label}</span>
-                    {r.sublabel && <span className="text-xs text-surface-500 shrink-0 truncate max-w-[140px]">{r.sublabel}</span>}
-                  </button>
+                  <div key={`${group}-${i}`} className="relative group/res">
+                    <button
+                      onClick={() => go(r.href)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-2 text-left hover:bg-surface-50 transition-colors"
+                    >
+                      <span className="text-sm text-surface-700 truncate">{r.label}</span>
+                      {r.sublabel && <span className="text-xs text-surface-500 shrink-0 truncate max-w-[140px]">{r.sublabel}</span>}
+                    </button>
+                    {r.preview && r.preview.lines.length > 0 && (
+                      <div className="hidden group-hover/res:block pointer-events-none absolute right-full top-0 mr-2 z-[60] w-60 rounded-xl bg-white shadow-modal border border-surface-200 p-3 text-left">
+                        {r.preview.title && <div className="text-xs font-semibold text-surface-900 mb-1.5 leading-snug">{r.preview.title}</div>}
+                        <div className="space-y-1">
+                          {r.preview.lines.map((l, j) => (
+                            <div key={j} className="flex flex-col">
+                              <span className="text-[10px] uppercase tracking-wider text-surface-400">{l.label}</span>
+                              <span className="text-xs text-surface-700">{l.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             ))

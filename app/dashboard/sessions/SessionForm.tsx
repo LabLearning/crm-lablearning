@@ -10,6 +10,7 @@ import type { Session, Formation, Formateur, HoraireJour } from '@/lib/types/for
 interface ClientLite {
   id: string
   raison_sociale: string | null
+  siret?: string | null
   adresse: string | null
   code_postal: string | null
   ville: string | null
@@ -165,7 +166,17 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
 
   const clientOptions = [
     { value: '', label: '— Sélectionner un client —' },
-    ...clients.filter(c => c.raison_sociale).map(c => ({ value: c.id, label: c.raison_sociale! })),
+    ...clients.filter(c => c.raison_sociale).map(c => ({
+      value: c.id,
+      label: c.raison_sociale!,
+      preview: {
+        title: c.raison_sociale!,
+        lines: [
+          { label: 'SIRET', value: c.siret || '—' },
+          { label: 'Adresse', value: [c.adresse, [c.code_postal, c.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '—' },
+        ],
+      },
+    })),
   ]
 
   /**
