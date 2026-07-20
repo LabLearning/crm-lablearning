@@ -174,3 +174,92 @@ Réponds en JSON avec ce format exact :
     return { success: false, programme: null, error: 'Erreur de parsing JSON' }
   }
 }
+
+// ── Extraction d'un programme depuis un PDF ───────────────
+
+export interface ExtractedFormation {
+  intitule?: string
+  sous_titre?: string
+  categorie?: string
+  modalite?: 'presentiel' | 'distanciel' | 'mixte'
+  duree_heures?: number
+  duree_jours?: number
+  objectifs_pedagogiques?: string[]
+  competences_visees?: string[]
+  prerequis?: string
+  public_vise?: string
+  programme_detaille?: string
+  methodes_pedagogiques?: string
+  moyens_techniques?: string
+  modalites_evaluation?: string
+  modalites_admission?: string
+  accessibilite_handicap?: string
+}
+
+/**
+ * Envoie un PDF de programme à Claude et récupère les champs structurés
+ * d'une formation, prêts à pré-remplir le formulaire du CRM.
+ */
+export async function extractFormationFromPdf(
+  pdfBase64: string,
+): Promise<{ success: boolean; formation: ExtractedFormation | null; error?: string }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return { success: false, formation: null, error: 'Clé API Anthropic non configurée' }
+
+  const systemPrompt = `Tu es un assistant qui analyse des programmes de formation professionnelle (PDF) pour un organisme certifié Qualiopi. Tu extrais fidèlement les informations et les renvoies en JSON strict. N'invente rien : si une information est absente du document, omets le champ (ne le renvoie pas). Reformule le moins possible ; recopie le contenu du PDF.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, avec ces clés (toutes optionnelles) :
+{
+  "intitule": "Intitulé exact de la formation",
+  "sous_titre": "Sous-titre éventuel",
+  "categorie": "Catégorie / domaine",
+  "modalite": "presentiel | distanciel | mixte",
+  "duree_heures": nombre,
+  "duree_jours": nombre,
+  "objectifs_pedagogiques": ["objectif 1", "objectif 2"],
+  "competences_visees": ["compétence 1"],
+  "prerequis": "texte (ou 'Aucun prérequis' si mentionné)",
+  "public_vise": "texte",
+  "programme_detaille": "programme complet en texte multi-lignes ; garde les journées/modules et leurs contenus, une ligne par point",
+  "methodes_pedagogiques": "texte",
+  "moyens_techniques": "texte",
+  "modalites_evaluation": "texte",
+  "modalites_admission": "texte",
+  "accessibilite_handicap": "texte"
+}`
+
+  try {
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8192,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+            { type: 'text', text: 'Analyse ce programme de formation et renvoie le JSON structuré.' },
+          ],
+        }],
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { success: false, formation: null, error: err.error?.message || `Erreur API Claude (${res.status})` }
+    }
+    const data = await res.json()
+    const text = data.content?.[0]?.text || ''
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return { success: false, formation: null, error: 'Réponse IA invalide' }
+    const formation = JSON.parse(jsonMatch[0]) as ExtractedFormation
+    return { success: true, formation }
+  } catch (e: any) {
+    return { success: false, formation: null, error: 'Erreur réseau ou parsing (' + (e?.message || '') + ')' }
+  }
+}

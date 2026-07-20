@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Save, ChevronDown, ChevronRight, Sparkles, Loader2, List } from 'lucide-react'
+import { Save, ChevronDown, ChevronRight, Sparkles, Loader2, List, FileUp } from 'lucide-react'
 import { Button, Input, Select } from '@/components/ui'
 import { createFormationAction, updateFormationAction } from './actions'
 import { MODALITE_LABELS } from '@/lib/types/formation'
@@ -90,7 +90,55 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  // Remplit tous les champs à partir des données extraites du PDF
+  function fillFromExtraction(f: any) {
+    const form = formRef.current
+    if (!form) return
+    const setField = (id: string, value: string | undefined) => {
+      if (value == null || value === '') return
+      const el = form.querySelector('#' + id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null
+      if (el) { (el as any).value = value; el.dispatchEvent(new Event('input', { bubbles: true })) }
+    }
+    setField('intitule', f.intitule)
+    setField('sous_titre', f.sous_titre)
+    setField('categorie', f.categorie)
+    if (['presentiel', 'distanciel', 'mixte'].includes(f.modalite)) setField('modalite', f.modalite)
+    if (Number(f.duree_heures) > 0) setField('duree_heures', String(f.duree_heures))
+    if (Number(f.duree_jours) > 0) setField('duree_jours', String(f.duree_jours))
+    setField('objectifs_pedagogiques', Array.isArray(f.objectifs_pedagogiques) ? f.objectifs_pedagogiques.join('\n') : f.objectifs_pedagogiques)
+    setField('competences_visees', Array.isArray(f.competences_visees) ? f.competences_visees.join('\n') : f.competences_visees)
+    setField('prerequis', f.prerequis)
+    setField('public_vise', f.public_vise)
+    setField('programme_detaille', f.programme_detaille)
+    setField('methodes_pedagogiques', f.methodes_pedagogiques)
+    setField('moyens_techniques', f.moyens_techniques)
+    setField('modalites_evaluation', f.modalites_evaluation)
+    setField('modalites_admission', f.modalites_admission)
+    setField('accessibilite_handicap', f.accessibilite_handicap)
+    setSections({ programme: true, pedagogie: true, tarifs: false, certification: false })
+  }
+
+  async function handlePdfImport(file: File) {
+    if (file.type !== 'application/pdf') { setError('Le fichier doit être un PDF'); return }
+    setPdfLoading(true); setError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/ai/extract-programme', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Erreur lors de l\'analyse du PDF'); return }
+      fillFromExtraction(data.formation || {})
+    } catch {
+      setError('Erreur lors de l\'analyse du PDF')
+    } finally {
+      setPdfLoading(false)
+      if (pdfInputRef.current) pdfInputRef.current.value = ''
+    }
+  }
   const [sections, setSections] = useState({
     programme: true, pedagogie: false, tarifs: false, certification: false,
   })
@@ -195,16 +243,37 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
         <Input id="duree_jours" name="duree_jours" type="number" label="Durée (jours)" defaultValue={formation?.duree_jours?.toString() || ''} />
       </div>
 
-      {/* Bouton IA */}
-      <button
-        type="button"
-        onClick={handleAIGenerate}
-        disabled={aiLoading}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-violet-500 to-brand-500 text-white hover:from-violet-600 hover:to-brand-600 disabled:opacity-50 transition-all"
-      >
-        {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        {aiLoading ? 'Génération du programme en cours...' : 'Générer le programme avec l\'IA'}
-      </button>
+      {/* Boutons IA : importer un PDF OU générer depuis l'intitulé */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePdfImport(f) }}
+        />
+        <button
+          type="button"
+          onClick={() => pdfInputRef.current?.click()}
+          disabled={pdfLoading || aiLoading}
+          className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium bg-surface-900 text-white hover:bg-surface-800 disabled:opacity-50 transition-all"
+        >
+          {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+          {pdfLoading ? 'Analyse du PDF en cours…' : 'Importer un programme PDF'}
+        </button>
+        <button
+          type="button"
+          onClick={handleAIGenerate}
+          disabled={aiLoading || pdfLoading}
+          className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-violet-500 to-brand-500 text-white hover:from-violet-600 hover:to-brand-600 disabled:opacity-50 transition-all"
+        >
+          {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          {aiLoading ? 'Génération en cours…' : 'Générer depuis l\'intitulé'}
+        </button>
+      </div>
+      <p className="text-xs text-surface-400 -mt-2">
+        Importez le PDF de votre programme : l'IA en extrait automatiquement l'intitulé, les objectifs, le programme, les prérequis, l'évaluation… Vérifiez puis enregistrez.
+      </p>
 
       {/* Programme (Qualiopi) */}
       <SectionHeader label="Programme & objectifs (Qualiopi C2)" sectionKey="programme" />
