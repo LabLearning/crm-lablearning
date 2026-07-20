@@ -156,7 +156,7 @@ export async function updatePoeiAction(id: string, formData: FormData): Promise<
       duree_heures: dureeHeures,
       date_debut, date_fin,
       montant_horaire: montantHoraire,
-      montant_total: montantTotal,
+      // montant_total est recalculé juste après (taux × heures × nb candidats)
       numero_dossier_ft: str(formData, "numero_dossier_ft"),
       date_depot_ft: str(formData, "date_depot_ft"),
       date_accord_ft: str(formData, "date_accord_ft"),
