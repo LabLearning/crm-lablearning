@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { Save, ChevronDown, ChevronRight, Sparkles, Loader2, List, FileUp } from 'lucide-react'
 import { Button, Input, Select } from '@/components/ui'
 import { createFormationAction, updateFormationAction } from './actions'
@@ -98,6 +99,10 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
   function fillFromExtraction(f: any) {
     const form = formRef.current
     if (!form) return
+    // IMPORTANT : ouvrir les sections AVANT de remplir — sinon les champs
+    // repliés (méthodes, évaluation, admission, accessibilité…) ne sont pas
+    // encore dans le DOM. flushSync force le rendu synchrone.
+    flushSync(() => setSections({ programme: true, pedagogie: true, tarifs: true, certification: true }))
     const setField = (id: string, value: string | undefined) => {
       if (value == null || value === '') return
       const el = form.querySelector('#' + id) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null
@@ -119,7 +124,6 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
     setField('modalites_evaluation', f.modalites_evaluation)
     setField('modalites_admission', f.modalites_admission)
     setField('accessibilite_handicap', f.accessibilite_handicap)
-    setSections({ programme: true, pedagogie: true, tarifs: false, certification: false })
   }
 
   async function handlePdfImport(file: File) {
@@ -164,6 +168,8 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
       if (!res.ok) { setError(data.error || 'Erreur IA'); return }
 
       const p = data.programme
+      // Ouvrir les sections AVANT de remplir (champs repliés absents du DOM)
+      flushSync(() => setSections({ programme: true, pedagogie: true, tarifs: false, certification: false }))
       // Remplir les champs du formulaire
       const setField = (id: string, value: string) => {
         const el = form.querySelector('#' + id) as HTMLTextAreaElement | HTMLInputElement
@@ -179,9 +185,6 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
       setField('competences_visees', (p.modules || []).flatMap((m: any) => m.objectifs || []).slice(0, 6).join('\n'))
       setField('modalites_evaluation', (p.modalites_evaluation || []).join(', '))
       setField('methodes_pedagogiques', (p.moyens_pedagogiques || []).join(', '))
-
-      // Ouvrir les sections
-      setSections({ programme: true, pedagogie: true, tarifs: false, certification: false })
     } catch {
       setError('Erreur de génération')
     } finally {
