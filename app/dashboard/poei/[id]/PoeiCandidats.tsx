@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip } from 'lucide-react'
-import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
 import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
@@ -11,8 +11,10 @@ import type { PoeiCandidat } from '@/lib/types/poei'
 interface Props {
   poeiId: string
   candidats: PoeiCandidat[]
-  apprenants: { id: string; nom: string | null; prenom: string | null }[]
+  apprenants: { id: string; nom: string | null; prenom: string | null; email?: string | null }[]
   emailStatus?: Record<string, { status: string; date: string | null }>
+  clientNom?: string | null
+  clientId?: string | null
 }
 
 const contratOptions = [{ value: '', label: '—' }, ...Object.entries(TYPE_CONTRAT_LABELS).map(([v, l]) => ({ value: v, label: l as string }))]
@@ -44,11 +46,12 @@ function fmtDateTime(d: string | null): string {
   try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
-export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} }: Props) {
+export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {}, clientNom, clientId }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'new' | 'existing'>('new')
+  const [apprenantId, setApprenantId] = useState('')
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [editCand, setEditCand] = useState<PoeiCandidat | null>(null)
@@ -58,7 +61,6 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} 
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
 
-  const apprenantOptions = [{ value: '', label: 'Sélectionner…' }, ...apprenants.map((a) => ({ value: a.id, label: `${a.prenom || ''} ${a.nom || ''}`.trim() || a.id }))]
 
   function statusFor(c: PoeiCandidat): { status: string; date: string | null } | null {
     const email = (c.apprenant?.email || '').toLowerCase()
@@ -93,8 +95,9 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} 
     setSaving(true); setErrors({})
     const fd = new FormData(e.currentTarget)
     if (mode === 'new') fd.delete('apprenant_id')
+    else fd.set('apprenant_id', apprenantId)
     const result = await addPoeiCandidatAction(poeiId, fd)
-    if (result.success) { toast('success', 'Candidat ajouté'); setOpen(false); router.refresh() }
+    if (result.success) { toast('success', 'Candidat ajouté'); setOpen(false); setApprenantId(''); router.refresh() }
     else if (result.errors) setErrors(result.errors)
     else toast('error', result.error || 'Erreur')
     setSaving(false)
@@ -271,7 +274,28 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {} 
           </div>
 
           {mode === 'existing' ? (
-            <Select id="apprenant_id" name="apprenant_id" label="Apprenant" options={apprenantOptions} />
+            <div>
+              <SearchSelect
+                id="apprenant_id"
+                label={clientNom ? `Apprenant de ${clientNom}` : 'Apprenant'}
+                options={apprenants.map((a) => ({
+                  value: a.id,
+                  label: `${a.prenom || ''} ${a.nom || ''}`.trim() || a.id,
+                  ...(a.email ? { preview: { title: `${a.prenom || ''} ${a.nom || ''}`.trim(), lines: [{ label: 'Email', value: a.email }] } } : {}),
+                }))}
+                value={apprenantId}
+                onChange={setApprenantId}
+                placeholder="Rechercher un apprenant…"
+              />
+              {apprenants.length === 0 && (
+                <p className="mt-1.5 text-xs text-surface-500">
+                  Aucun apprenant enregistré pour {clientNom || 'cet établissement'}.
+                  {clientId && (
+                    <> Ajoutez-les depuis la <a href={`/dashboard/clients/${clientId}`} className="text-sky-600 hover:underline">fiche entreprise</a>, ou créez un « Nouveau candidat » ci-dessus.</>
+                  )}
+                </p>
+              )}
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">

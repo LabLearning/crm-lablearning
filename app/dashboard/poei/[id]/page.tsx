@@ -37,8 +37,11 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       .from('clients').select('id, raison_sociale').eq('organization_id', session.organization.id).order('raison_sociale'),
     supabase
       .from('formations').select('id, intitule').eq('organization_id', session.organization.id).eq('is_active', true).order('intitule'),
-    supabase
-      .from('apprenants').select('id, nom, prenom').eq('organization_id', session.organization.id).order('nom').limit(1000),
+    // Apprenants de l'établissement du projet (client) — pas tout le monde.
+    // Repli sur toute l'org si le projet n'a pas encore de client lié.
+    (p.client_id
+      ? supabase.from('apprenants').select('id, nom, prenom, email').eq('organization_id', session.organization.id).eq('client_id', p.client_id).order('nom')
+      : supabase.from('apprenants').select('id, nom, prenom, email').eq('organization_id', session.organization.id).order('nom').limit(1000)),
     // Historique des envois d'attestations (statut par candidat)
     supabase
       .from('email_logs')
@@ -83,7 +86,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
 
       <PoeiStatusBar poeiId={p.id} statut={p.statut} />
 
-      <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} />
+      <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} clientNom={p.client?.raison_sociale || null} clientId={p.client_id} />
 
       <PoeiEditor poei={p} clients={clients || []} formations={formations || []} nbCandidats={candidats.length} />
     </div>
