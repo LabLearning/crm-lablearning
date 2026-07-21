@@ -342,8 +342,17 @@ export async function signContratFormateurPublicAction(
     })
     .eq('id', contrat.id)
 
-  // Si la convention a aussi été signée par le client → bascule la session en validee
-  await maybeValidateSession(supabase, contrat.session_id, contrat.organization_id)
+  // Un contrat d'intervention POEI n'a pas de session : rien à faire valider
+  if (contrat.session_id) {
+    // Si la convention a aussi été signée par le client → bascule la session en validee
+    await maybeValidateSession(supabase, contrat.session_id, contrat.organization_id)
+  }
+
+  // Archive le PDF signé et en envoie une copie au formateur et à l'organisme
+  try {
+    const { sendSignedContratCopies } = await import('@/lib/contrat-formateur')
+    await sendSignedContratCopies(supabase, contrat.id)
+  } catch (e) { console.error('[copie contrat signe]', e) }
 
   // Notif au gestionnaire
   if (contrat.created_by) {
@@ -354,10 +363,11 @@ export async function signContratFormateurPublicAction(
       titre: 'Contrat formateur signé',
       message: `${data.nom.trim()} a signé le contrat de prestation.`,
       type: 'session',
-      lienUrl: `/dashboard/sessions/${contrat.session_id}`,
-      lienLabel: 'Voir la session',
-      entityType: 'session',
-      entityId: contrat.session_id,
+      // Le contrat peut porter sur une intervention POEI : pas de session à ouvrir
+      lienUrl: contrat.session_id ? `/dashboard/sessions/${contrat.session_id}` : '/dashboard/contrats',
+      lienLabel: contrat.session_id ? 'Voir la session' : 'Voir le contrat',
+      entityType: contrat.session_id ? 'session' : 'contrat_formateur',
+      entityId: contrat.session_id || contrat.id,
     })
   }
 

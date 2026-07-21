@@ -57,6 +57,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     contrat = data
     sessionId = data.session_id || sessionId
     interventionId = data.poei_intervention_id || interventionId
+
+    // Un contrat signé est figé : on sert l'exemplaire archivé, jamais un
+    // nouveau rendu — le gabarit peut avoir changé depuis la signature.
+    if (contrat.storage_path) {
+      const { data: signed } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(contrat.storage_path, 60)
+      if (signed?.signedUrl) return NextResponse.redirect(signed.signedUrl)
+    }
   }
 
   let session: any = null

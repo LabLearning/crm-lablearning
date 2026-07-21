@@ -347,6 +347,24 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
   if (!formateur) return { success: false, error: 'Formateur introuvable' }
   if (!formateur.email) return { success: false, error: "Le formateur n'a pas d'adresse email renseignée" }
 
+  // Un contrat existe en base → on envoie une VRAIE demande de signature
+  // (lien tokenisé), et non une simple copie PDF pour information.
+  const { data: contratExistant } = await supabase
+    .from('contrats_formateur')
+    .select('id, signature_formateur_date')
+    .eq('session_id', sessionId)
+    .maybeSingle()
+
+  if (contratExistant && !contratExistant.signature_formateur_date) {
+    const { sendContratForSignature } = await import('@/lib/contrat-formateur')
+    const r = await sendContratForSignature(supabase, contratExistant.id)
+    if (!r.success) return { success: false, error: r.error }
+    await logAudit({ action: 'send_contrat_signature', entity_type: 'contrat_formateur', entity_id: contratExistant.id, details: { sessionId } })
+    revalidatePath(`/dashboard/sessions/${sessionId}`)
+    return { success: true, data: { email: formateur.email } }
+  }
+
+  // Contrat déjà signé, ou pas encore créé : envoi d'une copie PDF pour information
   try {
     const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', sess.organization_id).single()
     const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
@@ -355,7 +373,13 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
     const { renderToBuffer } = await import('@react-pdf/renderer')
     const { createElement } = await import('react')
     const { ContratFormateurPDF } = await import('@/lib/pdf/contrat-formateur-pdf')
-    const buffer = await renderToBuffer(createElement(ContratFormateurPDF, { formateur, org, session: sess }) as any)
+    // Contrat signé : le PDF doit porter les signatures, pas des cadres vides
+    const { data: contratFull } = contratExistant
+      ? await supabase.from('contrats_formateur').select('*').eq('id', contratExistant.id).single()
+      : { data: null }
+    const buffer = await renderToBuffer(
+      createElement(ContratFormateurPDF, { formateur, org, session: sess, contrat: contratFull }) as any,
+    )
 
     const { sendDocumentEmail } = await import('@/lib/email')
     const formationNom = (sess as any).formation?.intitule || 'Formation'

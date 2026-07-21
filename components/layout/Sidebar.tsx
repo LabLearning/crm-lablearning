@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, UserPlus, Building2, Users, Handshake, FileText,
-  GraduationCap, Calendar, UserCheck, Presentation, FileSignature,
+  GraduationCap, Calendar, UserCheck, Presentation, FileSignature, FilePen,
   FolderOpen, PenTool, Receipt, CreditCard, ClipboardCheck, ListChecks,
   ShieldCheck, MessageSquareWarning, BarChart3, Shield, Settings, Globe,
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers,
@@ -19,7 +19,7 @@ import { navigation } from '@/lib/navigation'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard, UserPlus, Building2, Users, Handshake, FileText,
-  GraduationCap, Calendar, UserCheck, Presentation, FileSignature,
+  GraduationCap, Calendar, UserCheck, Presentation, FileSignature, FilePen,
   FolderOpen, PenTool, Receipt, CreditCard, ClipboardCheck, ListChecks,
   ShieldCheck, MessageSquareWarning, BarChart3, Shield, Settings, Globe,
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers, MapPin, Clock,
