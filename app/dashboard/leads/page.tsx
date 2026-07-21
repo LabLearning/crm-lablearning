@@ -60,7 +60,7 @@ export default async function LeadsPage() {
     // Formations pour le sélecteur du recueil de besoin
     supabase
       .from('formations')
-      .select('id, intitule, tarif_inter_ht, tarif_intra_ht')
+      .select('id, intitule, tarif_inter_ht, tarif_intra_ht, duree_jours, duree_heures')
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('intitule'),

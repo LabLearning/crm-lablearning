@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { GraduationCap, Plus, Trash2, Loader2, CalendarCheck, CalendarClock, Presentation, ArrowRight, FileSignature, Users, MapPin } from 'lucide-react'
+import { GraduationCap, Plus, Trash2, Loader2, CalendarCheck, CalendarClock, Presentation, ArrowRight, FileSignature, Users, MapPin, Clock, CalendarRange } from 'lucide-react'
 import { Button, Badge, Select, useToast } from '@/components/ui'
 import {
   getLeadFormationsAction, addLeadFormationAction, deleteLeadFormationAction,
@@ -17,14 +17,33 @@ const MANAGER_ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial']
 const PLANIF_LABELS: Record<string, string> = { a_planifier: 'À planifier', date_confirmee: 'Date confirmée', autre_date_proposee: 'Autre date proposée', convention_generee: 'Convention générée' }
 const PLANIF_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'info'> = { a_planifier: 'warning', date_confirmee: 'success', autre_date_proposee: 'default', convention_generee: 'info' }
 
-interface CatalogFormation { id: string; intitule: string }
+interface CatalogFormation { id: string; intitule: string; duree_jours?: number | null; duree_heures?: number | null }
+
+/** « 3 jours · 21 h » — la durée conditionne la date de fin de la session */
+function libelleDuree(f?: { duree_jours?: number | null; duree_heures?: number | null } | null): string | null {
+  if (!f) return null
+  const parts: string[] = []
+  if (f.duree_jours) parts.push(`${f.duree_jours} jour${Number(f.duree_jours) > 1 ? 's' : ''}`)
+  if (f.duree_heures) parts.push(`${f.duree_heures} h`)
+  return parts.length ? parts.join(' · ') : null
+}
+
+/** Date de fin = début + (durée - 1), en jours consécutifs — même règle qu'à la création de session */
+function dateFinPrevue(debut: string, dureeJours?: number | null): string | null {
+  if (!debut) return null
+  const n = Math.max(1, Number(dureeJours) || 1)
+  const d = new Date(debut)
+  if (Number.isNaN(d.getTime())) return null
+  d.setDate(d.getDate() + n - 1)
+  return d.toISOString().slice(0, 10)
+}
 interface Formateur { id: string; prenom: string; nom: string; zone_intervention?: string | null }
 interface Participant { id: string; prenom: string | null; nom: string }
 interface LeadFormation {
   id: string; formation_id: string | null; date_souhaitee: string | null; date_confirmee: string | null
   formateur_id: string | null; session_id: string | null; convention_id: string | null; planification_status: string | null
   lieu: string | null
-  formation?: { intitule: string | null } | null
+  formation?: { intitule: string | null; duree_jours?: number | null; duree_heures?: number | null } | null
   assignments?: { lead_participant_id: string }[]
 }
 
@@ -82,7 +101,15 @@ export function LeadFormationsCard({ leadId, catalog, formateurs, currentUserRol
     return null
   }
 
-  const catalogOptions = [{ value: '', label: '— Choisir une formation —' }, ...catalog.map((c) => ({ value: c.id, label: c.intitule }))]
+  // La durée figure dans le libellé : on ne choisit pas une date sans savoir
+  // sur combien de jours la formation s'étale
+  const catalogOptions = [
+    { value: '', label: '— Choisir une formation —' },
+    ...catalog.map((c) => {
+      const d = libelleDuree(c)
+      return { value: c.id, label: d ? `${c.intitule} — ${d}` : c.intitule }
+    }),
+  ]
 
   return (
     <div className="card p-4 space-y-3">
@@ -200,12 +227,32 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
 
   const formateurOptions = [{ value: '', label: '— Formateur —' }, ...formateurs.map((f) => ({ value: f.id, label: `${f.prenom} ${f.nom}${f.zone_intervention ? ` — ${f.zone_intervention}` : ''}` }))]
 
+  const duree = libelleDuree(lf.formation)
+  const dureeJours = lf.formation?.duree_jours
+  const finSouhaitee = lf.date_souhaitee ? dateFinPrevue(lf.date_souhaitee, dureeJours) : null
+  // Date de fin de la session telle qu'elle sera créée à partir de la date choisie
+  const finChoisie = date ? dateFinPrevue(date, dureeJours) : null
+
   return (
     <div className="rounded-xl border border-surface-200/70 p-3 space-y-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-surface-900 truncate">{lf.formation?.intitule || 'Formation'}</div>
-          {lf.date_souhaitee && <div className="text-2xs text-surface-400">Souhaitée : {formatDate(lf.date_souhaitee, { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-surface-900 truncate">{lf.formation?.intitule || 'Formation'}</span>
+            {duree && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-100 text-surface-600 text-[10px] font-semibold shrink-0">
+                <Clock className="h-2.5 w-2.5" /> {duree}
+              </span>
+            )}
+          </div>
+          {lf.date_souhaitee && (
+            <div className="text-2xs text-surface-400">
+              Souhaitée : {formatDate(lf.date_souhaitee, { day: 'numeric', month: 'short', year: 'numeric' })}
+              {finSouhaitee && finSouhaitee !== lf.date_souhaitee && (
+                <> → {formatDate(finSouhaitee, { day: 'numeric', month: 'short', year: 'numeric' })}</>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <Badge variant={PLANIF_VARIANTS[status] || 'default'}>{PLANIF_LABELS[status] || status}</Badge>
@@ -278,11 +325,29 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2 items-end">
             <div>
-              <label className="block text-2xs text-surface-400 mb-0.5">Date de session</label>
+              <label className="block text-2xs text-surface-400 mb-0.5">
+                Date de début{duree ? <span className="text-surface-500"> — {duree}</span> : null}
+              </label>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-base w-full" />
             </div>
             <Select label="Formateur (zone)" options={formateurOptions} value={formateurId} onChange={(e) => setFormateurId(e.target.value)} />
           </div>
+
+          {/* La session couvre plusieurs jours : on annonce la date de fin avant de confirmer */}
+          {finChoisie && (
+            <div className="flex items-center gap-1.5 text-2xs text-surface-500 rounded-lg bg-surface-50 px-2.5 py-1.5">
+              <CalendarRange className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+              {finChoisie === date ? (
+                <span>Session d&apos;une journée, le <strong className="text-surface-700">{formatDate(date, { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.</span>
+              ) : (
+                <span>
+                  Session du <strong className="text-surface-700">{formatDate(date, { day: 'numeric', month: 'long' })}</strong>
+                  {' '}au <strong className="text-surface-700">{formatDate(finChoisie, { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                  {dureeJours ? <> — {dureeJours} jours consécutifs</> : null}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={confirm} isLoading={busy === 'confirm'} icon={<CalendarCheck className="h-3.5 w-3.5" />}>Confirmer &amp; créer la session</Button>
             <Button size="sm" variant="secondary" onClick={propose} isLoading={busy === 'propose'} icon={<CalendarClock className="h-3.5 w-3.5" />}>Autre date</Button>

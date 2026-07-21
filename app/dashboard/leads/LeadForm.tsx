@@ -49,6 +49,23 @@ const tailleOptions = [
 ]
 const civiliteOptions = [{ value: '', label: '—' }, { value: 'M.', label: 'M.' }, { value: 'Mme', label: 'Mme' }]
 
+/** « 3 jours · 21 h » */
+function libelleDuree(f?: { duree_jours?: number | null; duree_heures?: number | null } | null): string | null {
+  if (!f) return null
+  const parts: string[] = []
+  if (f.duree_jours) parts.push(`${f.duree_jours} jour${Number(f.duree_jours) > 1 ? 's' : ''}`)
+  if (f.duree_heures) parts.push(`${f.duree_heures} h`)
+  return parts.length ? parts.join(' · ') : null
+}
+
+/** Ajoute n jours consécutifs à une date ISO */
+function addJours(iso: string, n: number): string | null {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
 export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign, onSuccess, onCancel }: LeadFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
@@ -80,6 +97,7 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
   const [tailleEntreprise, setTailleEntreprise] = useState(lead?.taille_entreprise || '')
   const [formeJuridique, setFormeJuridique] = useState(lead?.forme_juridique || '')
   const [dateCreation, setDateCreation] = useState(lead?.date_creation_entreprise || '')
+  const [dateSouhaitee, setDateSouhaitee] = useState(lead?.date_souhaitee || '')
   const [effectifLibelle, setEffectifLibelle] = useState(lead?.effectif_libelle || '')
   const [tvaIntra, setTvaIntra] = useState(lead?.tva_intra || '')
   const [estQualiopi, setEstQualiopi] = useState(lead?.est_qualiopi || false)
@@ -134,6 +152,16 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
     value: u.id,
     label: `${u.first_name} ${u.last_name} — ${ROLE_LABELS[u.role] || u.role}`,
   }))
+  // Durée cumulée des formations retenues : c'est elle qui détermine
+  // jusqu'à quand le client doit se rendre disponible
+  const selectedFormations = selectedFormationIds
+    .map((id) => formations.find((f) => f.id === id))
+    .filter(Boolean) as Formation[]
+  const totalJours = selectedFormations.reduce((s, f) => s + (Number(f.duree_jours) || 0), 0)
+  const totalHeures = selectedFormations.reduce((s, f) => s + (Number(f.duree_heures) || 0), 0)
+  const dureeTotale = libelleDuree({ duree_jours: totalJours, duree_heures: totalHeures })
+  const finPrevue = dateSouhaitee && totalJours > 0 ? addJours(dateSouhaitee, totalJours - 1) : null
+
   const formationOptions = [
     ...formations.map((f) => ({ value: f.id, label: f.intitule })),
     { value: '__custom', label: 'Autre (formation spéciale)' },
@@ -320,6 +348,7 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
               return (
                 <span key={id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 text-xs font-medium border border-brand-100">
                   {f?.intitule || 'Formation'}
+                  {libelleDuree(f) && <span className="text-brand-400 font-normal">· {libelleDuree(f)}</span>}
                   <button type="button" onClick={() => removeFormation(id)} className="text-brand-400 hover:text-brand-700">×</button>
                 </span>
               )
@@ -332,9 +361,10 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
               ? 'Aucune formation au catalogue — saisie libre uniquement'
               : `+ Ajouter une formation (${formations.length} disponible${formations.length > 1 ? 's' : ''})`}
           </option>
-          {formations.filter((f) => !selectedFormationIds.includes(f.id)).map(f => (
-            <option key={f.id} value={f.id}>{f.intitule}</option>
-          ))}
+          {formations.filter((f) => !selectedFormationIds.includes(f.id)).map(f => {
+            const d = libelleDuree(f)
+            return <option key={f.id} value={f.id}>{d ? `${f.intitule} — ${d}` : f.intitule}</option>
+          })}
           <option value="__custom">— Autre formation (saisie libre) —</option>
         </select>
         <p className="text-2xs text-surface-400">Vous pouvez en sélectionner plusieurs — chacune aura sa session et sa convention.</p>
@@ -360,7 +390,21 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
 
       <div className="grid grid-cols-2 gap-4">
         <Input id="nombre_stagiaires" name="nombre_stagiaires" type="number" label="Nombre de participants" defaultValue={lead?.nombre_stagiaires?.toString() || ''} placeholder="1" />
-        <Input id="date_souhaitee" name="date_souhaitee" type="date" label="Date souhaitée" defaultValue={lead?.date_souhaitee || ''} />
+        <div>
+          <Input
+            id="date_souhaitee" name="date_souhaitee" type="date"
+            label={dureeTotale ? `Date de début souhaitée — ${dureeTotale}` : 'Date souhaitée'}
+            value={dateSouhaitee} onChange={(e) => setDateSouhaitee(e.target.value)}
+          />
+          {/* La date saisie n'est qu'un début : on annonce jusqu'où la formation court */}
+          {finPrevue && (
+            <p className="text-2xs text-surface-500 mt-1">
+              {finPrevue === dateSouhaitee
+                ? 'Formation d\'une journée.'
+                : <>Se terminerait le <strong className="text-surface-700">{new Date(finPrevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.</>}
+            </p>
+          )}
+        </div>
       </div>
 
       <div>
