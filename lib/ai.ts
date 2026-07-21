@@ -8,7 +8,12 @@ interface AIResponse {
   truncated?: boolean
 }
 
-async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 4096): Promise<AIResponse> {
+async function callClaude(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 4096,
+  options: { noThinking?: boolean } = {},
+): Promise<AIResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return { success: false, content: '', error: 'Clé API Anthropic non configurée' }
@@ -27,6 +32,11 @@ async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
+        // claude-sonnet-5 active la réflexion adaptative par défaut : les blocs
+        // "thinking" consomment le budget max_tokens sans être exploitables ici
+        // (on ne lit que les blocs texte), ce qui tronque les longues listes.
+        // Sur une extraction mécanique elle n'apporte rien : on la coupe.
+        ...(options.noThinking ? { thinking: { type: 'disabled' } } : {}),
       }),
     })
 
@@ -462,11 +472,15 @@ Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, chaque élé
 
   const userPrompt = `Extrais les participants de ce texte. Réponds uniquement par le tableau JSON, sans phrase d'introduction ni balise Markdown.\n\n"""\n${text}\n"""`
 
-  // Une fiche complète pèse ~150 tokens : on dimensionne sur la taille du
-  // texte collé pour éviter les réponses coupées sur les longues listes
-  const maxTokens = Math.min(16000, Math.max(4096, Math.ceil(text.length / 2)))
+  // Une fiche complète pèse ~180 tokens en sortie. On estime le nombre de
+  // participants par le nombre de lignes non vides (une ligne = une personne
+  // dans la quasi-totalité des collages), plus fiable que la taille du texte :
+  // un tableau Excel large produit peu de lignes mais beaucoup de caractères,
+  // et inversement pour un mail. On garde un plancher confortable.
+  const lignes = text.split('\n').filter((l) => l.trim()).length
+  const maxTokens = Math.min(16000, Math.max(4096, lignes * 180 + 500))
 
-  const result = await callClaude(systemPrompt, userPrompt, maxTokens)
+  const result = await callClaude(systemPrompt, userPrompt, maxTokens, { noThinking: true })
   if (!result.success) {
     return { success: false, participants: [], error: result.error || 'L\'IA n\'a pas répondu' }
   }

@@ -83,20 +83,32 @@ export function ImportParticipantsModal({
   async function handleAnalyze() {
     if (!text.trim()) return
     setAnalyzing(true)
-    const res = await extractParticipantsFromTextAction(text)
-    if (res.success) {
-      const existingNames = new Set(existing.map((e) => normalizeName(e.prenom, e.nom)))
-      const extracted = (res.data as ExtractedParticipant[]).map((p) => {
-        const duplicate = existingNames.has(normalizeName(p.prenom, p.nom))
-        return { ...p, _duplicate: duplicate, _selected: !duplicate }
-      })
-      setRows(extracted)
-      // Succès partiel : la liste était trop longue pour être lue en entier
-      if (res.error) toast('info', res.error)
-    } else {
-      toast('error', res.error || "Impossible d'analyser ce texte")
+    try {
+      const res = await extractParticipantsFromTextAction(text)
+      if (res.success) {
+        const existingNames = new Set(existing.map((e) => normalizeName(e.prenom, e.nom)))
+        const extracted = (res.data as ExtractedParticipant[]).map((p) => {
+          const duplicate = existingNames.has(normalizeName(p.prenom, p.nom))
+          return { ...p, _duplicate: duplicate, _selected: !duplicate }
+        })
+        setRows(extracted)
+        // Succès partiel : la liste était trop longue pour être lue en entier
+        if (res.error) toast('info', res.error)
+      } else {
+        toast('error', res.error || "Impossible d'analyser ce texte")
+      }
+    } catch (err) {
+      // La Server Action peut échouer sans renvoyer de résultat : coupure
+      // réseau, ou fonction interrompue par le délai maximum sur une très
+      // longue liste. Sans ce filet, le spinner tournait indéfiniment.
+      console.error('[ImportParticipants] analyse', err)
+      toast(
+        'error',
+        "L'analyse n'a pas abouti. Si votre liste est très longue, importez-la en deux fois.",
+      )
+    } finally {
+      setAnalyzing(false)
     }
-    setAnalyzing(false)
   }
 
   function updateField(index: number, key: FieldKey, value: string) {

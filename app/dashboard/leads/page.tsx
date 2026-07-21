@@ -4,6 +4,11 @@ import { LeadsPipeline } from './LeadsPipeline'
 import type { Lead } from '@/lib/types/crm'
 
 export const dynamic = 'force-dynamic'
+// L'import IA de participants est une Server Action appelée depuis cette page :
+// sur une liste de 30-40 personnes l'appel Claude dure ~15-20 s, au-delà du
+// délai par défaut de Vercel. Sans ce réglage la fonction est tuée en vol et
+// l'utilisateur voit une erreur d'analyse.
+export const maxDuration = 120
 
 export default async function LeadsPage() {
   const session = await getSession()

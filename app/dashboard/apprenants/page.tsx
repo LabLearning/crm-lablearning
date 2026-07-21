@@ -3,6 +3,12 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { ApprenantsList } from './ApprenantsList'
 import type { Apprenant, Inscription } from '@/lib/types/formation'
 
+// L'import IA de participants est une Server Action appelée depuis cette page :
+// sur une liste de 30-40 personnes l'appel Claude dure ~15-20 s, au-delà du
+// délai par défaut de Vercel. Sans ce réglage la fonction est tuée en vol et
+// l'utilisateur voit une erreur d'analyse.
+export const maxDuration = 120
+
 const PER_PAGE = 50
 
 // Échappe les caractères réservés de la syntaxe .or() de PostgREST
