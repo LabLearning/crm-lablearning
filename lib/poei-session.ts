@@ -91,6 +91,14 @@ export async function syncInterventionSession(
   }
 
   await inscrireCandidats(supabase, poei.id, sessionId!, iv.organization_id)
+
+  // Feuilles d'émargement prêtes dès la création : le formateur ne doit pas
+  // dépendre d'une visite préalable de la fiche session par un administrateur
+  try {
+    const { ensureEmargements } = await import('@/lib/emargements')
+    await ensureEmargements(supabase, sessionId!, iv.organization_id)
+  } catch (e) { console.error('[emargements intervention]', e) }
+
   return sessionId!
 }
 

@@ -11,15 +11,24 @@ export default async function PortalEmargementPage({ params }: { params: { token
 
   const supabase = await createServiceRoleClient()
 
-  // Sessions actives du formateur
+  // Sessions actives du formateur. « planifiee » est incluse : une session
+  // POEI d'intervention le reste jusqu'à son démarrage, et le formateur doit
+  // pouvoir émarger dès le premier jour.
   const { data: sessions } = await supabase
     .from('sessions')
-    .select('id, reference, date_debut, date_fin, formation:formation_id(intitule)')
+    .select('id, reference, date_debut, date_fin, organization_id, formation:formation_id(intitule)')
     .eq('formateur_id', context.formateur.id)
-    .in('status', ['confirmee', 'en_cours'])
+    .in('status', ['planifiee', 'confirmee', 'en_attente_signatures', 'validee', 'en_cours'])
     .order('date_debut', { ascending: true })
 
   const sessionIds = (sessions || []).map((s) => s.id)
+
+  // Les feuilles n'étaient créées qu'à l'ouverture de la fiche session par un
+  // administrateur : sans cette visite, le formateur n'avait rien à signer.
+  const { ensureEmargements } = await import('@/lib/emargements')
+  await Promise.all(
+    (sessions || []).map((s: any) => ensureEmargements(supabase, s.id, s.organization_id)),
+  )
   let emargements: any[] = []
   let feuilles: any[] = []
 
