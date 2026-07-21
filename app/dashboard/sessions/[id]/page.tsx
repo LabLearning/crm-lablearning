@@ -36,47 +36,12 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     .not('status', 'in', '("annule","abandonne")')
     .order('date_inscription', { ascending: true })
 
-  // Auto-générer les émargements pour chaque jour × chaque apprenant
+  // Génération des feuilles d'émargement (jours ouvrés, idempotente).
+  // Même helper que le portail formateur : une seule règle, un seul endroit.
   const allInscriptions = inscriptions || []
-  if (allInscriptions.length > 0 && sessionData.date_debut && sessionData.date_fin) {
-    const days: string[] = []
-    const d = new Date(sessionData.date_debut)
-    const end = new Date(sessionData.date_fin)
-    while (d <= end) {
-      days.push(d.toISOString().split('T')[0])
-      d.setDate(d.getDate() + 1)
-    }
-
-    const creneaux = ['matin', 'apres_midi']
-    for (const day of days) {
-      const apprenantIds = allInscriptions.map((i: any) => (i.apprenant as any)?.id).filter(Boolean)
-      if (apprenantIds.length === 0) continue
-
-      for (const creneau of creneaux) {
-        const { data: existing } = await supabase
-          .from('emargements')
-          .select('apprenant_id')
-          .eq('session_id', params.id)
-          .eq('date', day)
-          .eq('creneau', creneau)
-
-        const existingIds = new Set((existing || []).map((e: any) => e.apprenant_id))
-        const toInsert = apprenantIds
-          .filter((id: string) => !existingIds.has(id))
-          .map((id: string) => ({
-            organization_id: session.organization.id,
-            session_id: params.id,
-            apprenant_id: id,
-            date: day,
-            creneau,
-            est_present: false,
-          }))
-
-        if (toInsert.length > 0) {
-          await supabase.from('emargements').insert(toInsert)
-        }
-      }
-    }
+  if (allInscriptions.length > 0) {
+    const { ensureEmargements } = await import('@/lib/emargements')
+    await ensureEmargements(supabase, params.id, session.organization.id)
   }
 
   // Lectures indépendantes (toutes filtrées par session_id, après la génération des émargements)

@@ -32,11 +32,17 @@ export async function ensureEmargements(
     .filter(Boolean) as string[]
   if (apprenantIds.length === 0) return 0
 
+  // Samedi et dimanche sont exclus : générer des feuilles le week-end
+  // produisait des journées fantômes que le formateur ne peut ni signer ni
+  // valider. Une séance exceptionnelle un samedi s'ajoute à la main.
   const jours: string[] = []
   const d = new Date(sess.date_debut)
   const fin = new Date(sess.date_fin)
   while (d <= fin) {
-    jours.push(d.toISOString().split('T')[0])
+    const jourSemaine = d.getDay()
+    if (jourSemaine !== 0 && jourSemaine !== 6) {
+      jours.push(d.toISOString().split('T')[0])
+    }
     d.setDate(d.getDate() + 1)
   }
 
