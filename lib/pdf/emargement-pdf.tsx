@@ -16,10 +16,15 @@ function buildCreneaux(dateDebut: string, dateFin: string) {
   const end = new Date(dateFin || dateDebut)
   let cur = new Date(start)
   let guard = 0
-  while (cur <= end && guard < 15) {
-    const jour = cur.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-    out.push({ jour, creneau: 'Matin' })
-    out.push({ jour, creneau: 'Après-midi' })
+  while (cur <= end && guard < 40) {
+    // Samedi et dimanche exclus : ils produisaient des colonnes vides que le
+    // formateur devait barrer à la main
+    const jourSemaine = cur.getDay()
+    if (jourSemaine !== 0 && jourSemaine !== 6) {
+      const jour = cur.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+      out.push({ jour, creneau: 'Matin' })
+      out.push({ jour, creneau: 'Après-midi' })
+    }
     cur.setDate(cur.getDate() + 1)
     guard++
   }
