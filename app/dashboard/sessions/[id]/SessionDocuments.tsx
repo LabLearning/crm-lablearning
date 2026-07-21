@@ -139,9 +139,12 @@ export function SessionDocuments(props: Props) {
   // #toolbar=0&navpanes=0 : visionneuse épurée dans la modale (sans barre ni vignettes)
   const VIEWER = '#toolbar=0&navpanes=0&statusbar=0&view=FitH'
   const convPdfUrl = `/api/pdf/preview/convention/${sessionId}`
+  // Dès qu'un contrat existe en base, on le rend par son id : c'est la seule
+  // façon d'obtenir la version signée (le rendu par session est une projection).
+  const contratRef = contrat?.id ? `contrat=${contrat.id}` : `session=${sessionId}`
   // inline=1 : sinon le navigateur télécharge le contrat au lieu de l'afficher
-  const contratPdfUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?session=${sessionId}&inline=1` : null
-  const contratDlUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?session=${sessionId}` : null
+  const contratPdfUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?${contratRef}&inline=1` : null
+  const contratDlUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?${contratRef}` : null
 
   // ── Ligne document ──
   function DocRow({

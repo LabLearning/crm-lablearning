@@ -4,6 +4,7 @@ import { AccountNotLinked } from '@/components/dashboard/AccountNotLinked'
 import { MissionPendingCard } from './MissionPendingCard'
 import { InterventionPendingCard } from './InterventionPendingCard'
 import { TachesFormateurSection } from './TachesFormateurSection'
+import { MesContratsSection } from './MesContratsSection'
 import Link from 'next/link'
 import {
   Calendar, Users, ClipboardCheck, Clock, ChevronRight, GraduationCap, FileText,
@@ -52,6 +53,8 @@ export default async function MonEspacePage() {
       { data: sessions },
       { data: sessionsAvecTaches },
       { data: pendingInterventions },
+      { data: interventionsAcceptees },
+      { data: contrats },
     ] = await Promise.all([
       // Missions à valider (proposées en attente de réponse)
       supabase
@@ -92,6 +95,19 @@ export default async function MonEspacePage() {
         .eq('formateur_id', formateur.id)
         .eq('mission_status', 'pending')
         .order('date_debut', { ascending: true }),
+      // Interventions POEI acceptées : elles restent visibles après acceptation
+      supabase
+        .from('poei_interventions')
+        .select('id, libelle, date_debut, date_fin, nb_heures, montant_ht, lieu, adresse, code_postal, ville, horaires, poei:poei(numero, formation:formations(intitule), client:clients(raison_sociale))')
+        .eq('formateur_id', formateur.id)
+        .eq('mission_status', 'accepted')
+        .order('date_debut', { ascending: true }),
+      // Contrats de prestation — sessions et interventions POEI confondues
+      supabase
+        .from('contrats_formateur')
+        .select('id, numero, status, montant_ht, sent_at, signature_formateur_date, signature_token, signature_token_expires_at, session_id, poei_intervention_id, session:sessions(reference, date_debut, formation:formation_id(intitule)), intervention:poei_interventions(libelle, date_debut)')
+        .eq('formateur_id', formateur.id)
+        .order('created_at', { ascending: false }),
     ])
 
     const tachesSessions = (sessionsAvecTaches || [])
@@ -105,6 +121,22 @@ export default async function MonEspacePage() {
         facturation_status: s.contrat?.[0]?.facturation_status || null,
         taches: (s.taches || []).sort((a: any, b: any) => (a.bloque_facturation === b.bloque_facturation) ? 0 : a.bloque_facturation ? -1 : 1),
       }))
+
+    // Contrats du formateur, sessions et interventions POEI ramenées à une même ligne
+    const contratsLignes = (contrats || []).map((c: any) => {
+      const tokenValide = c.signature_token
+        && (!c.signature_token_expires_at || new Date(c.signature_token_expires_at) > new Date())
+      return {
+        id: c.id,
+        numero: c.numero,
+        intitule: c.session?.formation?.intitule || c.session?.reference
+          || c.intervention?.libelle || 'Contrat de prestation',
+        dateMission: c.session?.date_debut || c.intervention?.date_debut || c.sent_at || null,
+        montantHt: c.montant_ht,
+        signeLe: c.signature_formateur_date,
+        signUrl: !c.signature_formateur_date && tokenValide ? `/f/${c.signature_token}` : null,
+      }
+    })
 
     const allSessions = sessions || []
     const sessionIds = allSessions.map(s => s.id)
@@ -163,6 +195,51 @@ export default async function MonEspacePage() {
             ))}
           </div>
         )}
+
+        {/* Interventions POEI acceptées : la mission reste visible après acceptation */}
+        {(interventionsAcceptees || []).length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-brand-500" />
+              <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">
+                Mes interventions POEI ({(interventionsAcceptees || []).length})
+              </span>
+            </div>
+            <div className="divide-y divide-surface-100">
+              {(interventionsAcceptees || []).map((iv: any) => {
+                const lieu = [iv.lieu, iv.adresse, [iv.code_postal, iv.ville].filter(Boolean).join(' ')]
+                  .filter(Boolean).join(', ')
+                const contexte = [iv.poei?.formation?.intitule, iv.poei?.client?.raison_sociale]
+                  .filter(Boolean).join(' — ')
+                return (
+                  <div key={iv.id} className="px-4 py-3">
+                    <div className="text-sm font-medium text-surface-900">{iv.libelle}</div>
+                    {contexte && <div className="text-xs text-surface-500 mt-0.5">{contexte}</div>}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-surface-500">
+                      {iv.date_debut && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          {formatDate(iv.date_debut, { day: 'numeric', month: 'short' })}
+                          {iv.date_fin && iv.date_fin !== iv.date_debut
+                            ? ` → ${formatDate(iv.date_fin, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        </span>
+                      )}
+                      {iv.horaires && <span className="flex items-center gap-1"><Clock className="h-3 w-3 shrink-0" />{iv.horaires}</span>}
+                      {lieu && <span className="flex items-center gap-1 min-w-0"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{lieu}</span></span>}
+                      {iv.nb_heures && <span>{iv.nb_heures} h</span>}
+                      {iv.montant_ht != null && Number(iv.montant_ht) > 0 && (
+                        <span className="font-medium text-surface-700">{Number(iv.montant_ht).toLocaleString('fr-FR')} EUR HT</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Contrats de prestation — consultables et téléchargeables après signature */}
+        <MesContratsSection contrats={contratsLignes} formateurId={formateur.id} />
 
         {/* Check-list des tâches de fin de session */}
         <TachesFormateurSection sessions={tachesSessions} />

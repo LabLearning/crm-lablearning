@@ -6,16 +6,56 @@ interface ContratFormateurProps {
   formateur: any
   org: any
   session?: any
+  /** Contrat en base : porte le numéro définitif et les signatures apposées */
+  contrat?: any
+  /** Intervention POEI, quand le contrat ne porte pas sur une session */
+  intervention?: any
 }
 
-export function ContratFormateurPDF({ formateur, org, session }: ContratFormateurProps) {
-  const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-  const numero = `CP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
+const fmtLong = (d: string | Date) =>
+  new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+export function ContratFormateurPDF({ formateur, org, session, contrat, intervention }: ContratFormateurProps) {
+  const today = fmtLong(new Date())
+  // Le numéro doit rester stable d'un rendu à l'autre : on prend celui du contrat
+  // en base, et on ne retombe sur un provisoire que pour un aperçu avant création.
+  const numero = contrat?.numero || `CP-${new Date().getFullYear()}-PROJET`
+  const signeFormateur = Boolean(contrat?.signature_formateur_date)
+  const signeOf = Boolean(contrat?.signature_of_date) || Boolean(org?.tampon_signature_url)
+  const dateContrat = contrat?.sent_at ? fmtLong(contrat.sent_at) : today
+
+  // La mission porte soit sur une session, soit sur une intervention POEI :
+  // on les ramène à une forme commune pour que l'article 2 et la rémunération
+  // soient rendus à l'identique dans les deux cas.
+  const mission = session
+    ? {
+        intitule: session.formation?.intitule || session.reference,
+        reference: session.reference,
+        dateDebut: session.date_debut, dateFin: session.date_fin,
+        lieu: session.lieu, duree: session.formation?.duree_heures,
+        montant: session.cout_formateur,
+      }
+    : intervention
+      ? {
+          intitule: intervention.libelle,
+          reference: intervention.poei?.numero || null,
+          dateDebut: intervention.date_debut, dateFin: intervention.date_fin,
+          lieu: [intervention.lieu, intervention.adresse, [intervention.code_postal, intervention.ville].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+          duree: intervention.nb_heures,
+          montant: intervention.montant_ht,
+        }
+      : null
 
   return (
     <Document>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Contrat de prestation" numero={numero} date={today} statut="Formation" org={org} />
+        <PdfDocHeader
+          docTitle="Contrat de prestation"
+          numero={numero}
+          date={dateContrat}
+          statut={signeFormateur ? 'Signé' : 'Formation'}
+          org={org}
+        />
 
         <View style={shared.section}>
           <PdfSectionTitle>Entre les parties</PdfSectionTitle>
@@ -37,19 +77,20 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
           </Text>
         </View>
 
-        {session && (
+        {mission && (
           <View style={shared.section}>
             <PdfSectionTitle>Article 2 — Mission</PdfSectionTitle>
-            <View style={shared.row}><Text style={shared.label}>Formation :</Text><Text style={shared.value}>{session.formation?.intitule || session.reference}</Text></View>
-            <View style={shared.row}><Text style={shared.label}>Référence :</Text><Text style={shared.value}>{session.reference}</Text></View>
-            <View style={shared.row}><Text style={shared.label}>Dates :</Text><Text style={shared.value}>{session.date_debut} au {session.date_fin}</Text></View>
-            {session.lieu && <View style={shared.row}><Text style={shared.label}>Lieu :</Text><Text style={shared.value}>{session.lieu}</Text></View>}
-            {session.formation?.duree_heures && <View style={shared.row}><Text style={shared.label}>Durée :</Text><Text style={shared.value}>{session.formation.duree_heures} heures</Text></View>}
+            <View style={shared.row}><Text style={shared.label}>{session ? 'Formation :' : 'Intervention :'}</Text><Text style={shared.value}>{mission.intitule}</Text></View>
+            {mission.reference && <View style={shared.row}><Text style={shared.label}>Référence :</Text><Text style={shared.value}>{mission.reference}</Text></View>}
+            {mission.dateDebut && <View style={shared.row}><Text style={shared.label}>Dates :</Text><Text style={shared.value}>{fmtLong(mission.dateDebut)}{mission.dateFin ? ` au ${fmtLong(mission.dateFin)}` : ''}</Text></View>}
+            {mission.lieu && <View style={shared.row}><Text style={shared.label}>Lieu :</Text><Text style={shared.value}>{mission.lieu}</Text></View>}
+            {intervention?.horaires && <View style={shared.row}><Text style={shared.label}>Horaires :</Text><Text style={shared.value}>{intervention.horaires}</Text></View>}
+            {mission.duree && <View style={shared.row}><Text style={shared.label}>Durée :</Text><Text style={shared.value}>{mission.duree} heures</Text></View>}
           </View>
         )}
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 3' : 'Article 2'} — Obligations du prestataire</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 3' : 'Article 2'} — Obligations du prestataire</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le prestataire s'engage à :{'\n'}
             - Assurer les formations conformément au programme pédagogique validé{'\n'}
@@ -63,7 +104,7 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 4' : 'Article 3'} — Engagement qualité (Qualiopi — art. R.6333-6-2)</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 4' : 'Article 3'} — Engagement qualité (Qualiopi — art. R.6333-6-2)</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             En sa qualité de sous-traitant intervenant pour le compte d'un organisme certifié Qualiopi, le prestataire s'engage à respecter, pour les missions confiées, les exigences applicables du Référentiel National Qualité (RNQ), et notamment les indicateurs 4, 6, 8, 10 à 12, 17 à 19, 21 à 25, 27, 31 et 32 :{'\n'}
             - analyse du besoin du bénéficiaire et adaptation des contenus ;{'\n'}
@@ -76,20 +117,22 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 5' : 'Article 4'} — Lutte contre le travail dissimulé</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 5' : 'Article 4'} — Lutte contre le travail dissimulé</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             {`Pour toute prestation d'un montant égal ou supérieur à 5 000 € HT, le prestataire remettra à ${org.name} son attestation de vigilance URSSAF (art. L.8222-1 et D.8222-5 du Code du travail) au moment de la conclusion du contrat puis tous les six mois jusqu'à son terme. Le prestataire atteste être à jour de ses déclarations et paiements sociaux et fiscaux.`}
           </Text>
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 6' : 'Article 5'} — Rémunération</PdfSectionTitle>
-          {session?.cout_formateur != null && Number(session.cout_formateur) > 0 ? (
+          <PdfSectionTitle>{mission ? 'Article 6' : 'Article 5'} — Rémunération</PdfSectionTitle>
+          {mission?.montant != null && Number(mission.montant) > 0 ? (
             <>
               {/* Montant validé à la validation de la session — montant contractuel */}
-              <View style={shared.row}><Text style={shared.label}>Montant de la prestation (HT) :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{Number(session.cout_formateur).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, ' ')} EUR</Text></View>
+              <View style={shared.row}><Text style={shared.label}>Montant de la prestation (HT) :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{Number(mission.montant).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, ' ')} EUR</Text></View>
               <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 2 }}>
-                Montant forfaitaire convenu entre les parties et validé pour la présente session.
+                {session
+                  ? 'Montant forfaitaire convenu entre les parties et validé pour la présente session.'
+                  : 'Montant forfaitaire convenu entre les parties pour la présente intervention.'}
               </Text>
             </>
           ) : (
@@ -109,28 +152,28 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 7' : 'Article 6'} — Propriété intellectuelle</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 7' : 'Article 6'} — Propriété intellectuelle</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             {`Les supports pédagogiques créés dans le cadre de cette prestation restent la propriété de ${org.name}. Le prestataire autorise leur utilisation et reproduction dans le cadre des activités de formation de l'organisme.`}
           </Text>
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 8' : 'Article 7'} — Statut</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 8' : 'Article 7'} — Statut</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le prestataire exerce son activité en qualité de travailleur indépendant. Le présent contrat ne crée aucun lien de subordination. Le prestataire est responsable de ses déclarations fiscales et sociales.
           </Text>
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 9' : 'Article 8'} — Protection des données (RGPD)</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 9' : 'Article 8'} — Protection des données (RGPD)</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             {`Le prestataire agit en qualité de sous-traitant au sens de l'article 28 du RGPD pour les traitements de données personnelles des apprenants effectués pour le compte de ${org.name}. Il ne traite ces données que sur instruction documentée du responsable du traitement, garantit la confidentialité, met en œuvre les mesures de sécurité appropriées et supprime ou restitue les données à l'issue de la mission.`}
           </Text>
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{session ? 'Article 10' : 'Article 9'} — Durée, résiliation et litiges</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 10' : 'Article 9'} — Durée, résiliation et litiges</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le présent contrat prend effet à sa signature. Il peut être résilié par l'une ou l'autre des parties par lettre recommandée avec accusé de réception moyennant un préavis de 30 jours. En cas de manquement grave de l'une des parties à ses obligations, l'autre partie pourra résilier le contrat sans préavis après mise en demeure restée infructueuse pendant 15 jours.{'\n'}
             {`En cas de litige, et après tentative de règlement amiable, les juridictions du ressort du siège de ${org.name} seront seules compétentes.`}
@@ -139,10 +182,29 @@ export function ContratFormateurPDF({ formateur, org, session }: ContratFormateu
 
         <View style={{ marginTop: 24 }}>
           <PdfSignatureCards
-            faitMention={`Fait à ${org?.city || '___________'}, le ${today}, en deux exemplaires.`}
+            faitMention={`Fait à ${org?.city || '___________'}, le ${dateContrat}, en deux exemplaires.`}
             items={[
-              { title: "Le donneur d'ordre", name: org.name, mention: 'Représentant légal', hint: 'Signature et cachet', stamp: org?.tampon_signature_url || null },
-              { title: 'Le prestataire', name: `${formateur.prenom} ${formateur.nom}`, mention: 'Mention « Lu et approuvé »', hint: 'Signature précédée de la date' },
+              {
+                title: "Le donneur d'ordre",
+                name: org.name,
+                mention: 'Représentant légal',
+                hint: 'Signature et cachet',
+                stamp: org?.tampon_signature_url || null,
+                signed: signeOf,
+                signedBy: contrat?.signature_of_nom || undefined,
+                signedDate: contrat?.signature_of_date ? fmtLong(contrat.signature_of_date) : undefined,
+              },
+              {
+                title: 'Le prestataire',
+                name: `${formateur.prenom} ${formateur.nom}`,
+                mention: 'Mention « Lu et approuvé »',
+                hint: 'Signature précédée de la date',
+                // La signature manuscrite capturée est apposée dans le cadre
+                stamp: contrat?.signature_formateur_signature_data || null,
+                signed: signeFormateur,
+                signedBy: contrat?.signature_formateur_nom || undefined,
+                signedDate: contrat?.signature_formateur_date ? fmtLong(contrat.signature_formateur_date) : undefined,
+              },
             ]}
           />
         </View>

@@ -175,7 +175,9 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
           {interventions.map((iv) => {
             const meta = MISSION_META[iv.mission_status] || MISSION_META.not_required
             const { Icon } = meta
-            const signe = iv.contrat?.signature_formateur_date
+            // La jointure remonte un tableau (un contrat par intervention)
+            const contrat = Array.isArray(iv.contrat) ? iv.contrat[0] : iv.contrat
+            const signe = Boolean(contrat?.signature_formateur_date)
             return (
               <div key={iv.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-[200px]">
@@ -201,7 +203,7 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
                   <Icon className="h-3 w-3" /> {meta.label}
                 </span>
 
-                {iv.contrat && (
+                {contrat && (
                   <span className={cn(
                     'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0',
                     signe ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700',
@@ -212,6 +214,11 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
 
                 <div className="shrink-0">
                   <RowMenu items={[
+                    ...(contrat && iv.formateur_id ? [{
+                      label: signe ? 'Télécharger le contrat signé' : 'Voir le contrat',
+                      icon: <Download className="h-4 w-4 text-surface-400" />,
+                      onClick: () => window.open(`/api/pdf/contrat-formateur/${iv.formateur_id}?contrat=${contrat.id}`, '_blank'),
+                    }] : []),
                     { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditIv(iv) },
                     { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleRemove(iv.id, iv.libelle) },
                   ]} />
