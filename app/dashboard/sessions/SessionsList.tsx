@@ -266,13 +266,20 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                     </div>
                     {/* Type + POEI + statut */}
                     <TypePill s={s} />
-                    {(s as any)._is_poei && <PoeiBadge />}
+                    {(s as any)._is_poei && <PoeiBadge role={(s as any)._poei_role} />}
                     <span className="hidden sm:block shrink-0"><Badge variant={SESSION_STATUS_COLORS[s.status]} dot>{SESSION_STATUS_LABELS[s.status]}</Badge></span>
                     {/* Inscrits */}
                     <InscritsPill s={s} />
                     {/* Formateur */}
                     <span className="hidden lg:flex items-center gap-1 text-xs text-surface-500 w-36 truncate shrink-0">
-                      {s.formateur ? (<><UserIcon className="h-3.5 w-3.5 text-surface-400 shrink-0" />{s.formateur.prenom} {s.formateur.nom}</>) : <span className="text-surface-300">— formateur</span>}
+                      {s.formateur ? (
+                        <><UserIcon className="h-3.5 w-3.5 text-surface-400 shrink-0" />{s.formateur.prenom} {s.formateur.nom}</>
+                      ) : (s as any)._poei_role === 'parcours' ? (
+                        // Un parcours n'a pas de formateur : ils sont affectés par intervention
+                        <span className="text-surface-300">par intervention</span>
+                      ) : (
+                        <span className="text-surface-300">— formateur</span>
+                      )}
                     </span>
                     {/* Client */}
                     <span className="hidden xl:flex items-center gap-1 text-xs font-medium text-sky-700 w-40 truncate shrink-0">
@@ -314,7 +321,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                     </div>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <TypePill s={s} />
-                      {(s as any)._is_poei && <PoeiBadge />}
+                      {(s as any)._is_poei && <PoeiBadge role={(s as any)._poei_role} />}
                       <InscritsPill s={s} />
                     </div>
                     <div className="mt-2 space-y-1 text-2xs text-surface-500">

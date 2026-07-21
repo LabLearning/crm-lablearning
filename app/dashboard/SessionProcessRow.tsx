@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Building2, MapPin, UserX, AlertTriangle } from 'lucide-react'
+import { Building2, MapPin, UserX, AlertTriangle, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SessionProcess {
@@ -17,6 +17,8 @@ export interface SessionProcess {
   conventionSignee: boolean
   participants: number
   convocationsEnvoyees: boolean
+  /** Parcours POEI : chapeau administratif, sans formateur ni contrat propres */
+  estParcoursPoei?: boolean
 }
 
 const ETAPES: { key: keyof SessionProcess | 'participantsOk'; label: string; court: string }[] = [
@@ -28,7 +30,11 @@ const ETAPES: { key: keyof SessionProcess | 'participantsOk'; label: string; cou
 ]
 
 function etapesFaites(s: SessionProcess): boolean[] {
-  return [s.formateurCale, s.contratSigne, s.participants > 0, s.conventionSignee, s.convocationsEnvoyees]
+  // Sur un parcours POEI, formateur et contrat relèvent des interventions :
+  // les compter comme manquants bloquerait la barre à jamais
+  const formateur = s.estParcoursPoei || s.formateurCale
+  const contrat = s.estParcoursPoei || s.contratSigne
+  return [formateur, contrat, s.participants > 0, s.conventionSignee, s.convocationsEnvoyees]
 }
 
 /** Barre de progression du process d'une session : une pastille par étape */
@@ -107,6 +113,11 @@ export function SessionProcessRow({ session, showDate }: { session: SessionProce
               <span className={cn('flex items-center gap-1', !session.formateurCale && 'text-amber-600')}>
                 {session.formateurNom}
                 {!session.formateurCale && <span title="Mission non acceptée par le formateur">(en attente)</span>}
+              </span>
+            ) : session.estParcoursPoei ? (
+              // Alerter serait un faux positif : le parcours n'a pas de formateur
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-100 text-surface-500 text-[10px] font-semibold">
+                <Layers className="h-3 w-3" /> Parcours POEI
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-danger-50 text-danger-700 text-[10px] font-semibold">

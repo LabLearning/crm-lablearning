@@ -60,13 +60,18 @@ export default async function DashboardPage() {
 
   // État du process par session (conventions, contrats, inscriptions) — 3 requêtes batchées
   const sessionIds = allSessions.map((s: any) => s.id)
-  const [convRows, contratRows, inscRows] = sessionIds.length > 0
+  const [convRows, contratRows, inscRows, poeiRows] = sessionIds.length > 0
     ? await Promise.all([
         supabase.from('conventions').select('session_id, status').in('session_id', sessionIds),
         supabase.from('contrats_formateur').select('session_id, signature_formateur_date').in('session_id', sessionIds).neq('status', 'annule'),
         supabase.from('inscriptions').select('session_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")'),
+        // Sessions « parcours » POEI : elles n'ont pas de formateur par nature
+        supabase.from('poei').select('session_id').in('session_id', sessionIds),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }] as any
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }] as any
+
+  const parcoursPoei = new Set<string>()
+  for (const p of (poeiRows.data || []) as any[]) if (p.session_id) parcoursPoei.add(p.session_id)
 
   const convBySession = new Map<string, string>()
   for (const c of (convRows.data || []) as any[]) convBySession.set(c.session_id, c.status)
@@ -85,7 +90,10 @@ export default async function DashboardPage() {
     lieu: s.lieu || null,
     dateDebut: s.date_debut,
     status: s.status,
-    formateurCale: !!s.formateur && (s.mission_status === 'accepted' || s.mission_status === 'not_required'),
+    // Un parcours POEI n'attend aucun formateur : ils sont affectés par intervention
+    estParcoursPoei: parcoursPoei.has(s.id),
+    formateurCale: parcoursPoei.has(s.id)
+      || (!!s.formateur && (s.mission_status === 'accepted' || s.mission_status === 'not_required')),
     contratSigne: contratSigneBySession.has(s.id),
     conventionSignee: ['signee_client', 'signee_of', 'signee_complete'].includes(convBySession.get(s.id) || ''),
     participants: inscritsBySession.get(s.id) || 0,
