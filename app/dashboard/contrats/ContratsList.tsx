@@ -28,6 +28,7 @@ export interface ContratLigne {
   signePar: string | null
   archive: boolean
   lienExpire: boolean
+  annule: boolean
 }
 
 export function ContratsList({ contrats }: { contrats: ContratLigne[] }) {
@@ -37,13 +38,14 @@ export function ContratsList({ contrats }: { contrats: ContratLigne[] }) {
   const [tab, setTab] = useState<'all' | 'pending' | 'signed'>('all')
   const [busy, setBusy] = useState<string | null>(null)
 
-  const pendingCount = contrats.filter((c) => !c.signeLe).length
-  const signedCount = contrats.filter((c) => c.signeLe).length
+  // Un contrat annulé (changement de formateur) n'est plus à signer
+  const pendingCount = contrats.filter((c) => !c.signeLe && !c.annule).length
+  const signedCount = contrats.filter((c) => c.signeLe && !c.annule).length
 
   const filtered = useMemo(() => {
     let result = contrats
-    if (tab === 'pending') result = result.filter((c) => !c.signeLe)
-    if (tab === 'signed') result = result.filter((c) => c.signeLe)
+    if (tab === 'pending') result = result.filter((c) => !c.signeLe && !c.annule)
+    if (tab === 'signed') result = result.filter((c) => c.signeLe && !c.annule)
     const q = search.trim().toLowerCase()
     if (q) {
       result = result.filter((c) =>
@@ -151,7 +153,14 @@ export function ContratsList({ contrats }: { contrats: ContratLigne[] }) {
                 </div>
               </div>
 
-              {c.signeLe ? (
+              {c.annule ? (
+                <span
+                  title="Contrat caduc — le formateur de la session a changé"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-100 text-surface-500 text-[11px] font-semibold shrink-0 line-through"
+                >
+                  Annulé
+                </span>
+              ) : c.signeLe ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold shrink-0">
                   <CheckCircle2 className="h-3 w-3" />
                   Signé le {formatDate(c.signeLe, { day: 'numeric', month: 'short' })}
@@ -176,7 +185,7 @@ export function ContratsList({ contrats }: { contrats: ContratLigne[] }) {
                 </span>
               )}
 
-              {!c.signeLe && (
+              {!c.signeLe && !c.annule && (
                 <button
                   onClick={() => handleResend(c)}
                   disabled={busy === c.id}

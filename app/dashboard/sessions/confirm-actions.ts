@@ -94,10 +94,14 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
   }
 
   // ── 3. Contrat formateur : créer ou réutiliser ──
+  // Le contrat doit désigner le formateur actuellement affecté : un contrat
+  // annulé après un changement de formateur ne doit pas être repris
   const { data: existingContrat } = await supabase
     .from('contrats_formateur')
     .select('id, signature_token')
     .eq('session_id', sessionId)
+    .eq('formateur_id', sess.formateur_id)
+    .neq('status', 'annule')
     .maybeSingle()
 
   let contratId = existingContrat?.id
@@ -379,8 +383,12 @@ export async function signContratFormateurPublicAction(
 export async function maybeValidateSession(supabase: any, sessionId: string, organizationId: string) {
   const { data: conv } = await supabase
     .from('conventions').select('status').eq('session_id', sessionId).maybeSingle()
+  // Plusieurs contrats peuvent coexister si le formateur a changé :
+  // seul le contrat en vigueur (non annulé) compte
   const { data: contrat } = await supabase
-    .from('contrats_formateur').select('status').eq('session_id', sessionId).maybeSingle()
+    .from('contrats_formateur').select('status')
+    .eq('session_id', sessionId).neq('status', 'annule')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
   const convOK = conv && ['signee_client', 'signee_complete'].includes(conv.status)
   const contratOK = contrat && ['signe_formateur', 'signe_complete'].includes(contrat.status)

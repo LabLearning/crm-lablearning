@@ -107,6 +107,8 @@ export default async function MonEspacePage() {
         .from('contrats_formateur')
         .select('id, numero, status, montant_ht, sent_at, signature_formateur_date, signature_token, signature_token_expires_at, session_id, poei_intervention_id, session:sessions(reference, date_debut, formation:formation_id(intitule)), intervention:poei_interventions(libelle, date_debut)')
         .eq('formateur_id', formateur.id)
+        // Un contrat annulé (la session a changé de formateur) n'a plus lieu d'être affiché
+        .neq('status', 'annule')
         .order('created_at', { ascending: false }),
     ])
 

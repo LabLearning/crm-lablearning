@@ -152,6 +152,8 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     .from('contrats_formateur')
     .select('id, numero, status, montant_ht, sent_at, signature_token, signature_formateur_date, signature_formateur_nom')
     .eq('session_id', params.id)
+    // Un contrat annulé (changement de formateur) n'est plus le contrat en vigueur
+    .neq('status', 'annule')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()

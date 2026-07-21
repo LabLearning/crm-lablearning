@@ -59,6 +59,9 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
       .from('contrats_formateur')
       .select('id, numero, status, signature_formateur_date, signature_formateur_nom, sent_at, montant_ht')
       .eq('session_id', sessionId)
+      .neq('status', 'annule')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
       : Promise.resolve({ data: null }),
   ])

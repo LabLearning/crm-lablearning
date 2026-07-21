@@ -240,10 +240,14 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
   let contratSignUrl: string | null = null
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+    // Un contrat annulé (changement de formateur) ne doit jamais être réutilisé,
+    // et un contrat ne vaut que pour le formateur qu'il désigne
     const { data: existingContrat } = await supabase
       .from('contrats_formateur')
       .select('id, signature_token, status')
       .eq('session_id', sessionId)
+      .eq('formateur_id', sess.formateur_id)
+      .neq('status', 'annule')
       .maybeSingle()
 
     let contratToken = existingContrat?.signature_token
@@ -459,6 +463,13 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
 
   // Nouveau formateur assigné → notification + email de proposition de mission
   if (formateurChanged && newFormateurId) {
+    // Le contrat de l'ancien formateur devient caduc : on l'annule avant tout,
+    // sinon il serait réutilisé tel quel pour le nouveau formateur
+    try {
+      const { cancelContratOnFormateurChange } = await import('@/lib/contrat-formateur')
+      await cancelContratOnFormateurChange(supabase, id, before?.formateur_id || null)
+    } catch (e) { console.error('[annulation contrat ancien formateur]', e) }
+
     try { await notifyFormateurOfMission(newFormateurId, id, supabase, session) }
     catch (e) { console.error('[notify mission update]', e) }
   }

@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   const [convRows, contratRows, inscRows] = sessionIds.length > 0
     ? await Promise.all([
         supabase.from('conventions').select('session_id, status').in('session_id', sessionIds),
-        supabase.from('contrats_formateur').select('session_id, signature_formateur_date').in('session_id', sessionIds),
+        supabase.from('contrats_formateur').select('session_id, signature_formateur_date').in('session_id', sessionIds).neq('status', 'annule'),
         supabase.from('inscriptions').select('session_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")'),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }] as any

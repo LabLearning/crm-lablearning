@@ -48,6 +48,7 @@ export default async function ContratsPage() {
       signePar: c.signature_formateur_nom,
       archive: Boolean(c.storage_path),
       lienExpire: Boolean(c.signature_token) && !tokenValide,
+      annule: c.status === 'annule',
     }
   })
 

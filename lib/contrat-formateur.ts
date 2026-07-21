@@ -44,6 +44,41 @@ async function loadContrat(supabase: any, contratId: string) {
 }
 
 /**
+ * Le formateur d'une session a changé : le contrat en cours ne vaut plus rien.
+ * On l'annule et on neutralise son lien de signature — sans quoi l'ancien
+ * formateur pourrait encore signer, et le nouveau se verrait proposer
+ * le contrat de son prédécesseur.
+ *
+ * Un contrat déjà signé est conservé tel quel (pièce contractuelle exécutée),
+ * seul son statut passe à « annulé ».
+ */
+export async function cancelContratOnFormateurChange(
+  supabase: any,
+  sessionId: string,
+  ancienFormateurId: string | null,
+): Promise<void> {
+  const { data: contrats } = await supabase
+    .from('contrats_formateur')
+    .select('id, status, signature_formateur_date')
+    .eq('session_id', sessionId)
+    .neq('status', 'annule')
+  if (!contrats?.length) return
+
+  for (const c of contrats) {
+    await supabase
+      .from('contrats_formateur')
+      .update({
+        status: 'annule',
+        // Le lien de signature doit mourir immédiatement
+        signature_token: null,
+        signature_token_expires_at: null,
+        notes: `Annulé : changement de formateur sur la session${ancienFormateurId ? '' : ''}.`,
+      })
+      .eq('id', c.id)
+  }
+}
+
+/**
  * (Re)met un contrat en signature : régénère le lien s'il a expiré,
  * repositionne la date d'envoi et renvoie l'email au formateur.
  */

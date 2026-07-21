@@ -78,6 +78,7 @@ export async function maybeDebloquerFacturation(
     })
     .eq('session_id', sessionId)
     .eq('organization_id', organizationId)
+    .neq('status', 'annule')                   // Pas de facturation sur un contrat caduc
     .eq('facturation_status', 'non_facturee')  // Évite d'écraser un statut plus avancé
 
   return !error

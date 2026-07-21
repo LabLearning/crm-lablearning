@@ -353,6 +353,9 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
     .from('contrats_formateur')
     .select('id, signature_formateur_date')
     .eq('session_id', sessionId)
+    .neq('status', 'annule')
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (contratExistant && !contratExistant.signature_formateur_date) {
@@ -432,6 +435,9 @@ export async function updateCoutFormateurAction(sessionId: string, montant: numb
     .from('contrats_formateur')
     .select('id, status, signature_formateur_date')
     .eq('session_id', sessionId)
+    .neq('status', 'annule')
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
   if (contrat && !contrat.signature_formateur_date && contrat.status !== 'signe_formateur') {
     await supabase.from('contrats_formateur').update({ montant_ht: montant }).eq('id', contrat.id)
