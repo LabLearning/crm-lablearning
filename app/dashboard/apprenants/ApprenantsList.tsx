@@ -87,6 +87,18 @@ function ApprenantForm({
         <Input id="poste" name="poste" label="Poste" defaultValue={apprenant?.poste || ''} />
       </div>
 
+      {/* État civil — repris du participant, exigé dans les dossiers de financement */}
+      <div className="grid grid-cols-2 gap-3">
+        <Input id="lieu_naissance" name="lieu_naissance" label="Lieu de naissance" defaultValue={(apprenant as any)?.lieu_naissance || ''} />
+        <Input id="numero_securite_sociale" name="numero_securite_sociale" label="N° de sécurité sociale" defaultValue={(apprenant as any)?.numero_securite_sociale || ''} />
+      </div>
+      <Input id="adresse" name="adresse" label="Adresse" defaultValue={(apprenant as any)?.adresse || ''} />
+      <div className="grid grid-cols-3 gap-3">
+        <Input id="code_postal" name="code_postal" label="Code postal" defaultValue={(apprenant as any)?.code_postal || ''} />
+        <Input id="ville" name="ville" label="Ville" defaultValue={(apprenant as any)?.ville || ''} />
+        <Input id="type_contrat" name="type_contrat" label="Type de contrat" defaultValue={(apprenant as any)?.type_contrat || ''} placeholder="CDI, CDD, Alternance…" />
+      </div>
+
       {/* Handicap section (Qualiopi C6, Indicateur 26) */}
       <div className="pt-2 border-t border-surface-100">
         <label className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer">

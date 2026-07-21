@@ -679,7 +679,10 @@ export async function addLeadParticipantAction(leadId: string, formData: FormDat
       telephone: (formData.get('telephone') as string) || null,
       poste: (formData.get('poste') as string) || null,
       date_naissance: (formData.get('date_naissance') as string) || null,
+      lieu_naissance: (formData.get('lieu_naissance') as string) || null,
       adresse: (formData.get('adresse') as string) || null,
+      code_postal: (formData.get('code_postal') as string) || null,
+      ville: (formData.get('ville') as string) || null,
       type_contrat: (formData.get('type_contrat') as string) || null,
       numero_securite_sociale: (formData.get('numero_securite_sociale') as string) || null,
       niveau_diplome: (formData.get('niveau_diplome') as string) || null,
@@ -706,7 +709,10 @@ export async function updateLeadParticipantAction(id: string, formData: FormData
       telephone: (formData.get('telephone') as string) || null,
       poste: (formData.get('poste') as string) || null,
       date_naissance: (formData.get('date_naissance') as string) || null,
+      lieu_naissance: (formData.get('lieu_naissance') as string) || null,
       adresse: (formData.get('adresse') as string) || null,
+      code_postal: (formData.get('code_postal') as string) || null,
+      ville: (formData.get('ville') as string) || null,
       type_contrat: (formData.get('type_contrat') as string) || null,
       numero_securite_sociale: (formData.get('numero_securite_sociale') as string) || null,
       niveau_diplome: (formData.get('niveau_diplome') as string) || null,
@@ -929,7 +935,15 @@ export async function generateConventionFromLeadAction(leadId: string): Promise<
         telephone: p.telephone || null,
         entreprise: lead.entreprise || null,
         poste: p.poste || null,
+        // État civil complet : ces données sont exigées par les financeurs,
+        // les perdre à la conversion obligeait à les ressaisir
         date_naissance: p.date_naissance || null,
+        lieu_naissance: p.lieu_naissance || null,
+        numero_securite_sociale: p.numero_securite_sociale || null,
+        adresse: p.adresse || null,
+        code_postal: p.code_postal || null,
+        ville: p.ville || null,
+        type_contrat: p.type_contrat || null,
       })
       .select('id')
       .single()
@@ -1217,6 +1231,11 @@ export async function generateConventionForFormationAction(leadFormationId: stri
       civilite: p.civilite || null, prenom: p.prenom || p.nom, nom: p.nom,
       email: p.email || null, telephone: p.telephone || null, entreprise: lead.entreprise || null,
       poste: p.poste || null, date_naissance: p.date_naissance || null,
+      // Même report d'état civil que dans la conversion globale du lead
+      lieu_naissance: p.lieu_naissance || null,
+      numero_securite_sociale: p.numero_securite_sociale || null,
+      adresse: p.adresse || null, code_postal: p.code_postal || null, ville: p.ville || null,
+      type_contrat: p.type_contrat || null,
     }).select('id').single()
     if (appr) apprenantIds.push(appr.id)
   }

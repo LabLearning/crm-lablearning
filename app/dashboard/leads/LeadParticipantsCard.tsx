@@ -8,7 +8,9 @@ import { getLeadParticipantsAction, addLeadParticipantAction, updateLeadParticip
 interface Participant {
   id: string; civilite: string | null; prenom: string | null; nom: string
   email: string | null; telephone: string | null; poste: string | null
-  date_naissance: string | null; adresse: string | null; type_contrat: string | null
+  date_naissance: string | null; lieu_naissance: string | null
+  adresse: string | null; code_postal: string | null; ville: string | null
+  type_contrat: string | null
   numero_securite_sociale: string | null; niveau_diplome: string | null
 }
 
@@ -52,16 +54,27 @@ function ParticipantForm({ participant, busy, onSubmit, onCancel }: {
         <Input name="email" type="email" placeholder="Email" defaultValue={p?.email || ''} />
         <Input name="telephone" placeholder="Téléphone" defaultValue={p?.telephone || ''} />
       </div>
+      {/* État civil — exigé dans les dossiers de prise en charge */}
       <div className="grid grid-cols-2 gap-2 items-end">
         <div>
           <label className="block text-2xs text-surface-400 mb-0.5">Date de naissance</label>
           <Input name="date_naissance" type="date" defaultValue={p?.date_naissance || ''} />
         </div>
-        <Select name="type_contrat" options={CONTRAT_OPTIONS} defaultValue={p?.type_contrat || ''} />
+        <div>
+          <label className="block text-2xs text-surface-400 mb-0.5">Lieu de naissance</label>
+          <Input name="lieu_naissance" placeholder="Ville de naissance" defaultValue={p?.lieu_naissance || ''} />
+        </div>
       </div>
+      <Input name="numero_securite_sociale" placeholder="N° de sécurité sociale" defaultValue={p?.numero_securite_sociale || ''} />
       <Input name="adresse" placeholder="Adresse" defaultValue={p?.adresse || ''} />
+      <div className="grid grid-cols-3 gap-2">
+        <Input name="code_postal" placeholder="Code postal" defaultValue={p?.code_postal || ''} />
+        <div className="col-span-2">
+          <Input name="ville" placeholder="Ville" defaultValue={p?.ville || ''} />
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-2">
-        <Input name="numero_securite_sociale" placeholder="N° sécurité sociale" defaultValue={p?.numero_securite_sociale || ''} />
+        <Select name="type_contrat" options={CONTRAT_OPTIONS} defaultValue={p?.type_contrat || ''} />
         <Select name="niveau_diplome" options={NIVEAU_OPTIONS} defaultValue={p?.niveau_diplome || ''} />
       </div>
       <div className="flex justify-end gap-2">

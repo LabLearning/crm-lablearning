@@ -14,6 +14,17 @@ import { Input } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
 const MANAGER_ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial']
+const CONTRAT_OPTIONS = [
+  { value: '', label: 'Type de contrat' },
+  { value: 'Dirigeant', label: 'Dirigeant' },
+  { value: 'CDI', label: 'CDI' },
+  { value: 'CDD', label: 'CDD' },
+  { value: 'Intérim', label: 'Intérim' },
+  { value: 'Alternance', label: 'Alternance / Apprentissage' },
+  { value: 'Stage', label: 'Stage' },
+  { value: "Demandeur d'emploi", label: "Demandeur d'emploi" },
+  { value: 'Autre', label: 'Autre' },
+]
 const PLANIF_LABELS: Record<string, string> = { a_planifier: 'À planifier', date_confirmee: 'Date confirmée', autre_date_proposee: 'Autre date proposée', convention_generee: 'Convention générée' }
 const PLANIF_VARIANTS: Record<string, 'default' | 'success' | 'warning' | 'info'> = { a_planifier: 'warning', date_confirmee: 'success', autre_date_proposee: 'default', convention_generee: 'info' }
 
@@ -292,12 +303,35 @@ function FormationRow({ lf, pool, formateurs, isManager, onChange, onDelete, onA
               <Input name="prenom" placeholder="Prénom" />
               <Input name="nom" placeholder="Nom *" />
             </div>
-            <Input name="email" type="email" placeholder="Email" />
+            <div className="grid grid-cols-2 gap-2">
+              <Input name="email" type="email" placeholder="Email" />
+              <Input name="telephone" placeholder="Téléphone" />
+            </div>
+            {/* État civil exigé par les financeurs : autant le saisir tout de suite */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-2xs text-surface-400 mb-0.5">Date de naissance</label>
+                <Input name="date_naissance" type="date" />
+              </div>
+              <div>
+                <label className="block text-2xs text-surface-400 mb-0.5">Lieu de naissance</label>
+                <Input name="lieu_naissance" placeholder="Ville de naissance" />
+              </div>
+            </div>
+            <Input name="numero_securite_sociale" placeholder="N° de sécurité sociale" />
+            <Input name="adresse" placeholder="Adresse" />
+            <div className="grid grid-cols-3 gap-2">
+              <Input name="code_postal" placeholder="Code postal" />
+              <div className="col-span-2">
+                <Input name="ville" placeholder="Ville" />
+              </div>
+            </div>
+            <Select name="type_contrat" options={CONTRAT_OPTIONS} />
             <div className="flex justify-end gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => setShowAddPart(false)}>Annuler</Button>
               <Button type="submit" size="sm" isLoading={addingPart}>Ajouter à cette formation</Button>
             </div>
-            <p className="text-2xs text-surface-400">Détails complets (date de naissance, n° sécu…) modifiables dans « Participants prévus ».</p>
+            <p className="text-2xs text-surface-400">Seul le nom est obligatoire — le reste est modifiable ensuite dans « Participants prévus ».</p>
           </form>
         )}
       </div>
