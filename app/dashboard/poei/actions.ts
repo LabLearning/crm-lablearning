@@ -383,7 +383,7 @@ export async function sendAttestationsEntreeAction(
       to: a.email,
       orgName: org?.name || 'Lab Learning',
       orgEmail: (org as any)?.email_contact || org?.email,
-      orgLogoUrl: (org as any)?.logo_url,
+      orgLogoUrl: (orgRaw as any)?.logo_url,  // logo clair : en-tête email sur fond vert
       qualiopiCertified: (org as any)?.is_qualiopi !== false,
       recipientName: `${a.prenom || ''} ${a.nom || ''}`.trim(),
       subject: custom?.subject?.trim() || `Votre attestation d'entrée en formation — ${formation.intitule}`,
@@ -639,7 +639,7 @@ export async function sendGroupEmailToCandidatsAction(
       to: a.email,
       orgName: org?.name || 'Lab Learning',
       orgEmail: (org as any)?.email_contact || org?.email,
-      orgLogoUrl: (org as any)?.logo_url,
+      orgLogoUrl: (orgRaw as any)?.logo_url,  // logo clair : en-tête email sur fond vert
       qualiopiCertified: (org as any)?.is_qualiopi !== false,
       recipientName: nomComplet,
       subject: fill(payload.subject),

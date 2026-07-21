@@ -182,7 +182,7 @@ export async function signConventionPublicAction(
           to: toEmails,
           orgName: orgFull?.name || 'Lab Learning',
           orgEmail,
-          orgLogoUrl: (orgFull as any)?.logo_url,
+          orgLogoUrl: (await (await import('@/lib/pdf/org-logo')).resolveEmailLogoUrl(supabase, orgFull)) || undefined,
           qualiopiCertified: (orgFull as any)?.is_qualiopi !== false,
           recipientName: cli?.raison_sociale || 'Madame, Monsieur',
           subject: `Convention ${(convFull as any).numero} signée — copie exécutée`,

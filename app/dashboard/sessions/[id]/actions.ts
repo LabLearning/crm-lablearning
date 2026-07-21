@@ -287,11 +287,14 @@ export async function sendConventionForSignatureAction(
       const buffer = await renderToBuffer(createElement(ConventionPDF, { convention: convFull, org: orgFull }) as any)
 
       const { sendDocumentEmail } = await import('@/lib/email')
+      // orgFull porte le logo des PDF (vert) : pour l'email il faut le logo clair
+      const { resolveEmailLogoUrl } = await import('@/lib/pdf/org-logo')
+      const emailLogo = await resolveEmailLogoUrl(supabase, orgFull)
       await sendDocumentEmail({
         to: toEmail,
         orgName: orgFull?.name || 'Lab Learning',
         orgEmail: orgFull?.email_contact || orgFull?.email,
-        orgLogoUrl: orgFull?.logo_url,
+        orgLogoUrl: emailLogo || undefined,
         qualiopiCertified: orgFull?.is_qualiopi !== false,
         recipientName: toName,
         subject: `Convention de formation ${convFull.numero} — signature requise`,

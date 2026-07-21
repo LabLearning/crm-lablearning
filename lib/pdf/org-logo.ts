@@ -30,3 +30,23 @@ export async function withDocumentLogo(supabase: any, org: any): Promise<any> {
   const logo = await resolveDocumentLogoUrl(supabase, org)
   return { ...org, logo_url: logo }
 }
+
+// Résout le logo à utiliser dans les EN-TÊTES D'EMAIL (fond vert foncé) → logo
+// clair/blanc. Symétrique de resolveDocumentLogoUrl : si l'org qu'on nous passe
+// a déjà été adaptée aux PDF (logo vert), on retrouve la variante blanche.
+export async function resolveEmailLogoUrl(supabase: any, org: any): Promise<string | null> {
+  const current: string | null = org?.logo_url || null
+  if (!current) return null
+  // Déjà la variante blanche → on la garde.
+  if (current.includes('/logo-white')) return current
+
+  const orgId = org?.id
+  if (!orgId) return current
+
+  const { data: files } = await supabase.storage.from('organisation').list(orgId, { limit: 100 })
+  const white = (files || []).find((f: any) => f.name.startsWith('logo-white'))
+  if (!white) return current
+
+  const { data: pub } = supabase.storage.from('organisation').getPublicUrl(`${orgId}/${white.name}`)
+  return pub?.publicUrl || current
+}
