@@ -10,6 +10,7 @@ import { PoeiStatusBar } from './PoeiStatusBar'
 import { PoeiEditor } from './PoeiEditor'
 import { PoeiCandidats } from './PoeiCandidats'
 import { PoeiEmailHistory } from './PoeiEmailHistory'
+import { PoeiInterventions } from './PoeiInterventions'
 import type { Poei, PoeiCandidat } from '@/lib/types/poei'
 
 export const dynamic = 'force-dynamic'
@@ -54,6 +55,22 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   ])
   const candidats = (candidatsRaw || []) as PoeiCandidat[]
 
+  // Interventions formateurs (plusieurs formateurs possibles sur un POEI)
+  const [{ data: interventions }, { data: formateursList }] = await Promise.all([
+    supabase
+      .from('poei_interventions')
+      .select('*, formateur:formateurs(prenom, nom), contrat:contrats_formateur(id, numero, status, signature_formateur_date)')
+      .eq('poei_id', params.id)
+      .order('ordre', { ascending: true })
+      .order('date_debut', { ascending: true }),
+    supabase
+      .from('formateurs')
+      .select('id, prenom, nom, tarif_journalier, zone_intervention')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('nom'),
+  ])
+
   // Devis POEI existants → map candidat_id → devis (pour le bouton de téléchargement par personne)
   const { data: devisPoei } = await supabase
     .from('devis')
@@ -97,6 +114,16 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       </div>
 
       <PoeiStatusBar poeiId={p.id} statut={p.statut} />
+
+      <PoeiInterventions
+        poeiId={p.id}
+        interventions={((interventions || []) as any[]).map((iv) => ({
+          ...iv,
+          contrat: Array.isArray(iv.contrat) ? iv.contrat[0] || null : iv.contrat || null,
+        }))}
+        formateurs={(formateursList || []) as any[]}
+        dureeTotale={p.duree_heures}
+      />
 
       <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} clientNom={p.client?.raison_sociale || null} clientId={p.client_id} devisByCandidat={devisByCandidat} />
 

@@ -713,3 +713,279 @@ export async function savePoeiEmailTemplateAction(
   revalidatePath('/dashboard/poei')
   return { success: true, data: { slug: finalSlug } }
 }
+
+// ─── Interventions formateurs sur un POEI ─────────────────────────────────
+// Un POEI peut être assuré par plusieurs formateurs, chacun sur une période
+// et un volume d'heures. Circuit : proposition → acceptation → contrat.
+
+export async function addPoeiInterventionAction(poeiId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  const supabase = await createServiceRoleClient()
+
+  const libelle = str(formData, 'libelle')
+  const formateur_id = str(formData, 'formateur_id')
+  if (!libelle) return { success: false, errors: { libelle: ['Intitulé requis'] } }
+
+  const { count } = await supabase.from('poei_interventions')
+    .select('*', { count: 'exact', head: true }).eq('poei_id', poeiId)
+
+  const nbHeures = num(formData, 'nb_heures')
+  const tarifJour = num(formData, 'tarif_journalier')
+  const montant = num(formData, 'montant_ht')
+
+  const { data, error } = await supabase.from('poei_interventions').insert({
+    organization_id: orgId, poei_id: poeiId, formateur_id,
+    libelle, date_debut: str(formData, 'date_debut'), date_fin: str(formData, 'date_fin'),
+    nb_heures: nbHeures, tarif_journalier: tarifJour, montant_ht: montant,
+    mission_status: formateur_id ? 'pending' : 'not_required',
+    mission_proposed_at: formateur_id ? new Date().toISOString() : null,
+    mission_proposed_by: formateur_id ? session.user.id : null,
+    ordre: count || 0,
+    notes: str(formData, 'notes'),
+    created_by: session.user.id,
+  }).select('id').single()
+  if (error || !data) return { success: false, error: "Erreur lors de l'ajout de l'intervention" }
+
+  // Notifie le formateur (notif in-app + email) comme pour une session
+  if (formateur_id) {
+    try { await notifyFormateurIntervention(supabase, session, data.id) }
+    catch (e) { console.error('[notif intervention]', e) }
+  }
+
+  await logAudit({ action: 'add_intervention', entity_type: 'poei', entity_id: poeiId })
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  return { success: true, data }
+}
+
+export async function updatePoeiInterventionAction(id: string, poeiId: string, formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+
+  const { data: before } = await supabase.from('poei_interventions')
+    .select('formateur_id').eq('id', id).eq('organization_id', session.organization.id).single()
+
+  const formateur_id = str(formData, 'formateur_id')
+  const changedFormateur = !!formateur_id && formateur_id !== before?.formateur_id
+
+  const { error } = await supabase.from('poei_interventions').update({
+    formateur_id,
+    libelle: str(formData, 'libelle'),
+    date_debut: str(formData, 'date_debut'), date_fin: str(formData, 'date_fin'),
+    nb_heures: num(formData, 'nb_heures'),
+    tarif_journalier: num(formData, 'tarif_journalier'),
+    montant_ht: num(formData, 'montant_ht'),
+    notes: str(formData, 'notes'),
+    // Nouveau formateur → nouvelle proposition de mission
+    ...(changedFormateur ? {
+      mission_status: 'pending',
+      mission_proposed_at: new Date().toISOString(),
+      mission_proposed_by: session.user.id,
+      mission_responded_at: null,
+    } : {}),
+    updated_at: new Date().toISOString(),
+  }).eq('id', id).eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  if (changedFormateur) {
+    try { await notifyFormateurIntervention(supabase, session, id) }
+    catch (e) { console.error('[notif intervention]', e) }
+  }
+
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  return { success: true }
+}
+
+export async function removePoeiInterventionAction(id: string, poeiId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+  const { error } = await supabase.from('poei_interventions')
+    .delete().eq('id', id).eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors de la suppression' }
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  return { success: true }
+}
+
+/** Notif + email de proposition de mission au formateur d'une intervention */
+async function notifyFormateurIntervention(supabase: any, session: any, interventionId: string) {
+  const { data: iv } = await supabase
+    .from('poei_interventions')
+    .select('*, formateur:formateurs(user_id, prenom, nom, email), poei:poei(numero, client:clients(raison_sociale), formation:formations(intitule))')
+    .eq('id', interventionId).single()
+  if (!iv?.formateur) return
+
+  const f: any = iv.formateur
+  const p: any = iv.poei
+  const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : ''
+  const periode = iv.date_debut ? `du ${fmtFr(iv.date_debut)} au ${fmtFr(iv.date_fin || iv.date_debut)}` : ''
+  const contexte = `${p?.formation?.intitule || 'POEI'}${p?.client?.raison_sociale ? ` — ${p.client.raison_sociale}` : ''}`
+
+  const { createNotification, sendDocumentEmail } = await import('@/lib/email')
+
+  if (f.user_id) {
+    await createNotification({
+      organizationId: session.organization.id,
+      userId: f.user_id,
+      titre: 'Nouvelle mission POEI proposée',
+      message: `${iv.libelle} (${contexte}) ${periode}. Acceptez ou refusez depuis votre espace.`,
+      type: 'session',
+      lienUrl: '/mon-espace',
+      lienLabel: 'Voir la mission',
+      entityType: 'poei_intervention',
+      entityId: interventionId,
+    })
+  }
+
+  if (f.email) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+    const { data: org } = await supabase.from('organizations')
+      .select('name, email, email_contact, logo_url, is_qualiopi').eq('id', session.organization.id).single()
+    await sendDocumentEmail({
+      to: f.email,
+      orgName: org?.name || 'Lab Learning',
+      orgEmail: org?.email_contact || org?.email,
+      orgLogoUrl: org?.logo_url,
+      qualiopiCertified: org?.is_qualiopi !== false,
+      recipientName: f.prenom || 'Bonjour',
+      subject: `Nouvelle mission POEI — ${iv.libelle}`,
+      docTitle: 'Proposition de mission POEI',
+      intro: `Une intervention vous est proposée sur le parcours POEI ${contexte}. Connectez-vous à votre espace pour l'accepter ou la refuser.`,
+      metadata: [
+        ['Intervention', iv.libelle],
+        ...(periode ? [['Période', periode] as [string, string]] : []),
+        ...(iv.nb_heures ? [['Volume', `${iv.nb_heures} h`] as [string, string]] : []),
+        ...(iv.montant_ht ? [['Rémunération', `${Number(iv.montant_ht).toLocaleString('fr-FR')} €`] as [string, string]] : []),
+      ],
+      ctaLabel: 'Voir la mission dans mon espace',
+      ctaUrl: `${appUrl}/mon-espace`,
+      footerNote: 'Merci de répondre rapidement afin de confirmer le planning du parcours.',
+    })
+  }
+}
+
+/** Le formateur accepte son intervention POEI → son contrat de prestation est généré */
+export async function acceptPoeiInterventionAction(interventionId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: iv } = await supabase
+    .from('poei_interventions')
+    .select('*, poei:poei(id, numero, organization_id, formation:formations(intitule, duree_jours), client:clients(raison_sociale))')
+    .eq('id', interventionId).single()
+  if (!iv) return { success: false, error: 'Intervention introuvable' }
+
+  const { data: formateur } = await supabase
+    .from('formateurs').select('id, prenom, nom, email, tarif_journalier')
+    .eq('user_id', session.user.id).single()
+  if (!formateur || formateur.id !== iv.formateur_id) {
+    return { success: false, error: "Cette mission ne vous est pas adressée" }
+  }
+  if (iv.mission_status !== 'pending') return { success: false, error: "Cette mission n'est plus en attente" }
+
+  await supabase.from('poei_interventions').update({
+    mission_status: 'accepted', mission_responded_at: new Date().toISOString(),
+  }).eq('id', interventionId)
+
+  // Contrat de prestation propre à l'intervention
+  let contratSignUrl: string | null = null
+  try {
+    const orgId = iv.organization_id
+    const { data: existing } = await supabase
+      .from('contrats_formateur').select('id, signature_token, status')
+      .eq('poei_intervention_id', interventionId).maybeSingle()
+
+    let token = existing?.signature_token
+    if (!existing) {
+      const { count } = await supabase.from('contrats_formateur')
+        .select('*', { count: 'exact', head: true }).eq('organization_id', orgId)
+      const numero = `CT-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+      const { randomBytes, createHash } = await import('crypto')
+      token = createHash('sha256').update(randomBytes(32)).digest('hex')
+      const expires = new Date(); expires.setDate(expires.getDate() + 30)
+      await supabase.from('contrats_formateur').insert({
+        organization_id: orgId,
+        poei_intervention_id: interventionId,
+        formateur_id: formateur.id,
+        numero, status: 'envoye',
+        tarif_journalier: iv.tarif_journalier ?? formateur.tarif_journalier ?? null,
+        nombre_jours: null,
+        montant_ht: iv.montant_ht ?? null,
+        signature_token: token,
+        signature_token_expires_at: expires.toISOString(),
+        sent_at: new Date().toISOString(),
+        created_by: iv.mission_proposed_by || session.user.id,
+      })
+    }
+    if (token && existing?.status !== 'signe_formateur') {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+      contratSignUrl = `${appUrl}/contrat-formateur/${token}/signer`
+    }
+  } catch (e) { console.error('[accept intervention — contrat]', e) }
+
+  // Notifie le gestionnaire qui a proposé
+  if (iv.mission_proposed_by) {
+    const { createNotification } = await import('@/lib/email')
+    await createNotification({
+      organizationId: iv.organization_id,
+      userId: iv.mission_proposed_by,
+      titre: 'Mission POEI acceptée',
+      message: `${formateur.prenom} ${formateur.nom} a accepté « ${iv.libelle} » (${(iv as any).poei?.numero || 'POEI'}).`,
+      type: 'session',
+      lienUrl: `/dashboard/poei/${iv.poei_id}`,
+      lienLabel: 'Voir le projet',
+      entityType: 'poei',
+      entityId: iv.poei_id,
+    })
+  }
+
+  await logAudit({ action: 'accept_poei_intervention', entity_type: 'poei', entity_id: iv.poei_id })
+  revalidatePath('/mon-espace')
+  revalidatePath(`/dashboard/poei/${iv.poei_id}`)
+  return { success: true, data: { contratSignUrl } }
+}
+
+/** Le formateur refuse son intervention POEI */
+export async function refusePoeiInterventionAction(interventionId: string, motif: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: iv } = await supabase.from('poei_interventions')
+    .select('id, poei_id, organization_id, formateur_id, libelle, mission_status, mission_proposed_by')
+    .eq('id', interventionId).single()
+  if (!iv) return { success: false, error: 'Intervention introuvable' }
+
+  const { data: formateur } = await supabase
+    .from('formateurs').select('id, prenom, nom').eq('user_id', session.user.id).single()
+  if (!formateur || formateur.id !== iv.formateur_id) {
+    return { success: false, error: "Cette mission ne vous est pas adressée" }
+  }
+  if (iv.mission_status !== 'pending') return { success: false, error: "Cette mission n'est plus en attente" }
+
+  await supabase.from('poei_interventions').update({
+    mission_status: 'refused', mission_responded_at: new Date().toISOString(),
+    mission_response_comment: motif || null,
+  }).eq('id', interventionId)
+
+  if (iv.mission_proposed_by) {
+    const { createNotification } = await import('@/lib/email')
+    await createNotification({
+      organizationId: iv.organization_id,
+      userId: iv.mission_proposed_by,
+      titre: 'Mission POEI refusée',
+      message: `${formateur.prenom} ${formateur.nom} a refusé « ${iv.libelle} ». Motif : ${motif || 'non précisé'}. Affectez un autre formateur.`,
+      type: 'session',
+      lienUrl: `/dashboard/poei/${iv.poei_id}`,
+      lienLabel: 'Voir le projet',
+      entityType: 'poei',
+      entityId: iv.poei_id,
+    })
+  }
+
+  await logAudit({ action: 'refuse_poei_intervention', entity_type: 'poei', entity_id: iv.poei_id })
+  revalidatePath('/mon-espace')
+  revalidatePath(`/dashboard/poei/${iv.poei_id}`)
+  return { success: true }
+}

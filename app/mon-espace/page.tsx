@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { AccountNotLinked } from '@/components/dashboard/AccountNotLinked'
 import { MissionPendingCard } from './MissionPendingCard'
+import { InterventionPendingCard } from './InterventionPendingCard'
 import { TachesFormateurSection } from './TachesFormateurSection'
 import Link from 'next/link'
 import {
@@ -50,6 +51,7 @@ export default async function MonEspacePage() {
       { data: pendingMissions },
       { data: sessions },
       { data: sessionsAvecTaches },
+      { data: pendingInterventions },
     ] = await Promise.all([
       // Missions à valider (proposées en attente de réponse)
       supabase
@@ -83,6 +85,13 @@ export default async function MonEspacePage() {
         .in('status', ['en_attente_signatures', 'validee', 'en_cours', 'terminee'])
         .order('date_debut', { ascending: false })
         .limit(15),
+      // Interventions POEI proposées (plusieurs formateurs par parcours)
+      supabase
+        .from('poei_interventions')
+        .select('id, libelle, date_debut, date_fin, nb_heures, montant_ht, mission_proposed_at, poei:poei(numero, formation:formations(intitule), client:clients(raison_sociale))')
+        .eq('formateur_id', formateur.id)
+        .eq('mission_status', 'pending')
+        .order('date_debut', { ascending: true }),
     ])
 
     const tachesSessions = (sessionsAvecTaches || [])
@@ -130,6 +139,26 @@ export default async function MonEspacePage() {
                 formation_intitule: m.formation?.intitule || 'Formation',
                 proposed_at: m.mission_proposed_at,
                 proposed_by_name: m.proposer ? `${m.proposer.first_name} ${m.proposer.last_name}` : null,
+              }} />
+            ))}
+          </div>
+        )}
+
+        {/* Missions POEI proposées (interventions sur un parcours) */}
+        {(pendingInterventions || []).length > 0 && (
+          <div className="space-y-3">
+            <div className="text-xs font-semibold text-sky-700 uppercase tracking-wider">
+              {(pendingInterventions || []).length} mission{(pendingInterventions || []).length > 1 ? 's' : ''} POEI en attente de votre réponse
+            </div>
+            {(pendingInterventions || []).map((iv: any) => (
+              <InterventionPendingCard key={iv.id} intervention={{
+                id: iv.id,
+                libelle: iv.libelle,
+                date_debut: iv.date_debut,
+                date_fin: iv.date_fin,
+                nb_heures: iv.nb_heures,
+                montant_ht: iv.montant_ht,
+                contexte: [iv.poei?.formation?.intitule, iv.poei?.client?.raison_sociale].filter(Boolean).join(' — ') || iv.poei?.numero || 'Parcours POEI',
               }} />
             ))}
           </div>
