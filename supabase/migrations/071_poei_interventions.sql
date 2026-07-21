@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS poei_interventions (
   date_debut date,
   date_fin date,
   nb_heures numeric,
+  -- Lieu propre à chaque période (salle de formation, restaurant d'affectation…)
+  lieu text,
+  adresse text,
+  code_postal text,
+  ville text,
+  horaires text,                           -- « 9h00 - 17h00 », « service matin ou soir »
   tarif_journalier numeric,
   montant_ht numeric,                      -- rémunération de l'intervention
   -- pending | accepted | refused | not_required

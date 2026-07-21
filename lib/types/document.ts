@@ -4,7 +4,7 @@
 
 import type { BadgeVariant } from '@/lib/types'
 
-export type DocumentType = 'devis' | 'convention' | 'contrat' | 'convocation' | 'programme' | 'reglement_interieur' | 'emargement' | 'attestation_fin' | 'attestation_assiduite' | 'certificat_realisation' | 'facture' | 'avoir' | 'autre'
+export type DocumentType = 'devis' | 'convention' | 'contrat' | 'convocation' | 'programme' | 'reglement_interieur' | 'emargement' | 'attestation_fin' | 'attestation_assiduite' | 'certificat_realisation' | 'facture' | 'avoir' | 'kbis' | 'courrier_opco' | 'attestation_urssaf' | 'rib' | 'piece_identite' | 'assurance' | 'statuts' | 'autre'
 export type SignatureStatus = 'en_attente' | 'signe' | 'refuse' | 'expire'
 
 export interface Document {
@@ -52,8 +52,16 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   devis: 'Devis', convention: 'Convention', contrat: 'Contrat', convocation: 'Convocation',
   programme: 'Programme', reglement_interieur: 'Règlement intérieur', emargement: 'Émargement',
   attestation_fin: 'Attestation de fin', attestation_assiduite: 'Attestation d\'assiduité',
-  certificat_realisation: 'Certificat de réalisation', facture: 'Facture', avoir: 'Avoir', autre: 'Autre',
+  certificat_realisation: 'Certificat de réalisation', facture: 'Facture', avoir: 'Avoir',
+  kbis: 'Kbis', courrier_opco: 'Courrier OPCO / AKTO', attestation_urssaf: 'Attestation URSSAF',
+  rib: 'RIB', piece_identite: 'Pièce d\'identité', assurance: 'Attestation d\'assurance',
+  statuts: 'Statuts', autre: 'Autre',
 }
+
+/** Types pertinents pour les pièces administratives d'une société (fiche client) */
+export const DOCUMENT_TYPES_ENTREPRISE: DocumentType[] = [
+  'kbis', 'courrier_opco', 'attestation_urssaf', 'rib', 'assurance', 'statuts', 'contrat', 'autre',
+]
 
 export const SIGNATURE_STATUS_LABELS: Record<SignatureStatus, string> = {
   en_attente: 'En attente', signe: 'Signé', refuse: 'Refusé', expire: 'Expiré',
