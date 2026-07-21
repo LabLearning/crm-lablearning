@@ -83,6 +83,15 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
         status: 'inscrit',
       }))
     )
+    // Un apprenant créé à la volée sans client hérite de celui de la session,
+    // sinon il n'apparaît sur aucune fiche client
+    if (parsed.data.client_id) {
+      await supabase
+        .from('apprenants')
+        .update({ client_id: parsed.data.client_id })
+        .in('id', apprenantIds)
+        .is('client_id', null)
+    }
   }
 
   // Lier les formations multiples (table de jonction session_formations)
@@ -499,6 +508,15 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
           status: 'inscrit',
         }))
       )
+      // Un apprenant créé à la volée sans client hérite de celui de la session
+      if (parsed.data.client_id) {
+        await supabase
+          .from('apprenants')
+          .update({ client_id: parsed.data.client_id })
+          .in('id', toInsert)
+          .is('client_id', null)
+      }
+
       // Convention déjà envoyée/signée ? → avenant automatique
       try {
         const { syncConventionAvenant } = await import('@/lib/convention-avenants')

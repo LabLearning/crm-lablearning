@@ -1214,11 +1214,18 @@ export async function generateConventionForFormationAction(leadFormationId: stri
   // 2. Participants AFFECTÉS à cette formation
   const { data: assignments } = await supabase.from('lead_formation_participants').select('lead_participant_id').eq('lead_formation_id', leadFormationId)
   const assignedIds = (assignments || []).map((a) => a.lead_participant_id)
-  let participants: any[] = []
-  if (assignedIds.length > 0) {
-    const { data: parts } = await supabase.from('lead_participants').select('*').in('id', assignedIds)
-    participants = parts || []
+
+  // Une convention sans stagiaire n'a aucune valeur : on bloque plutôt que de
+  // générer un document vide et une session sans inscrit
+  if (assignedIds.length === 0) {
+    return {
+      success: false,
+      error: 'Aucun participant n\'est affecté à cette formation. Cochez les stagiaires concernés dans la liste des participants avant de générer la convention.',
+    }
   }
+
+  const { data: parts } = await supabase.from('lead_participants').select('*').in('id', assignedIds)
+  const participants: any[] = parts || []
 
   const apprenantIds: string[] = []
   for (const p of participants) {
@@ -1241,11 +1248,13 @@ export async function generateConventionForFormationAction(leadFormationId: stri
   }
 
   // 3. Inscriptions dans la session de CETTE formation
-  if (lf.session_id && apprenantIds.length > 0) {
+  if (lf.session_id) {
     for (const aid of apprenantIds) {
       const { data: ex } = await supabase.from('inscriptions').select('id').eq('session_id', lf.session_id).eq('apprenant_id', aid).maybeSingle()
       if (!ex) await supabase.from('inscriptions').insert({ organization_id: session.organization.id, session_id: lf.session_id, apprenant_id: aid, status: 'inscrit' })
     }
+    // Le rattachement au client ne dépend pas des participants : la session est
+    // créée depuis le lead avec client_id nul, c'est ici qu'elle le récupère
     await supabase.from('sessions').update({ client_id: clientId }).eq('id', lf.session_id)
   }
 
