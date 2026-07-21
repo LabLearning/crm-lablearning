@@ -166,14 +166,28 @@ export function ContratFormateurPDF({ formateur, org, session, contrat, interven
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{mission ? 'Article 9' : 'Article 8'} — Protection des données (RGPD)</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 9' : 'Article 8'} — Non-sollicitation de clientèle et exclusivité commerciale</PdfSectionTitle>
+          <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
+            {`Le prestataire reconnaît expressément que les clients, entreprises bénéficiaires, apprenants et prospects auprès desquels il intervient, ou dont il a connaissance à l'occasion de ses missions, constituent la clientèle propre de ${org.name} et demeurent sa propriété commerciale exclusive.`}{'\n\n'}
+            {`En conséquence, pendant toute la durée du présent contrat et pendant vingt-quatre (24) mois suivant la fin de sa dernière mission, le prestataire s'interdit, directement ou indirectement, par personne physique ou morale interposée :`}{'\n'}
+            {`- de démarcher, solliciter ou contacter à des fins commerciales ces clients et bénéficiaires ;`}{'\n'}
+            {`- de leur proposer, à titre personnel ou pour le compte d'un tiers, des prestations de formation ou de conseil de même nature ou concurrentes ;`}{'\n'}
+            {`- de conclure avec eux une convention de formation, un contrat de sous-traitance ou tout accord direct portant sur de telles prestations ;`}{'\n'}
+            {`- de se prévaloir auprès d'eux d'une autre qualité que celle d'intervenant mandaté par ${org.name}.`}{'\n\n'}
+            {`Le prestataire intervient en qualité de prestataire externe indépendant. Il ne dispose d'aucun mandat de représentation et ne peut engager ${org.name} au-delà de la mission qui lui est confiée. Toute relation commerciale, contractuelle ou financière avec ces clients transite exclusivement par ${org.name}. Toute sollicitation reçue directement d'un client devra lui être signalée sans délai.`}{'\n\n'}
+            {`En cas de manquement, le prestataire sera redevable de plein droit d'une indemnité forfaitaire égale au montant hors taxes facturé par ${org.name} au client concerné au cours des douze (12) mois précédant le manquement, sans préjudice de la réparation du préjudice réellement subi et de la résiliation immédiate du présent contrat.`}
+          </Text>
+        </View>
+
+        <View style={shared.section}>
+          <PdfSectionTitle>{mission ? 'Article 10' : 'Article 9'} — Protection des données (RGPD)</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             {`Le prestataire agit en qualité de sous-traitant au sens de l'article 28 du RGPD pour les traitements de données personnelles des apprenants effectués pour le compte de ${org.name}. Il ne traite ces données que sur instruction documentée du responsable du traitement, garantit la confidentialité, met en œuvre les mesures de sécurité appropriées et supprime ou restitue les données à l'issue de la mission.`}
           </Text>
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>{mission ? 'Article 10' : 'Article 9'} — Durée, résiliation et litiges</PdfSectionTitle>
+          <PdfSectionTitle>{mission ? 'Article 11' : 'Article 10'} — Durée, résiliation et litiges</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Le présent contrat prend effet à sa signature. Il peut être résilié par l'une ou l'autre des parties par lettre recommandée avec accusé de réception moyennant un préavis de 30 jours. En cas de manquement grave de l'une des parties à ses obligations, l'autre partie pourra résilier le contrat sans préavis après mise en demeure restée infructueuse pendant 15 jours.{'\n'}
             {`En cas de litige, et après tentative de règlement amiable, les juridictions du ressort du siège de ${org.name} seront seules compétentes.`}
