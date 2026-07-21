@@ -735,8 +735,9 @@ export async function extractParticipantsFromTextAction(rawText: string): Promis
   await getSession()
   const result = await extractParticipantsFromText(rawText)
   if (!result.success) return { success: false, error: result.error || 'Extraction impossible' }
-  if (result.participants.length === 0) return { success: false, error: 'Aucun participant détecté dans ce texte' }
-  return { success: true, data: result.participants }
+  // `error` peut accompagner un succès partiel (liste tronquée) : on remonte
+  // les participants lus ET l'avertissement
+  return { success: true, data: result.participants, error: result.error }
 }
 
 // Étape 2 : enregistrement des lignes validées par l'utilisateur dans la prévisualisation.

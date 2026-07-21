@@ -91,6 +91,8 @@ export function ImportParticipantsModal({
         return { ...p, _duplicate: duplicate, _selected: !duplicate }
       })
       setRows(extracted)
+      // Succès partiel : la liste était trop longue pour être lue en entier
+      if (res.error) toast('info', res.error)
     } else {
       toast('error', res.error || "Impossible d'analyser ce texte")
     }

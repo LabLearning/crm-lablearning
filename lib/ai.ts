@@ -4,9 +4,11 @@ interface AIResponse {
   success: boolean
   content: string
   error?: string
+  /** La réponse a été coupée par la limite de tokens */
+  truncated?: boolean
 }
 
-async function callClaude(systemPrompt: string, userPrompt: string): Promise<AIResponse> {
+async function callClaude(systemPrompt: string, userPrompt: string, maxTokens = 4096): Promise<AIResponse> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return { success: false, content: '', error: 'Clé API Anthropic non configurée' }
@@ -22,23 +24,85 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<AIR
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4096,
+        max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
     })
 
     if (!res.ok) {
-      const err = await res.json()
-      return { success: false, content: '', error: err.error?.message || 'Erreur API Claude' }
+      const err = await res.json().catch(() => ({}))
+      const message = (err as any)?.error?.message || `Erreur API Claude (${res.status})`
+      console.error('[callClaude] API', res.status, message)
+      return { success: false, content: '', error: message }
     }
 
     const data = await res.json()
-    const text = data.content?.[0]?.text || ''
-    return { success: true, content: text }
+    // La réponse peut comporter plusieurs blocs : on les concatène plutôt que
+    // de ne lire que le premier, sinon un préambule fait perdre le JSON
+    const text = (data.content || [])
+      .filter((b: any) => b?.type === 'text' && b.text)
+      .map((b: any) => b.text)
+      .join('')
+    if (!text) {
+      console.error('[callClaude] réponse vide', JSON.stringify(data).slice(0, 400))
+      return { success: false, content: '', error: 'Réponse vide de l\'IA' }
+    }
+    // stop_reason = max_tokens → la réponse est tronquée, le JSON sera invalide
+    if (data.stop_reason === 'max_tokens') {
+      console.warn('[callClaude] réponse tronquée (max_tokens)')
+    }
+    return { success: true, content: text, truncated: data.stop_reason === 'max_tokens' }
   } catch (err) {
-    return { success: false, content: '', error: 'Erreur réseau' }
+    console.error('[callClaude] réseau', err)
+    return { success: false, content: '', error: 'Erreur réseau lors de l\'appel à l\'IA' }
   }
+}
+
+/**
+ * Extrait un tableau JSON d'une réponse de modèle.
+ * Le modèle peut entourer le JSON de texte ou de balises Markdown, et la
+ * réponse peut être tronquée : on répare alors en fermant le tableau après
+ * le dernier objet complet, plutôt que de tout perdre.
+ */
+function parseJsonArray(content: string): { ok: true; rows: any[] } | { ok: false; error: string } {
+  let text = (content || '').trim()
+
+  // Retire les clôtures Markdown ```json … ```
+  text = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim()
+
+  const start = text.indexOf('[')
+  if (start === -1) {
+    // Certaines réponses encapsulent le tableau : {"participants": [...]}
+    try {
+      const obj = JSON.parse(text)
+      const arr = Array.isArray(obj) ? obj : Object.values(obj).find(Array.isArray)
+      if (Array.isArray(arr)) return { ok: true, rows: arr }
+    } catch { /* on tombe dans l'erreur ci-dessous */ }
+    console.error('[parseJsonArray] aucun tableau trouvé :', text.slice(0, 300))
+    return { ok: false, error: 'L\'IA n\'a pas renvoyé de liste exploitable' }
+  }
+
+  const candidate = text.slice(start, text.lastIndexOf(']') + 1 || undefined)
+  try {
+    const parsed = JSON.parse(candidate)
+    if (Array.isArray(parsed)) return { ok: true, rows: parsed }
+  } catch { /* tentative de réparation ci-dessous */ }
+
+  // Réponse tronquée : on conserve les objets complets
+  const lastComplete = candidate.lastIndexOf('}')
+  if (lastComplete > 0) {
+    try {
+      const repaired = JSON.parse(candidate.slice(0, lastComplete + 1) + ']')
+      if (Array.isArray(repaired) && repaired.length > 0) {
+        console.warn('[parseJsonArray] réponse tronquée, réparée avec', repaired.length, 'entrées')
+        return { ok: true, rows: repaired }
+      }
+    } catch { /* échec définitif */ }
+  }
+
+  console.error('[parseJsonArray] JSON illisible :', candidate.slice(0, 300))
+  return { ok: false, error: 'Réponse de l\'IA illisible' }
 }
 
 // ── Génération de QCM ─────────────────────────────────────
@@ -396,22 +460,43 @@ Règles strictes :
 Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, chaque élément ayant ces clés optionnelles :
 [{"civilite":"","prenom":"","nom":"","email":"","telephone":"","date_naissance":"","lieu_naissance":"","numero_securite_sociale":"","adresse":"","code_postal":"","ville":"","type_contrat":"","niveau_diplome":"","poste":""}]`
 
-  const userPrompt = `Extrais les participants de ce texte :\n\n"""\n${text}\n"""`
+  const userPrompt = `Extrais les participants de ce texte. Réponds uniquement par le tableau JSON, sans phrase d'introduction ni balise Markdown.\n\n"""\n${text}\n"""`
 
-  const result = await callClaude(systemPrompt, userPrompt)
-  if (!result.success) return { success: false, participants: [], error: result.error }
+  // Une fiche complète pèse ~150 tokens : on dimensionne sur la taille du
+  // texte collé pour éviter les réponses coupées sur les longues listes
+  const maxTokens = Math.min(16000, Math.max(4096, Math.ceil(text.length / 2)))
 
-  try {
-    const jsonMatch = result.content.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) return { success: false, participants: [], error: 'Réponse IA invalide' }
-    const parsed = JSON.parse(jsonMatch[0]) as ExtractedParticipant[]
-    if (!Array.isArray(parsed)) return { success: false, participants: [], error: 'Réponse IA invalide' }
-    // On garde uniquement les entrées identifiables ; le reste est du bruit.
-    const participants = parsed
-      .map(cleanParticipant)
-      .filter((p) => p.nom || p.prenom)
-    return { success: true, participants }
-  } catch {
-    return { success: false, participants: [], error: 'Erreur de parsing JSON' }
+  const result = await callClaude(systemPrompt, userPrompt, maxTokens)
+  if (!result.success) {
+    return { success: false, participants: [], error: result.error || 'L\'IA n\'a pas répondu' }
   }
+
+  const parsed = parseJsonArray(result.content)
+  if (!parsed.ok) {
+    return { success: false, participants: [], error: parsed.error }
+  }
+
+  // On garde uniquement les entrées identifiables ; le reste est du bruit.
+  const participants = parsed.rows
+    .filter((p) => p && typeof p === 'object')
+    .map((p) => cleanParticipant(p as ExtractedParticipant))
+    .filter((p) => p.nom || p.prenom)
+
+  if (participants.length === 0) {
+    return {
+      success: false,
+      participants: [],
+      error: 'Aucun participant identifié dans ce texte. Vérifiez qu\'il contient bien des noms de personnes.',
+    }
+  }
+
+  if (result.truncated) {
+    return {
+      success: true,
+      participants,
+      error: `Liste trop longue : seuls les ${participants.length} premiers participants ont pu être lus. Collez le reste en une seconde fois.`,
+    }
+  }
+
+  return { success: true, participants }
 }
