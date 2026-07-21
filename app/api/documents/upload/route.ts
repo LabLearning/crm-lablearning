@@ -28,10 +28,28 @@ function sanitize(name: string): string {
 }
 
 export async function POST(req: Request) {
-  const session = await getSession()
   const supabase = await createServiceRoleClient()
 
   const fd = await req.formData()
+
+  // Les portails (formateur qui téléverse le scan d'une feuille papier, etc.)
+  // n'ont pas de session Supabase : ils s'authentifient par leur token.
+  const portalToken = fd.get('portal_token') as string | null
+  let organizationId: string
+  if (portalToken) {
+    const { getPortalContext } = await import('@/lib/portal-auth')
+    const context = await getPortalContext(portalToken)
+    // Seul le formateur téléverse depuis un portail (scan de feuille papier) :
+    // n'ouvrons pas le dépôt de fichiers aux apprenants, clients et apporteurs
+    if (!context || context.type !== 'formateur') {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 401 })
+    }
+    organizationId = context.organization.id
+  } else {
+    const session = await getSession()
+    organizationId = session.organization.id
+  }
+
   const file = fd.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'Fichier manquant' }, { status: 400 })
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'Fichier trop lourd (max 20 Mo)' }, { status: 400 })
@@ -40,7 +58,7 @@ export async function POST(req: Request) {
   }
 
   const cleanName = sanitize(file.name || 'document')
-  const path = `${session.organization.id}/${Date.now()}-${Math.round(Math.random() * 1e6)}-${cleanName}`
+  const path = `${organizationId}/${Date.now()}-${Math.round(Math.random() * 1e6)}-${cleanName}`
   const buffer = await file.arrayBuffer()
 
   const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, buffer, {

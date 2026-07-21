@@ -5,10 +5,6 @@ import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supab
 import { EmargementPDF } from '@/lib/pdf/emargement-pdf'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const anonClient = await createServerSupabaseClient()
-  const { data: { user } } = await anonClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
   const supabase = await createServiceRoleClient()
 
   const { data: session } = await supabase
@@ -16,6 +12,21 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     .select('*, formateur:formateurs(prenom, nom)')
     .eq('id', params.id).single()
   if (!session) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
+
+  // Le formateur imprime la feuille vierge depuis son portail : pas de session
+  // Supabase, l'accès est prouvé par le token et la session doit être la sienne.
+  const portalToken = new URL(req.url).searchParams.get('token')
+  if (portalToken) {
+    const { getPortalContext } = await import('@/lib/portal-auth')
+    const context = await getPortalContext(portalToken)
+    if (!context || context.type !== 'formateur' || session.formateur_id !== context.formateur.id) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+  } else {
+    const anonClient = await createServerSupabaseClient()
+    const { data: { user } } = await anonClient.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
 
   const { data: formation } = await supabase.from('formations').select('*').eq('id', session.formation_id).single()
   const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', session.organization_id).single()

@@ -4,6 +4,34 @@ import { getPortalContext } from '@/lib/portal-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+type Creneau = 'matin' | 'apres_midi' | 'journee'
+
+/**
+ * Le sessionId vient du client (URL ou props) : on ne s'y fie jamais sans
+ * vérifier qu'il s'agit bien d'une session du formateur porteur du token.
+ */
+async function getOwnedSession(supabase: any, token: string, sessionId: string) {
+  const context = await getPortalContext(token)
+  if (!context || context.type !== 'formateur') return null
+
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('id, formateur_id, organization_id')
+    .eq('id', sessionId)
+    .single()
+
+  if (!session || session.formateur_id !== context.formateur.id) return null
+  return { session, context }
+}
+
+function revalidateEmargement(token: string, sessionId?: string) {
+  revalidatePath(`/portail/${token}/emargement`)
+  if (sessionId) {
+    revalidatePath(`/portail/${token}/emargement/${sessionId}`)
+    revalidatePath(`/dashboard/sessions/${sessionId}`)
+  }
+}
+
 /**
  * Signature d'un apprenant sur le device du formateur.
  * → enregistre signature_data, est_present=true, signed_at, signed_via.
@@ -30,6 +58,9 @@ export async function signApprenantPresenceAction(
 
   if (!em) return { success: false, error: 'Émargement introuvable' }
 
+  const owned = await getOwnedSession(supabase, token, em.session_id)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
   const { data: feuille } = await supabase
     .from('emargement_feuilles')
     .select('validated_at')
@@ -55,7 +86,7 @@ export async function signApprenantPresenceAction(
 
   if (error) return { success: false, error: error.message }
 
-  revalidatePath(`/portail/${token}/emargement`)
+  revalidateEmargement(token, em.session_id)
   return { success: true }
 }
 
@@ -83,6 +114,9 @@ export async function markAbsentAction(
 
   if (!em) return { success: false, error: 'Émargement introuvable' }
 
+  const owned = await getOwnedSession(supabase, token, em.session_id)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
   const { data: feuille } = await supabase
     .from('emargement_feuilles')
     .select('validated_at')
@@ -107,7 +141,7 @@ export async function markAbsentAction(
 
   if (error) return { success: false, error: error.message }
 
-  revalidatePath(`/portail/${token}/emargement`)
+  revalidateEmargement(token, em.session_id)
   return { success: true }
 }
 
@@ -162,6 +196,7 @@ export async function validerFeuilleByFormateurAction(
     creneau,
     formateur_id: context.formateur.id,
     formateur_signature_data: signatureBase64,
+    mode: 'numerique',
     validated_at: new Date().toISOString(),
   }
 
@@ -181,8 +216,207 @@ export async function validerFeuilleByFormateurAction(
 
   if (error) return { success: false, error: error.message }
 
-  revalidatePath(`/portail/${token}/emargement`)
-  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  revalidateEmargement(token, sessionId)
+  return { success: true }
+}
+
+/**
+ * Choix (ou changement) du mode de signature d'une feuille.
+ * La feuille est créée dès ce choix — jusqu'ici elle n'existait qu'à la
+ * validation, il n'y avait donc nulle part où mémoriser le mode.
+ */
+export async function setFeuilleModeAction(
+  token: string,
+  sessionId: string,
+  date: string,
+  creneau: Creneau,
+  mode: 'numerique' | 'papier',
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient()
+  const owned = await getOwnedSession(supabase, token, sessionId)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
+  const { data: existing } = await supabase
+    .from('emargement_feuilles')
+    .select('id, validated_at')
+    .eq('session_id', sessionId)
+    .eq('date', date)
+    .eq('creneau', creneau)
+    .maybeSingle()
+
+  if (existing?.validated_at) {
+    return { success: false, error: 'La feuille est validée : le mode ne peut plus changer' }
+  }
+
+  const error = existing
+    ? (await supabase.from('emargement_feuilles').update({ mode }).eq('id', existing.id)).error
+    : (
+        await supabase.from('emargement_feuilles').insert({
+          organization_id: owned.session.organization_id,
+          session_id: sessionId,
+          date,
+          creneau,
+          formateur_id: owned.context.formateur.id,
+          mode,
+        })
+      ).error
+
+  if (error) return { success: false, error: error.message }
+
+  revalidateEmargement(token, sessionId)
+  return { success: true }
+}
+
+/**
+ * Pointage d'une présence sans signature à l'écran : la signature manuscrite
+ * est sur la feuille papier, le formateur ne fait que la reporter.
+ */
+export async function markPresentPapierAction(
+  token: string,
+  emargementId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const context = await getPortalContext(token)
+  if (!context || context.type !== 'formateur') {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+
+  const supabase = await createServiceRoleClient()
+
+  const { data: em } = await supabase
+    .from('emargements')
+    .select('id, session_id, date, creneau')
+    .eq('id', emargementId)
+    .single()
+
+  if (!em) return { success: false, error: 'Émargement introuvable' }
+
+  const owned = await getOwnedSession(supabase, token, em.session_id)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
+  const { data: feuille } = await supabase
+    .from('emargement_feuilles')
+    .select('validated_at')
+    .eq('session_id', em.session_id)
+    .eq('date', em.date)
+    .eq('creneau', em.creneau)
+    .maybeSingle()
+
+  if (feuille?.validated_at) {
+    return { success: false, error: 'La feuille est déjà validée et verrouillée' }
+  }
+
+  const { error } = await supabase
+    .from('emargements')
+    .update({
+      est_present: true,
+      signature_data: null,
+      signed_at: new Date().toISOString(),
+      signed_via: 'feuille_papier',
+      motif_absence: null,
+    })
+    .eq('id', emargementId)
+
+  if (error) return { success: false, error: error.message }
+
+  revalidateEmargement(token, em.session_id)
+  return { success: true }
+}
+
+/**
+ * Enregistre le chemin de stockage du scan de la feuille papier signée.
+ * Le fichier a déjà été téléversé par /api/documents/upload.
+ */
+export async function saveScanFeuilleAction(
+  token: string,
+  sessionId: string,
+  date: string,
+  creneau: Creneau,
+  storagePath: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient()
+  const owned = await getOwnedSession(supabase, token, sessionId)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
+  const { data: existing } = await supabase
+    .from('emargement_feuilles')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('date', date)
+    .eq('creneau', creneau)
+    .maybeSingle()
+
+  const error = existing
+    ? (
+        await supabase
+          .from('emargement_feuilles')
+          .update({ scan_storage_path: storagePath })
+          .eq('id', existing.id)
+      ).error
+    : (
+        await supabase.from('emargement_feuilles').insert({
+          organization_id: owned.session.organization_id,
+          session_id: sessionId,
+          date,
+          creneau,
+          formateur_id: owned.context.formateur.id,
+          mode: 'papier',
+          scan_storage_path: storagePath,
+        })
+      ).error
+
+  if (error) return { success: false, error: error.message }
+
+  revalidateEmargement(token, sessionId)
+  return { success: true }
+}
+
+/**
+ * Attestation d'une feuille papier : le formateur certifie de sa signature
+ * que la feuille imprimée a bien été signée par les stagiaires présents.
+ */
+export async function attesterFeuillePapierAction(
+  token: string,
+  sessionId: string,
+  date: string,
+  creneau: Creneau,
+  signatureBase64: string,
+  scanStoragePath: string | null,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient()
+  const owned = await getOwnedSession(supabase, token, sessionId)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
+  const { data: existing } = await supabase
+    .from('emargement_feuilles')
+    .select('id, validated_at, scan_storage_path')
+    .eq('session_id', sessionId)
+    .eq('date', date)
+    .eq('creneau', creneau)
+    .maybeSingle()
+
+  if (existing?.validated_at) {
+    return { success: false, error: 'Cette feuille est déjà validée' }
+  }
+
+  const payload = {
+    organization_id: owned.session.organization_id,
+    session_id: sessionId,
+    date,
+    creneau,
+    formateur_id: owned.context.formateur.id,
+    formateur_signature_data: signatureBase64,
+    mode: 'papier',
+    scan_storage_path: scanStoragePath || existing?.scan_storage_path || null,
+    validated_at: new Date().toISOString(),
+  }
+
+  const error = existing
+    ? (await supabase.from('emargement_feuilles').update(payload).eq('id', existing.id)).error
+    : (await supabase.from('emargement_feuilles').insert(payload)).error
+
+  if (error) return { success: false, error: error.message }
+
+  revalidateEmargement(token, sessionId)
   return { success: true }
 }
 
@@ -201,6 +435,9 @@ export async function createEmargementAction(
   }
 
   const supabase = await createServiceRoleClient()
+
+  const owned = await getOwnedSession(supabase, token, sessionId)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
 
   const { data: inscriptions, error: inscriptionsError } = await supabase
     .from('inscriptions')
@@ -250,7 +487,7 @@ export async function createEmargementAction(
     return { success: false, error: insertError.message }
   }
 
-  revalidatePath(`/portail/${token}/emargement`)
+  revalidateEmargement(token, sessionId)
   return { success: true }
 }
 
