@@ -134,6 +134,19 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
       .eq('session_id', params.id),
   ])
 
+  // Listes de référence pour le formulaire « Modifier la session »
+  const [{ data: formationsRef }, { data: formateursRef }, { data: clientsRef }, { data: apprenantsRef }, { data: sessionFormations }] = await Promise.all([
+    supabase.from('formations').select('id, intitule, reference, modalite, duree_heures, duree_jours')
+      .eq('organization_id', session.organization.id).eq('is_active', true).order('intitule'),
+    supabase.from('formateurs').select('id, prenom, nom, tarif_journalier')
+      .eq('organization_id', session.organization.id).eq('is_active', true).order('nom'),
+    supabase.from('clients').select('id, raison_sociale, siret, adresse, code_postal, ville')
+      .eq('organization_id', session.organization.id).eq('type', 'entreprise').order('raison_sociale'),
+    supabase.from('apprenants').select('id, prenom, nom, email, client_id')
+      .eq('organization_id', session.organization.id).order('nom').range(0, 9999),
+    supabase.from('session_formations').select('formation_id, ordre').eq('session_id', params.id).order('ordre'),
+  ])
+
   // Contrat de prestation formateur lié à la session (état + signature)
   const { data: contratFormateur } = await supabase
     .from('contrats_formateur')
@@ -159,6 +172,11 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         qcmSessions={(qcmSessions || []) as any[]}
         conventions={(conventions || []) as any[]}
         contratFormateur={contratFormateur as any}
+        formationsRef={(formationsRef || []) as any[]}
+        formateursRef={(formateursRef || []) as any[]}
+        clientsRef={(clientsRef || []) as any[]}
+        apprenantsRef={(apprenantsRef || []) as any[]}
+        sessionFormationIds={((sessionFormations || []) as any[]).map((r) => r.formation_id)}
         evaluationsAppr={(evaluationsAppr || []) as any[]}
         isFormateur={isFormateur}
         userRole={session.user.role}

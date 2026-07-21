@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users, UserCheck, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
-  Star, ListChecks, FileSignature, Award,
+  Star, ListChecks, FileSignature, Award, Euro,
 } from 'lucide-react'
 import { Badge, PoeiBadge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
@@ -15,6 +16,7 @@ import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
 import { SessionDocuments } from './SessionDocuments'
+import { SessionForm } from '../SessionForm'
 
 const CONVENTION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'danger' }> = {
   brouillon: { label: 'Brouillon', variant: 'default' },
@@ -35,6 +37,11 @@ interface Props {
   qcmSessions?: any[]
   conventions?: any[]
   contratFormateur?: any
+  formationsRef?: any[]
+  formateursRef?: any[]
+  clientsRef?: any[]
+  apprenantsRef?: any[]
+  sessionFormationIds?: string[]
   evaluationsAppr?: any[]
   isFormateur: boolean
   userRole: string
@@ -57,7 +64,8 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], contratFormateur = null, evaluationsAppr = [], isFormateur, userRole, isPoei }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], isFormateur, userRole, isPoei }: Props) {
+  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -67,6 +75,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
   const [createDate, setCreateDate] = useState('')
   const [createCreneau, setCreateCreneau] = useState('journee')
   const [signingEmargement, setSigningEmargement] = useState<{ id: string; name: string } | null>(null)
+  const [editSessionOpen, setEditSessionOpen] = useState(false)
   // Rémunération formateur éditable depuis la fiche
   const [editCout, setEditCout] = useState(false)
   const [coutValue, setCoutValue] = useState('')
@@ -193,6 +202,15 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
             </a>
           )}
         </div>
+        {/* Modifier la session */}
+        {!isFormateur && (
+          <button
+            onClick={() => setEditSessionOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-200 text-xs font-medium text-surface-700 hover:border-brand-300 hover:bg-brand-50/50 transition-colors shrink-0"
+          >
+            <PenTool className="h-3.5 w-3.5" /> Modifier
+          </button>
+        )}
         {/* Statut */}
         <div className="relative shrink-0">
           <button
@@ -302,35 +320,58 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
               </div>
               {/* Rémunération formateur — modifiable directement ici */}
               {!isFormateur && (
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] uppercase tracking-wider text-surface-400">Rémunération</div>
-                  {editCout ? (
-                    <div className="flex items-center gap-1 mt-0.5">
+                editCout ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="relative">
                       <input
                         type="number" autoFocus value={coutValue}
                         onChange={(e) => setCoutValue(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') saveCout(); if (e.key === 'Escape') setEditCout(false) }}
-                        placeholder={formateur.tarif_journalier ? `${formateur.tarif_journalier} €/j` : '0'}
-                        className="w-24 px-2 py-1 rounded-lg border border-surface-300 text-sm text-right focus:outline-none focus:border-brand-400"
+                        placeholder={formateur.tarif_journalier ? String(formateur.tarif_journalier) : '0'}
+                        className="w-28 pl-3 pr-7 py-2 rounded-xl border border-brand-300 bg-white text-sm font-semibold text-surface-900 text-right focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
                       />
-                      <button onClick={saveCout} disabled={isPending}
-                        className="p-1.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => setEditCout(false)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
-                        <XCircle className="h-3.5 w-3.5" />
-                      </button>
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-surface-400 pointer-events-none">€</span>
                     </div>
-                  ) : (
-                    <button onClick={() => { setCoutValue(session.cout_formateur != null ? String(session.cout_formateur) : ''); setEditCout(true) }}
-                      className="group flex items-center gap-1.5 mt-0.5 text-sm font-semibold text-surface-900 hover:text-brand-600">
-                      {session.cout_formateur != null
-                        ? `${Number(session.cout_formateur).toLocaleString('fr-FR')} €`
-                        : <span className="text-surface-400 font-normal">à définir</span>}
-                      <PenTool className="h-3 w-3 text-surface-300 group-hover:text-brand-500" />
+                    <button onClick={saveCout} disabled={isPending} title="Enregistrer"
+                      className="h-9 w-9 flex items-center justify-center rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">
+                      {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     </button>
-                  )}
-                </div>
+                    <button onClick={() => setEditCout(false)} title="Annuler"
+                      className="h-9 w-9 flex items-center justify-center rounded-xl border border-surface-200 text-surface-400 hover:bg-surface-50 hover:text-surface-600 transition-colors">
+                      <XCircle className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setCoutValue(session.cout_formateur != null ? String(session.cout_formateur) : ''); setEditCout(true) }}
+                    title="Modifier la rémunération du formateur"
+                    className={cn(
+                      'group flex items-center gap-2.5 rounded-xl border px-3 py-2 shrink-0 transition-all',
+                      session.cout_formateur != null
+                        ? 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-300 hover:bg-emerald-50'
+                        : 'border-dashed border-surface-300 bg-surface-50 hover:border-brand-300 hover:bg-brand-50/40',
+                    )}
+                  >
+                    <span className={cn(
+                      'h-7 w-7 rounded-lg flex items-center justify-center shrink-0',
+                      session.cout_formateur != null ? 'bg-emerald-100' : 'bg-surface-200/70',
+                    )}>
+                      <Euro className={cn('h-3.5 w-3.5', session.cout_formateur != null ? 'text-emerald-600' : 'text-surface-400')} />
+                    </span>
+                    <span className="text-left">
+                      <span className="block text-[10px] uppercase tracking-wider text-surface-400 leading-none">Rémunération</span>
+                      <span className={cn(
+                        'block text-sm font-semibold leading-tight mt-0.5',
+                        session.cout_formateur != null ? 'text-emerald-800' : 'text-surface-400 font-normal',
+                      )}>
+                        {session.cout_formateur != null
+                          ? `${Number(session.cout_formateur).toLocaleString('fr-FR')} €`
+                          : 'À définir'}
+                      </span>
+                    </span>
+                    <PenTool className="h-3.5 w-3.5 text-surface-300 group-hover:text-brand-500 shrink-0 transition-colors" />
+                  </button>
+                )
               )}
               {!isFormateur && formateur.id && (
                 <a href={`/api/pdf/contrat-formateur/${formateur.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
@@ -912,6 +953,34 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           isPending={isPending}
         />
       )}
+      {/* Modifier la session */}
+      {editSessionOpen && !isFormateur && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/40 backdrop-blur-sm p-4"
+          onClick={() => setEditSessionOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-modal w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-surface-100 flex items-center justify-between">
+              <h3 className="text-base font-heading font-semibold text-surface-900">Modifier la session</h3>
+              <button onClick={() => setEditSessionOpen(false)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              <SessionForm
+                session={{ ...session, _formation_ids: sessionFormationIds } as any}
+                formations={formationsRef}
+                formateurs={formateursRef}
+                clients={clientsRef}
+                apprenants={apprenantsRef}
+                initialInscrits={inscriptions.map((i: any) => i.apprenant?.id).filter(Boolean)}
+                onSuccess={() => { setEditSessionOpen(false); router.refresh() }}
+                onCancel={() => setEditSessionOpen(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
