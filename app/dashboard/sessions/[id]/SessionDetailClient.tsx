@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Badge, PoeiBadge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
-import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction } from './actions'
+import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction } from './actions'
 import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
@@ -67,6 +67,16 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
   const [createDate, setCreateDate] = useState('')
   const [createCreneau, setCreateCreneau] = useState('journee')
   const [signingEmargement, setSigningEmargement] = useState<{ id: string; name: string } | null>(null)
+  // Rémunération formateur éditable depuis la fiche
+  const [editCout, setEditCout] = useState(false)
+  const [coutValue, setCoutValue] = useState('')
+
+  function saveCout() {
+    const montant = coutValue.trim() === '' ? null : Number(coutValue)
+    if (montant !== null && !Number.isFinite(montant)) return
+    setEditCout(false)
+    startTransition(async () => { await updateCoutFormateurAction(session.id, montant) })
+  }
 
   const formation = session.formation
   const formateur = session.formateur
@@ -290,6 +300,38 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                   {formateur.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{formateur.telephone}</span>}
                 </div>
               </div>
+              {/* Rémunération formateur — modifiable directement ici */}
+              {!isFormateur && (
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] uppercase tracking-wider text-surface-400">Rémunération</div>
+                  {editCout ? (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <input
+                        type="number" autoFocus value={coutValue}
+                        onChange={(e) => setCoutValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') saveCout(); if (e.key === 'Escape') setEditCout(false) }}
+                        placeholder={formateur.tarif_journalier ? `${formateur.tarif_journalier} €/j` : '0'}
+                        className="w-24 px-2 py-1 rounded-lg border border-surface-300 text-sm text-right focus:outline-none focus:border-brand-400"
+                      />
+                      <button onClick={saveCout} disabled={isPending}
+                        className="p-1.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => setEditCout(false)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
+                        <XCircle className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setCoutValue(session.cout_formateur != null ? String(session.cout_formateur) : ''); setEditCout(true) }}
+                      className="group flex items-center gap-1.5 mt-0.5 text-sm font-semibold text-surface-900 hover:text-brand-600">
+                      {session.cout_formateur != null
+                        ? `${Number(session.cout_formateur).toLocaleString('fr-FR')} €`
+                        : <span className="text-surface-400 font-normal">à définir</span>}
+                      <PenTool className="h-3 w-3 text-surface-300 group-hover:text-brand-500" />
+                    </button>
+                  )}
+                </div>
+              )}
               {!isFormateur && formateur.id && (
                 <a href={`/api/pdf/contrat-formateur/${formateur.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium hover:bg-brand-100 transition-colors shrink-0">

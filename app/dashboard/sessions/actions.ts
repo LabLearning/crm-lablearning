@@ -258,7 +258,10 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
         .from('formateurs').select('tarif_journalier').eq('id', sess.formateur_id).single()
       const tarif = formateurRow?.tarif_journalier || null
       const duree = (sess as any).formation?.duree_jours || null
-      const montantContrat = (tarif && duree) ? Number(tarif) * Number(duree) : (sess.cout_formateur || null)
+      // Le montant saisi sur la session fait foi ; sinon calcul tarif journalier × jours
+      const montantContrat = sess.cout_formateur != null
+        ? Number(sess.cout_formateur)
+        : ((tarif && duree) ? Number(tarif) * Number(duree) : null)
 
       const { randomBytes, createHash } = await import('crypto')
       contratToken = createHash('sha256').update(randomBytes(32)).digest('hex')

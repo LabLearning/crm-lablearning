@@ -113,7 +113,10 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     const formateur = (sess as any).formateur
     const tarif = formateur?.tarif_journalier || null
     const duree = (sess as any).formation?.duree_jours || null
-    const montantHt = (tarif && duree) ? Number(tarif) * Number(duree) : (sess.cout_formateur || null)
+    // Le montant saisi sur la session fait foi ; sinon calcul tarif journalier × jours
+    const montantHt = sess.cout_formateur != null
+      ? Number(sess.cout_formateur)
+      : ((tarif && duree) ? Number(tarif) * Number(duree) : null)
 
     contratToken = newToken()
     const expires = new Date()

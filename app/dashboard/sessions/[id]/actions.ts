@@ -384,3 +384,33 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
   await logAudit({ action: 'send_contrat_formateur', entity_type: 'formateur', entity_id: formateurId, details: { sessionId } })
   return { success: true, data: { email: formateur.email } }
 }
+
+/** Modifie la rémunération du formateur depuis la fiche session */
+export async function updateCoutFormateurAction(sessionId: string, montant: number | null): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  const { error } = await supabase
+    .from('sessions')
+    .update({ cout_formateur: montant })
+    .eq('id', sessionId)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  // Répercute sur le contrat tant qu'il n'est pas signé
+  const { data: contrat } = await supabase
+    .from('contrats_formateur')
+    .select('id, status, signature_formateur_date')
+    .eq('session_id', sessionId)
+    .maybeSingle()
+  if (contrat && !contrat.signature_formateur_date && contrat.status !== 'signe_formateur') {
+    await supabase.from('contrats_formateur').update({ montant_ht: montant }).eq('id', contrat.id)
+  }
+
+  await logAudit({ action: 'update_cout_formateur', entity_type: 'session', entity_id: sessionId, details: { montant } })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true, data: { contratMisAJour: !!contrat && !contrat.signature_formateur_date } }
+}
