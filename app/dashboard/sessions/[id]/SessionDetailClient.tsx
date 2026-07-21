@@ -14,6 +14,7 @@ import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAc
 import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
+import { SessionDocuments } from './SessionDocuments'
 
 const CONVENTION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'danger' }> = {
   brouillon: { label: 'Brouillon', variant: 'default' },
@@ -33,6 +34,7 @@ interface Props {
   evaluations?: any[]
   qcmSessions?: any[]
   conventions?: any[]
+  contratFormateur?: any
   evaluationsAppr?: any[]
   isFormateur: boolean
   userRole: string
@@ -55,7 +57,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], evaluationsAppr = [], isFormateur, userRole, isPoei }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], contratFormateur = null, evaluationsAppr = [], isFormateur, userRole, isPoei }: Props) {
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -257,9 +259,22 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ═══════════════════════════════════════════════ */}
       {tab === 'session' && (
         <div className="space-y-4">
-          {/* Envois : convention en signature + contrat formateur */}
+          {/* Documents de la session : aperçu, envoi, état de signature */}
           {!isFormateur && (
-            <SessionDocActions sessionId={session.id} hasClient={!!session.client_id} hasFormateur={!!(formateur?.id || session.formateur_id)} />
+            <SessionDocuments
+              sessionId={session.id}
+              hasClient={!!session.client_id}
+              hasFormateur={!!(formateur?.id || session.formateur_id)}
+              formateurId={formateur?.id || session.formateur_id}
+              formateurNom={formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : null}
+              formateurEmail={formateur?.email || null}
+              clientNom={(session as any).client?.raison_sociale || null}
+              clientEmail={(session as any).client?.email || null}
+              formationNom={(session as any).formation?.intitule || session.intitule || null}
+              dates={`du ${new Date(session.date_debut).toLocaleDateString('fr-FR')} au ${new Date(session.date_fin).toLocaleDateString('fr-FR')}`}
+              convention={conventions[0] || null}
+              contrat={contratFormateur || null}
+            />
           )}
 
           {/* Formateur */}

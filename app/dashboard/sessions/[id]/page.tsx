@@ -11,7 +11,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
   // Session avec formation et formateur
   const { data: sessionData } = await supabase
     .from('sessions')
-    .select('*, formation:formation_id(intitule, reference, duree_heures, categorie, modalite, is_poei), formateur:formateurs(id, prenom, nom, email, telephone, user_id, tarif_journalier)')
+    .select('*, formation:formation_id(intitule, reference, duree_heures, categorie, modalite, is_poei), formateur:formateurs(id, prenom, nom, email, telephone, user_id, tarif_journalier), client:client_id(id, raison_sociale, email)')
     .eq('id', params.id)
     .eq('organization_id', session.organization.id)
     .single()
@@ -124,7 +124,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     // Conventions liées à la session
     supabase
       .from('conventions')
-      .select('id, numero, type, status, montant_ttc, signature_client_date, signature_of_date')
+      .select('id, numero, type, status, montant_ttc, sent_at, signature_token, signature_client_date, signature_client_nom, signature_of_date')
       .eq('session_id', params.id)
       .order('created_at', { ascending: false }),
     // Évaluations (notes) des apprenants pour cette session
@@ -133,6 +133,15 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
       .select('id, apprenant_id, intitule, note, note_max, appreciation, evaluateur, validated, date_evaluation')
       .eq('session_id', params.id),
   ])
+
+  // Contrat de prestation formateur lié à la session (état + signature)
+  const { data: contratFormateur } = await supabase
+    .from('contrats_formateur')
+    .select('id, numero, status, montant_ht, sent_at, signature_token, signature_formateur_date, signature_formateur_nom')
+    .eq('session_id', params.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
   const rapport = rapportRes
 
   // Est-ce que le user est le formateur de cette session ?
@@ -149,6 +158,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         evaluations={(evaluations || []) as any[]}
         qcmSessions={(qcmSessions || []) as any[]}
         conventions={(conventions || []) as any[]}
+        contratFormateur={contratFormateur as any}
         evaluationsAppr={(evaluationsAppr || []) as any[]}
         isFormateur={isFormateur}
         userRole={session.user.role}
