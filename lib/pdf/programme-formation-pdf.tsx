@@ -196,7 +196,6 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const jours: any[] = session && Array.isArray(session.horaires_jours) ? session.horaires_jours : []
   const sessionLieu = session ? [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') : ''
-  const sessionFormateur = session?.formateur ? `${session.formateur.prenom || ''} ${session.formateur.nom || ''}`.trim() : ''
   const weeks = parseProgramme(formation.programme_detaille || '')
   const objectifs: string[] = Array.isArray(formation.objectifs_pedagogiques)
     ? formation.objectifs_pedagogiques.flatMap((o: any) => fieldItems(String(o ?? '')))
@@ -227,7 +226,6 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
             <PdfSectionTitle icon="calendar">Organisation de la session</PdfSectionTitle>
             <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>du {fmtLong(session.date_debut)} au {fmtLong(session.date_fin)}</Text></View>
             {sessionLieu ? <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{sessionLieu}</Text></View> : null}
-            {sessionFormateur ? <View style={shared.row}><Text style={shared.label}>Formateur</Text><Text style={shared.value}>{sessionFormateur}</Text></View> : null}
             {jours.length > 0 ? (
               <View style={{ ...shared.table, marginTop: 6 }}>
                 <View style={shared.tableHeader}>
