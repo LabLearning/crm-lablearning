@@ -27,7 +27,18 @@ export async function checkConventionCompleteness(
   const { loadConventionForPdf } = await import('./pdf/convention-data')
   const loaded = await loadConventionForPdf(supabase, conventionId)
   if (!loaded) return null
-  const { convention, org } = loaded as any
+  return checkConventionData(supabase, (loaded as any).convention, (loaded as any).org)
+}
+
+/**
+ * Même contrôle, mais sur des données déjà chargées (convention réelle OU
+ * projection depuis une session) — permet de vérifier AVANT génération.
+ */
+export async function checkConventionData(
+  supabase: any,
+  convention: any,
+  org: any,
+): Promise<ConventionCheckResult> {
   const client = convention.client
   const formation = convention.formation
   const session = convention.session

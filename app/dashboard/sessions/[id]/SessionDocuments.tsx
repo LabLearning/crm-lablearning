@@ -72,6 +72,20 @@ export function SessionDocuments(props: Props) {
   const [preview, setPreview] = useState<'conv' | 'contrat' | null>(null)
   const [signUrl, setSignUrl] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  // Contrôle de conformité de la convention (mentions obligatoires)
+  const [check, setCheck] = useState<{ ok: boolean; blocking: { section: string; label: string }[] } | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  async function openPreview(kind: 'conv' | 'contrat') {
+    setPreview(kind)
+    if (kind !== 'conv') return
+    setChecking(true); setCheck(null)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/convention-check`)
+      if (res.ok) setCheck(await res.json())
+    } catch { /* le contrôle reste indicatif */ }
+    setChecking(false)
+  }
 
   // ── États ──
   const convEtat: 'absent' | 'attente' | 'partiel' | 'signe' =
@@ -121,9 +135,13 @@ export function SessionDocuments(props: Props) {
     setCopied(true); setTimeout(() => setCopied(false), 1800)
   }
 
-  // URLs d'aperçu (rendu réel du PDF, même avant génération)
+  // URLs d'aperçu (rendu réel du PDF, même avant génération).
+  // #toolbar=0&navpanes=0 : visionneuse épurée dans la modale (sans barre ni vignettes)
+  const VIEWER = '#toolbar=0&navpanes=0&statusbar=0&view=FitH'
   const convPdfUrl = `/api/pdf/preview/convention/${sessionId}`
-  const contratPdfUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?session=${sessionId}` : null
+  // inline=1 : sinon le navigateur télécharge le contrat au lieu de l'afficher
+  const contratPdfUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?session=${sessionId}&inline=1` : null
+  const contratDlUrl = formateurId ? `/api/pdf/contrat-formateur/${formateurId}?session=${sessionId}` : null
 
   // ── Ligne document ──
   function DocRow({
@@ -187,7 +205,7 @@ export function SessionDocuments(props: Props) {
           titre="Convention de formation"
           sousTitre={clientNom ? `Client : ${clientNom}${convention?.numero ? ` · ${convention.numero}` : ''}` : 'Aucun client rattaché'}
           etat={convEtat} date={convDate}
-          onPreview={() => setPreview('conv')}
+          onPreview={() => openPreview('conv')}
           onSend={doSendConvention}
           sendLabel="Envoyer en signature"
           downloadUrl={convention ? `/api/pdf/convention/${convention.id}` : null}
@@ -199,10 +217,10 @@ export function SessionDocuments(props: Props) {
           titre="Contrat de prestation formateur"
           sousTitre={formateurNom ? `Formateur : ${formateurNom}${contrat?.numero ? ` · ${contrat.numero}` : ''}` : 'Aucun formateur rattaché'}
           etat={contratEtat} date={contratDate}
-          onPreview={() => setPreview('contrat')}
+          onPreview={() => openPreview('contrat')}
           onSend={doSendContrat}
           sendLabel="Envoyer au formateur"
-          downloadUrl={contratPdfUrl}
+          downloadUrl={contratDlUrl}
           disabled={!hasFormateur} disabledReason="Aucun formateur rattaché à la session"
           busyKey="contrat"
         />
@@ -227,6 +245,30 @@ export function SessionDocuments(props: Props) {
       >
         {preview && (
           <div className="space-y-4">
+            {/* Contrôle de conformité (convention) — avant même l'envoi */}
+            {preview === 'conv' && (checking || check) && (
+              checking ? (
+                <div className="flex items-center gap-2 text-xs text-surface-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Vérification des mentions obligatoires…
+                </div>
+              ) : check && !check.ok ? (
+                <div className="rounded-xl bg-danger-50 border border-danger-200 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-danger-700 mb-1.5">
+                    <AlertCircle className="h-4 w-4" /> Convention incomplète — l&apos;envoi sera refusé
+                  </div>
+                  <ul className="space-y-0.5">
+                    {check.blocking.map((b, i) => (
+                      <li key={i} className="text-xs text-danger-700">• <strong>{b.section}</strong> — {b.label}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-2.5 text-sm text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" /> Toutes les mentions obligatoires sont présentes.
+                </div>
+              )
+            )}
+
             {/* Email qui sera envoyé */}
             <div className="rounded-xl border border-surface-200 overflow-hidden">
               <div className="px-3 py-2 bg-surface-50 border-b border-surface-200 flex items-center gap-2">
@@ -272,8 +314,8 @@ export function SessionDocuments(props: Props) {
                   className="text-xs text-brand-600 hover:underline">Ouvrir en plein écran</a>
               </div>
               <iframe
-                src={preview === 'conv' ? convPdfUrl : (contratPdfUrl || '')}
-                className="w-full h-[45vh] bg-surface-50"
+                src={(preview === 'conv' ? convPdfUrl : (contratPdfUrl || '')) + VIEWER}
+                className="w-full h-[52vh] bg-surface-50"
                 title="Aperçu du document"
               />
             </div>
@@ -287,6 +329,7 @@ export function SessionDocuments(props: Props) {
                 <Button
                   onClick={preview === 'conv' ? doSendConvention : doSendContrat}
                   isLoading={busy !== null}
+                  disabled={preview === 'conv' && (checking || (check ? !check.ok : false))}
                   icon={<Send className="h-4 w-4" />}
                 >
                   {preview === 'conv' ? 'Envoyer en signature' : 'Envoyer au formateur'}

@@ -27,10 +27,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   const buffer = await renderToBuffer(createElement(ContratFormateurPDF, { formateur, org, session }) as any)
+  // ?inline=1 → affichage dans le navigateur (aperçu), sinon téléchargement
+  const inline = searchParams.get('inline') === '1'
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="contrat-prestation-${formateur.nom}.pdf"`,
+      'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="contrat-prestation-${formateur.nom}.pdf"`,
+      'Cache-Control': 'private, max-age=0',
     },
   })
 }
