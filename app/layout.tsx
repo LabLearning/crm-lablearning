@@ -1,9 +1,23 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Lab Learning — Gestion de formation',
   description: 'Plateforme de gestion Lab Learning — Organisme de formation certifié Qualiopi',
+  // Favicon Lab Learning sur tout le CRM (dashboard, portails, pages de signature…)
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-icon.svg' }],
+    shortcut: ['/icon.svg'],
+  },
+  manifest: '/manifest.json',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#195245',
 }
 
 export default function RootLayout({
