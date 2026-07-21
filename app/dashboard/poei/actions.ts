@@ -268,6 +268,14 @@ export async function addPoeiCandidatAction(poeiId: string, formData: FormData):
   if (error) return { success: false, error: 'Erreur lors de l\'ajout du candidat' }
 
   await recalcPoeiTotal(supabase, orgId, poeiId)
+
+  // Un candidat ajouté en cours de parcours doit apparaître sur les feuilles
+  // d'émargement de toutes les interventions
+  try {
+    const { syncCandidatsSurInterventions } = await import('@/lib/poei-session')
+    await syncCandidatsSurInterventions(supabase, poeiId, orgId)
+  } catch (e) { console.error('[sync candidats interventions]', e) }
+
   await logAudit({ action: 'add_candidat', entity_type: 'poei', entity_id: poeiId })
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true }
@@ -748,6 +756,13 @@ export async function addPoeiInterventionAction(poeiId: string, formData: FormDa
   }).select('id').single()
   if (error || !data) return { success: false, error: "Erreur lors de l'ajout de l'intervention" }
 
+  // Session de l'intervention : sans elle, le formateur n'a ni émargement,
+  // ni questionnaire, ni accès à ses stagiaires
+  try {
+    const { syncInterventionSession } = await import('@/lib/poei-session')
+    await syncInterventionSession(supabase, data.id, session.user.id)
+  } catch (e) { console.error('[session intervention]', e) }
+
   // Notifie le formateur (notif in-app + email) comme pour une session
   if (formateur_id) {
     try { await notifyFormateurIntervention(supabase, session, data.id) }
@@ -755,6 +770,7 @@ export async function addPoeiInterventionAction(poeiId: string, formData: FormDa
   }
 
   await logAudit({ action: 'add_intervention', entity_type: 'poei', entity_id: poeiId })
+  revalidatePath('/dashboard/sessions')
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true, data }
 }
@@ -789,12 +805,19 @@ export async function updatePoeiInterventionAction(id: string, poeiId: string, f
   }).eq('id', id).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
 
+  // Répercute dates, lieu, formateur et rémunération sur la session
+  try {
+    const { syncInterventionSession } = await import('@/lib/poei-session')
+    await syncInterventionSession(supabase, id, session.user.id)
+  } catch (e) { console.error('[session intervention]', e) }
+
   if (changedFormateur) {
     try { await notifyFormateurIntervention(supabase, session, id) }
     catch (e) { console.error('[notif intervention]', e) }
   }
 
   revalidatePath(`/dashboard/poei/${poeiId}`)
+  revalidatePath('/dashboard/sessions')
   return { success: true }
 }
 
@@ -802,10 +825,29 @@ export async function removePoeiInterventionAction(id: string, poeiId: string): 
   const session = await getSession()
   if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  // La session de l'intervention est supprimée en cascade : on refuse tant
+  // qu'elle porte des émargements signés, qui sont des pièces justificatives
+  const { data: sess } = await supabase
+    .from('sessions').select('id').eq('poei_intervention_id', id).maybeSingle()
+  if (sess) {
+    const { count } = await supabase
+      .from('emargements')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', sess.id)
+      .not('signature_data', 'is', null)
+    if ((count || 0) > 0) {
+      return {
+        success: false,
+        error: `Cette intervention porte ${count} émargement(s) signé(s) : elle ne peut pas être supprimée. Retirez le formateur si la mission est annulée.`,
+      }
+    }
+  }
+
   const { error } = await supabase.from('poei_interventions')
     .delete().eq('id', id).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur lors de la suppression' }
   revalidatePath(`/dashboard/poei/${poeiId}`)
+  revalidatePath('/dashboard/sessions')
   return { success: true }
 }
 
@@ -889,6 +931,13 @@ export async function acceptPoeiInterventionAction(interventionId: string): Prom
     mission_status: 'accepted', mission_responded_at: new Date().toISOString(),
   }).eq('id', interventionId)
 
+  // La session de l'intervention suit l'état de la mission : c'est elle qui
+  // ouvre au formateur l'émargement et l'accès à ses stagiaires
+  try {
+    const { syncInterventionSession } = await import('@/lib/poei-session')
+    await syncInterventionSession(supabase, interventionId)
+  } catch (e) { console.error('[session intervention]', e) }
+
   // Contrat de prestation propre à l'intervention
   let contratSignUrl: string | null = null
   try {
@@ -968,6 +1017,11 @@ export async function refusePoeiInterventionAction(interventionId: string, motif
     mission_status: 'refused', mission_responded_at: new Date().toISOString(),
     mission_response_comment: motif || null,
   }).eq('id', interventionId)
+
+  try {
+    const { syncInterventionSession } = await import('@/lib/poei-session')
+    await syncInterventionSession(supabase, interventionId)
+  } catch (e) { console.error('[session intervention]', e) }
 
   if (iv.mission_proposed_by) {
     const { createNotification } = await import('@/lib/email')
