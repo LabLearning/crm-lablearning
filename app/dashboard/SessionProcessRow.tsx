@@ -32,20 +32,19 @@ function etapesFaites(s: SessionProcess): boolean[] {
 }
 
 /** Barre de progression du process d'une session : une pastille par étape */
-export function SessionProgressBar({ session, compact }: { session: SessionProcess; compact?: boolean }) {
+export function SessionProgressBar({ session, compact, inline }: { session: SessionProcess; compact?: boolean; inline?: boolean }) {
   const faites = etapesFaites(session)
   const nb = faites.filter(Boolean).length
   const total = faites.length
 
   return (
-    <div className={cn('flex items-center gap-2', compact ? 'mt-1.5' : 'mt-2')}>
-      <div className="flex-1 flex gap-1">
+    <div className={cn('flex items-center gap-2', inline ? '' : compact ? 'mt-1.5' : 'mt-2')}>
+      <div className="flex gap-[3px] shrink-0" title={ETAPES.map((e, i) => `${faites[i] ? '✓' : '○'} ${e.label}`).join('\n')}>
         {faites.map((ok, i) => (
           <span
             key={i}
-            title={`${ETAPES[i].label} — ${ok ? 'fait' : 'à faire'}`}
             className={cn(
-              'h-1.5 flex-1 rounded-full transition-colors',
+              'h-1.5 w-6 rounded-full transition-colors',
               ok ? 'bg-emerald-500' : 'bg-surface-200',
             )}
           />
@@ -53,7 +52,7 @@ export function SessionProgressBar({ session, compact }: { session: SessionProce
       </div>
       <span className={cn(
         'text-[10px] font-semibold tabular-nums shrink-0',
-        nb === total ? 'text-emerald-600' : nb === 0 ? 'text-surface-400' : 'text-amber-600',
+        nb === total ? 'text-emerald-600' : nb === 0 ? 'text-surface-300' : 'text-surface-500',
       )}>
         {nb}/{total}
       </span>
@@ -61,21 +60,20 @@ export function SessionProgressBar({ session, compact }: { session: SessionProce
   )
 }
 
-/** Détail des étapes manquantes, en pastilles */
-export function SessionEtapesManquantes({ session }: { session: SessionProcess }) {
+/** Prochaine étape à faire — une seule ligne actionnable */
+export function ProchaineEtape({ session }: { session: SessionProcess }) {
   const faites = etapesFaites(session)
-  const manquantes = ETAPES.filter((_, i) => !faites[i])
-  if (manquantes.length === 0) {
-    return <span className="text-[10px] font-medium text-emerald-600">Tout est prêt</span>
+  const idx = faites.findIndex((ok) => !ok)
+  if (idx === -1) {
+    return <span className="text-[11px] font-medium text-emerald-600">Tout est prêt</span>
   }
+  const reste = faites.filter((ok) => !ok).length
   return (
-    <div className="flex flex-wrap gap-1">
-      {manquantes.map((e) => (
-        <span key={e.court} className="px-1.5 py-0.5 rounded bg-surface-100 text-surface-500 text-[10px] font-medium">
-          {e.court}
-        </span>
-      ))}
-    </div>
+    <span className="text-[11px] text-surface-500">
+      <span className="text-surface-400">À faire :</span>{' '}
+      <span className="font-medium text-surface-700">{ETAPES[idx].label.toLowerCase()}</span>
+      {reste > 1 && <span className="text-surface-400"> +{reste - 1}</span>}
+    </span>
   )
 }
 
@@ -123,9 +121,9 @@ export function SessionProcessRow({ session, showDate }: { session: SessionProce
             )}
           </div>
 
-          <SessionProgressBar session={session} />
-          <div className="mt-1.5 flex items-center gap-2">
-            <SessionEtapesManquantes session={session} />
+          <div className="flex items-center gap-3 mt-2">
+            <SessionProgressBar session={session} inline />
+            <ProchaineEtape session={session} />
           </div>
         </div>
 
