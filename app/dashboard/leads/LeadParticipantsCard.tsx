@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, UserPlus, Trash2, Loader2, Mail, Phone, Pencil } from 'lucide-react'
+import { Users, UserPlus, Trash2, Loader2, Mail, Phone, Pencil, ClipboardPaste } from 'lucide-react'
 import { Button, Input, Select, useToast } from '@/components/ui'
-import { getLeadParticipantsAction, addLeadParticipantAction, updateLeadParticipantAction, deleteLeadParticipantAction } from './actions'
+import { ImportParticipantsModal } from '@/components/participants/ImportParticipantsModal'
+import { getLeadParticipantsAction, addLeadParticipantAction, updateLeadParticipantAction, deleteLeadParticipantAction, bulkCreateLeadParticipantsAction } from './actions'
 
 interface Participant {
   id: string; civilite: string | null; prenom: string | null; nom: string
@@ -92,6 +93,7 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
   const [busy, setBusy] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [showImport, setShowImport] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -138,6 +140,17 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
     else toast('error', res.error || 'Erreur')
   }
 
+  async function handleImport(rows: any[]) {
+    const res = await bulkCreateLeadParticipantsAction(leadId, rows)
+    if (res.success && res.data) {
+      const created = res.data as Participant[]
+      setParticipants((p) => [...p, ...created])
+      toast('success', `${created.length} participant${created.length > 1 ? 's' : ''} importé${created.length > 1 ? 's' : ''}`)
+      return { success: true }
+    }
+    return { success: false, error: res.error || 'Erreur' }
+  }
+
   const target = nombreStagiaires || 0
 
   return (
@@ -153,11 +166,23 @@ export function LeadParticipantsCard({ leadId, nombreStagiaires }: { leadId: str
           </span>
         </div>
         {!showForm && (
-          <Button size="sm" variant="secondary" onClick={() => { setShowForm(true); setEditingId(null) }} icon={<UserPlus className="h-3.5 w-3.5" />}>
-            Ajouter
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setShowImport(true)} icon={<ClipboardPaste className="h-3.5 w-3.5" />}>
+              Importer depuis un texte
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => { setShowForm(true); setEditingId(null) }} icon={<UserPlus className="h-3.5 w-3.5" />}>
+              Ajouter
+            </Button>
+          </div>
         )}
       </div>
+
+      <ImportParticipantsModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        existing={participants}
+        onConfirm={handleImport}
+      />
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-surface-400 py-2"><Loader2 className="h-4 w-4 animate-spin" /> Chargement…</div>

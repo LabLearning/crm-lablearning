@@ -47,6 +47,7 @@ export const createLeadSchema = z.object({
   formation_souhaitee: z.string().optional(),
   nombre_stagiaires: z.coerce.number().int().min(1).optional(),
   date_souhaitee: z.string().optional(),
+  date_fin_souhaitee: z.string().optional(),
   commentaire: z.string().optional(),
   // Suivi
   apporteur_id: z.string().uuid().optional().or(z.literal('')),

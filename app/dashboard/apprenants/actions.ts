@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createApprenantSchema } from '@/lib/validations/formation'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import type { ExtractedParticipant } from '@/lib/ai'
 import type { ActionResult } from '@/lib/types'
 
 export async function createApprenantAction(formData: FormData): Promise<ActionResult> {
@@ -149,6 +150,40 @@ export async function inscrireApprenantAction(apprenantId: string, sessionId: st
   })
   revalidatePath('/dashboard/apprenants')
   revalidatePath('/dashboard/sessions')
+  return { success: true, data }
+}
+
+// Import en masse depuis la prévisualisation IA (les lignes ont déjà été validées par l'utilisateur).
+export async function bulkCreateApprenantsAction(participants: ExtractedParticipant[]): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const rows = (participants || [])
+    .filter((p) => (p.nom || '').trim())
+    .map((p) => ({
+      organization_id: session.organization.id,
+      civilite: p.civilite || null,
+      prenom: (p.prenom || '').trim(),
+      nom: (p.nom || '').trim(),
+      email: p.email || null,
+      telephone: p.telephone || null,
+      date_naissance: p.date_naissance || null,
+      lieu_naissance: p.lieu_naissance || null,
+      numero_securite_sociale: p.numero_securite_sociale || null,
+      adresse: p.adresse || null,
+      code_postal: p.code_postal || null,
+      ville: p.ville || null,
+      type_contrat: p.type_contrat || null,
+      poste: p.poste || null,
+    }))
+
+  if (rows.length === 0) return { success: false, error: 'Aucun apprenant à enregistrer' }
+
+  const { data, error } = await supabase.from('apprenants').insert(rows).select()
+  if (error) return { success: false, error: "Erreur lors de l'enregistrement" }
+
+  await logAudit({ action: 'import', entity_type: 'apprenant', details: { count: rows.length } })
+  revalidatePath('/dashboard/apprenants')
   return { success: true, data }
 }
 

@@ -89,6 +89,7 @@ export interface Lead {
   formation_souhaitee: string | null
   nombre_stagiaires: number | null
   date_souhaitee: string | null
+  date_fin_souhaitee: string | null
   commentaire: string | null
   // Planification (workflow commercial)
   formation_id: string | null

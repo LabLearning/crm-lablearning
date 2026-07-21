@@ -5,13 +5,14 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Save,
   UserCheck, Building2, Mail, Phone, Accessibility,
-  GraduationCap, Calendar, AlertTriangle,
+  GraduationCap, Calendar, AlertTriangle, ClipboardPaste,
 } from 'lucide-react'
 import { Button, Badge, Input, Select, Modal, Avatar, useToast, RowMenu, PaginationBar } from '@/components/ui'
 import {
   createApprenantAction, updateApprenantAction,
-  deleteApprenantAction, inscrireApprenantAction,
+  deleteApprenantAction, inscrireApprenantAction, bulkCreateApprenantsAction,
 } from './actions'
+import { ImportParticipantsModal } from '@/components/participants/ImportParticipantsModal'
 import { formatDate } from '@/lib/utils'
 import type { Apprenant, Session, Inscription } from '@/lib/types/formation'
 import type { Client } from '@/lib/types/crm'
@@ -143,6 +144,7 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions, to
   const [search, setSearch] = useState(initialSearch)
   const searchTimer = useRef<ReturnType<typeof setTimeout>>()
   const [createOpen, setCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editApprenant, setEditApprenant] = useState<Apprenant | null>(null)
   const [inscrireApprenant, setInscrireApprenant] = useState<Apprenant | null>(null)
   const [parcourApprenant, setParcourApprenant] = useState<Apprenant | null>(null)
@@ -166,6 +168,17 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions, to
     return inscriptions.filter((i) => i.apprenant_id === apprenantId)
   }
 
+  async function handleImport(rows: any[]) {
+    const result = await bulkCreateApprenantsAction(rows)
+    if (result.success) {
+      const count = (result.data as any[])?.length || 0
+      toast('success', `${count} apprenant${count > 1 ? 's' : ''} importé${count > 1 ? 's' : ''}`)
+      router.refresh()
+      return { success: true }
+    }
+    return { success: false, error: result.error || 'Erreur' }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('Supprimer cet apprenant ?')) return
     const result = await deleteApprenantAction(id)
@@ -186,8 +199,19 @@ export function ApprenantsList({ apprenants, clients, sessions, inscriptions, to
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Apprenants</h1>
           <p className="text-surface-500 mt-1 text-sm">{new Intl.NumberFormat('fr-FR').format(total)} apprenant{total > 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Nouvel apprenant</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setImportOpen(true)} icon={<ClipboardPaste className="h-4 w-4" />}>Importer depuis un texte</Button>
+          <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Nouvel apprenant</Button>
+        </div>
       </div>
+
+      <ImportParticipantsModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        existing={apprenants}
+        onConfirm={handleImport}
+        title="Importer des apprenants depuis un texte"
+      />
 
       <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 max-w-md mb-5">
         <Search className="h-4 w-4 text-surface-400" />

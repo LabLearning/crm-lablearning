@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, AlertCircle, Award, GraduationCap } from 'lucide-react'
 import { Button, Input, Select, CompanySearchInput, OpcoSelector } from '@/components/ui'
 import { createLeadAction, updateLeadAction } from './actions'
@@ -98,6 +98,10 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
   const [formeJuridique, setFormeJuridique] = useState(lead?.forme_juridique || '')
   const [dateCreation, setDateCreation] = useState(lead?.date_creation_entreprise || '')
   const [dateSouhaitee, setDateSouhaitee] = useState(lead?.date_souhaitee || '')
+  const [dateFinSouhaitee, setDateFinSouhaitee] = useState(lead?.date_fin_souhaitee || '')
+  // La fin est proposée d'après la durée du catalogue, mais l'utilisateur garde
+  // la main : dès qu'il la corrige, on cesse de la recalculer
+  const [finModifiee, setFinModifiee] = useState(Boolean(lead?.date_fin_souhaitee))
   const [effectifLibelle, setEffectifLibelle] = useState(lead?.effectif_libelle || '')
   const [tvaIntra, setTvaIntra] = useState(lead?.tva_intra || '')
   const [estQualiopi, setEstQualiopi] = useState(lead?.est_qualiopi || false)
@@ -161,6 +165,12 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
   const totalHeures = selectedFormations.reduce((s, f) => s + (Number(f.duree_heures) || 0), 0)
   const dureeTotale = libelleDuree({ duree_jours: totalJours, duree_heures: totalHeures })
   const finPrevue = dateSouhaitee && totalJours > 0 ? addJours(dateSouhaitee, totalJours - 1) : null
+
+  // Pré-remplissage de la date de fin tant que l'utilisateur n'y a pas touché
+  useEffect(() => {
+    if (finModifiee) return
+    setDateFinSouhaitee(finPrevue || '')
+  }, [finPrevue, finModifiee])
 
   const formationOptions = [
     ...formations.map((f) => ({ value: f.id, label: f.intitule })),
@@ -388,24 +398,30 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
         </div>
       )}
 
+      <Input id="nombre_stagiaires" name="nombre_stagiaires" type="number" label="Nombre de participants" defaultValue={lead?.nombre_stagiaires?.toString() || ''} placeholder="1" />
+
       <div className="grid grid-cols-2 gap-4">
-        <Input id="nombre_stagiaires" name="nombre_stagiaires" type="number" label="Nombre de participants" defaultValue={lead?.nombre_stagiaires?.toString() || ''} placeholder="1" />
-        <div>
-          <Input
-            id="date_souhaitee" name="date_souhaitee" type="date"
-            label={dureeTotale ? `Date de début souhaitée — ${dureeTotale}` : 'Date souhaitée'}
-            value={dateSouhaitee} onChange={(e) => setDateSouhaitee(e.target.value)}
-          />
-          {/* La date saisie n'est qu'un début : on annonce jusqu'où la formation court */}
-          {finPrevue && (
-            <p className="text-2xs text-surface-500 mt-1">
-              {finPrevue === dateSouhaitee
-                ? 'Formation d\'une journée.'
-                : <>Se terminerait le <strong className="text-surface-700">{new Date(finPrevue).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.</>}
-            </p>
-          )}
-        </div>
+        <Input
+          id="date_souhaitee" name="date_souhaitee" type="date"
+          label={dureeTotale ? `Date de début souhaitée — ${dureeTotale}` : 'Date de début souhaitée'}
+          value={dateSouhaitee} onChange={(e) => setDateSouhaitee(e.target.value)}
+        />
+        <Input
+          id="date_fin_souhaitee" name="date_fin_souhaitee" type="date"
+          label="Date de fin souhaitée"
+          value={dateFinSouhaitee}
+          onChange={(e) => { setFinModifiee(true); setDateFinSouhaitee(e.target.value) }}
+        />
       </div>
+      {dateSouhaitee && dateFinSouhaitee && (
+        <p className="text-2xs text-surface-500 -mt-2">
+          {dateFinSouhaitee < dateSouhaitee ? (
+            <span className="text-danger-600 font-medium">La date de fin est antérieure à la date de début.</span>
+          ) : !finModifiee && finPrevue ? (
+            <>Fin calculée d&apos;après la durée du catalogue — modifiable si le planning diffère.</>
+          ) : null}
+        </p>
+      )}
 
       <div>
         <label htmlFor="commentaire" className="text-sm font-medium text-surface-700">Commentaire</label>

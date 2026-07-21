@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Building2, Mail, Phone, Euro, Calendar, Tag,
   MessageSquare, ArrowRight, Send, Calculator,
-  ClipboardList, Mails, Zap,
+  ClipboardList, Mails, Zap, GraduationCap,
 } from 'lucide-react'
 import { Button, Badge, Select, useToast } from '@/components/ui'
 import { addInteractionAction } from './actions'
@@ -13,7 +13,7 @@ import {
   LEAD_STATUS_LABELS, LEAD_STATUS_COLORS, LEAD_SOURCE_LABELS,
   INTERACTION_LABELS, PIPELINE_COLUMNS,
 } from '@/lib/types/crm'
-import { formatDateTime } from '@/lib/utils'
+import { formatDate, formatDateTime } from '@/lib/utils'
 import type { Lead, LeadStatus, LeadInteraction } from '@/lib/types/crm'
 import type { User } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -184,13 +184,42 @@ export function LeadDetail({ lead, users, gestionnaires, formateurs = [], format
               <Tag className="h-4 w-4 text-surface-400" />
               <div><div className="text-[10px] text-surface-400">Source</div><div className="text-sm text-surface-800">{LEAD_SOURCE_LABELS[lead.source]}</div></div>
             </div>
-            {lead.formation_souhaitee && (
+            {/* Période souhaitée : sans la fin, impossible de juger la disponibilité */}
+            {(lead.date_souhaitee || lead.date_fin_souhaitee) && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-surface-50">
                 <Calendar className="h-4 w-4 text-surface-400" />
-                <div><div className="text-[10px] text-surface-400">Formation souhaitee</div><div className="text-sm text-surface-800 truncate">{lead.formation_souhaitee}</div></div>
+                <div className="min-w-0">
+                  <div className="text-[10px] text-surface-400">Periode souhaitee</div>
+                  <div className="text-sm text-surface-800">
+                    {lead.date_souhaitee ? formatDate(lead.date_souhaitee, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    {lead.date_fin_souhaitee && lead.date_fin_souhaitee !== lead.date_souhaitee && (
+                      <> → {formatDate(lead.date_fin_souhaitee, { day: 'numeric', month: 'short', year: 'numeric' })}</>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Formations souhaitées : une ligne par formation, avec sa période propre */}
+          {lead.formation_souhaitee && (
+            <div className="p-3 rounded-xl bg-surface-50">
+              <div className="flex items-center gap-1.5 text-[10px] text-surface-400 mb-1.5">
+                <GraduationCap className="h-3.5 w-3.5" /> Formation(s) souhaitee(s)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {lead.formation_souhaitee.split(',').map((f, i) => {
+                  const nom = f.trim()
+                  if (!nom) return null
+                  return (
+                    <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-full bg-white border border-surface-200 text-xs font-medium text-surface-700">
+                      {nom}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           {lead.commentaire && (
             <div className="p-3 rounded-xl bg-surface-50">
               <div className="text-[10px] text-surface-400 mb-1">Commentaire</div>

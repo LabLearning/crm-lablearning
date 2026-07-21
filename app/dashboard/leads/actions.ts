@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createLeadSchema, updateLeadStatusSchema, createInteractionSchema } from '@/lib/validations/crm'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { extractParticipantsFromText, type ExtractedParticipant } from '@/lib/ai'
 import type { ActionResult } from '@/lib/types'
 
 export async function createLeadAction(formData: FormData): Promise<ActionResult> {
@@ -51,6 +52,7 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     montant_estime: parsed.data.montant_estime || null,
     nombre_stagiaires: parsed.data.nombre_stagiaires || null,
     date_souhaitee: parsed.data.date_souhaitee || null,
+    date_fin_souhaitee: parsed.data.date_fin_souhaitee || null,
     date_creation_entreprise: parsed.data.date_creation_entreprise || null,
     site_web: parsed.data.site_web || null,
     opco_id: parsed.data.opco_id || null,
@@ -85,6 +87,7 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
       lead_id: data.id,
       formation_id: fid,
       date_souhaitee: parsed.data.date_souhaitee || null,
+      date_fin_souhaitee: parsed.data.date_fin_souhaitee || null,
       planification_status: 'a_planifier',
     })))
   }
@@ -219,6 +222,7 @@ export async function updateLeadAction(id: string, formData: FormData): Promise<
     montant_estime: parsed.data.montant_estime || null,
     nombre_stagiaires: parsed.data.nombre_stagiaires || null,
     date_souhaitee: parsed.data.date_souhaitee || null,
+    date_fin_souhaitee: parsed.data.date_fin_souhaitee || null,
     date_creation_entreprise: parsed.data.date_creation_entreprise || null,
     site_web: parsed.data.site_web || null,
     opco_id: parsed.data.opco_id || null,
@@ -722,6 +726,54 @@ export async function updateLeadParticipantAction(id: string, formData: FormData
     .select()
     .single()
   if (error) return { success: false, error: 'Erreur' }
+  revalidatePath('/dashboard/leads')
+  return { success: true, data }
+}
+
+// Étape 1 de l'import en masse : l'IA lit le texte, rien n'est enregistré.
+export async function extractParticipantsFromTextAction(rawText: string): Promise<ActionResult> {
+  await getSession()
+  const result = await extractParticipantsFromText(rawText)
+  if (!result.success) return { success: false, error: result.error || 'Extraction impossible' }
+  if (result.participants.length === 0) return { success: false, error: 'Aucun participant détecté dans ce texte' }
+  return { success: true, data: result.participants }
+}
+
+// Étape 2 : enregistrement des lignes validées par l'utilisateur dans la prévisualisation.
+export async function bulkCreateLeadParticipantsAction(
+  leadId: string,
+  participants: ExtractedParticipant[],
+): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const rows = (participants || [])
+    .filter((p) => (p.nom || '').trim())
+    .map((p) => ({
+      organization_id: session.organization.id,
+      lead_id: leadId,
+      civilite: p.civilite || null,
+      prenom: p.prenom || null,
+      nom: (p.nom || '').trim(),
+      email: p.email || null,
+      telephone: p.telephone || null,
+      poste: p.poste || null,
+      date_naissance: p.date_naissance || null,
+      lieu_naissance: p.lieu_naissance || null,
+      adresse: p.adresse || null,
+      code_postal: p.code_postal || null,
+      ville: p.ville || null,
+      type_contrat: p.type_contrat || null,
+      numero_securite_sociale: p.numero_securite_sociale || null,
+      niveau_diplome: p.niveau_diplome || null,
+    }))
+
+  if (rows.length === 0) return { success: false, error: 'Aucun participant à enregistrer' }
+
+  const { data, error } = await supabase.from('lead_participants').insert(rows).select()
+  if (error) return { success: false, error: "Erreur lors de l'enregistrement" }
+
+  await logAudit({ action: 'import_participants', entity_type: 'lead', entity_id: leadId, details: { count: rows.length } })
   revalidatePath('/dashboard/leads')
   return { success: true, data }
 }
