@@ -8,7 +8,7 @@ import {
 import { Button, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import { createDocumentAction, deleteDocumentAction } from '@/app/dashboard/documents/actions'
 import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES_ENTREPRISE } from '@/lib/types/document'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 
 interface Doc {
   id: string
@@ -41,7 +41,42 @@ export function ClientDocuments({ clientId, documents }: { clientId: string; doc
   const [uploaded, setUploaded] = useState<{ storage_path: string; file_name: string; file_size: number; mime_type: string } | null>(null)
   const [nom, setNom] = useState('')
   const [type, setType] = useState<string>('kbis')
+  const [dragging, setDragging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // dragenter/dragleave se déclenchent aussi sur les enfants : on compte les
+  // entrées pour ne retirer le surlignage qu'en sortant vraiment de la zone
+  const dragDepth = useRef(0)
+
+  function resetDrag() {
+    dragDepth.current = 0
+    setDragging(false)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    resetDrag()
+    if (uploading) return
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFile(file)
+  }
+
+  const dragHandlers = {
+    onDragEnter: (e: React.DragEvent) => {
+      e.preventDefault()
+      dragDepth.current += 1
+      setDragging(true)
+    },
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      e.preventDefault()
+      dragDepth.current -= 1
+      if (dragDepth.current <= 0) resetDrag()
+    },
+    onDrop: handleDrop,
+  }
 
   async function handleFile(file: File) {
     setUploading(true)
@@ -90,8 +125,26 @@ export function ClientDocuments({ clientId, documents }: { clientId: string; doc
     else toast('error', r.error || 'Erreur')
   }
 
+  // Déposer un fichier sur la section ouvre directement la fenêtre d'ajout,
+  // fichier déjà transféré : un Kbis se classe en un seul geste
+  function handleDropOnCard(e: React.DragEvent) {
+    e.preventDefault()
+    resetDrag()
+    const file = e.dataTransfer.files?.[0]
+    if (!file || uploading) return
+    setOpen(true)
+    handleFile(file)
+  }
+
   return (
-    <div className="card overflow-hidden">
+    <div
+      {...dragHandlers}
+      onDrop={open ? handleDrop : handleDropOnCard}
+      className={cn(
+        'card overflow-hidden transition-colors',
+        dragging && !open && 'ring-2 ring-brand-300 ring-offset-2',
+      )}
+    >
       <div className="px-4 py-3 border-b border-surface-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-brand-500" />
@@ -104,9 +157,14 @@ export function ClientDocuments({ clientId, documents }: { clientId: string; doc
         </button>
       </div>
 
-      {documents.length === 0 ? (
+      {dragging && !open ? (
+        <div className="px-4 py-8 text-center text-sm font-medium text-brand-700 bg-brand-50/60">
+          Déposez le fichier pour l&apos;ajouter à cette société
+        </div>
+      ) : documents.length === 0 ? (
         <div className="px-4 py-8 text-center text-sm text-surface-400">
-          Aucun document. Ajoutez ici les pièces liées à l&apos;entreprise : Kbis, courriers OPCO/AKTO, attestations…
+          Aucun document. Glissez un fichier ici ou cliquez sur « Ajouter » :
+          Kbis, courriers OPCO/AKTO, attestations…
         </div>
       ) : (
         <div className="divide-y divide-surface-100">
@@ -160,11 +218,23 @@ export function ClientDocuments({ clientId, documents }: { clientId: string; doc
               <button onClick={() => setUploaded(null)} className="text-xs text-emerald-700 hover:underline shrink-0">Changer</button>
             </div>
           ) : (
-            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-              className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-surface-300 py-8 text-surface-500 hover:border-brand-300 hover:bg-brand-50/30 transition-colors disabled:opacity-50">
+            <button
+              type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              {...dragHandlers}
+              className={cn(
+                'w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-8 transition-colors disabled:opacity-50',
+                dragging
+                  ? 'border-brand-400 bg-brand-50/60 text-brand-700'
+                  : 'border-surface-300 text-surface-500 hover:border-brand-300 hover:bg-brand-50/30',
+              )}
+            >
               {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-              <span className="text-sm font-medium">{uploading ? 'Transfert en cours…' : 'Choisir un fichier'}</span>
-              <span className="text-xs text-surface-400">PDF, Word, Excel, image — 20 Mo max</span>
+              <span className="text-sm font-medium">
+                {uploading ? 'Transfert en cours…' : dragging ? 'Déposez le fichier ici' : 'Glissez un fichier ici ou cliquez pour le choisir'}
+              </span>
+              <span className={cn('text-xs', dragging ? 'text-brand-500' : 'text-surface-400')}>
+                PDF, Word, Excel, image — 20 Mo max
+              </span>
             </button>
           )}
 
