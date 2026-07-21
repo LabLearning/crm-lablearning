@@ -7,7 +7,7 @@ import {
   ArrowLeft, Calendar, MapPin, Clock, Users, UserCheck, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
-  Star, ListChecks, FileSignature, Award, Euro,
+  Star, ListChecks, FileSignature, Award, Euro, BookOpen,
 } from 'lucide-react'
 import { Badge, PoeiBadge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
 import { SessionDocuments } from './SessionDocuments'
+import { SessionContenuPedagogique } from './SessionContenuPedagogique'
 import { SessionForm } from '../SessionForm'
 
 const CONVENTION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'danger' }> = {
@@ -43,6 +44,8 @@ interface Props {
   apprenantsRef?: any[]
   sessionFormationIds?: string[]
   evaluationsAppr?: any[]
+  supports?: any[]
+  positionnement?: any[]
   isFormateur: boolean
   userRole: string
   isPoei?: boolean
@@ -64,10 +67,10 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], isFormateur, userRole, isPoei }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], isFormateur, userRole, isPoei }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions'>('session')
+  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'contenu'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [showMontantModal, setShowMontantModal] = useState(false)
   const [montantValue, setMontantValue] = useState('')
@@ -266,6 +269,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
         {[
           { id: 'session' as const, label: 'Session', icon: Calendar },
           { id: 'apprenants' as const, label: `Apprenants (${inscriptions.length})`, icon: Users },
+          ...(!isFormateur ? [{ id: 'contenu' as const, label: 'Contenu pédagogique', icon: BookOpen }] : []),
           { id: 'presences' as const, label: 'Émargement', icon: UserCheck },
           { id: 'pointages' as const, label: `Pointages (${pointages.length})`, icon: Clock },
           { id: 'evaluations' as const, label: `Évaluations (${evaluations.length})`, icon: Star },
@@ -439,6 +443,21 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
             </div>
           </div>
         </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════
+          ONGLET CONTENU PÉDAGOGIQUE
+          ═══════════════════════════════════════════════ */}
+      {tab === 'contenu' && !isFormateur && (
+        <SessionContenuPedagogique
+          sessionId={session.id}
+          formationId={session.formation_id || null}
+          deroule={session.deroule_pedagogique || null}
+          materiel={session.materiel_necessaire || null}
+          supports={supports as any[]}
+          positionnement={positionnement as any[]}
+          apprenants={inscriptions.map((i: any) => i.apprenant).filter(Boolean)}
+        />
       )}
 
       {/* ═══════════════════════════════════════════════

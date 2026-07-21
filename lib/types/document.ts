@@ -4,8 +4,11 @@
 
 import type { BadgeVariant } from '@/lib/types'
 
-export type DocumentType = 'devis' | 'convention' | 'contrat' | 'convocation' | 'programme' | 'reglement_interieur' | 'emargement' | 'attestation_fin' | 'attestation_assiduite' | 'certificat_realisation' | 'facture' | 'avoir' | 'kbis' | 'courrier_opco' | 'attestation_urssaf' | 'rib' | 'piece_identite' | 'assurance' | 'statuts' | 'autre'
+export type DocumentType = 'devis' | 'convention' | 'contrat' | 'convocation' | 'programme' | 'reglement_interieur' | 'emargement' | 'attestation_fin' | 'attestation_assiduite' | 'certificat_realisation' | 'facture' | 'avoir' | 'kbis' | 'courrier_opco' | 'attestation_urssaf' | 'rib' | 'piece_identite' | 'assurance' | 'statuts' | 'support_pedagogique' | 'diaporama' | 'exercice' | 'ressource' | 'autre'
 export type SignatureStatus = 'en_attente' | 'signe' | 'refuse' | 'expire'
+
+/** Qui peut consulter un document rattaché à une session */
+export type DocumentVisibilite = 'formateur' | 'stagiaires' | 'tous'
 
 export interface Document {
   id: string
@@ -18,6 +21,7 @@ export interface Document {
   file_size: number | null
   mime_type: string | null
   storage_path: string | null
+  visibilite: DocumentVisibilite
   requires_signature: boolean
   client_id: string | null
   session_id: string | null
@@ -55,7 +59,23 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   certificat_realisation: 'Certificat de réalisation', facture: 'Facture', avoir: 'Avoir',
   kbis: 'Kbis', courrier_opco: 'Courrier OPCO / AKTO', attestation_urssaf: 'Attestation URSSAF',
   rib: 'RIB', piece_identite: 'Pièce d\'identité', assurance: 'Attestation d\'assurance',
-  statuts: 'Statuts', autre: 'Autre',
+  statuts: 'Statuts', support_pedagogique: 'Support de cours', diaporama: 'Diaporama',
+  exercice: 'Exercice', ressource: 'Ressource complémentaire', autre: 'Autre',
+}
+
+/** Types réservés aux supports pédagogiques téléversés sur une session */
+export const DOCUMENT_TYPES_SUPPORT: DocumentType[] = [
+  'support_pedagogique', 'diaporama', 'exercice', 'ressource',
+]
+
+export const DOCUMENT_VISIBILITE_LABELS: Record<DocumentVisibilite, string> = {
+  formateur: 'Formateur uniquement',
+  stagiaires: 'Formateur + stagiaires',
+  tous: 'Tout le monde (client inclus)',
+}
+
+export const DOCUMENT_VISIBILITE_SHORT: Record<DocumentVisibilite, string> = {
+  formateur: 'Formateur', stagiaires: 'Stagiaires', tous: 'Tous',
 }
 
 /** Types pertinents pour les pièces administratives d'une société (fiche client) */

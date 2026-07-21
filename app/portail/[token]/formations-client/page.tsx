@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import { Calendar, Clock, MapPin, Users, GraduationCap } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { getSessionSupports } from '@/lib/session-contenu'
+import { SupportsList } from '../ContenuPedagogique'
 
 // Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
 export const dynamic = 'force-dynamic'
@@ -30,6 +32,9 @@ export default async function ClientFormationsPage({ params }: { params: { token
   const allSessions = [
     ...(dossiers || []).filter((d: any) => d.session).map((d: any) => d.session),
   ].filter((s, i, arr) => s && arr.findIndex((x: any) => x?.id === s.id) === i)
+
+  // Le client ne voit que les supports explicitement ouverts à tout le monde
+  const supportsBySession = await getSessionSupports(supabase, allSessions.map((s: any) => s.id), 'client')
 
   const upcoming = allSessions.filter((s: any) => s.status !== 'terminee' && s.status !== 'annulee')
   const past = allSessions.filter((s: any) => s.status === 'terminee')
@@ -60,6 +65,11 @@ export default async function ClientFormationsPage({ params }: { params: { token
                     {s.status === 'en_cours' ? 'En cours' : s.status === 'confirmee' ? 'Confirmee' : 'Planifiee'}
                   </Badge>
                 </div>
+                {(supportsBySession[s.id] || []).length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-surface-100">
+                    <SupportsList supports={supportsBySession[s.id]} token={params.token} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

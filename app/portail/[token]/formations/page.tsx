@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui'
 import { INSCRIPTION_STATUS_LABELS, INSCRIPTION_STATUS_COLORS } from '@/lib/types/formation'
 import { formatDate } from '@/lib/utils'
 import type { InscriptionStatus } from '@/lib/types/formation'
+import { getSessionSupports } from '@/lib/session-contenu'
+import { SupportsList } from '../ContenuPedagogique'
 
 // Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
 export const dynamic = 'force-dynamic'
@@ -19,7 +21,7 @@ export default async function PortalFormationsPage({ params }: { params: { token
     .from('inscriptions')
     .select(`
       *,
-      session:sessions(reference, date_debut, date_fin, horaires, lieu, lien_visio, status,
+      session:sessions(id, reference, date_debut, date_fin, horaires, lieu, lien_visio, status,
         formation:formation_id(intitule, duree_heures, modalite, objectifs_pedagogiques, programme_detaille)
       )
     `)
@@ -27,6 +29,14 @@ export default async function PortalFormationsPage({ params }: { params: { token
     .order('date_inscription', { ascending: false })
 
   const allIns = inscriptions || []
+
+  // Supports des sessions où l'apprenant est toujours inscrit — filtrés côté
+  // serveur : un support en visibilité « formateur » n'est jamais remonté ici
+  const sessionIds = allIns
+    .filter((i: any) => !['annule', 'abandonne'].includes(i.status))
+    .map((i: any) => i.session?.id)
+    .filter(Boolean)
+  const supportsBySession = await getSessionSupports(supabase, sessionIds, 'stagiaire')
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -113,6 +123,13 @@ export default async function PortalFormationsPage({ params }: { params: { token
                   {ins.progression !== null && (
                     <div className="text-success-600 font-medium">Progression : +{ins.progression}%</div>
                   )}
+                </div>
+              )}
+
+              {/* Supports de la session */}
+              {(supportsBySession[session?.id] || []).length > 0 && (
+                <div className="mt-4 pt-4 border-t border-surface-100">
+                  <SupportsList supports={supportsBySession[session.id]} token={params.token} />
                 </div>
               )}
 

@@ -3,9 +3,11 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { FileText, Download } from 'lucide-react'
 import { Badge } from '@/components/ui'
-import { DOCUMENT_TYPE_LABELS } from '@/lib/types/document'
+import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES_SUPPORT } from '@/lib/types/document'
 import { formatDate } from '@/lib/utils'
 import { PendingSignatures } from './PendingSignatures'
+import { getSessionSupports, type SessionSupport } from '@/lib/session-contenu'
+import { SupportsList } from '../ContenuPedagogique'
 
 // Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
 export const dynamic = 'force-dynamic'
@@ -18,11 +20,14 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
   const field = context.type === 'apprenant' ? 'apprenant_id' : context.type === 'formateur' ? 'formateur_id' : 'organization_id'
   const targetId = context.type === 'apprenant' ? context.apprenant.id : context.type === 'formateur' ? (context as any).formateur.id : context.organization.id
 
-  // Documents assigned to this person
+  // Documents assigned to this person.
+  // Les supports pédagogiques sont exclus de cette liste générique : ils ont
+  // leur propre section, servie après filtrage de visibilité par session.
   const { data: documents } = await supabase
     .from('documents')
     .select('*, signatures(*)')
     .eq(field, targetId)
+    .not('type', 'in', `(${DOCUMENT_TYPES_SUPPORT.join(',')})`)
     .order('created_at', { ascending: false })
 
   const allDocs = documents || []
@@ -48,6 +53,29 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
     })
   }
 
+  // Supports pédagogiques des sessions de l'apprenant, regroupés par formation.
+  // Le filtrage de visibilité est fait dans getSessionSupports (côté serveur).
+  const supportsParSession: { sessionId: string; titre: string; supports: SessionSupport[] }[] = []
+  if (context.type === 'apprenant') {
+    const { data: ins } = await supabase
+      .from('inscriptions')
+      .select('session:sessions(id, reference, date_debut, formation:formation_id(intitule))')
+      .eq('apprenant_id', context.apprenant.id)
+      .not('status', 'in', '("annule","abandonne")')
+
+    const sessions = (ins || []).map((i: any) => i.session).filter(Boolean)
+    const bySession = await getSessionSupports(supabase, sessions.map((s: any) => s.id), 'stagiaire')
+    for (const s of sessions) {
+      const list = bySession[s.id] || []
+      if (list.length === 0) continue
+      supportsParSession.push({
+        sessionId: s.id,
+        titre: s.formation?.intitule || s.reference || 'Session',
+        supports: list,
+      })
+    }
+  }
+
   // Also get pending signatures
   const email = context.type === 'apprenant' ? context.apprenant.email : context.type === 'formateur' ? (context as any).formateur.email : null
   let pendingSignatures: { id: string; signataire_nom: string; status: string; token: string; document: { nom: string; type: string } }[] = []
@@ -70,6 +98,18 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
 
       {/* Pending signatures — signature dessinée en ligne */}
       <PendingSignatures token={params.token} signatures={pendingSignatures} />
+
+      {/* Supports pédagogiques par formation */}
+      {supportsParSession.length > 0 && (
+        <div className="space-y-4">
+          {supportsParSession.map((s) => (
+            <div key={s.sessionId} className="card p-5">
+              <h2 className="text-sm font-heading font-semibold text-surface-900 mb-3">{s.titre}</h2>
+              <SupportsList supports={s.supports} token={params.token} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Documents list */}
       <div className="card overflow-hidden">

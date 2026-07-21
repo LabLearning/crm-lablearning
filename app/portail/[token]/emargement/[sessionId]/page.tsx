@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { formatShortDate, sortCreneaux, todayISO } from '../helpers'
 import { SessionDays, type DayRow } from './SessionDays'
+import { ContenuPedagogiqueFormateur } from '../../ContenuPedagogique'
+import { getSessionSupports, getPositionnementEtat } from '@/lib/session-contenu'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +32,7 @@ export default async function PortalEmargementSessionPage({
   const { data: session } = await supabase
     .from('sessions')
     .select(
-      'id, reference, intitule, date_debut, date_fin, horaires, lieu, adresse, code_postal, ville, formateur_id, organization_id, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale)',
+      'id, reference, intitule, date_debut, date_fin, horaires, lieu, adresse, code_postal, ville, formateur_id, organization_id, deroule_pedagogique, materiel_necessaire, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale)',
     )
     .eq('id', params.sessionId)
     .maybeSingle()
@@ -55,7 +57,7 @@ export default async function PortalEmargementSessionPage({
       .eq('session_id', session.id),
     supabase
       .from('inscriptions')
-      .select('apprenant:apprenants(prenom, nom)')
+      .select('apprenant:apprenants(id, prenom, nom)')
       .eq('session_id', session.id)
       .not('status', 'in', '("annule","abandonne")'),
   ])
@@ -76,6 +78,17 @@ export default async function PortalEmargementSessionPage({
       if (s.path && s.signedUrl) scanUrls[s.path] = s.signedUrl
     }
   }
+
+  // Contenu pédagogique : le formateur voit tous les supports de sa session
+  const [supportsBySession, positionnement] = await Promise.all([
+    getSessionSupports(supabase, [session.id], 'formateur'),
+    getPositionnementEtat(
+      supabase,
+      session.id,
+      stagiaires.map((a: any) => ({ id: a.id, prenom: a.prenom, nom: a.nom })),
+    ),
+  ])
+  const supports = supportsBySession[session.id] || []
 
   const dates = Array.from(new Set(emargements.map((e) => e.date))).sort()
 
@@ -195,6 +208,14 @@ export default async function PortalEmargementSessionPage({
           </div>
         )}
       </div>
+
+      <ContenuPedagogiqueFormateur
+        token={params.token}
+        deroule={(session as any).deroule_pedagogique || null}
+        materiel={(session as any).materiel_necessaire || null}
+        supports={supports}
+        positionnement={positionnement}
+      />
 
       <SessionDays token={params.token} sessionId={session.id} days={days} today={today} />
     </div>

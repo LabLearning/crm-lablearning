@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui'
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/formation'
 import { formatDate } from '@/lib/utils'
-import { Calendar, MapPin, Video, Users, Clock } from 'lucide-react'
+import Link from 'next/link'
+import { Calendar, MapPin, Video, Users, Clock, BookOpen } from 'lucide-react'
 import type { SessionStatus } from '@/lib/types/formation'
 
 // Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
@@ -97,6 +98,13 @@ export default async function PortalSessionsPage({ params }: { params: { token: 
                     </span>
                     {s.formation?.duree_heures && <span>{s.formation.duree_heures}h</span>}
                   </div>
+                  {/* Accès au détail : émargement + contenu pédagogique de la session */}
+                  <Link
+                    href={`/portail/${params.token}/emargement/${s.id}`}
+                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 text-xs font-medium hover:bg-brand-100 transition-colors"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" /> Contenu et émargement
+                  </Link>
                 </div>
               </div>
             </div>

@@ -415,6 +415,132 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
   return { success: true, data: { email: formateur.email } }
 }
 
+// ============================================================
+// Contenu pédagogique de la session
+// ============================================================
+
+const VISIBILITES = ['formateur', 'stagiaires', 'tous']
+
+/** Déroulé pédagogique + matériel nécessaire, saisis depuis la fiche session */
+export async function updateDeroulePedagogiqueAction(
+  sessionId: string,
+  deroule: string,
+  materiel: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      deroule_pedagogique: deroule.trim() || null,
+      materiel_necessaire: materiel.trim() || null,
+    })
+    .eq('id', sessionId)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors de l\'enregistrement' }
+
+  await logAudit({ action: 'update_deroule_pedagogique', entity_type: 'session', entity_id: sessionId })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true }
+}
+
+/** Rattache un support pédagogique téléversé à la session */
+export async function addSessionSupportAction(formData: FormData): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const sessionId = formData.get('session_id') as string
+  const nom = ((formData.get('nom') as string) || '').trim()
+  const type = (formData.get('type') as string) || 'support_pedagogique'
+  const visibilite = (formData.get('visibilite') as string) || 'formateur'
+  const storagePath = (formData.get('storage_path') as string) || null
+
+  if (!sessionId) return { success: false, error: 'Session manquante' }
+  if (!nom) return { success: false, error: 'Donnez un nom au support' }
+  if (!storagePath) return { success: false, error: 'Fichier manquant' }
+  if (!VISIBILITES.includes(visibilite)) return { success: false, error: 'Visibilité invalide' }
+
+  // La session doit appartenir à l'organisation de l'utilisateur
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('id')
+    .eq('id', sessionId)
+    .eq('organization_id', session.organization.id)
+    .maybeSingle()
+  if (!sess) return { success: false, error: 'Session introuvable' }
+
+  const fileSize = formData.get('file_size')
+  const { data, error } = await supabase.from('documents').insert({
+    organization_id: session.organization.id,
+    nom,
+    type,
+    visibilite,
+    session_id: sessionId,
+    description: ((formData.get('description') as string) || '').trim() || null,
+    storage_path: storagePath,
+    file_name: (formData.get('file_name') as string) || null,
+    file_size: fileSize ? Number(fileSize) : null,
+    mime_type: (formData.get('mime_type') as string) || null,
+    created_by: session.user.id,
+  }).select('id').single()
+
+  if (error) return { success: false, error: 'Erreur lors de l\'enregistrement' }
+
+  await logAudit({ action: 'create', entity_type: 'document', entity_id: data.id, details: { sessionId, visibilite } })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true }
+}
+
+/** Change la visibilité d'un support (formateur / stagiaires / tous) */
+export async function updateSupportVisibiliteAction(
+  documentId: string,
+  visibilite: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!VISIBILITES.includes(visibilite)) return { success: false, error: 'Visibilité invalide' }
+  const supabase = await createServiceRoleClient()
+
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('id, session_id')
+    .eq('id', documentId)
+    .eq('organization_id', session.organization.id)
+    .maybeSingle()
+  if (!doc) return { success: false, error: 'Document introuvable' }
+
+  const { error } = await supabase.from('documents').update({ visibilite }).eq('id', documentId)
+  if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  await logAudit({ action: 'update_visibilite', entity_type: 'document', entity_id: documentId, details: { visibilite } })
+  if (doc.session_id) revalidatePath(`/dashboard/sessions/${doc.session_id}`)
+  return { success: true }
+}
+
+/** Supprime un support pédagogique (base + fichier stocké) */
+export async function deleteSessionSupportAction(documentId: string): Promise<ActionResult> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('id, session_id, storage_path')
+    .eq('id', documentId)
+    .eq('organization_id', session.organization.id)
+    .maybeSingle()
+  if (!doc) return { success: false, error: 'Document introuvable' }
+
+  const { error } = await supabase.from('documents').delete().eq('id', documentId)
+  if (error) return { success: false, error: 'Erreur lors de la suppression' }
+  if (doc.storage_path) {
+    await supabase.storage.from('documents').remove([doc.storage_path])
+  }
+
+  await logAudit({ action: 'delete', entity_type: 'document', entity_id: documentId })
+  if (doc.session_id) revalidatePath(`/dashboard/sessions/${doc.session_id}`)
+  return { success: true }
+}
+
 /** Modifie la rémunération du formateur depuis la fiche session */
 export async function updateCoutFormateurAction(sessionId: string, montant: number | null): Promise<ActionResult> {
   const session = await getSession()

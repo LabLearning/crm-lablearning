@@ -124,6 +124,17 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     .maybeSingle()
   const rapport = rapportRes
 
+  // Contenu pédagogique : supports téléversés + état du positionnement des inscrits
+  const { getAllSessionSupports, getPositionnementEtat } = await import('@/lib/session-contenu')
+  const inscritsRefs = allInscriptions
+    .map((i: any) => i.apprenant)
+    .filter(Boolean)
+    .map((a: any) => ({ id: a.id, prenom: a.prenom, nom: a.nom }))
+  const [supports, positionnement] = await Promise.all([
+    getAllSessionSupports(supabase, params.id),
+    getPositionnementEtat(supabase, params.id, inscritsRefs),
+  ])
+
   // Est-ce que le user est le formateur de cette session ?
   const isFormateur = session.user.role === 'formateur' && (sessionData.formateur as any)?.user_id === session.user.id
 
@@ -145,6 +156,8 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         apprenantsRef={(apprenantsRef || []) as any[]}
         sessionFormationIds={((sessionFormations || []) as any[]).map((r) => r.formation_id)}
         evaluationsAppr={(evaluationsAppr || []) as any[]}
+        supports={supports as any[]}
+        positionnement={positionnement as any[]}
         isFormateur={isFormateur}
         userRole={session.user.role}
         isPoei={isPoei}
