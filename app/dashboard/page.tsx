@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
 import { OnboardingGuide } from './OnboardingGuide'
+import { SessionProcessRow } from './SessionProcessRow'
 
 const ROLE_REDIRECTS: Record<string, string> = {
   directeur_commercial: '/dashboard/dirco-home',
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
     getDashboardData().catch(() => null),
     supabase
       .from('sessions')
-      .select('id, reference, status, date_debut, date_fin, lieu, formation:formation_id(intitule), formateur:formateurs(prenom, nom)')
+      .select('id, reference, status, date_debut, date_fin, lieu, intitule, mission_status, convocations_sent_at, formation:formation_id(intitule), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
       .eq('organization_id', organization.id)
       .gte('date_fin', today)
       .lte('date_debut', inThreeMonths)
@@ -56,6 +57,40 @@ export default async function DashboardPage() {
   ])
 
   const allSessions = upcomingSessions || []
+
+  // État du process par session (conventions, contrats, inscriptions) — 3 requêtes batchées
+  const sessionIds = allSessions.map((s: any) => s.id)
+  const [convRows, contratRows, inscRows] = sessionIds.length > 0
+    ? await Promise.all([
+        supabase.from('conventions').select('session_id, status').in('session_id', sessionIds),
+        supabase.from('contrats_formateur').select('session_id, signature_formateur_date').in('session_id', sessionIds),
+        supabase.from('inscriptions').select('session_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")'),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }] as any
+
+  const convBySession = new Map<string, string>()
+  for (const c of (convRows.data || []) as any[]) convBySession.set(c.session_id, c.status)
+  const contratSigneBySession = new Set<string>()
+  for (const c of (contratRows.data || []) as any[]) if (c.signature_formateur_date) contratSigneBySession.add(c.session_id)
+  const inscritsBySession = new Map<string, number>()
+  for (const i of (inscRows.data || []) as any[]) inscritsBySession.set(i.session_id, (inscritsBySession.get(i.session_id) || 0) + 1)
+
+  /** Session + état d'avancement, pour la barre de process du tableau de bord */
+  const toProcess = (s: any) => ({
+    id: s.id,
+    reference: s.reference,
+    intitule: s.formation?.intitule || s.intitule || s.reference || 'Session',
+    clientNom: s.client?.raison_sociale || null,
+    formateurNom: s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null,
+    lieu: s.lieu || null,
+    dateDebut: s.date_debut,
+    status: s.status,
+    formateurCale: !!s.formateur && (s.mission_status === 'accepted' || s.mission_status === 'not_required'),
+    contratSigne: contratSigneBySession.has(s.id),
+    conventionSignee: ['signee_client', 'signee_of', 'signee_complete'].includes(convBySession.get(s.id) || ''),
+    participants: inscritsBySession.get(s.id) || 0,
+    convocationsEnvoyees: !!s.convocations_sent_at,
+  })
   const sessionsEnCours = allSessions.filter(s => s.status === 'en_cours' || (s.date_debut <= today && s.date_fin >= today))
   const sessionsAVenir = allSessions.filter(s => s.date_debut > today)
   const onboardingFlags = {
@@ -128,18 +163,7 @@ export default async function DashboardPage() {
           {sessionsEnCours.length > 0 ? (
             <div className="divide-y divide-surface-100">
               {sessionsEnCours.map((s: any) => (
-                <Link key={s.id} href={`/dashboard/sessions/${s.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                  <div className="h-9 w-9 rounded-xl bg-success-50 flex items-center justify-center shrink-0">
-                    <Calendar className="h-4 w-4 text-success-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-surface-900 truncate">{(s.formation as any)?.intitule || s.reference}</div>
-                    <div className="text-xs text-surface-500 flex items-center gap-2">
-                      {s.lieu && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{s.lieu}</span>}
-                      {s.formateur && <span>{(s.formateur as any).prenom} {(s.formateur as any).nom}</span>}
-                    </div>
-                  </div>
-                </Link>
+                <SessionProcessRow key={s.id} session={toProcess(s)} />
               ))}
             </div>
           ) : (
@@ -157,29 +181,9 @@ export default async function DashboardPage() {
           </div>
           {sessionsAVenir.length > 0 ? (
             <div className="divide-y divide-surface-100">
-              {sessionsAVenir.slice(0, 6).map((s: any) => {
-                const st = SESSION_STATUS[s.status] || SESSION_STATUS.planifiee
-                const daysUntil = Math.ceil((new Date(s.date_debut).getTime() - Date.now()) / 86400000)
-                return (
-                  <Link key={s.id} href={`/dashboard/sessions/${s.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                    <div className="text-center shrink-0 w-12">
-                      <div className="text-lg font-heading font-bold text-surface-900">{new Date(s.date_debut).getDate()}</div>
-                      <div className="text-[10px] text-surface-400 uppercase">{new Date(s.date_debut).toLocaleDateString('fr-FR', { month: 'short' })}</div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-surface-900 truncate">{(s.formation as any)?.intitule || s.reference}</div>
-                      <div className="text-xs text-surface-500 flex items-center gap-2">
-                        {s.lieu && <span className="flex items-center gap-0.5"><MapPin className="h-3 w-3" />{s.lieu}</span>}
-                        {s.formateur && <span>{(s.formateur as any).prenom} {(s.formateur as any).nom}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant={st.variant}>{st.label}</Badge>
-                      <span className="text-[10px] text-surface-400">J-{daysUntil}</span>
-                    </div>
-                  </Link>
-                )
-              })}
+              {sessionsAVenir.slice(0, 6).map((s: any) => (
+                <SessionProcessRow key={s.id} session={toProcess(s)} showDate />
+              ))}
             </div>
           ) : (
             <div className="text-center py-8 text-xs text-surface-400">Aucune session programmée</div>
