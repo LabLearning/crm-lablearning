@@ -747,6 +747,9 @@ export async function addPoeiInterventionAction(poeiId: string, formData: FormDa
     organization_id: orgId, poei_id: poeiId, formateur_id,
     libelle, date_debut: str(formData, 'date_debut'), date_fin: str(formData, 'date_fin'),
     nb_heures: nbHeures, tarif_journalier: tarifJour, montant_ht: montant,
+    lieu: str(formData, 'lieu'), adresse: str(formData, 'adresse'),
+    code_postal: str(formData, 'code_postal'), ville: str(formData, 'ville'),
+    horaires: str(formData, 'horaires'),
     mission_status: formateur_id ? 'pending' : 'not_required',
     mission_proposed_at: formateur_id ? new Date().toISOString() : null,
     mission_proposed_by: formateur_id ? session.user.id : null,
@@ -793,6 +796,9 @@ export async function updatePoeiInterventionAction(id: string, poeiId: string, f
     nb_heures: num(formData, 'nb_heures'),
     tarif_journalier: num(formData, 'tarif_journalier'),
     montant_ht: num(formData, 'montant_ht'),
+    lieu: str(formData, 'lieu'), adresse: str(formData, 'adresse'),
+    code_postal: str(formData, 'code_postal'), ville: str(formData, 'ville'),
+    horaires: str(formData, 'horaires'),
     notes: str(formData, 'notes'),
     // Nouveau formateur → nouvelle proposition de mission
     ...(changedFormateur ? {

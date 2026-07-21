@@ -107,6 +107,23 @@ function InterventionForm({
         <Input id="montant_ht" name="montant_ht" type="number" label="Rémunération (€)" defaultValue={intervention?.montant_ht?.toString() || ''} />
       </div>
 
+      {/* Lieu et horaires : repris sur la convocation des stagiaires et la
+          feuille d'émargement — une intervention peut changer de site */}
+      <div className="grid grid-cols-2 gap-3">
+        <Input id="lieu" name="lieu" label="Lieu" placeholder="Salle de formation, restaurant…"
+          defaultValue={intervention?.lieu || ''} />
+        <Input id="horaires" name="horaires" label="Horaires" placeholder="9h00 - 17h00"
+          defaultValue={intervention?.horaires || ''} />
+      </div>
+      <Input id="adresse" name="adresse" label="Adresse" placeholder="399 Rue Georges Seguy"
+        defaultValue={intervention?.adresse || ''} />
+      <div className="grid grid-cols-3 gap-3">
+        <Input id="code_postal" name="code_postal" label="Code postal" defaultValue={intervention?.code_postal || ''} />
+        <div className="col-span-2">
+          <Input id="ville" name="ville" label="Ville" defaultValue={intervention?.ville || ''} />
+        </div>
+      </div>
+
       <textarea id="notes" name="notes" rows={2} className="input-base resize-none w-full"
         placeholder="Notes (contenu couvert, contraintes…)" defaultValue={intervention?.notes || ''} />
 
