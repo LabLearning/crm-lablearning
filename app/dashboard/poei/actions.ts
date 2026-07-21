@@ -583,12 +583,49 @@ export async function sendGroupEmailToCandidatsAction(
   const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : ''
   const datesStr = p.date_debut ? `du ${fmtFr(p.date_debut)} au ${fmtFr(p.date_fin || p.date_debut)}` : ''
 
-  // Lieu : repris de la session liée au projet
-  let lieuStr = ''
-  if (p.session_id) {
-    const { data: sess } = await supabase.from('sessions').select('lieu, adresse, code_postal, ville').eq('id', p.session_id).single()
-    lieuStr = [sess?.lieu, sess?.adresse, [sess?.code_postal, sess?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  // Lieu et planning : ce sont les interventions qui portent l'adresse et les
+  // horaires réels, le parcours ne fait que les chapeauter
+  const { data: interventions } = await supabase
+    .from('poei_interventions')
+    .select('libelle, date_debut, date_fin, lieu, adresse, code_postal, ville, horaires, formateur:formateurs(prenom, nom)')
+    .eq('poei_id', poeiId)
+    .order('date_debut', { ascending: true })
+
+  const adresseDe = (x: any) =>
+    [x?.lieu, x?.adresse, [x?.code_postal, x?.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+
+  const premiere = (interventions || []).find((iv: any) => adresseDe(iv))
+  let lieuStr = premiere ? adresseDe(premiere) : ''
+  let horairesStr = (premiere as any)?.horaires || ''
+  let formateurStr = ''
+  if (premiere) {
+    const f: any = Array.isArray((premiere as any).formateur) ? (premiere as any).formateur[0] : (premiere as any).formateur
+    formateurStr = f ? `${f.prenom || ''} ${f.nom || ''}`.trim() : ''
   }
+
+  // Repli sur la session du parcours si aucune intervention n'est renseignée
+  if (!lieuStr && p.session_id) {
+    const { data: sess } = await supabase.from('sessions').select('lieu, adresse, code_postal, ville, horaires').eq('id', p.session_id).single()
+    lieuStr = adresseDe(sess)
+    horairesStr = horairesStr || sess?.horaires || ''
+  }
+
+  // Planning détaillé : une ligne par période, pour une convocation complète
+  const planningStr = (interventions || [])
+    .filter((iv: any) => iv.date_debut)
+    .map((iv: any) => {
+      const f: any = Array.isArray(iv.formateur) ? iv.formateur[0] : iv.formateur
+      const periode = iv.date_fin && iv.date_fin !== iv.date_debut
+        ? `du ${fmtFr(iv.date_debut)} au ${fmtFr(iv.date_fin)}`
+        : `le ${fmtFr(iv.date_debut)}`
+      return [
+        `• ${iv.libelle} — ${periode}`,
+        iv.horaires ? `  Horaires : ${iv.horaires}` : null,
+        adresseDe(iv) ? `  Lieu : ${adresseDe(iv)}` : null,
+        f ? `  Formateur : ${`${f.prenom || ''} ${f.nom || ''}`.trim()}` : null,
+      ].filter(Boolean).join('\n')
+    })
+    .join('\n\n')
 
   // Texte saisi → HTML email : paragraphes (ligne vide), retours à la ligne,
   // **gras**. Sans ça, tout le message arriverait en un seul bloc.
@@ -623,6 +660,10 @@ export async function sendGroupEmailToCandidatsAction(
       .replace(/\{duree_heures\}/gi, p.duree_heures != null ? String(p.duree_heures) : '')
       .replace(/\{date_debut\}/gi, fmtFr(p.date_debut))
       .replace(/\{date_fin\}/gi, fmtFr(p.date_fin))
+      .replace(/\{adresse\}/gi, lieuStr)
+      .replace(/\{horaires\}/gi, horairesStr)
+      .replace(/\{formateur\}/gi, formateurStr)
+      .replace(/\{planning\}/gi, planningStr)
 
     // Pièce jointe optionnelle : attestation d'entrée du candidat
     let pdfBuffer: Buffer | undefined

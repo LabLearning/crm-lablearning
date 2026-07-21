@@ -369,7 +369,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               <span className="text-xs text-surface-400">Variables :</span>
-              {['{prenom}', '{nom}', '{formation}', '{entreprise}', '{dates}', '{lieu}', '{duree_heures}', '{date_debut}', '{date_fin}'].map((v) => (
+              {['{prenom}', '{nom}', '{formation}', '{entreprise}', '{dates}', '{lieu}', '{adresse}', '{horaires}', '{formateur}', '{planning}', '{duree_heures}', '{date_debut}', '{date_fin}'].map((v) => (
                 <button key={v} type="button"
                   onClick={() => setMailMessage((m) => m + v)}
                   className="px-1.5 py-0.5 rounded bg-surface-100 text-surface-600 text-xs font-mono hover:bg-surface-200">
