@@ -7,11 +7,11 @@ export const metadata: Metadata = {
   // Favicon Lab Learning sur tout le CRM (dashboard, portails, pages de signature…)
   icons: {
     icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    apple: [{ url: '/apple-icon.svg' }],
-    shortcut: ['/icon.svg'],
+    apple: [{ url: '/apple-icon.png' }],
+    shortcut: ['/icon.png'],
   },
   manifest: '/manifest.json',
 }
