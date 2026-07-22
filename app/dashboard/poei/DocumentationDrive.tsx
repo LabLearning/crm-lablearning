@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  FolderPlus, FilePlus, Folder, FileText, Download, Trash2, Pencil,
+  FolderPlus, FilePlus, Folder, FileText, Download, Trash2, Pencil, Eye,
   Home, ChevronRight, Loader2, Upload, Paperclip, Save, Building2, FolderOpen,
 } from 'lucide-react'
 import { Button, Modal, Input, SearchSelect, useToast, RowMenu } from '@/components/ui'
@@ -338,12 +338,22 @@ export function DocumentationDrive({ clients }: Props) {
                         </div>
                       </div>
                       {d.storage_path && (
-                        <a
-                          href={`/api/documents/${d.id}/download`} target="_blank" rel="noreferrer"
-                          className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0"
-                        >
-                          <Download className="h-4 w-4" />
-                        </a>
+                        <>
+                          <a
+                            href={`/api/documents/${d.id}/download?inline=1`} target="_blank" rel="noreferrer"
+                            title="Visualiser"
+                            className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </a>
+                          <a
+                            href={`/api/documents/${d.id}/download`} target="_blank" rel="noreferrer"
+                            title="Télécharger"
+                            className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </>
                       )}
                       <div className="shrink-0">
                         <RowMenu items={[

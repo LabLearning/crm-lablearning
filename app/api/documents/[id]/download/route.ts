@@ -84,9 +84,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 
+  // ?inline=1 → aperçu dans le navigateur (PDF, images) ; sinon téléchargement
+  const inline = req.nextUrl.searchParams.get('inline') === '1'
   const { data: signed, error } = await supabase.storage
     .from('documents')
-    .createSignedUrl(doc.storage_path, 60, { download: doc.file_name || undefined })
+    .createSignedUrl(doc.storage_path, 60, inline ? {} : { download: doc.file_name || undefined })
   if (error || !signed?.signedUrl) {
     return NextResponse.json({ error: 'Fichier indisponible' }, { status: 404 })
   }
