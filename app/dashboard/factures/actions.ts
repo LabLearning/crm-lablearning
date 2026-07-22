@@ -53,8 +53,21 @@ export async function createFactureAction(formData: FormData): Promise<ActionRes
   return { success: true, data }
 }
 
+/** Vérifie que la facture appartient bien à l'organisation de l'utilisateur */
+async function assertFactureOwned(supabase: any, factureId: string, orgId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('factures').select('id').eq('id', factureId).eq('organization_id', orgId).maybeSingle()
+  return !!data
+}
+
 export async function addFactureLigneAction(factureId: string, formData: FormData): Promise<ActionResult> {
+  // Sans authentification, un anonyme pouvait altérer le montant de n'importe
+  // quelle facture en connaissant son UUID.
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
+  if (!await assertFactureOwned(supabase, factureId, session.organization.id)) {
+    return { success: false, error: 'Facture introuvable' }
+  }
 
   const designation = formData.get('designation') as string
   const quantite = parseFloat(formData.get('quantite') as string) || 1
@@ -88,8 +101,14 @@ export async function addFactureLigneAction(factureId: string, formData: FormDat
 }
 
 export async function removeFactureLigneAction(ligneId: string, factureId: string): Promise<ActionResult> {
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
-  const { error } = await supabase.from('facture_lignes').delete().eq('id', ligneId)
+  if (!await assertFactureOwned(supabase, factureId, session.organization.id)) {
+    return { success: false, error: 'Facture introuvable' }
+  }
+  // La ligne doit appartenir à cette facture (déjà vérifiée dans l'org)
+  const { error } = await supabase.from('facture_lignes').delete()
+    .eq('id', ligneId).eq('facture_id', factureId)
   if (error) return { success: false, error: 'Erreur' }
 
   await recalculateFactureTotals(factureId)

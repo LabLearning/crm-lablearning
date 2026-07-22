@@ -82,17 +82,24 @@ export async function addPreuveAction(indicateurId: string, formData: FormData):
 }
 
 export async function removePreuveAction(preuveId: string): Promise<ActionResult> {
+  // Une Server Action est une API publique : sans ce contrôle, un anonyme
+  // connaissant l'UUID pouvait supprimer une preuve de conformité Qualiopi.
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
-  // Récupérer le fichier stocké pour le supprimer du bucket
+  // La preuve doit appartenir à l'organisation de l'utilisateur
   const { data: preuve } = await supabase
     .from('qualiopi_preuves')
     .select('document_url')
     .eq('id', preuveId)
+    .eq('organization_id', session.organization.id)
     .single()
-  if (preuve?.document_url && !/^https?:\/\//.test(preuve.document_url)) {
+  if (!preuve) return { success: false, error: 'Preuve introuvable' }
+  if (preuve.document_url && !/^https?:\/\//.test(preuve.document_url)) {
     await supabase.storage.from('dossiers').remove([preuve.document_url])
   }
-  const { error } = await supabase.from('qualiopi_preuves').delete().eq('id', preuveId)
+  const { error } = await supabase
+    .from('qualiopi_preuves').delete()
+    .eq('id', preuveId).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur' }
   revalidatePath('/dashboard/qualiopi')
   return { success: true }

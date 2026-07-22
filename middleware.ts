@@ -18,8 +18,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Le pathname est transmis au layout dashboard, qui applique le contrôle de
+  // rôle (le middleware, lui, ne peut pas lire le rôle applicatif : la clé anon
+  // n'a pas accès à la table users).
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-pathname', pathname)
+
   let response = NextResponse.next({
-    request: { headers: request.headers },
+    request: { headers: requestHeaders },
   })
 
   const supabase = createServerClient(

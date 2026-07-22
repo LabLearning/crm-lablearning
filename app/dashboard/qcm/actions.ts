@@ -87,6 +87,17 @@ export async function updateQCMStatusAction(id: string, status: string): Promise
   return { success: true }
 }
 
+/** Le QCM parent doit appartenir à l'organisation de l'utilisateur */
+async function assertQcmOwned(supabase: any, qcmId: string, orgId: string): Promise<boolean> {
+  const { data } = await supabase.from('qcm').select('id').eq('id', qcmId).eq('organization_id', orgId).maybeSingle()
+  return !!data
+}
+/** Remonte du choix ou de la question jusqu'à l'organisation propriétaire */
+async function qcmIdOfQuestion(supabase: any, questionId: string): Promise<string | null> {
+  const { data } = await supabase.from('qcm_questions').select('qcm_id').eq('id', questionId).maybeSingle()
+  return data?.qcm_id || null
+}
+
 export async function addQuestionAction(formData: FormData): Promise<ActionResult> {
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) { raw[key] = value }
@@ -94,7 +105,12 @@ export async function addQuestionAction(formData: FormData): Promise<ActionResul
   const parsed = createQuestionSchema.safeParse(raw)
   if (!parsed.success) return { success: false, errors: parsed.error.flatten().fieldErrors }
 
+  // Sans auth, un anonyme pouvait modifier le contenu de n'importe quel QCM
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
+  if (!await assertQcmOwned(supabase, parsed.data.qcm_id, session.organization.id)) {
+    return { success: false, error: 'QCM introuvable' }
+  }
 
   // Get position
   const { data: existing } = await supabase
@@ -134,7 +150,12 @@ export async function addQuestionAction(formData: FormData): Promise<ActionResul
 }
 
 export async function addChoixAction(questionId: string, texte: string, estCorrect: boolean): Promise<ActionResult> {
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
+  const qcmId = await qcmIdOfQuestion(supabase, questionId)
+  if (!qcmId || !await assertQcmOwned(supabase, qcmId, session.organization.id)) {
+    return { success: false, error: 'Question introuvable' }
+  }
 
   const { data: existing } = await supabase
     .from('qcm_choix')
@@ -156,7 +177,12 @@ export async function addChoixAction(questionId: string, texte: string, estCorre
 }
 
 export async function removeQuestionAction(questionId: string): Promise<ActionResult> {
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
+  const qcmId = await qcmIdOfQuestion(supabase, questionId)
+  if (!qcmId || !await assertQcmOwned(supabase, qcmId, session.organization.id)) {
+    return { success: false, error: 'Question introuvable' }
+  }
   const { error } = await supabase.from('qcm_questions').delete().eq('id', questionId)
   if (error) return { success: false, error: 'Erreur' }
   revalidatePath('/dashboard/qcm')
@@ -164,7 +190,13 @@ export async function removeQuestionAction(questionId: string): Promise<ActionRe
 }
 
 export async function removeChoixAction(choixId: string): Promise<ActionResult> {
+  const session = await getSession()
   const supabase = await createServiceRoleClient()
+  const { data: choix } = await supabase.from('qcm_choix').select('question_id').eq('id', choixId).maybeSingle()
+  const qcmId = choix ? await qcmIdOfQuestion(supabase, choix.question_id) : null
+  if (!qcmId || !await assertQcmOwned(supabase, qcmId, session.organization.id)) {
+    return { success: false, error: 'Choix introuvable' }
+  }
   const { error } = await supabase.from('qcm_choix').delete().eq('id', choixId)
   if (error) return { success: false, error: 'Erreur' }
   revalidatePath('/dashboard/qcm')
