@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Save, Building2, Users, X, Plus, CalendarDays, Clock } from 'lucide-react'
+import { Save, Building2, Users, X, Plus, CalendarDays, Clock, Search } from 'lucide-react'
 import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect } from '@/components/ui'
 import { createSessionAction, updateSessionAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
@@ -97,6 +97,14 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
   const formationsChoisies = formationIds.map(id => formations.find(f => f.id === id)).filter((f): f is NonNullable<typeof f> => !!f)
   const dureeJoursRequis = formationsChoisies.reduce((s, f) => s + (f.duree_jours || 0), 0)
   const dureeHeuresRequis = formationsChoisies.reduce((s, f) => s + (f.duree_heures || 0), 0)
+
+  // Recherche dans le catalogue (73 formations) : filtre la liste à cocher
+  const [formationQuery, setFormationQuery] = useState('')
+  const formationsFiltrees = formations.filter((f) => {
+    const q = formationQuery.trim().toLowerCase()
+    if (!q) return true
+    return `${f.reference || ''} ${f.intitule}`.toLowerCase().includes(q)
+  })
 
   function toggleFormation(id: string) {
     setFormationIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -282,11 +290,23 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <label className="block text-sm font-medium text-surface-700 mb-1.5">
           Formation{formationIds.length > 1 ? 's' : ''} *
         </label>
+        {formations.length > 6 && (
+          <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-surface-200 mb-1.5">
+            <Search className="h-4 w-4 text-surface-400 shrink-0" />
+            <input
+              type="text" value={formationQuery} onChange={(e) => setFormationQuery(e.target.value)}
+              placeholder="Rechercher une formation…"
+              className="bg-transparent text-sm placeholder:text-surface-400 focus:outline-none flex-1"
+            />
+          </div>
+        )}
         <div className="rounded-xl border border-surface-200 max-h-44 overflow-y-auto divide-y divide-surface-100">
           {formations.length === 0 ? (
             <div className="px-3 py-3 text-xs text-surface-500">Aucune formation disponible.</div>
+          ) : formationsFiltrees.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-surface-500">Aucune formation ne correspond à « {formationQuery} ».</div>
           ) : (
-            formations.map(f => {
+            formationsFiltrees.map(f => {
               const checked = formationIds.includes(f.id)
               return (
                 <label key={f.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface-50 cursor-pointer">

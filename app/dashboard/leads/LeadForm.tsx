@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Save, AlertCircle, Award, GraduationCap, Store } from 'lucide-react'
-import { Button, Input, Select, CompanySearchInput, OpcoSelector } from '@/components/ui'
+import { Button, Input, Select, CompanySearchInput, OpcoSelector, SearchSelect } from '@/components/ui'
 import { createLeadAction, updateLeadAction } from './actions'
 import { LEAD_SOURCE_LABELS, CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import type { Lead, ClientType } from '@/lib/types/crm'
@@ -180,12 +180,10 @@ export function LeadForm({ lead, users, formations = [], franchises = [], isAppo
     { value: '__custom', label: 'Autre (formation spéciale)' },
   ]
 
-  function addFormation(e: React.ChangeEvent<HTMLSelectElement>) {
-    const val = e.target.value
+  function addFormation(val: string) {
     if (!val) return
-    if (val === '__custom') { setIsCustomFormation(true); e.target.value = ''; return }
+    if (val === '__custom') { setIsCustomFormation(true); return }
     setSelectedFormationIds((ids) => ids.includes(val) ? ids : [...ids, val])
-    e.target.value = ''
   }
   function removeFormation(id: string) {
     setSelectedFormationIds((ids) => ids.filter((x) => x !== id))
@@ -392,18 +390,25 @@ export function LeadForm({ lead, users, formations = [], franchises = [], isAppo
             })}
           </div>
         )}
-        <select onChange={addFormation} defaultValue="" className="input-base">
-          <option value="">
-            {formations.length === 0
-              ? 'Aucune formation au catalogue — saisie libre uniquement'
-              : `+ Ajouter une formation (${formations.length} disponible${formations.length > 1 ? 's' : ''})`}
-          </option>
-          {formations.filter((f) => !selectedFormationIds.includes(f.id)).map(f => {
-            const d = libelleDuree(f)
-            return <option key={f.id} value={f.id}>{d ? `${f.intitule} — ${d}` : f.intitule}</option>
-          })}
-          <option value="__custom">— Autre formation (saisie libre) —</option>
-        </select>
+        {formations.length === 0 ? (
+          <p className="text-sm text-surface-400 rounded-lg bg-surface-50 px-3 py-2">Aucune formation au catalogue — saisie libre uniquement.</p>
+        ) : (
+          <SearchSelect
+            id="formation_add"
+            value=""
+            onChange={addFormation}
+            placeholder={`Rechercher une formation (${formations.length} au catalogue)…`}
+            options={[
+              ...formations
+                .filter((f) => !selectedFormationIds.includes(f.id))
+                .map((f) => {
+                  const d = libelleDuree(f)
+                  return { value: f.id, label: d ? `${f.intitule} — ${d}` : f.intitule }
+                }),
+              { value: '__custom', label: '— Autre formation (saisie libre) —' },
+            ]}
+          />
+        )}
         <p className="text-2xs text-surface-400">Vous pouvez en sélectionner plusieurs — chacune aura sa session et sa convention.</p>
       </div>
 
