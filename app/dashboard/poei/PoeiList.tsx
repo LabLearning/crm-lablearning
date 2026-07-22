@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Plus, Search, Briefcase, Building2, GraduationCap, Trash2,
-  ChevronRight, CheckCircle2, Clock, Users, CalendarClock,
+  ChevronRight, CheckCircle2, Clock, Users, CalendarClock, FolderTree,
 } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast } from '@/components/ui'
 import { createPoeiAction, updatePoeiStatutAction, deletePoeiAction } from './actions'
@@ -13,6 +13,7 @@ import { POEI_STATUS_LABELS, POEI_STATUS_COLORS } from '@/lib/types/poei'
 import { formatDate, cn } from '@/lib/utils'
 import type { Poei, PoeiPrevision } from '@/lib/types/poei'
 import { PoeiPrevisions } from './PoeiPrevisions'
+import { DocumentationDrive } from './DocumentationDrive'
 
 interface Props {
   poei: Poei[]
@@ -42,7 +43,7 @@ const statusOptions = Object.entries(POEI_STATUS_LABELS).map(([v, l]) => ({ valu
 export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog }: Props) {
   const { toast } = useToast()
   const router = useRouter()
-  const [tab, setTab] = useState<'projets' | 'planifier'>('projets')
+  const [tab, setTab] = useState<'projets' | 'planifier' | 'documentation'>('projets')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [createOpen, setCreateOpen] = useState(false)
@@ -123,6 +124,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
         {([
           { id: 'projets' as const, label: 'Projets', icon: Briefcase, count: poei.length },
           { id: 'planifier' as const, label: 'À planifier', icon: CalendarClock, count: previsions.filter((p) => !['transforme', 'abandonne'].includes(p.statut)).length },
+          { id: 'documentation' as const, label: 'Documentation', icon: FolderTree, count: 0 },
         ]).map((t) => {
           const Icon = t.icon
           const active = tab === t.id
@@ -145,6 +147,8 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
       </div>
 
       {tab === 'planifier' && <PoeiPrevisions previsions={previsions} clients={clients} />}
+
+      {tab === 'documentation' && <DocumentationDrive clients={clients} />}
 
       {tab === 'projets' && (<>
       {!hasPoeiCatalog && (
