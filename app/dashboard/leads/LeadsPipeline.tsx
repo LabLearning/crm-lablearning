@@ -40,6 +40,7 @@ interface LeadsPipelineProps {
   currentUserId: string
   formations?: Formation[]
   formateurs?: { id: string; prenom: string; nom: string }[]
+  franchises?: { id: string; nom: string }[]
   isApporteur?: boolean
 }
 
@@ -67,7 +68,7 @@ function scoreBg(s: number) { return s >= 70 ? 'bg-success-50' : s >= 40 ? 'bg-w
 type ViewMode = 'kanban' | 'list'
 type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score'
 
-export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], formateurs = [], isApporteur }: LeadsPipelineProps) {
+export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], formateurs = [], franchises = [], isApporteur }: LeadsPipelineProps) {
   const { toast } = useToast()
   const [view, setView] = useState<ViewMode>('kanban')
   const [createOpen, setCreateOpen] = useState(false)
@@ -391,7 +392,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
 
       {/* Create Modal */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouveau lead" description={isApporteur ? 'Soumettez un prospect à Lab Learning' : 'Ajoutez un nouveau prospect'} size="lg">
-        <LeadForm users={users} formations={formations} isApporteur={isApporteur} hideAssign={isApporteur || users.length === 0} onSuccess={() => { setCreateOpen(false); toast('success', 'Lead créé') }} onCancel={() => setCreateOpen(false)} />
+        <LeadForm users={users} formations={formations} franchises={franchises} isApporteur={isApporteur} hideAssign={isApporteur || users.length === 0} onSuccess={() => { setCreateOpen(false); toast('success', 'Lead créé') }} onCancel={() => setCreateOpen(false)} />
       </Modal>
 
       {/* Edit Modal */}
@@ -401,6 +402,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
             lead={editLead}
             users={users}
             formations={formations}
+            franchises={franchises}
             isApporteur={isApporteur}
             hideAssign={isApporteur || users.length === 0}
             onSuccess={() => { setEditLead(null); toast('success', 'Lead mis à jour') }}

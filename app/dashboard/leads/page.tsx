@@ -47,7 +47,7 @@ export default async function LeadsPage() {
     leadsQuery = leadsQuery.eq('gestionnaire_id', session.user.id)
   }
 
-  const [{ data: leads }, { data: users }, { data: gestionnaires }, { data: formations }, { data: formateurs }] = await Promise.all([
+  const [{ data: leads }, { data: users }, { data: gestionnaires }, { data: formations }, { data: formateurs }, { data: franchises }] = await Promise.all([
     leadsQuery,
     supabase
       .from('users')
@@ -76,6 +76,13 @@ export default async function LeadsPage() {
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('nom'),
+    // Franchises (pour classer un lead franchisé dans son réseau)
+    supabase
+      .from('franchises')
+      .select('id, nom')
+      .eq('organization_id', session.organization.id)
+      .eq('is_active', true)
+      .order('nom'),
   ])
 
   const isApporteur = session.user.role === 'apporteur_affaires'
@@ -90,6 +97,7 @@ export default async function LeadsPage() {
         currentUserId={session.user.id}
         formations={formations || []}
         formateurs={formateurs || []}
+        franchises={franchises || []}
         isApporteur={isApporteur}
       />
     </div>

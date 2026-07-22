@@ -60,6 +60,8 @@ export async function createLeadAction(formData: FormData): Promise<ActionResult
     financeur_type: parsed.data.financeur_type || null,
     est_qualiopi: parsed.data.est_qualiopi === true,
     est_organisme_formation: parsed.data.est_organisme_formation === true,
+    // Chaîne vide (case décochée) → null pour respecter la FK franchises
+    franchise_id: parsed.data.franchise_id || null,
     apporteur_id: apporteurId,
     assigned_to: parsed.data.assigned_to || (session.user.role === 'apporteur_affaires' ? null : session.user.id),
     source: session.user.role === 'apporteur_affaires' ? 'apporteur_affaires' : (parsed.data.source || 'autre'),
@@ -230,6 +232,7 @@ export async function updateLeadAction(id: string, formData: FormData): Promise<
     financeur_type: parsed.data.financeur_type || null,
     est_qualiopi: parsed.data.est_qualiopi === true,
     est_organisme_formation: parsed.data.est_organisme_formation === true,
+    franchise_id: parsed.data.franchise_id || null,
     apporteur_id: parsed.data.apporteur_id || null,
     assigned_to: parsed.data.assigned_to || null,
     formation_id: (() => { const f = formData.get('formation_id') as string; return f && f !== '__custom' ? f : null })(),
@@ -373,6 +376,8 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
       tva_intra: lead.tva_intra,
       est_qualiopi: lead.est_qualiopi,
       est_organisme_formation: lead.est_organisme_formation,
+      // Classe l'établissement dans son réseau de franchise dès la conversion
+      franchise_id: lead.franchise_id || null,
       adresse: lead.adresse,
       code_postal: lead.code_postal,
       ville: lead.ville,

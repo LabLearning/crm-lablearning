@@ -25,6 +25,7 @@ export const createLeadSchema = z.object({
   tva_intra: z.string().optional(),
   est_qualiopi: z.coerce.boolean().optional(),
   est_organisme_formation: z.coerce.boolean().optional(),
+  franchise_id: z.string().uuid().optional().or(z.literal('')),
   adresse: z.string().optional(),
   code_postal: z.string().optional(),
   ville: z.string().optional(),

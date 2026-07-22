@@ -9,6 +9,7 @@ import FranchiseAccessClient from './FranchiseAccessClient'
 import FranchiseCoverageClient from './FranchiseCoverageClient'
 import FranchiseLogoClient from './FranchiseLogoClient'
 import LinkEtablissementClient, { UnlinkButton } from './LinkEtablissementClient'
+import { FranchiseSettingsClient } from './FranchiseSettingsClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -132,7 +133,10 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
             </p>
           </div>
         </div>
-        <LinkEtablissementClient franchiseId={franchise.id} allClients={(allClients || []) as any[]} variant="button" />
+        <div className="flex items-center gap-2">
+          <FranchiseSettingsClient franchise={franchise as any} />
+          <LinkEtablissementClient franchiseId={franchise.id} allClients={(allClients || []) as any[]} variant="button" />
+        </div>
       </div>
 
       {/* Logo co-branding */}

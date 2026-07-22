@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, AlertCircle, Award, GraduationCap } from 'lucide-react'
+import { Save, AlertCircle, Award, GraduationCap, Store } from 'lucide-react'
 import { Button, Input, Select, CompanySearchInput, OpcoSelector } from '@/components/ui'
 import { createLeadAction, updateLeadAction } from './actions'
 import { LEAD_SOURCE_LABELS, CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
@@ -20,6 +20,7 @@ interface LeadFormProps {
   lead?: Lead
   users: Pick<User, 'id' | 'first_name' | 'last_name' | 'role'>[]
   formations?: Formation[]
+  franchises?: { id: string; nom: string }[]
   isApporteur?: boolean
   hideAssign?: boolean
   onSuccess: () => void
@@ -66,7 +67,7 @@ function addJours(iso: string, n: number): string | null {
   return d.toISOString().slice(0, 10)
 }
 
-export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign, onSuccess, onCancel }: LeadFormProps) {
+export function LeadForm({ lead, users, formations = [], franchises = [], isApporteur, hideAssign, onSuccess, onCancel }: LeadFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
@@ -106,6 +107,8 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
   const [tvaIntra, setTvaIntra] = useState(lead?.tva_intra || '')
   const [estQualiopi, setEstQualiopi] = useState(lead?.est_qualiopi || false)
   const [estOrgFormation, setEstOrgFormation] = useState(lead?.est_organisme_formation || false)
+  const [franchiseId, setFranchiseId] = useState((lead as any)?.franchise_id || '')
+  const [estFranchise, setEstFranchise] = useState(Boolean((lead as any)?.franchise_id))
   const [adresse, setAdresse] = useState(lead?.adresse || '')
   const [codePostal, setCodePostal] = useState(lead?.code_postal || '')
   const [ville, setVille] = useState(lead?.ville || '')
@@ -274,6 +277,30 @@ export function LeadForm({ lead, users, formations = [], isApporteur, hideAssign
             <Input id="siret" name="siret" label="SIRET" value={siret} onChange={(e) => setSiret(e.target.value)} placeholder="14 chiffres" />
             <Input id="sigle" name="sigle" label="Sigle" value={sigle} onChange={(e) => setSigle(e.target.value)} />
           </div>
+
+          {/* Franchise : un établissement franchisé est classé dans son réseau.
+              À la conversion en client, le franchise_id est reporté. */}
+          {franchises.length > 0 && (
+            <div className="rounded-xl border border-surface-200 p-3 space-y-2.5 bg-surface-50/50">
+              <label className="flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                <input
+                  type="checkbox" checked={estFranchise}
+                  onChange={(e) => { setEstFranchise(e.target.checked); if (!e.target.checked) setFranchiseId('') }}
+                  className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+                />
+                <Store className="h-4 w-4 text-surface-500" />
+                Établissement franchisé
+              </label>
+              {estFranchise && (
+                <Select
+                  id="franchise_select" label="Franchise (réseau)"
+                  options={[{ value: '', label: '— Choisir la franchise —' }, ...franchises.map((f) => ({ value: f.id, label: f.nom }))]}
+                  value={franchiseId} onChange={(e) => setFranchiseId(e.target.value)}
+                />
+              )}
+            </div>
+          )}
+          <input type="hidden" name="franchise_id" value={estFranchise ? franchiseId : ''} />
           <div className="grid grid-cols-2 gap-4">
             <Input id="forme_juridique" name="forme_juridique" label="Forme juridique" value={formeJuridique} onChange={(e) => setFormeJuridique(e.target.value)} />
             <Input id="date_creation_entreprise" name="date_creation_entreprise" type="date" label="Date de création" value={dateCreation} onChange={(e) => setDateCreation(e.target.value)} />

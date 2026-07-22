@@ -82,7 +82,7 @@ export async function updateFranchiseAction(id: string, formData: FormData): Pro
     if (!nom) return { success: false, error: 'Nom requis' }
     updates.nom = nom
   }
-  for (const k of ['raison_sociale', 'siret', 'secteur', 'zone_geographique', 'contact_nom', 'contact_email', 'contact_telephone', 'notes']) {
+  for (const k of ['raison_sociale', 'siret', 'secteur', 'zone_geographique', 'contact_nom', 'contact_email', 'contact_telephone', 'adresse', 'code_postal', 'ville', 'notes']) {
     if (formData.has(k)) updates[k] = str(k)
   }
   if (formData.has('nombre_etablissements')) {
