@@ -54,6 +54,7 @@ export const createSessionSchema = z.object({
   apprenant_ids: z.string().optional(),  // CSV des apprenants à inscrire
   status: z.enum(['planifiee', 'confirmee', 'en_cours', 'terminee', 'annulee']).optional(),
   cout_formateur: z.coerce.number().min(0).optional(),
+  prix_ht: z.coerce.number().min(0).optional(),
   cout_salle: z.coerce.number().min(0).optional(),
   cout_materiel: z.coerce.number().min(0).optional(),
   notes_internes: z.string().optional(),

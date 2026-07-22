@@ -75,6 +75,7 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
       formateur_id: parsed.data.formateur_id || null,
       status: parsed.data.status || 'planifiee',
       cout_formateur: parsed.data.cout_formateur || null,
+      prix_ht: parsed.data.prix_ht ?? null,
       cout_salle: parsed.data.cout_salle || null,
       cout_materiel: parsed.data.cout_materiel || null,
       notes_internes: parsed.data.notes_internes || null,
@@ -206,7 +207,7 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
   // Vérifier que le user est bien le formateur de la session
   const { data: sess } = await supabase
     .from('sessions')
-    .select('id, formateur_id, mission_status, organization_id, mission_proposed_by, formation_id, client_id, type_session, date_debut, date_fin, lieu, cout_formateur, formation:formation_id(intitule, duree_heures, duree_jours, tarif_inter_ht, tarif_intra_ht)')
+    .select('id, formateur_id, mission_status, organization_id, mission_proposed_by, formation_id, client_id, type_session, date_debut, date_fin, lieu, cout_formateur, prix_ht, formation:formation_id(intitule, duree_heures, duree_jours, tarif_inter_ht, tarif_intra_ht)')
     .eq('id', sessionId).single()
   if (!sess) return { success: false, error: 'Session introuvable' }
 
@@ -240,8 +241,11 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
     const numero = `CV-${new Date().getFullYear()}-${String((convCount || 0) + 1).padStart(3, '0')}`
 
     const formation = (sess as any).formation
+    // Le prix saisi sur la session fait foi ; sinon repli sur le tarif catalogue
     const tarifBase = sess.type_session === 'intra' ? formation?.tarif_intra_ht : formation?.tarif_inter_ht
-    const montantHt = tarifBase ? tarifBase * (nbApprenants || 1) : null
+    const montantHt = (sess as any).prix_ht != null
+      ? Number((sess as any).prix_ht)
+      : (tarifBase ? tarifBase * (nbApprenants || 1) : null)
 
     await supabase.from('conventions').insert({
       organization_id: sess.organization_id,
@@ -479,6 +483,7 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
       formateur_id: parsed.data.formateur_id || null,
       status: parsed.data.status || undefined,
       cout_formateur: parsed.data.cout_formateur || null,
+      prix_ht: parsed.data.prix_ht ?? null,
       cout_salle: parsed.data.cout_salle || null,
       cout_materiel: parsed.data.cout_materiel || null,
       notes_internes: parsed.data.notes_internes || null,

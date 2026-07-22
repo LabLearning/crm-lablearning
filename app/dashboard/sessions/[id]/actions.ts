@@ -291,8 +291,11 @@ export async function sendConventionForSignatureAction(
       .eq('organization_id', sess.organization_id)
     const numero = `CV-${new Date().getFullYear()}-${String((convCount || 0) + 1).padStart(3, '0')}`
     const formation = (sess as any).formation
+    // Le prix saisi sur la session fait foi ; sinon repli sur le tarif catalogue
     const tarifBase = sess.type_session === 'intra' ? formation?.tarif_intra_ht : formation?.tarif_inter_ht
-    const montantHt = tarifBase ? tarifBase * (nbApprenants || 1) : null
+    const montantHt = (sess as any).prix_ht != null
+      ? Number((sess as any).prix_ht)
+      : (tarifBase ? tarifBase * (nbApprenants || 1) : null)
     const { data: created, error: createErr } = await supabase.from('conventions').insert({
       organization_id: sess.organization_id,
       numero,

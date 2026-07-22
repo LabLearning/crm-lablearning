@@ -83,6 +83,7 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
   const [ville, setVille] = useState(session?.ville || '')
   const [lieu, setLieu] = useState(session?.lieu || '')
   const [coutFormateur, setCoutFormateur] = useState<string>(session?.cout_formateur?.toString() || '')
+  const [prixHt, setPrixHt] = useState<string>((session as any)?.prix_ht?.toString() || '')
   const [selectedApprenants, setSelectedApprenants] = useState<string[]>(initialInscrits)
   // Participants créés à la volée depuis le formulaire (sans passer par la fiche entreprise)
   const [extraApprenants, setExtraApprenants] = useState<ApprenantLite[]>([])
@@ -504,6 +505,21 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <FormateurDispoBadge formateurId={formateurId} dateDebut={dateDebut} dateFin={dateFin} excludeSessionId={session?.id} />
       )}
 
+      {/* Prix de vente : c'est ce montant qui est reporté sur la convention */}
+      <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-3">
+        <label htmlFor="prix_ht" className="block text-sm font-medium text-surface-700 mb-1.5">
+          Prix de la formation — HT (€)
+        </label>
+        <input
+          id="prix_ht" name="prix_ht" type="number" step="0.01"
+          value={prixHt} onChange={(e) => setPrixHt(e.target.value)}
+          placeholder="Montant facturé au client"
+          className="input-base w-full"
+        />
+        <p className="text-2xs text-surface-500 mt-1">Ce prix est repris sur la convention de formation. Modifiable ensuite depuis la fiche session.</p>
+      </div>
+
+      <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-1">Coûts internes</div>
       <div className="grid grid-cols-3 gap-3">
         <Input id="cout_formateur" name="cout_formateur" type="number" label="Coût formateur (€)" value={coutFormateur} onChange={e => setCoutFormateur(e.target.value)} placeholder={nbJours > 0 ? `(${nbJours} jour${nbJours > 1 ? 's' : ''})` : ''} />
         <Input id="cout_salle" name="cout_salle" type="number" label="Coût salle (€)" defaultValue={session?.cout_salle?.toString() || ''} />
