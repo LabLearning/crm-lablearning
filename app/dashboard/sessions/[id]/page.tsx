@@ -52,6 +52,8 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     { data: rapportRes },
     { data: evaluations },
     { data: qcmSessions },
+    { data: qcmReponses },
+    { data: qcmBank },
     { data: conventions },
     { data: evaluationsAppr },
   ] = await Promise.all([
@@ -81,11 +83,23 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
       .from('evaluations_satisfaction')
       .select('id, type, note_globale, completee_at, apprenant_id')
       .eq('session_id', params.id),
-    // QCM sessions (passages des apprenants)
+    // QCM rattachés à la session (questionnaires)
     supabase
       .from('qcm_sessions')
-      .select('id, status, score, completed_at, apprenant_id, qcm:qcm(titre)')
+      .select('id, qcm_id, date_ouverture, envoye_at, qcm:qcm(id, titre, type, score_min_reussite)')
+      .eq('session_id', params.id)
+      .order('date_ouverture', { ascending: false }),
+    // Réponses des apprenants (qui a répondu + score)
+    supabase
+      .from('qcm_reponses')
+      .select('id, qcm_id, apprenant_id, score, is_reussi, is_complete, completed_at')
       .eq('session_id', params.id),
+    // Banque de QCM de l'organisation (pour rattacher)
+    supabase
+      .from('qcm')
+      .select('id, titre, type, status')
+      .eq('organization_id', session.organization.id)
+      .order('created_at', { ascending: false }),
     // Conventions liées à la session
     supabase
       .from('conventions')
@@ -148,6 +162,8 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         rapport={rapport as any}
         evaluations={(evaluations || []) as any[]}
         qcmSessions={(qcmSessions || []) as any[]}
+        qcmReponses={(qcmReponses || []) as any[]}
+        qcmBank={(qcmBank || []) as any[]}
         conventions={(conventions || []) as any[]}
         contratFormateur={contratFormateur as any}
         formationsRef={(formationsRef || []) as any[]}

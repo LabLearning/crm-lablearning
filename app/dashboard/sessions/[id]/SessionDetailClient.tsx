@@ -8,10 +8,11 @@ import {
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
   Star, ListChecks, FileSignature, Award, Euro, BookOpen,
+  QrCode, ChevronRight, CheckCircle, MinusCircle,
 } from 'lucide-react'
 import { Badge, PoeiBadge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
-import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction } from './actions'
+import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction, attachQcmToSessionAction } from './actions'
 import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
@@ -36,6 +37,8 @@ interface Props {
   rapport: any
   evaluations?: any[]
   qcmSessions?: any[]
+  qcmReponses?: any[]
+  qcmBank?: any[]
   conventions?: any[]
   contratFormateur?: any
   formationsRef?: any[]
@@ -49,6 +52,14 @@ interface Props {
   isFormateur: boolean
   userRole: string
   isPoei?: boolean
+}
+
+const QCM_TYPE_LABELS: Record<string, string> = {
+  positionnement: 'Positionnement',
+  entree: "Évaluation d'entrée",
+  sortie: 'Évaluation des acquis',
+  satisfaction_chaud: 'Satisfaction à chaud',
+  satisfaction_froid: 'Satisfaction à froid',
 }
 
 const SESSION_STATUS: Record<string, { label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'danger' }> = {
@@ -67,7 +78,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], isFormateur, userRole, isPoei }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], isFormateur, userRole, isPoei }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'contenu'>('session')
@@ -82,6 +93,18 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
   // Rémunération formateur éditable depuis la fiche
   const [editCout, setEditCout] = useState(false)
   const [coutValue, setCoutValue] = useState('')
+  // Rattachement d'un QCM de la banque à la session
+  const [attachQcmId, setAttachQcmId] = useState('')
+  const [expandedQcm, setExpandedQcm] = useState<Record<string, boolean>>({})
+
+  function handleAttachQcm() {
+    if (!attachQcmId) return
+    startTransition(async () => {
+      await attachQcmToSessionAction(session.id, attachQcmId)
+      setAttachQcmId('')
+      router.refresh()
+    })
+  }
 
   function saveCout() {
     const montant = coutValue.trim() === '' ? null : Number(coutValue)
@@ -871,41 +894,136 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
       )}
 
       {/* ═══════════════════════════════════════════════
-          ONGLET QCM
+          ONGLET QCM — Questionnaires rattachés + QR code
           ═══════════════════════════════════════════════ */}
       {tab === 'qcm' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Barre d'actions : rattacher un QCM + QR code à projeter */}
+          {!isFormateur && (
+            <div className="card p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="h-8 w-8 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
+                    <ListChecks className="h-4 w-4 text-brand-500" />
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-surface-900">Rattacher un questionnaire</div>
+                    <div className="text-xs text-surface-500">Choisissez un QCM de la banque : chaque apprenant inscrit pourra y répondre sur son téléphone.</div>
+                  </div>
+                </div>
+                <a
+                  href={`/api/sessions/${session.id}/qr-codes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-900 text-white text-xs font-semibold hover:bg-surface-800 transition-colors shrink-0"
+                >
+                  <QrCode className="h-3.5 w-3.5" /> QR codes à projeter
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={attachQcmId}
+                  onChange={(e) => setAttachQcmId(e.target.value)}
+                  className="input-base flex-1 text-sm"
+                >
+                  <option value="">Sélectionner un QCM de la banque…</option>
+                  {qcmBank
+                    .filter((b: any) => !qcmSessions.some((qs: any) => qs.qcm_id === b.id))
+                    .map((b: any) => (
+                      <option key={b.id} value={b.id}>
+                        {b.titre}{b.type ? ` — ${QCM_TYPE_LABELS[b.type] || b.type}` : ''}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  onClick={handleAttachQcm}
+                  disabled={!attachQcmId || isPending}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 disabled:opacity-50 transition-colors shrink-0"
+                >
+                  {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Rattacher
+                </button>
+              </div>
+              {qcmBank.filter((b: any) => !qcmSessions.some((qs: any) => qs.qcm_id === b.id)).length === 0 && (
+                <p className="text-xs text-surface-400">
+                  Tous les QCM de la banque sont déjà rattachés, ou aucun QCM n&apos;est encore créé.
+                  <Link href="/dashboard/qcm" className="text-brand-500 hover:underline ml-1">Gérer la banque de QCM</Link>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Liste des questionnaires rattachés + suivi des réponses */}
           {qcmSessions.length === 0 ? (
             <div className="card p-8 text-center">
               <ListChecks className="h-8 w-8 text-surface-300 mx-auto mb-2" />
-              <div className="text-sm text-surface-500">Aucun QCM passé pour cette session</div>
-              <div className="text-xs text-surface-400 mt-1">Les QCM (test de positionnement, milieu de formation, etc.) seront listés ici.</div>
+              <div className="text-sm text-surface-500">Aucun questionnaire rattaché à cette session</div>
+              <div className="text-xs text-surface-400 mt-1">Rattachez un QCM ci-dessus pour permettre aux apprenants d&apos;y répondre.</div>
             </div>
           ) : (
-            <div className="card overflow-hidden">
-              <div className="divide-y divide-surface-100">
-                {qcmSessions.map((q: any) => (
-                  <div key={q.id} className="px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
-                    <ListChecks className="h-4 w-4 text-brand-500 shrink-0" />
-                    <div className="font-medium text-surface-900 flex-1 min-w-0 truncate">
-                      {q.qcm?.titre || 'QCM'}
-                    </div>
-                    {q.score !== null && q.score !== undefined && (
-                      <div className={`text-xs px-2 py-0.5 rounded-full ${
-                        q.score >= 70 ? 'bg-emerald-50 text-emerald-700' : q.score >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
-                      }`}>
-                        {q.score}%
+            <div className="space-y-3">
+              {qcmSessions.map((q: any) => {
+                const reponses = qcmReponses.filter((r: any) => r.qcm_id === q.qcm_id)
+                const completed = reponses.filter((r: any) => r.is_complete)
+                const scoreMin = q.qcm?.score_min_reussite != null ? Number(q.qcm.score_min_reussite) : null
+                const isExpanded = expandedQcm[q.id] === true
+                return (
+                  <div key={q.id} className="card overflow-hidden">
+                    <button
+                      onClick={() => setExpandedQcm({ ...expandedQcm, [q.id]: !isExpanded })}
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-surface-50 transition-colors text-left"
+                    >
+                      <span className="h-9 w-9 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                        <ListChecks className="h-4 w-4 text-brand-500" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-surface-900 truncate">{q.qcm?.titre || 'QCM'}</div>
+                        <div className="text-xs text-surface-500 flex items-center gap-2 flex-wrap">
+                          {q.qcm?.type && <Badge variant="info">{QCM_TYPE_LABELS[q.qcm.type] || q.qcm.type}</Badge>}
+                          <span>{completed.length}/{reponses.length} répondu{completed.length > 1 ? 's' : ''}</span>
+                          {scoreMin != null && <span className="text-surface-400">Seuil {scoreMin}%</span>}
+                        </div>
+                      </div>
+                      {isExpanded ? <ChevronDown className="h-4 w-4 text-surface-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-surface-400 shrink-0" />}
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t border-surface-100 divide-y divide-surface-100">
+                        {reponses.length === 0 ? (
+                          <div className="px-4 py-4 text-xs text-surface-400 text-center">Aucun apprenant destinataire.</div>
+                        ) : (
+                          reponses.map((r: any) => {
+                            const a = inscriptions.find((i: any) => (i.apprenant as any)?.id === r.apprenant_id)?.apprenant
+                            const reussi = scoreMin != null && r.score != null ? Number(r.score) >= scoreMin : r.is_reussi
+                            return (
+                              <div key={r.id} className="px-4 py-2.5 flex items-center gap-3">
+                                <span className={cn('h-8 w-8 rounded-full flex items-center justify-center shrink-0',
+                                  r.is_complete ? (reussi ? 'bg-emerald-100' : 'bg-amber-100') : 'bg-surface-100')}>
+                                  {r.is_complete
+                                    ? (reussi ? <CheckCircle className="h-4 w-4 text-emerald-600" /> : <MinusCircle className="h-4 w-4 text-amber-600" />)
+                                    : <Clock className="h-4 w-4 text-surface-400" />}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-surface-900 truncate">{a ? `${a.prenom} ${a.nom}` : 'Apprenant'}</div>
+                                  <div className="text-xs text-surface-400">
+                                    {r.is_complete
+                                      ? (r.completed_at ? `Répondu le ${new Date(r.completed_at).toLocaleDateString('fr-FR')}` : 'Répondu')
+                                      : 'En attente de réponse'}
+                                  </div>
+                                </div>
+                                {r.is_complete && r.score != null && (
+                                  <div className={cn('text-xs font-semibold px-2 py-0.5 rounded-full shrink-0',
+                                    Number(r.score) >= 70 ? 'bg-emerald-50 text-emerald-700' : Number(r.score) >= 50 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700')}>
+                                    {Number(r.score)}%
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })
+                        )}
                       </div>
                     )}
-                    <span className="text-xs text-surface-500 capitalize">{q.status}</span>
-                    {q.completed_at && (
-                      <span className="text-xs text-surface-500">
-                        {new Date(q.completed_at).toLocaleDateString('fr-FR')}
-                      </span>
-                    )}
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           )}
         </div>

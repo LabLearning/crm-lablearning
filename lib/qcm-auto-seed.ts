@@ -72,6 +72,57 @@ export async function seedQcmReponsesForSession(
   return { created }
 }
 
+/**
+ * Sème les qcm_reponses pour un QCM précis (choisi manuellement dans la banque)
+ * rattaché à une session. Idempotent : ne recrée pas une réponse déjà existante.
+ * Contrairement à seedQcmReponsesForSession (qui cherche par type), on cible un qcmId.
+ */
+export async function seedQcmReponsesForQcm(
+  supabase: any,
+  sessionId: string,
+  qcmId: string,
+  qcmSessionId?: string | null,
+) {
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('id, organization_id')
+    .eq('id', sessionId)
+    .single()
+  if (!sess) return { created: 0 }
+
+  const { data: inscriptions } = await supabase
+    .from('inscriptions')
+    .select('apprenant_id')
+    .eq('session_id', sessionId)
+    .not('status', 'in', '("annule","abandonne")')
+
+  const apprenantIds = (inscriptions || []).map((i: any) => i.apprenant_id).filter(Boolean)
+  if (apprenantIds.length === 0) return { created: 0 }
+
+  const { data: existing } = await supabase
+    .from('qcm_reponses')
+    .select('apprenant_id')
+    .eq('qcm_id', qcmId)
+    .eq('session_id', sessionId)
+    .in('apprenant_id', apprenantIds)
+
+  const existingSet = new Set((existing || []).map((e: any) => e.apprenant_id))
+  const toCreate = apprenantIds.filter((aid: string) => !existingSet.has(aid))
+  if (toCreate.length === 0) return { created: 0 }
+
+  const rows = toCreate.map((aid: string) => ({
+    organization_id: sess.organization_id,
+    qcm_id: qcmId,
+    qcm_session_id: qcmSessionId || null,
+    apprenant_id: aid,
+    session_id: sessionId,
+    is_complete: false,
+  }))
+  const { error } = await supabase.from('qcm_reponses').insert(rows)
+  if (error) return { created: 0, error: error.message }
+  return { created: rows.length }
+}
+
 /** Notifie les apprenants concernés qu'un QCM leur est disponible */
 export async function notifyApprenantsForQcm(
   supabase: any,

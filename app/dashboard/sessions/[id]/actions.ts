@@ -182,6 +182,70 @@ export async function createEmargementJourAction(sessionId: string, date: string
   return { success: true }
 }
 
+/**
+ * Rattache un QCM de la banque à une session et sème une réponse (qcm_reponses)
+ * pour chaque apprenant inscrit, afin qu'il apparaisse dans leur portail.
+ * Réutilise la logique idempotente de lib/qcm-auto-seed.
+ */
+export async function attachQcmToSessionAction(sessionId: string, qcmId: string): Promise<ActionResult & { data?: { created: number } }> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  // La session doit appartenir à l'organisation
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('id, organization_id')
+    .eq('id', sessionId)
+    .eq('organization_id', session.organization.id)
+    .maybeSingle()
+  if (!sess) return { success: false, error: 'Session introuvable' }
+
+  // Le QCM doit appartenir à l'organisation
+  const { data: qcm } = await supabase
+    .from('qcm')
+    .select('id')
+    .eq('id', qcmId)
+    .eq('organization_id', session.organization.id)
+    .maybeSingle()
+  if (!qcm) return { success: false, error: 'QCM introuvable' }
+
+  // Créer le rattachement qcm_sessions s'il n'existe pas déjà
+  const { data: existingQs } = await supabase
+    .from('qcm_sessions')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('qcm_id', qcmId)
+    .eq('organization_id', session.organization.id)
+    .maybeSingle()
+
+  let qcmSessionId = existingQs?.id as string | undefined
+  if (!qcmSessionId) {
+    const { data: createdQs, error: qsErr } = await supabase
+      .from('qcm_sessions')
+      .insert({
+        organization_id: session.organization.id,
+        qcm_id: qcmId,
+        session_id: sessionId,
+        date_ouverture: new Date().toISOString(),
+      })
+      .select('id')
+      .single()
+    if (qsErr || !createdQs) return { success: false, error: 'Impossible de rattacher le QCM' }
+    qcmSessionId = createdQs.id
+  }
+
+  // Semer les réponses pour les apprenants inscrits
+  const { seedQcmReponsesForQcm } = await import('@/lib/qcm-auto-seed')
+  const res = await seedQcmReponsesForQcm(supabase, sessionId, qcmId, qcmSessionId)
+
+  await logAudit({ action: 'attach_qcm_session', entity_type: 'session', entity_id: sessionId, details: { qcmId, created: res.created } })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true, data: { created: res.created } }
+}
+
 const fmtFr = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString('fr-FR') : '—')
 
 /**
