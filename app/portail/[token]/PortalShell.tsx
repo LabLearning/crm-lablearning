@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, GraduationCap, FileText, ClipboardCheck,
   Calendar, ListChecks, Star, Users, CheckSquare,
-  Receipt, FileSignature, Building2,
+  Receipt, FileSignature, Building2, BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
@@ -33,6 +33,8 @@ const formateurNav: NavItem[] = [
   { label: 'Mes sessions', short: 'Sessions', href: '/sessions', icon: Calendar },
   { label: 'Apprenants', short: 'Apprenants', href: '/apprenants', icon: Users },
   { label: 'Emargement', short: 'Émarg.', href: '/emargement', icon: CheckSquare },
+  { label: 'Contenu pédagogique', short: 'Contenu', href: '/contenu', icon: BookOpen },
+  { label: 'Questionnaires', short: 'QCM', href: '/qcm', icon: ListChecks },
   { label: 'Evaluations', short: 'Évals', href: '/evaluations', icon: Star },
   { label: 'Documents', short: 'Docs', href: '/documents', icon: FileText },
 ]
@@ -116,7 +118,8 @@ export function PortalShell({ context, children }: PortalShellProps) {
   const info = getDisplayInfo(context)
 
   // For mobile bottom nav, limit to 5 items max for formateur (6 items)
-  const mobileNav = nav.length <= 5 ? nav : nav.slice(0, 5)
+  // Toutes les entrées restent accessibles sur mobile (barre défilante au-delà de 5)
+  const mobileNav = nav
 
   function isActive(href: string) {
     const full = basePath + href
@@ -201,11 +204,12 @@ export function PortalShell({ context, children }: PortalShellProps) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className={cn(
-          'grid',
+          // Jusqu'à 5 entrées : grille répartie. Au-delà (formateur : 8 entrées),
+          // défilement horizontal pour que TOUTES restent accessibles sur mobile.
+          mobileNav.length <= 5 ? 'grid' : 'flex overflow-x-auto',
           mobileNav.length === 3 && 'grid-cols-3',
           mobileNav.length === 4 && 'grid-cols-4',
           mobileNav.length === 5 && 'grid-cols-5',
-          mobileNav.length === 6 && 'grid-cols-6',
         )}>
           {mobileNav.map((item) => {
             const active = isActive(item.href)
@@ -213,7 +217,10 @@ export function PortalShell({ context, children }: PortalShellProps) {
               <Link
                 key={item.href}
                 href={basePath + item.href}
-                className="relative flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] transition-all duration-200 active:scale-95"
+                className={cn(
+                  'relative flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] transition-all duration-200 active:scale-95',
+                  mobileNav.length > 5 && 'shrink-0 basis-1/5 min-w-[72px]',
+                )}
               >
                 {/* Active indicator — top bar */}
                 {active && (

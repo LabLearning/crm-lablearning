@@ -3,22 +3,11 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
-import {
-  ArrowLeft,
-  CalendarDays,
-  Clock,
-  MapPin,
-  Building2,
-  User,
-  Users,
-} from 'lucide-react'
-import { formatShortDate, sortCreneaux, todayISO } from '../helpers'
+import { ArrowLeft } from 'lucide-react'
+import { sortCreneaux, todayISO } from '../helpers'
 import { SessionDays, type DayRow } from './SessionDays'
-import { ContenuPedagogiqueFormateur, PositionnementList } from '../../ContenuPedagogique'
-import { QcmFormateur } from './QcmFormateur'
-import { SessionTabs } from './SessionTabs'
 import { ModeEmargement } from './ModeEmargement'
-import { getSessionSupports, getPositionnementEtat } from '@/lib/session-contenu'
+import { SessionHeaderFormateur } from '../../SessionHeaderFormateur'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +24,7 @@ export default async function PortalEmargementSessionPage({
   const { data: session } = await supabase
     .from('sessions')
     .select(
-      'id, reference, intitule, date_debut, date_fin, horaires, lieu, adresse, code_postal, ville, formateur_id, organization_id, deroule_pedagogique, materiel_necessaire, emargement_mode, emargement_scan_path, emargement_scan_uploaded_at, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale)',
+      'id, reference, intitule, date_debut, date_fin, horaires, lieu, adresse, code_postal, ville, formateur_id, organization_id, emargement_mode, emargement_scan_path, emargement_scan_uploaded_at, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale)',
     )
     .eq('id', params.sessionId)
     .maybeSingle()
@@ -82,29 +71,6 @@ export default async function PortalEmargementSessionPage({
     }
   }
 
-  // Contenu pédagogique : le formateur voit tous les supports de sa session
-  const [supportsBySession, positionnement, qcmSessRes, qcmRepRes] = await Promise.all([
-    getSessionSupports(supabase, [session.id], 'formateur'),
-    getPositionnementEtat(
-      supabase,
-      session.id,
-      stagiaires.map((a: any) => ({ id: a.id, prenom: a.prenom, nom: a.nom })),
-    ),
-    // Questionnaires rattachés à la session
-    supabase
-      .from('qcm_sessions')
-      .select('id, qcm_id, qcm:qcm(id, titre, type, score_min_reussite)')
-      .eq('session_id', session.id),
-    // Réponses des apprenants (qui a répondu + score)
-    supabase
-      .from('qcm_reponses')
-      .select('qcm_id, apprenant_id, score, is_reussi, is_complete')
-      .eq('session_id', session.id),
-  ])
-  const supports = supportsBySession[session.id] || []
-  const qcmSessions = (qcmSessRes.data || []) as any[]
-  const qcmReponses = (qcmRepRes.data || []) as any[]
-
   const dates = Array.from(new Set(emargements.map((e) => e.date))).sort()
 
   const days: DayRow[] = dates.map((date) => {
@@ -133,12 +99,6 @@ export default async function PortalEmargementSessionPage({
   const totalFeuilles = days.reduce((n, d) => n + d.creneaux.length, 0)
   const validated = days.reduce((n, d) => n + d.creneaux.filter((c) => c.feuille?.validated_at).length, 0)
 
-  const formation = (session as any).formation
-  const client = (session as any).client
-  const adresseComplete = [session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')]
-    .filter(Boolean)
-    .join(', ')
-
   return (
     <div className="space-y-5 animate-fade-in">
       <Link
@@ -148,129 +108,35 @@ export default async function PortalEmargementSessionPage({
         <ArrowLeft className="h-4 w-4" /> Toutes les sessions
       </Link>
 
-      <div className="card p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          {validated === totalFeuilles && totalFeuilles > 0 ? (
+      <SessionHeaderFormateur
+        session={session as any}
+        formateurName={`${context.formateur.prenom} ${context.formateur.nom}`}
+        stagiaires={stagiaires}
+        badge={
+          validated === totalFeuilles && totalFeuilles > 0 ? (
             <Badge variant="success">Émargement complet</Badge>
           ) : (
             <Badge variant="default">
               {validated}/{totalFeuilles} feuilles validées
             </Badge>
-          )}
-          {session.reference && (
-            <span className="text-[11px] font-mono text-surface-400">{session.reference}</span>
-          )}
-        </div>
-
-        <h1 className="text-lg sm:text-xl font-heading font-bold text-surface-900 tracking-heading leading-snug">
-          {formation?.intitule || session.intitule || 'Session'}
-        </h1>
-
-        <div className="mt-3 grid gap-2 text-sm text-surface-600 sm:grid-cols-2">
-          {client?.raison_sociale && (
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-surface-400 shrink-0" />
-              <span className="truncate">{client.raison_sociale}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-surface-400 shrink-0" />
-            <span>
-              {formatShortDate(session.date_debut)} — {formatShortDate(session.date_fin)}
-              {formation?.duree_heures ? ` · ${formation.duree_heures}h` : ''}
-            </span>
-          </div>
-          {session.horaires && (
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-surface-400 shrink-0" />
-              <span className="truncate">{session.horaires}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-surface-400 shrink-0" />
-            <span className="truncate">
-              {context.formateur.prenom} {context.formateur.nom}
-            </span>
-          </div>
-          {(session.lieu || adresseComplete) && (
-            <div className="flex items-start gap-2 sm:col-span-2">
-              <MapPin className="h-4 w-4 text-surface-400 shrink-0 mt-0.5" />
-              <span>
-                {session.lieu}
-                {session.lieu && adresseComplete ? ' — ' : ''}
-                {adresseComplete}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {stagiaires.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-surface-100">
-            <div className="flex items-center gap-2 text-xs font-semibold text-surface-500 uppercase tracking-wider">
-              <Users className="h-3.5 w-3.5" />
-              {stagiaires.length} stagiaire{stagiaires.length > 1 ? 's' : ''}
-            </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {stagiaires.map((a: any, i: number) => (
-                <span
-                  key={i}
-                  className="text-xs text-surface-700 bg-surface-100 rounded-full px-2.5 py-1"
-                >
-                  {a.prenom} {a.nom}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <SessionTabs
-        emargement={
-          <>
-            <ModeEmargement
-              token={params.token}
-              sessionId={session.id}
-              mode={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
-              scanPath={(session as any).emargement_scan_path || null}
-              scanUploadedAt={(session as any).emargement_scan_uploaded_at || null}
-              verrouille={validated > 0}
-            />
-            <SessionDays
-              token={params.token}
-              sessionId={session.id}
-              days={days}
-              today={today}
-              modeSession={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
-            />
-          </>
+          )
         }
-        contenu={
-          <ContenuPedagogiqueFormateur
-            token={params.token}
-            deroule={(session as any).deroule_pedagogique || null}
-            materiel={(session as any).materiel_necessaire || null}
-            supports={supports}
-          />
-        }
-        questionnaires={
-          <div className="space-y-4">
-            {positionnement.length > 0 && (
-              <div className="card p-4 sm:p-5">
-                <PositionnementList positionnement={positionnement} />
-              </div>
-            )}
-            <QcmFormateur
-              token={params.token}
-              sessionId={session.id}
-              qcmSessions={qcmSessions}
-              qcmReponses={qcmReponses}
-              nbStagiaires={stagiaires.length}
-            />
-            {positionnement.length === 0 && qcmSessions.length === 0 && (
-              <div className="card p-8 text-center text-sm text-surface-400">Aucun questionnaire pour cette session.</div>
-            )}
-          </div>
-        }
+      />
+
+      <ModeEmargement
+        token={params.token}
+        sessionId={session.id}
+        mode={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
+        scanPath={(session as any).emargement_scan_path || null}
+        scanUploadedAt={(session as any).emargement_scan_uploaded_at || null}
+        verrouille={validated > 0}
+      />
+      <SessionDays
+        token={params.token}
+        sessionId={session.id}
+        days={days}
+        today={today}
+        modeSession={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
       />
     </div>
   )
