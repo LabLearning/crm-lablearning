@@ -15,6 +15,7 @@ import {
 import { formatShortDate, sortCreneaux, todayISO } from '../helpers'
 import { SessionDays, type DayRow } from './SessionDays'
 import { ContenuPedagogiqueFormateur } from '../../ContenuPedagogique'
+import { ModeEmargement } from './ModeEmargement'
 import { getSessionSupports, getPositionnementEtat } from '@/lib/session-contenu'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,7 @@ export default async function PortalEmargementSessionPage({
   const { data: session } = await supabase
     .from('sessions')
     .select(
-      'id, reference, intitule, date_debut, date_fin, horaires, lieu, adresse, code_postal, ville, formateur_id, organization_id, deroule_pedagogique, materiel_necessaire, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale)',
+      'id, reference, intitule, date_debut, date_fin, horaires, lieu, adresse, code_postal, ville, formateur_id, organization_id, deroule_pedagogique, materiel_necessaire, emargement_mode, emargement_scan_path, emargement_scan_uploaded_at, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale)',
     )
     .eq('id', params.sessionId)
     .maybeSingle()
@@ -217,7 +218,22 @@ export default async function PortalEmargementSessionPage({
         positionnement={positionnement}
       />
 
-      <SessionDays token={params.token} sessionId={session.id} days={days} today={today} />
+      <ModeEmargement
+        token={params.token}
+        sessionId={session.id}
+        mode={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
+        scanPath={(session as any).emargement_scan_path || null}
+        scanUploadedAt={(session as any).emargement_scan_uploaded_at || null}
+        verrouille={validated > 0}
+      />
+
+      <SessionDays
+        token={params.token}
+        sessionId={session.id}
+        days={days}
+        today={today}
+        modeSession={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
+      />
     </div>
   )
 }

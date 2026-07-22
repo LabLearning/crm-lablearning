@@ -225,6 +225,66 @@ export async function validerFeuilleByFormateurAction(
  * La feuille est créée dès ce choix — jusqu'ici elle n'existait qu'à la
  * validation, il n'y avait donc nulle part où mémoriser le mode.
  */
+/**
+ * Mode d'émargement de TOUTE la session.
+ *
+ * Le papier ne se décide pas demi-journée par demi-journée : le formateur
+ * imprime une feuille unique couvrant l'ensemble des dates, la fait signer
+ * au fil des séances, puis la scanne une fois à la fin.
+ */
+export async function setSessionEmargementModeAction(
+  token: string,
+  sessionId: string,
+  mode: 'numerique' | 'papier',
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient()
+  const owned = await getOwnedSession(supabase, token, sessionId)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+
+  // Une feuille déjà validée fige le mode : on ne réécrit pas l'histoire
+  const { count } = await supabase
+    .from('emargement_feuilles')
+    .select('id', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .not('validated_at', 'is', null)
+  if ((count || 0) > 0) {
+    return { success: false, error: 'Des feuilles sont déjà validées : le mode ne peut plus changer' }
+  }
+
+  const { error } = await supabase
+    .from('sessions')
+    .update({ emargement_mode: mode })
+    .eq('id', sessionId)
+  if (error) return { success: false, error: error.message }
+
+  revalidateEmargement(token, sessionId)
+  return { success: true }
+}
+
+/** Enregistre le scan de la feuille papier signée, pour toute la session */
+export async function saveScanSessionAction(
+  token: string,
+  sessionId: string,
+  storagePath: string,
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient()
+  const owned = await getOwnedSession(supabase, token, sessionId)
+  if (!owned) return { success: false, error: 'Session non autorisée' }
+  if (!storagePath) return { success: false, error: 'Fichier manquant' }
+
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      emargement_scan_path: storagePath,
+      emargement_scan_uploaded_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
+  if (error) return { success: false, error: error.message }
+
+  revalidateEmargement(token, sessionId)
+  return { success: true }
+}
+
 export async function setFeuilleModeAction(
   token: string,
   sessionId: string,

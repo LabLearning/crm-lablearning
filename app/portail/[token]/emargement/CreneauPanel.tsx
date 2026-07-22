@@ -56,6 +56,8 @@ interface Props {
   emargements: EmargementRow[]
   feuille: FeuilleRow | null
   scanUrl?: string | null
+  /** Mode retenu pour toute la session : le créneau n'en décide plus */
+  modeSession: 'numerique' | 'papier'
   onChange: () => void
 }
 
@@ -209,6 +211,7 @@ export function CreneauPanel({
   emargements,
   feuille,
   scanUrl,
+  modeSession,
   onChange,
 }: Props) {
   const [signingFor, setSigningFor] = useState<EmargementRow | null>(null)
@@ -222,7 +225,8 @@ export function CreneauPanel({
   const fileRef = useRef<HTMLInputElement>(null)
 
   const locked = !!feuille?.validated_at
-  const mode = (feuille?.mode as 'numerique' | 'papier' | undefined) || undefined
+  // Le mode est celui de la session : un créneau ne peut plus diverger
+  const mode = modeSession
   const total = emargements.length
   const settled = emargements.filter(isSettled).length
   const allSettled = total > 0 && settled === total
@@ -313,8 +317,8 @@ export function CreneauPanel({
     )
   }
 
-  // ── Choix du mode ───────────────────────────────────────────
-  if (!mode || changingMode) {
+  // ── Choix du mode (désormais au niveau de la session) ───────
+  if (false) {
     return (
       <div className="px-4 py-4 bg-surface-50/60 space-y-3">
         <p className="text-xs text-surface-500">Comment souhaitez-vous faire signer ce créneau ?</p>
@@ -367,26 +371,8 @@ export function CreneauPanel({
           )}
           {mode === 'papier' ? 'Feuille papier' : 'Signature numérique'}
         </span>
-        <button
-          onClick={() => setChangingMode(true)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-surface-500 active:text-surface-700"
-        >
-          <RefreshCw className="h-3.5 w-3.5" /> Changer
-        </button>
       </div>
 
-      {mode === 'papier' && (
-        <div className="px-4 py-3 bg-white border-b border-surface-100">
-          <a
-            href={`/api/pdf/emargement/${sessionId}?token=${token}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full inline-flex items-center justify-center gap-2 min-h-[48px] px-4 rounded-xl border border-surface-200 text-sm font-semibold text-surface-800 active:bg-surface-50 transition-colors"
-          >
-            <Printer className="h-4 w-4" /> Imprimer la feuille vierge
-          </a>
-        </div>
-      )}
 
       {emargements.map((em) => (
         <ApprenantRow

@@ -21,6 +21,8 @@ interface Props {
   sessionId: string
   days: DayRow[]
   today: string
+  /** Mode choisi pour toute la session : le créneau ne le redemande plus */
+  modeSession: 'numerique' | 'papier'
 }
 
 function DayBlock({
@@ -29,12 +31,14 @@ function DayBlock({
   day,
   isToday,
   defaultOpen,
+  modeSession,
 }: {
   token: string
   sessionId: string
   day: DayRow
   isToday: boolean
   defaultOpen: boolean
+  modeSession: 'numerique' | 'papier'
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(defaultOpen)
@@ -87,6 +91,7 @@ function DayBlock({
                 emargements={c.emargements}
                 feuille={c.feuille}
                 scanUrl={c.scanUrl}
+                modeSession={modeSession}
                 onChange={() => router.refresh()}
               />
             </div>
@@ -97,7 +102,7 @@ function DayBlock({
   )
 }
 
-export function SessionDays({ token, sessionId, days, today }: Props) {
+export function SessionDays({ token, sessionId, days, today, modeSession }: Props) {
   const hasToday = days.some((d) => d.date === today)
 
   if (days.length === 0) {
@@ -118,6 +123,7 @@ export function SessionDays({ token, sessionId, days, today }: Props) {
           sessionId={sessionId}
           day={day}
           isToday={day.date === today}
+          modeSession={modeSession}
           // Sans séance du jour, on ouvre la première journée non terminée :
           // le formateur tombe directement sur ce qu'il lui reste à faire.
           defaultOpen={
