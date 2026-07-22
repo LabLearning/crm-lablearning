@@ -41,10 +41,6 @@ interface SessionFormProps {
 }
 
 const statusOptions = Object.entries(SESSION_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))
-const typeOptions = [
-  { value: 'inter', label: 'Inter — Formation ouverte (centre Lab Learning)' },
-  { value: 'intra', label: 'Intra — Formation chez le client' },
-]
 const modaliteOptions = [
   { value: 'presentiel', label: 'Présentiel' },
   { value: 'distanciel', label: 'À distance' },
@@ -76,7 +72,8 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
       : (session?.formation_id ? [session.formation_id] : [])
   )
   const formationId = formationIds[0] || ''
-  const [typeSession, setTypeSession] = useState<'inter' | 'intra'>(session?.type_session || 'inter')
+  // Vide au départ (nouvelle session) : le choix inter/intra est imposé avant validation
+  const [typeSession, setTypeSession] = useState<'inter' | 'intra' | ''>(session?.type_session || '')
   const [modalite, setModalite] = useState<'presentiel' | 'distanciel' | 'mixte'>(session?.modalite || 'presentiel')
   const [clientId, setClientId] = useState(session?.client_id || '')
   const [formateurId, setFormateurId] = useState(session?.formateur_id || '')
@@ -232,6 +229,10 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
       setError('Veuillez sélectionner au moins une formation')
       return
     }
+    if (!typeSession) {
+      setError('Choisissez le type de session : Inter ou Intra')
+      return
+    }
     if (typeSession === 'intra' && !clientId) {
       setError('En type "intra", vous devez sélectionner un client commanditaire')
       return
@@ -353,8 +354,34 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
 
       {/* ── Type & Modalité ── */}
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Type et modalité</div>
-      <div className="grid grid-cols-2 gap-3">
-        <Select id="type_session_select" label="Type *" options={typeOptions} value={typeSession} onChange={e => setTypeSession(e.target.value as 'inter' | 'intra')} />
+      <div>
+        <label className="block text-sm font-medium text-surface-700 mb-1.5">Type *</label>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { value: 'inter' as const, titre: 'Inter', desc: 'Formation ouverte (centre Lab Learning)' },
+            { value: 'intra' as const, titre: 'Intra', desc: 'Formation chez le client' },
+          ]).map((opt) => {
+            const active = typeSession === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setTypeSession(opt.value)}
+                className={`text-left rounded-xl border p-3 transition-colors ${
+                  active
+                    ? 'border-brand-400 bg-brand-50/60 ring-1 ring-brand-200'
+                    : 'border-surface-200 hover:border-surface-300'
+                }`}
+              >
+                <div className={`text-sm font-semibold ${active ? 'text-brand-700' : 'text-surface-900'}`}>{opt.titre}</div>
+                <div className="text-xs text-surface-500 mt-0.5">{opt.desc}</div>
+              </button>
+            )
+          })}
+        </div>
+        {!typeSession && <p className="text-2xs text-surface-400 mt-1.5">Choisissez Inter ou Intra pour pouvoir valider la session.</p>}
+      </div>
+      <div>
         <Select id="modalite_select" label="Modalité *" options={modaliteOptions} value={modalite} onChange={e => setModalite(e.target.value as any)} />
       </div>
 
@@ -570,7 +597,11 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
 
       <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
         <Button type="button" variant="secondary" onClick={onCancel}>Annuler</Button>
-        <Button type="submit" isLoading={isLoading} icon={<Save className="h-4 w-4" />}>
+        <Button
+          type="submit" isLoading={isLoading} icon={<Save className="h-4 w-4" />}
+          disabled={!typeSession}
+          title={!typeSession ? 'Choisissez le type de session (Inter ou Intra)' : undefined}
+        >
           {session ? 'Mettre à jour' : 'Créer la session'}
         </Button>
       </div>
