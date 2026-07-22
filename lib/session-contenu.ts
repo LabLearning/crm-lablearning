@@ -108,6 +108,10 @@ export async function getPositionnementEtat(
     ['positionnement', 'entree'].includes(r.qcm?.type),
   )
 
+  // Aucun questionnaire de positionnement/entrée rattaché à cette session :
+  // on ne montre pas un bloc vide « 0/8 non passé » qui n'existe pas.
+  if (pertinentes.length === 0) return []
+
   return inscrits.map((a) => {
     // Un apprenant peut avoir positionnement ET entrée : la réponse complétée prime
     const lignes = pertinentes.filter((r) => r.apprenant_id === a.id)
