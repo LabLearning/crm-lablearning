@@ -14,8 +14,9 @@ import {
 } from 'lucide-react'
 import { formatShortDate, sortCreneaux, todayISO } from '../helpers'
 import { SessionDays, type DayRow } from './SessionDays'
-import { ContenuPedagogiqueFormateur } from '../../ContenuPedagogique'
+import { ContenuPedagogiqueFormateur, PositionnementList } from '../../ContenuPedagogique'
 import { QcmFormateur } from './QcmFormateur'
+import { SessionTabs } from './SessionTabs'
 import { ModeEmargement } from './ModeEmargement'
 import { getSessionSupports, getPositionnementEtat } from '@/lib/session-contenu'
 
@@ -223,37 +224,53 @@ export default async function PortalEmargementSessionPage({
         )}
       </div>
 
-      <ContenuPedagogiqueFormateur
-        token={params.token}
-        deroule={(session as any).deroule_pedagogique || null}
-        materiel={(session as any).materiel_necessaire || null}
-        supports={supports}
-        positionnement={positionnement}
-      />
-
-      <QcmFormateur
-        token={params.token}
-        sessionId={session.id}
-        qcmSessions={qcmSessions}
-        qcmReponses={qcmReponses}
-        nbStagiaires={stagiaires.length}
-      />
-
-      <ModeEmargement
-        token={params.token}
-        sessionId={session.id}
-        mode={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
-        scanPath={(session as any).emargement_scan_path || null}
-        scanUploadedAt={(session as any).emargement_scan_uploaded_at || null}
-        verrouille={validated > 0}
-      />
-
-      <SessionDays
-        token={params.token}
-        sessionId={session.id}
-        days={days}
-        today={today}
-        modeSession={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
+      <SessionTabs
+        emargement={
+          <>
+            <ModeEmargement
+              token={params.token}
+              sessionId={session.id}
+              mode={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
+              scanPath={(session as any).emargement_scan_path || null}
+              scanUploadedAt={(session as any).emargement_scan_uploaded_at || null}
+              verrouille={validated > 0}
+            />
+            <SessionDays
+              token={params.token}
+              sessionId={session.id}
+              days={days}
+              today={today}
+              modeSession={((session as any).emargement_mode as 'numerique' | 'papier') || 'numerique'}
+            />
+          </>
+        }
+        contenu={
+          <ContenuPedagogiqueFormateur
+            token={params.token}
+            deroule={(session as any).deroule_pedagogique || null}
+            materiel={(session as any).materiel_necessaire || null}
+            supports={supports}
+          />
+        }
+        questionnaires={
+          <div className="space-y-4">
+            {positionnement.length > 0 && (
+              <div className="card p-4 sm:p-5">
+                <PositionnementList positionnement={positionnement} />
+              </div>
+            )}
+            <QcmFormateur
+              token={params.token}
+              sessionId={session.id}
+              qcmSessions={qcmSessions}
+              qcmReponses={qcmReponses}
+              nbStagiaires={stagiaires.length}
+            />
+            {positionnement.length === 0 && qcmSessions.length === 0 && (
+              <div className="card p-8 text-center text-sm text-surface-400">Aucun questionnaire pour cette session.</div>
+            )}
+          </div>
+        }
       />
     </div>
   )

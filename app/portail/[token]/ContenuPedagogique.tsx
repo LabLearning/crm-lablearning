@@ -57,19 +57,57 @@ export function SupportsList({
   )
 }
 
-/** Bloc complet destiné au formateur : déroulé, matériel, supports, positionnement */
+/** Suivi du questionnaire de positionnement, réutilisable dans l'onglet Questionnaires */
+export function PositionnementList({ positionnement }: { positionnement: PositionnementRow[] }) {
+  if (positionnement.length === 0) return null
+  const faits = positionnement.filter((p) => p.fait).length
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-surface-500 uppercase tracking-wider">
+          <ListChecks className="h-3.5 w-3.5" /> Questionnaire de positionnement
+        </div>
+        <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full',
+          faits === positionnement.length ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+          {faits}/{positionnement.length}
+        </span>
+      </div>
+      <div className="rounded-xl border border-surface-200 divide-y divide-surface-100">
+        {positionnement.map((p) => (
+          <div key={p.apprenant_id} className="flex items-center gap-3 px-3 py-2.5">
+            {p.fait
+              ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              : <Clock className="h-4 w-4 text-amber-500 shrink-0" />}
+            <span className="flex-1 min-w-0 text-sm text-surface-800 truncate">{p.prenom} {p.nom}</span>
+            {p.fait ? (
+              <span className="text-xs text-surface-500 shrink-0">
+                {p.score != null ? `${Math.round(p.score)}%` : 'Complété'}
+                {p.completed_at ? ` · ${formatDate(p.completed_at, { day: 'numeric', month: 'short' })}` : ''}
+              </span>
+            ) : (
+              <span className="text-xs text-amber-600 shrink-0">Non passé</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Bloc destiné au formateur : déroulé, matériel, supports (le positionnement
+ *  a son propre onglet Questionnaires) */
 export function ContenuPedagogiqueFormateur({
-  token, deroule, materiel, supports, positionnement,
+  token, deroule, materiel, supports,
 }: {
   token: string
   deroule: string | null
   materiel: string | null
   supports: SessionSupport[]
-  positionnement: PositionnementRow[]
 }) {
-  const faits = positionnement.filter((p) => p.fait).length
-  const rienASignaler = !deroule && !materiel && supports.length === 0 && positionnement.length === 0
-  if (rienASignaler) return null
+  const rienASignaler = !deroule && !materiel && supports.length === 0
+  if (rienASignaler) {
+    return <div className="card p-8 text-center text-sm text-surface-400">Aucun contenu pédagogique pour cette session.</div>
+  }
 
   return (
     <div className="card p-4 sm:p-5 space-y-5">
@@ -95,38 +133,6 @@ export function ContenuPedagogiqueFormateur({
       )}
 
       <SupportsList supports={supports} token={token} title="Mes supports" />
-
-      {positionnement.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-surface-500 uppercase tracking-wider">
-              <ListChecks className="h-3.5 w-3.5" /> Questionnaire de positionnement
-            </div>
-            <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full',
-              faits === positionnement.length ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
-              {faits}/{positionnement.length}
-            </span>
-          </div>
-          <div className="rounded-xl border border-surface-200 divide-y divide-surface-100">
-            {positionnement.map((p) => (
-              <div key={p.apprenant_id} className="flex items-center gap-3 px-3 py-2.5">
-                {p.fait
-                  ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  : <Clock className="h-4 w-4 text-amber-500 shrink-0" />}
-                <span className="flex-1 min-w-0 text-sm text-surface-800 truncate">{p.prenom} {p.nom}</span>
-                {p.fait ? (
-                  <span className="text-xs text-surface-500 shrink-0">
-                    {p.score != null ? `${Math.round(p.score)}%` : 'Complété'}
-                    {p.completed_at ? ` · ${formatDate(p.completed_at, { day: 'numeric', month: 'short' })}` : ''}
-                  </span>
-                ) : (
-                  <span className="text-xs text-amber-600 shrink-0">Non passé</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
