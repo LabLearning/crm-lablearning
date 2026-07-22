@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  FolderPlus, FilePlus, Folder, FileText, Download, Trash2, Pencil, Eye,
+  FolderPlus, FilePlus, Folder, FileText, Download, Trash2, Pencil,
   Home, ChevronRight, Loader2, Upload, Paperclip, Save, Building2, FolderOpen,
 } from 'lucide-react'
 import { Button, Modal, Input, SearchSelect, useToast, RowMenu } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
+import { DocHoverPreview } from './DocHoverPreview'
 import {
   listDossierContent, createDossierAction, renameDossierAction,
   deleteDossierAction, saveDocumentInDossierAction, deleteDocumentInDossierAction,
@@ -339,13 +340,7 @@ export function DocumentationDrive({ clients }: Props) {
                       </div>
                       {d.storage_path && (
                         <>
-                          <a
-                            href={`/api/documents/${d.id}/download?inline=1`} target="_blank" rel="noreferrer"
-                            title="Visualiser"
-                            className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </a>
+                          <DocHoverPreview docId={d.id} mimeType={d.mime_type} fileName={d.file_name} />
                           <a
                             href={`/api/documents/${d.id}/download`} target="_blank" rel="noreferrer"
                             title="Télécharger"
