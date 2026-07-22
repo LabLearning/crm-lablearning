@@ -15,7 +15,7 @@ export default async function PartenaireSessionsPage({ params }: { params: { tok
 
   // Get sessions from dossiers linked to partner's leads — and in parallel,
   // fetch all recent sessions for this org (independent query).
-  const [sessionsFromLeads, { data: allSessions }] = await Promise.all([
+  const [sessionsFromLeads] = await Promise.all([
     (async () => {
       const { data: leads } = await supabase
         .from('leads')
@@ -47,25 +47,13 @@ export default async function PartenaireSessionsPage({ params }: { params: { tok
       }
       return []
     })(),
-    supabase
-      .from('sessions')
-      .select(`
-      id, reference, date_debut, date_fin, horaires, lieu, ville, status, places_max,
-      formation:formation_id(intitule, duree_heures, modalite),
-      formateur:formateurs(prenom, nom)
-    `)
-      .eq('organization_id', context.organization.id)
-      .order('date_debut', { ascending: true })
-      .limit(30),
   ])
 
-  let sessions: any[] = sessionsFromLeads
-
-  // Merge
-  const allIds = new Set(sessions.map((s: any) => s.id))
-  ;(allSessions || []).forEach((s: any) => {
-    if (!allIds.has(s.id)) { sessions.push(s); allIds.add(s.id) }
-  })
+  // Uniquement les sessions des clients apportés par ce partenaire. Une
+  // seconde requête chargeait auparavant toutes les sessions de
+  // l'organisation, exposant les formations d'autres entreprises ainsi que
+  // les formateurs qui les animent.
+  const sessions: any[] = sessionsFromLeads
 
   const today = new Date().toISOString().split('T')[0]
   const upcoming = sessions.filter((s: any) => s.date_debut >= today && ['planifiee', 'confirmee'].includes(s.status))

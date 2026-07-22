@@ -17,18 +17,31 @@ export default async function PortalDocumentsPage({ params }: { params: { token:
   if (!context) redirect('/portail/expired')
 
   const supabase = await createServiceRoleClient()
-  const field = context.type === 'apprenant' ? 'apprenant_id' : context.type === 'formateur' ? 'formateur_id' : 'organization_id'
-  const targetId = context.type === 'apprenant' ? context.apprenant.id : context.type === 'formateur' ? (context as any).formateur.id : context.organization.id
 
-  // Documents assigned to this person.
-  // Les supports pédagogiques sont exclus de cette liste générique : ils ont
-  // leur propre section, servie après filtrage de visibilité par session.
-  const { data: documents } = await supabase
+  // Chaque profil ne voit que SES documents.
+  // Le filtre était `organization_id` pour tout ce qui n'est ni apprenant ni
+  // formateur : un client se voyait servir l'intégralité des documents de
+  // l'organisation — conventions, factures et pièces d'autres entreprises.
+  let documentsQuery = supabase
     .from('documents')
     .select('*, signatures(*)')
-    .eq(field, targetId)
+    // Les supports pédagogiques ont leur propre section, filtrée par visibilité
     .not('type', 'in', `(${DOCUMENT_TYPES_SUPPORT.join(',')})`)
     .order('created_at', { ascending: false })
+
+  if (context.type === 'apprenant') {
+    documentsQuery = documentsQuery.eq('apprenant_id', context.apprenant.id)
+  } else if (context.type === 'formateur') {
+    documentsQuery = documentsQuery.eq('formateur_id', (context as any).formateur.id)
+  } else if (context.type === 'client') {
+    documentsQuery = documentsQuery.eq('client_id', (context as any).client.id)
+  } else {
+    // Apporteur, partenaire : aucun document nominatif ne leur est rattaché.
+    // Mieux vaut une liste vide qu'un filtre trop large.
+    documentsQuery = documentsQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+  }
+
+  const { data: documents } = await documentsQuery
 
   const allDocs = documents || []
 
