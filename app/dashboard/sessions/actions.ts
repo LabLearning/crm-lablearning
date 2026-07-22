@@ -7,6 +7,25 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 
+/**
+ * Apprenants d'un client, chargés à la volée quand on le sélectionne dans le
+ * formulaire de session. La liste passée au rendu de la page est figée : sans
+ * ce rafraîchissement, un apprenant créé entre-temps (fiche client) n'apparaît
+ * pas, et l'utilisateur le recrée — d'où des doublons.
+ */
+export async function getApprenantsForClientAction(clientId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!clientId) return { success: true, data: [] }
+  const supabase = await createServiceRoleClient()
+  const { data } = await supabase
+    .from('apprenants')
+    .select('id, prenom, nom, email, client_id')
+    .eq('organization_id', session.organization.id)
+    .eq('client_id', clientId)
+    .order('nom')
+  return { success: true, data: data || [] }
+}
+
 export async function createSessionAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
   const raw: Record<string, unknown> = {}

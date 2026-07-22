@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Save, Building2, Users, X, Plus, CalendarDays, Clock, Search } from 'lucide-react'
 import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect } from '@/components/ui'
-import { createSessionAction, updateSessionAction } from './actions'
+import { createSessionAction, updateSessionAction, getApprenantsForClientAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
 import type { Session, Formation, Formateur, HoraireJour } from '@/lib/types/formation'
 
@@ -190,7 +190,22 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
    *  - Inter : pas de restriction, des apprenants de différentes entreprises
    *    peuvent être inscrits ensemble (c'est le principe de l'inter)
    */
-  const allApprenants = [...apprenants, ...extraApprenants]
+  // Apprenants du client rechargés à la volée : la liste initiale peut être en
+  // retard si un apprenant a été créé depuis l'ouverture de la page.
+  const [clientApprenants, setClientApprenants] = useState<ApprenantLite[]>([])
+  useEffect(() => {
+    if (!clientId) { setClientApprenants([]); return }
+    let actif = true
+    getApprenantsForClientAction(clientId).then((r) => {
+      if (actif && r.success) setClientApprenants((r.data as ApprenantLite[]) || [])
+    })
+    return () => { actif = false }
+  }, [clientId])
+
+  // Fusion sans doublon : liste initiale + apprenants du client rechargés + créés à la volée
+  const byId = new Map<string, ApprenantLite>()
+  for (const a of [...apprenants, ...clientApprenants, ...extraApprenants]) byId.set(a.id, a)
+  const allApprenants = Array.from(byId.values())
   const filteredApprenants = (typeSession === 'intra' && clientId)
     ? allApprenants.filter(a => a.client_id === clientId)
     : allApprenants

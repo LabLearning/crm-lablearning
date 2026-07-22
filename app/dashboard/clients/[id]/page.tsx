@@ -14,6 +14,7 @@ import { ClientEditButton } from './ClientEditButton'
 import { ClientNotes } from './ClientNotes'
 import { ClientParticipants } from './ClientParticipants'
 import { ClientDocuments } from './ClientDocuments'
+import { ClientContacts } from './ClientContacts'
 
 export const dynamic = 'force-dynamic'
 
@@ -196,37 +197,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
         {/* Colonne droite : contacts + activité */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Contacts */}
-          <div className="card overflow-hidden">
-            <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
-              <Users className="h-4 w-4 text-brand-500" />
-              <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Contacts ({contactsList.length})</span>
-            </div>
-            {contactsList.length === 0 ? (
-              <div className="text-center py-8 text-sm text-surface-400">Aucun contact rattaché</div>
-            ) : (
-              <div className="divide-y divide-surface-100">
-                {contactsList.map((ct) => (
-                  <div key={ct.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
-                      <User className="h-4 w-4 text-surface-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-surface-900 truncate">
-                        {[ct.civilite, ct.prenom, ct.nom].filter(Boolean).join(' ')}
-                        {ct.est_principal && <Badge variant="info" className="ml-2">Principal</Badge>}
-                      </div>
-                      <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
-                        {ct.poste && <span>{ct.poste}</span>}
-                        {ct.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{ct.email}</span>}
-                        {(ct.telephone || ct.mobile) && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{ct.telephone || ct.mobile}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Contacts (ajout / modification / suppression) */}
+          <ClientContacts clientId={c.id} contacts={contactsList as any[]} />
 
           {/* Dossiers de formation */}
           <div className="card overflow-hidden">

@@ -18,6 +18,26 @@ export async function createApprenantAction(formData: FormData): Promise<ActionR
 
   const supabase = await createServiceRoleClient()
 
+  // Déduplication : un apprenant au même prénom + nom, déjà rattaché au même
+  // client, est réutilisé plutôt que dupliqué. Évite les doublons quand la
+  // liste du formulaire de session est en retard (apprenant créé entre-temps).
+  if (parsed.data.client_id) {
+    const norm = (s: string) => s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    const { data: existants } = await supabase
+      .from('apprenants')
+      .select('id, prenom, nom, email')
+      .eq('organization_id', session.organization.id)
+      .eq('client_id', parsed.data.client_id)
+    const match = (existants || []).find((a: any) =>
+      norm(a.nom || '') === norm(parsed.data.nom) &&
+      norm(a.prenom || '') === norm(parsed.data.prenom || ''),
+    )
+    if (match) {
+      // On renvoie l'existant : l'appelant l'inscrit sans créer de doublon
+      return { success: true, data: match }
+    }
+  }
+
   const { data, error } = await supabase
     .from('apprenants')
     .insert({

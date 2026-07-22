@@ -108,7 +108,10 @@ export function LeadForm({ lead, users, formations = [], franchises = [], isAppo
   const [estQualiopi, setEstQualiopi] = useState(lead?.est_qualiopi || false)
   const [estOrgFormation, setEstOrgFormation] = useState(lead?.est_organisme_formation || false)
   const [franchiseId, setFranchiseId] = useState((lead as any)?.franchise_id || '')
-  const [estFranchise, setEstFranchise] = useState(Boolean((lead as any)?.franchise_id))
+  // '' = pas encore répondu (nouveau lead) ; en édition on déduit oui/non de l'existant
+  const [estFranchise, setEstFranchise] = useState<'oui' | 'non' | ''>(
+    lead ? ((lead as any)?.franchise_id ? 'oui' : 'non') : '',
+  )
   const [adresse, setAdresse] = useState(lead?.adresse || '')
   const [codePostal, setCodePostal] = useState(lead?.code_postal || '')
   const [ville, setVille] = useState(lead?.ville || '')
@@ -191,10 +194,16 @@ export function LeadForm({ lead, users, formations = [], franchises = [], isAppo
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setIsLoading(true)
     setFieldErrors({})
     setError(null)
 
+    // La question franchise doit être répondue, et si « Oui », la franchise choisie
+    if (franchises.length > 0) {
+      if (!estFranchise) { setError('Indiquez si l\'établissement est franchisé (Oui ou Non)'); return }
+      if (estFranchise === 'oui' && !franchiseId) { setError('Choisissez la franchise du réseau'); return }
+    }
+
+    setIsLoading(true)
     const formData = new FormData(e.currentTarget)
     formData.set('type', type)
     formData.set('est_qualiopi', estQualiopi ? 'true' : 'false')
@@ -280,25 +289,36 @@ export function LeadForm({ lead, users, formations = [], franchises = [], isAppo
               À la conversion en client, le franchise_id est reporté. */}
           {franchises.length > 0 && (
             <div className="rounded-xl border border-surface-200 p-3 space-y-2.5 bg-surface-50/50">
-              <label className="flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
-                <input
-                  type="checkbox" checked={estFranchise}
-                  onChange={(e) => { setEstFranchise(e.target.checked); if (!e.target.checked) setFranchiseId('') }}
-                  className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
-                />
+              <div className="flex items-center gap-2 text-sm font-medium text-surface-700">
                 <Store className="h-4 w-4 text-surface-500" />
-                Établissement franchisé
-              </label>
-              {estFranchise && (
+                Établissement franchisé ? *
+              </div>
+              <div className="flex gap-2">
+                {([{ v: 'oui' as const, l: 'Oui' }, { v: 'non' as const, l: 'Non' }]).map((opt) => {
+                  const active = estFranchise === opt.v
+                  return (
+                    <button
+                      key={opt.v} type="button"
+                      onClick={() => { setEstFranchise(opt.v); if (opt.v === 'non') setFranchiseId('') }}
+                      className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
+                        active ? 'border-brand-400 bg-brand-50 text-brand-700 ring-1 ring-brand-200' : 'border-surface-200 text-surface-600 hover:border-surface-300'
+                      }`}
+                    >
+                      {opt.l}
+                    </button>
+                  )
+                })}
+              </div>
+              {estFranchise === 'oui' && (
                 <Select
-                  id="franchise_select" label="Franchise (réseau)"
+                  id="franchise_select" label="Franchise (réseau) *"
                   options={[{ value: '', label: '— Choisir la franchise —' }, ...franchises.map((f) => ({ value: f.id, label: f.nom }))]}
                   value={franchiseId} onChange={(e) => setFranchiseId(e.target.value)}
                 />
               )}
             </div>
           )}
-          <input type="hidden" name="franchise_id" value={estFranchise ? franchiseId : ''} />
+          <input type="hidden" name="franchise_id" value={estFranchise === 'oui' ? franchiseId : ''} />
           <div className="grid grid-cols-2 gap-4">
             <Input id="forme_juridique" name="forme_juridique" label="Forme juridique" value={formeJuridique} onChange={(e) => setFormeJuridique(e.target.value)} />
             <Input id="date_creation_entreprise" name="date_creation_entreprise" type="date" label="Date de création" value={dateCreation} onChange={(e) => setDateCreation(e.target.value)} />

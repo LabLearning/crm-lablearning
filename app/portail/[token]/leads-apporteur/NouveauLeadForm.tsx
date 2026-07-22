@@ -15,15 +15,21 @@ export function NouveauLeadForm({ token, franchises = [] }: Props) {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [estFranchise, setEstFranchise] = useState(false)
+  const [estFranchise, setEstFranchise] = useState<'oui' | 'non' | ''>('')
   const [franchiseId, setFranchiseId] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
     setFieldErrors({})
 
+    // Question franchise obligatoire, et franchise choisie si « Oui »
+    if (franchises.length > 0) {
+      if (!estFranchise) { setError('Indiquez si l\'établissement est franchisé (Oui ou Non)'); return }
+      if (estFranchise === 'oui' && !franchiseId) { setError('Choisissez la franchise du réseau'); return }
+    }
+
+    setIsLoading(true)
     const formData = new FormData(e.currentTarget)
     const result = await submitLeadFromPortalAction(token, formData)
 
@@ -190,16 +196,27 @@ export function NouveauLeadForm({ token, franchises = [] }: Props) {
           {/* Établissement franchisé : classé dans son réseau à la conversion */}
           {franchises.length > 0 && (
             <div className="mt-4 rounded-xl border border-surface-200 p-3 space-y-2.5 bg-surface-50/50">
-              <label className="flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
-                <input
-                  type="checkbox" checked={estFranchise}
-                  onChange={(e) => { setEstFranchise(e.target.checked); if (!e.target.checked) setFranchiseId('') }}
-                  className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
-                />
+              <div className="flex items-center gap-2 text-sm font-medium text-surface-700">
                 <Store className="h-4 w-4 text-surface-500" />
-                Établissement franchisé
-              </label>
-              {estFranchise && (
+                Établissement franchisé ? *
+              </div>
+              <div className="flex gap-2">
+                {([{ v: 'oui' as const, l: 'Oui' }, { v: 'non' as const, l: 'Non' }]).map((opt) => {
+                  const active = estFranchise === opt.v
+                  return (
+                    <button
+                      key={opt.v} type="button"
+                      onClick={() => { setEstFranchise(opt.v); if (opt.v === 'non') setFranchiseId('') }}
+                      className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
+                        active ? 'border-brand-400 bg-brand-50 text-brand-700 ring-1 ring-brand-200' : 'border-surface-200 text-surface-600 hover:border-surface-300'
+                      }`}
+                    >
+                      {opt.l}
+                    </button>
+                  )
+                })}
+              </div>
+              {estFranchise === 'oui' && (
                 <select
                   value={franchiseId} onChange={(e) => setFranchiseId(e.target.value)}
                   className="input-base w-full"
@@ -208,7 +225,7 @@ export function NouveauLeadForm({ token, franchises = [] }: Props) {
                   {franchises.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
                 </select>
               )}
-              <input type="hidden" name="franchise_id" value={estFranchise ? franchiseId : ''} />
+              <input type="hidden" name="franchise_id" value={estFranchise === 'oui' ? franchiseId : ''} />
             </div>
           )}
         </div>
