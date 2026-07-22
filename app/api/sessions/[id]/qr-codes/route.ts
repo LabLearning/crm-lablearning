@@ -5,23 +5,45 @@
  */
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { getSession } from '@/lib/auth'
 import { randomBytes, createHash } from 'crypto'
 import QRCode from 'qrcode'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const session = await getSession()
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   const supabase = await createServiceRoleClient()
 
-  const { data: sess } = await supabase
+  // Deux accès : l'admin connecté, ou le formateur via son token de portail
+  // (c'est lui qui projette les QR en salle). Dans les deux cas, la session doit
+  // relever de l'organisation / du formateur concerné.
+  const portalToken = new URL(req.url).searchParams.get('token')
+  let orgId: string | null = null
+  let formateurId: string | null = null
+  if (portalToken) {
+    const { getPortalContext } = await import('@/lib/portal-auth')
+    const context = await getPortalContext(portalToken)
+    if (!context || context.type !== 'formateur') {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    orgId = context.organization.id
+    formateurId = context.formateur.id
+  } else {
+    const { getSession } = await import('@/lib/auth')
+    const session = await getSession()
+    orgId = session.organization.id
+  }
+
+  let query = supabase
     .from('sessions')
-    .select('id, organization_id, reference, date_debut, date_fin, formation:formation_id(intitule)')
+    .select('id, organization_id, reference, date_debut, date_fin, formateur_id, formation:formation_id(intitule)')
     .eq('id', params.id)
-    .eq('organization_id', session.organization.id)
-    .single()
+    .eq('organization_id', orgId)
+  const { data: sess } = await query.single()
   if (!sess) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
+  // Le formateur ne peut projeter que les QR de SES sessions
+  if (formateurId && sess.formateur_id !== formateurId) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+  }
 
   const { data: inscriptions } = await supabase
     .from('inscriptions')

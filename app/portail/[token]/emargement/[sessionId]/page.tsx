@@ -15,6 +15,7 @@ import {
 import { formatShortDate, sortCreneaux, todayISO } from '../helpers'
 import { SessionDays, type DayRow } from './SessionDays'
 import { ContenuPedagogiqueFormateur } from '../../ContenuPedagogique'
+import { QcmFormateur } from './QcmFormateur'
 import { ModeEmargement } from './ModeEmargement'
 import { getSessionSupports, getPositionnementEtat } from '@/lib/session-contenu'
 
@@ -81,15 +82,27 @@ export default async function PortalEmargementSessionPage({
   }
 
   // Contenu pédagogique : le formateur voit tous les supports de sa session
-  const [supportsBySession, positionnement] = await Promise.all([
+  const [supportsBySession, positionnement, qcmSessRes, qcmRepRes] = await Promise.all([
     getSessionSupports(supabase, [session.id], 'formateur'),
     getPositionnementEtat(
       supabase,
       session.id,
       stagiaires.map((a: any) => ({ id: a.id, prenom: a.prenom, nom: a.nom })),
     ),
+    // Questionnaires rattachés à la session
+    supabase
+      .from('qcm_sessions')
+      .select('id, qcm_id, qcm:qcm(id, titre, type, score_min_reussite)')
+      .eq('session_id', session.id),
+    // Réponses des apprenants (qui a répondu + score)
+    supabase
+      .from('qcm_reponses')
+      .select('qcm_id, apprenant_id, score, is_reussi, is_complete')
+      .eq('session_id', session.id),
   ])
   const supports = supportsBySession[session.id] || []
+  const qcmSessions = (qcmSessRes.data || []) as any[]
+  const qcmReponses = (qcmRepRes.data || []) as any[]
 
   const dates = Array.from(new Set(emargements.map((e) => e.date))).sort()
 
@@ -216,6 +229,14 @@ export default async function PortalEmargementSessionPage({
         materiel={(session as any).materiel_necessaire || null}
         supports={supports}
         positionnement={positionnement}
+      />
+
+      <QcmFormateur
+        token={params.token}
+        sessionId={session.id}
+        qcmSessions={qcmSessions}
+        qcmReponses={qcmReponses}
+        nbStagiaires={stagiaires.length}
       />
 
       <ModeEmargement
