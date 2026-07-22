@@ -24,11 +24,20 @@ export default async function ApporteurLeadsPage({ params }: { params: { token: 
   if (!context || context.type !== 'apporteur') redirect('/portail/expired')
   const supabase = await createServiceRoleClient()
 
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, created_at')
-    .eq('apporteur_id', context.apporteur.id)
-    .order('created_at', { ascending: false })
+  const [{ data: leads }, { data: franchises }] = await Promise.all([
+    supabase
+      .from('leads')
+      .select('id, contact_nom, contact_prenom, entreprise, status, montant_estime, created_at')
+      .eq('apporteur_id', context.apporteur.id)
+      .order('created_at', { ascending: false }),
+    // Franchises de l'organisation, pour classer un lead franchisé
+    supabase
+      .from('franchises')
+      .select('id, nom')
+      .eq('organization_id', context.organization.id)
+      .eq('is_active', true)
+      .order('nom'),
+  ])
 
   const all = leads || []
   const gagnes = all.filter(l => l.status === 'gagne')
@@ -42,7 +51,7 @@ export default async function ApporteurLeadsPage({ params }: { params: { token: 
 
       {/* New lead form */}
       <div className="mb-8">
-        <NouveauLeadForm token={params.token} />
+        <NouveauLeadForm token={params.token} franchises={franchises || []} />
       </div>
 
       {/* Divider */}

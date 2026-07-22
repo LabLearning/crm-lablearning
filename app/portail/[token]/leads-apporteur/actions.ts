@@ -39,6 +39,20 @@ export async function submitLeadFromPortalAction(
 
   const supabase = await createServiceRoleClient()
 
+  // Franchise : on ne fait confiance à aucun id venant du formulaire, on vérifie
+  // qu'il appartient bien à l'organisation de l'apporteur avant de l'enregistrer
+  const franchiseIdRaw = (formData.get('franchise_id') as string || '').trim()
+  let franchise_id: string | null = null
+  if (franchiseIdRaw) {
+    const { data: fr } = await supabase
+      .from('franchises')
+      .select('id')
+      .eq('id', franchiseIdRaw)
+      .eq('organization_id', context.organization.id)
+      .maybeSingle()
+    franchise_id = fr?.id || null
+  }
+
   // Insert lead
   const { data: newLead, error: insertError } = await supabase
     .from('leads')
@@ -52,6 +66,7 @@ export async function submitLeadFromPortalAction(
       contact_email: contact_email || null,
       contact_telephone: contact_telephone || null,
       entreprise: entreprise || null,
+      franchise_id,
       formation_souhaitee: formation_souhaitee || null,
       nombre_stagiaires: nombre_stagiaires,
       date_souhaitee: date_souhaitee || null,

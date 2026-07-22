@@ -1,19 +1,22 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Send, CheckCircle2, User, Building2, GraduationCap } from 'lucide-react'
+import { Send, CheckCircle2, User, Building2, GraduationCap, Store } from 'lucide-react'
 import { submitLeadFromPortalAction } from './actions'
 
 interface Props {
   token: string
+  franchises?: { id: string; nom: string }[]
 }
 
-export function NouveauLeadForm({ token }: Props) {
+export function NouveauLeadForm({ token, franchises = [] }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [estFranchise, setEstFranchise] = useState(false)
+  const [franchiseId, setFranchiseId] = useState('')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -183,6 +186,31 @@ export function NouveauLeadForm({ token }: Props) {
               />
             </div>
           </div>
+
+          {/* Établissement franchisé : classé dans son réseau à la conversion */}
+          {franchises.length > 0 && (
+            <div className="mt-4 rounded-xl border border-surface-200 p-3 space-y-2.5 bg-surface-50/50">
+              <label className="flex items-center gap-2 text-sm font-medium text-surface-700 cursor-pointer">
+                <input
+                  type="checkbox" checked={estFranchise}
+                  onChange={(e) => { setEstFranchise(e.target.checked); if (!e.target.checked) setFranchiseId('') }}
+                  className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500"
+                />
+                <Store className="h-4 w-4 text-surface-500" />
+                Établissement franchisé
+              </label>
+              {estFranchise && (
+                <select
+                  value={franchiseId} onChange={(e) => setFranchiseId(e.target.value)}
+                  className="input-base w-full"
+                >
+                  <option value="">— Choisir la franchise —</option>
+                  {franchises.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                </select>
+              )}
+              <input type="hidden" name="franchise_id" value={estFranchise ? franchiseId : ''} />
+            </div>
+          )}
         </div>
 
         {/* Section Besoins en formation */}
