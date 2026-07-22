@@ -9,7 +9,8 @@ export const maxDuration = 300 // la synchro complète peut prendre 1-2 min
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
   const expected = process.env.CRON_SECRET
-  if (expected && authHeader !== `Bearer ${expected}`) {
+  // Fail-closed : absence de CRON_SECRET = refus, jamais ouverture
+  if (!expected || authHeader !== `Bearer ${expected}`) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 

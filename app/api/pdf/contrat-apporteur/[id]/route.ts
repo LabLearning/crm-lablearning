@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { ContratApporteurPDF } from '@/lib/pdf/contrat-apporteur-pdf'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const anonClient = await createServerSupabaseClient()
-  const { data: { user } } = await anonClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
 
-  const { data: apporteur } = await supabase.from('apporteurs_affaires').select('*').eq('id', params.id).single()
+  // Contrôle d'org : l'apporteur doit appartenir à l'organisation de l'appelant.
+  const { data: apporteur } = await supabase.from('apporteurs_affaires').select('*').eq('id', params.id).eq('organization_id', auth.user.organizationId).single()
   if (!apporteur) return NextResponse.json({ error: 'Apporteur introuvable' }, { status: 404 })
 
   const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', apporteur.organization_id).single()

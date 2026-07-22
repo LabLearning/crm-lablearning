@@ -7,6 +7,7 @@
  * GET /api/cron/relances-factures?secret=...
  */
 import { NextResponse } from 'next/server'
+import { verifyCronSecret } from '@/lib/cron-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -14,12 +15,8 @@ export const dynamic = 'force-dynamic'
 const RELANCE_INTERVAL_DAYS = 7
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get('authorization')
-  const { searchParams } = new URL(req.url)
-  const secret = searchParams.get('secret')
-  const expected = process.env.CRON_SECRET
-  const ok = authHeader === `Bearer ${expected}` || secret === expected || secret === process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!ok) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const unauthorized = verifyCronSecret(req)
+  if (unauthorized) return unauthorized
 
   const supabase = await createServiceRoleClient()
   const today = new Date().toISOString().split('T')[0]

@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { ProgrammeFormationPDF } from '@/lib/pdf/programme-formation-pdf'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const anonClient = await createServerSupabaseClient()
-  const { data: { user } } = await anonClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
 
-  const { data: formation } = await supabase.from('formations').select('*').eq('id', params.id).single()
+  // Contrôle d'org : la formation doit appartenir à l'organisation de l'appelant.
+  const { data: formation } = await supabase.from('formations').select('*').eq('id', params.id).eq('organization_id', auth.user.organizationId).single()
   if (!formation) return NextResponse.json({ error: 'Formation introuvable' }, { status: 404 })
 
   // Programme générique, ou contextualisé à une session (?session=<id>) :

@@ -3,8 +3,8 @@
  * Vérifie que la config (env Vercel) est bien prise en compte par l'app
  * et envoie un message de test via la couche CRM (lib/whatsapp).
  *
- * GET /api/whatsapp/test?secret=...&to=33XXXXXXXXX[&template=hello_world&lang=en_US]
- *   - secret = CRON_SECRET ou SUPABASE_SERVICE_ROLE_KEY
+ * GET /api/whatsapp/test?to=33XXXXXXXXX[&template=hello_world&lang=en_US]
+ *   Authentification : en-tête « Authorization: Bearer <CRON_SECRET> »
  *   - to     = numéro destinataire (test recipient validé côté Meta)
  *
  * Réponse : { configured, status, ... }
@@ -13,18 +13,18 @@
  *   status 'failed'→ erreur Meta (détail dans error)
  */
 import { NextResponse } from 'next/server'
+import { verifyCronSecret } from '@/lib/cron-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { sendWhatsAppTemplate, isWhatsAppConfigured } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const secret = searchParams.get('secret')
-  const expected = process.env.CRON_SECRET
-  const ok = secret === expected || secret === process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!ok) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  // Secret exigé dans l'en-tête Authorization, jamais dans l'URL
+  const unauthorized = verifyCronSecret(req)
+  if (unauthorized) return unauthorized
 
+  const { searchParams } = new URL(req.url)
   const to = searchParams.get('to')
   if (!to) return NextResponse.json({ error: 'paramètre "to" requis' }, { status: 400 })
 

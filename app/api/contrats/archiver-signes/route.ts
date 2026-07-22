@@ -15,7 +15,8 @@ export const maxDuration = 300
 export async function GET(req: Request) {
   const expected = process.env.CRON_SECRET
   const authHeader = req.headers.get('authorization')
-  if (expected && authHeader !== `Bearer ${expected}`) {
+  // Fail-closed : absence de CRON_SECRET = refus, jamais ouverture
+  if (!expected || authHeader !== `Bearer ${expected}`) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { fillPdc, type PdcRow } from '@/lib/pdf/fill-pdc'
 
 function fmt(d: string | null | undefined): string {
@@ -27,16 +28,17 @@ function parseWeeks(text: string) {
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const authClient = await createServerSupabaseClient()
-  const { data: { user } } = await authClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
 
+  // Contrôle d'org : le candidat POEI doit appartenir à l'organisation de l'appelant.
   const { data: candidat } = await supabase
     .from('poei_candidats')
     .select('*, apprenant:apprenants(civilite, nom, prenom, email, telephone)')
     .eq('id', params.id)
+    .eq('organization_id', auth.user.organizationId)
     .single()
   if (!candidat) return NextResponse.json({ error: 'Candidat introuvable' }, { status: 404 })
 

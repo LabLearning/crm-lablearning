@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { zipSync, strToU8 } from 'fflate'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { DevisPDF } from '@/lib/pdf/devis-pdf'
 import type { Devis } from '@/lib/types/dossier'
 
@@ -16,17 +17,18 @@ function safeName(s: string): string {
 
 // Télécharge tous les devis d'un projet POEI dans un ZIP (1 PDF par candidat)
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const supabaseAuth = await createServerSupabaseClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
 
   // Projet + numéro pour nommer le zip
+  // Contrôle d'org : le projet POEI doit appartenir à l'organisation de l'appelant
+  // (les devis liés sont ensuite filtrés sur poei.organization_id).
   const { data: poei } = await supabase
     .from('poei')
     .select('id, numero, organization_id, client:clients(raison_sociale)')
-    .eq('id', params.id).single()
+    .eq('id', params.id).eq('organization_id', auth.user.organizationId).single()
   if (!poei) return NextResponse.json({ error: 'Projet introuvable' }, { status: 404 })
 
   // Tous les devis POEI de ce projet (marqueur dans notes_internes)

@@ -4,20 +4,15 @@
  * Appelé chaque matin par Vercel Cron.
  */
 import { NextResponse } from 'next/server'
+import { verifyCronSecret } from '@/lib/cron-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { seedQcmReponsesForSession, notifyApprenantsForQcm } from '@/lib/qcm-auto-seed'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get('authorization')
-  const expected = process.env.CRON_SECRET
-  const { searchParams } = new URL(req.url)
-  const querySecret = searchParams.get('secret')
-
-  if (authHeader !== `Bearer ${expected}` && querySecret !== expected && querySecret !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
+  const unauthorized = verifyCronSecret(req)
+  if (unauthorized) return unauthorized
 
   const supabase = await createServiceRoleClient()
 

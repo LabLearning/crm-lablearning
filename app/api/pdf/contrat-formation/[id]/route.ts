@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { ContratFormationPDF } from '@/lib/pdf/contrat-formation-pdf'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const anonClient = await createServerSupabaseClient()
-  const { data: { user } } = await anonClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
 
+  // Contrôle d'org : le dossier doit appartenir à l'organisation de l'appelant.
   const { data: dossier } = await supabase
     .from('dossiers_formation')
     .select('*')
-    .eq('id', params.id).single()
+    .eq('id', params.id).eq('organization_id', auth.user.organizationId).single()
   if (!dossier) return NextResponse.json({ error: 'Dossier introuvable' }, { status: 404 })
 
   const { data: client } = dossier.client_id

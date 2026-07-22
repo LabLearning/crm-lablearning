@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { CertificatRealisationPDF } from '@/lib/pdf/certificat-realisation-pdf'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const anonClient = await createServerSupabaseClient()
-  const { data: { user } } = await anonClient.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
   const { searchParams } = new URL(req.url)
@@ -15,7 +15,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (!sessionId) return NextResponse.json({ error: 'Session requise' }, { status: 400 })
 
-  const { data: apprenant } = await supabase.from('apprenants').select('*').eq('id', params.id).single()
+  // Contrôle d'org : l'apprenant doit appartenir à l'organisation de l'appelant.
+  const { data: apprenant } = await supabase.from('apprenants').select('*').eq('id', params.id).eq('organization_id', auth.user.organizationId).single()
   if (!apprenant) return NextResponse.json({ error: 'Apprenant introuvable' }, { status: 404 })
 
   const { data: session } = await supabase.from('sessions').select('*').eq('id', sessionId).single()

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { DevisPDF } from '@/lib/pdf/devis-pdf'
 import type { Devis } from '@/lib/types/dossier'
 
@@ -10,12 +10,11 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Auth check
-  const supabaseAuth = await createServerSupabaseClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
+  // Contrôle d'org : le devis doit appartenir à l'organisation de l'appelant.
   const { data: devis, error } = await supabase
     .from('devis')
     .select(`
@@ -26,6 +25,7 @@ export async function GET(
       lignes:devis_lignes(*)
     `)
     .eq('id', params.id)
+    .eq('organization_id', auth.user.organizationId)
     .single()
 
   if (error || !devis) {

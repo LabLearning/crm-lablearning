@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { ConventionPDF } from '@/lib/pdf/convention-pdf'
 import { loadConventionForPdf } from '@/lib/pdf/convention-data'
 
@@ -9,14 +10,15 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabaseAuth = await createServerSupabaseClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
   const loaded = await loadConventionForPdf(supabase, params.id)
 
-  if (!loaded) {
+  // Contrôle d'org : la convention doit appartenir à l'organisation de l'appelant
+  // (loadConventionForPdf ne filtre pas par org, on vérifie ici).
+  if (!loaded || loaded.convention.organization_id !== auth.user.organizationId) {
     return NextResponse.json({ error: 'Convention introuvable' }, { status: 404 })
   }
 

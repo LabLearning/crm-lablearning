@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { ConventionPDF } from '@/lib/pdf/convention-pdf'
 
 const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : ''
@@ -9,11 +10,19 @@ const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') 
 // Aperçu de la convention AVANT génération : rendu à partir de la session,
 // sans rien écrire en base. Si une convention existe déjà, on rend celle-ci.
 export async function GET(_req: NextRequest, { params }: { params: { sessionId: string } }) {
-  const supabaseAuth = await createServerSupabaseClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
+
+  // Contrôle d'org : la session doit appartenir à l'organisation de l'appelant.
+  // On vérifie ici en amont pour couvrir les deux branches (convention existante
+  // ou projection depuis la session).
+  const { data: sessionOrg } = await supabase
+    .from('sessions').select('id')
+    .eq('id', params.sessionId).eq('organization_id', auth.user.organizationId)
+    .maybeSingle()
+  if (!sessionOrg) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
 
   // Convention déjà créée ? → on rend la vraie
   const { data: existing } = await supabase

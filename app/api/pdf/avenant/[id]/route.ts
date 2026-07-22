@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
-import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { requireApiUser } from '@/lib/api-auth'
 import { AvenantConventionPDF } from '@/lib/pdf/avenant-convention-pdf'
 import { loadConventionForPdf } from '@/lib/pdf/convention-data'
 
@@ -9,15 +10,16 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const supabaseAuth = await createServerSupabaseClient()
-  const { data: { user } } = await supabaseAuth.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const auth = await requireApiUser()
+  if ('error' in auth) return auth.error
 
   const supabase = await createServiceRoleClient()
+  // Contrôle d'org : convention_avenants porte organization_id (migration 069).
   const { data: avenant } = await supabase
     .from('convention_avenants')
     .select('*')
     .eq('id', params.id)
+    .eq('organization_id', auth.user.organizationId)
     .single()
   if (!avenant) return NextResponse.json({ error: 'Avenant introuvable' }, { status: 404 })
 
