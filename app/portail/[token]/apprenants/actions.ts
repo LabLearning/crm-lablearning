@@ -100,3 +100,102 @@ export async function declareParticipantChangeAction(
   revalidatePath(`/portail/${token}/apprenants`)
   return { success: true }
 }
+
+/**
+ * Le formateur ajoute directement un apprenant à une session qu'il anime.
+ *
+ * Contrairement à declareParticipantChangeAction (ticket à valider), c'est un
+ * ajout immédiat : l'apprenant est créé (ou réutilisé si déjà présent chez le
+ * client) puis inscrit. Autorisé uniquement sur une session dont le formateur
+ * du token est bien le formateur.
+ */
+export async function addApprenantBySessionFormateurAction(
+  token: string,
+  sessionId: string,
+  formData: FormData,
+): Promise<{ success: boolean; error?: string }> {
+  const context = await getPortalContext(token)
+  if (!context || context.type !== 'formateur') {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  // La session doit être animée par ce formateur
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('id, organization_id, client_id, formateur_id')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (!sess || sess.formateur_id !== context.formateur.id) {
+    return { success: false, error: 'Session non autorisée' }
+  }
+
+  const str = (k: string) => (formData.get(k) as string || '').trim() || null
+  const nom = str('nom')
+  const prenom = str('prenom')
+  if (!nom) return { success: false, error: 'Le nom est requis' }
+
+  const orgId = sess.organization_id
+  const clientId = sess.client_id
+
+  // Déduplication : même prénom + nom déjà rattaché au client → on réutilise
+  let apprenantId: string | null = null
+  if (clientId) {
+    const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "")
+    const { data: existants } = await supabase
+      .from('apprenants')
+      .select('id, prenom, nom')
+      .eq('organization_id', orgId)
+      .eq('client_id', clientId)
+    const match = (existants || []).find((a: any) =>
+      norm(a.nom || '') === norm(nom) && norm(a.prenom || '') === norm(prenom || ''),
+    )
+    if (match) apprenantId = match.id
+  }
+
+  if (!apprenantId) {
+    const { data: created, error: cErr } = await supabase
+      .from('apprenants')
+      .insert({
+        organization_id: orgId,
+        client_id: clientId,
+        prenom: prenom || nom,
+        nom,
+        email: str('email'),
+        sexe: str('sexe'),
+        date_naissance: str('date_naissance'),
+        adresse: str('adresse'),
+        type_contrat: str('type_contrat'),
+        numero_securite_sociale: str('numero_securite_sociale'),
+      })
+      .select('id')
+      .single()
+    if (cErr || !created) return { success: false, error: 'Impossible de créer l\'apprenant' }
+    apprenantId = created.id
+  }
+
+  // Inscrire (sans doublon d'inscription)
+  const { data: dejaInscrit } = await supabase
+    .from('inscriptions')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('apprenant_id', apprenantId)
+    .maybeSingle()
+  if (!dejaInscrit) {
+    await supabase.from('inscriptions').insert({
+      organization_id: orgId,
+      session_id: sessionId,
+      apprenant_id: apprenantId,
+      status: 'inscrit',
+    })
+    // Convention déjà envoyée/signée ? → avenant automatique
+    try {
+      const { syncConventionAvenant } = await import('@/lib/convention-avenants')
+      await syncConventionAvenant(supabase, sessionId, null)
+    } catch (e) { console.error('[avenant formateur ajout]', e) }
+  }
+
+  revalidatePath(`/portail/${token}/apprenants`)
+  revalidatePath(`/portail/${token}/emargement`)
+  return { success: true }
+}

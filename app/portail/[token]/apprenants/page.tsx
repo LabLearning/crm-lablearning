@@ -6,6 +6,7 @@ import { INSCRIPTION_STATUS_LABELS, INSCRIPTION_STATUS_COLORS } from '@/lib/type
 import { Accessibility, Mail, Building2 } from 'lucide-react'
 import type { InscriptionStatus } from '@/lib/types/formation'
 import { DeclareChangeButton } from './DeclareChangeButton'
+import { AddApprenantButton } from './AddApprenantButton'
 
 // Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
 export const dynamic = 'force-dynamic'
@@ -54,7 +55,7 @@ export default async function PortalApprenantsPage({ params }: { params: { token
         <p className="text-surface-500 mt-1">{inscriptions.length} apprenant{inscriptions.length > 1 ? 's' : ''} inscrit{inscriptions.length > 1 ? 's' : ''}</p>
       </div>
 
-      {bySession.filter((s) => s.inscriptions.length > 0).map((session) => (
+      {bySession.map((session) => (
         <div key={session.id} className="card overflow-hidden">
           <div className="px-6 py-4 bg-surface-50 border-b border-surface-200 flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -63,15 +64,23 @@ export default async function PortalApprenantsPage({ params }: { params: { token
               </div>
               <div className="text-xs text-surface-500">{session.reference} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}</div>
             </div>
-            <DeclareChangeButton
-              token={params.token}
-              sessionId={session.id}
-              participants={session.inscriptions.map((i: any) => ({
-                apprenant_id: i.apprenant_id,
-                nom: `${i.apprenant?.prenom || ''} ${i.apprenant?.nom || ''}`.trim() || 'Apprenant',
-              }))}
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <AddApprenantButton token={params.token} sessionId={session.id} />
+              {session.inscriptions.length > 0 && (
+                <DeclareChangeButton
+                  token={params.token}
+                  sessionId={session.id}
+                  participants={session.inscriptions.map((i: any) => ({
+                    apprenant_id: i.apprenant_id,
+                    nom: `${i.apprenant?.prenom || ''} ${i.apprenant?.nom || ''}`.trim() || 'Apprenant',
+                  }))}
+                />
+              )}
+            </div>
           </div>
+          {session.inscriptions.length === 0 && (
+            <div className="px-6 py-6 text-center text-sm text-surface-400">Aucun apprenant inscrit. Ajoutez le premier.</div>
+          )}
           <div className="divide-y divide-surface-100">
             {session.inscriptions.map((ins: any) => (
               <div key={ins.id} className="px-4 py-3.5 flex items-center gap-3">
@@ -117,8 +126,8 @@ export default async function PortalApprenantsPage({ params }: { params: { token
         </div>
       ))}
 
-      {inscriptions.length === 0 && (
-        <div className="card p-12 text-center text-sm text-surface-500">Aucun apprenant inscrit à vos sessions</div>
+      {bySession.length === 0 && (
+        <div className="card p-12 text-center text-sm text-surface-500">Aucune session active pour le moment</div>
       )}
     </div>
   )
