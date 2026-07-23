@@ -187,6 +187,12 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   const repOfLine = [repOf, org?.representant_legal_fonction || 'Président'].filter(Boolean).join(', ')
   const ville = org?.city || 'Montpellier'
   const refHandicap = [org?.referent_handicap_nom, org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
+  // Mentions légales de l'organisme (forme, capital, TVA) — D. 6353-1
+  const ofCapital = org?.capital_social != null
+    ? `capital de ${Number(org.capital_social).toLocaleString('fr-FR')} €`
+    : null
+  const ofFormeCapital = [org?.forme_juridique, ofCapital].filter(Boolean).join(' au ') || null
+  const ofTva = org?.numero_tva_intra || org?.tva_intra || null
 
   const clientName = client.raison_sociale || convention.client?.raison_sociale || '—'
   const clientCpVille = [client.code_postal, client.ville].filter(Boolean).join(' ')
@@ -205,7 +211,12 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   const clientTva = client.tva_intra || null
 
   const formationTitle = formation.intitule || convention.objet || '—'
-  const modalite = MODALITE_LABELS[session.modalite || formation.modalite || 'presentiel'] || 'Présentiel'
+  const modaliteKey = session.modalite || formation.modalite || 'presentiel'
+  const modalite = MODALITE_LABELS[modaliteKey] || 'Présentiel'
+  // Taux d'enseignements à distance (obligatoire depuis le 01/07/2025 — D. 6353-1)
+  const tauxDistance = modaliteKey === 'distanciel' ? 100
+    : modaliteKey === 'mixte' ? (Number(formation.taux_distance) || 50)
+    : 0
 
   const lieuComplet = [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ') || convention.lieu || '—'
@@ -280,7 +291,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {/* Intro légale */}
         <View style={{ ...shared.infoBox, marginBottom: 18 }}>
           <Text style={{ ...shared.infoBoxText, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>
-            Convention de formation professionnelle (articles L. 6353-2 et R. 6353-1 du Code du travail)
+            Convention de formation professionnelle (articles L. 6353-1 et D. 6353-1 du Code du travail)
           </Text>
           <Text style={shared.infoBoxText}>{introText}</Text>
         </View>
@@ -292,6 +303,9 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{org?.legal_name || ofName}</Text>
             {org?.address && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{org.address}{org.postal_code || org.city ? `, ${org.postal_code || ''} ${org.city || ''}` : ''}</Text>}
             {org?.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{org.siret}</Text></View>}
+            {!!ofFormeCapital && <View style={shared.row}><Text style={shared.label}>Forme</Text><Text style={shared.value}>{ofFormeCapital}</Text></View>}
+            {!!org?.rcs && <View style={shared.row}><Text style={shared.label}>RCS</Text><Text style={shared.value}>{org.rcs}</Text></View>}
+            {!!ofTva && <View style={shared.row}><Text style={shared.label}>TVA intra.</Text><Text style={shared.value}>{ofTva}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>N° déclaration</Text><Text style={shared.value}>{org?.numero_da || '—'}</Text></View>
             {!!repOfLine && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{repOfLine}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>Email</Text><Text style={shared.value}>{ofEmail}</Text></View>
@@ -317,6 +331,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           <InfoRow label="Date(s)" value={datesSession} />
           <InfoRow label="Durée totale" value={`${dureeHeures ? `${dureeHeures} heures` : '—'} sur ${nbJours} jour${nbJours > 1 ? 's' : ''}`} />
           <InfoRow label="Mode d'organisation" value={modalite} />
+          <InfoRow label="Taux d'enseignements à distance" value={`${tauxDistance} %`} />
           <InfoRow label="Délai d'accès" value={delaiAcces} />
         </View>
 
@@ -361,6 +376,23 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </View>
         )}
 
+        {/* Modalités de déroulement, de suivi et de sanction (D. 6353-1) */}
+        <View style={shared.section}>
+          <PdfSectionTitle>Modalités de déroulement, de suivi et de sanction</PdfSectionTitle>
+          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6, marginBottom: 4 }}>
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Déroulement — </Text>
+            {`La formation se déroule en ${modalite.toLowerCase()} (taux d'enseignements à distance : ${tauxDistance} %), aux dates, horaires et lieu indiqués ci-dessus.`}
+          </Text>
+          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6, marginBottom: 4 }}>
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Suivi — </Text>
+            Le suivi de l'exécution est assuré au moyen de feuilles d'émargement signées par demi-journée par les stagiaires et par le formateur.
+          </Text>
+          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>
+            <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Sanction — </Text>
+            À l'issue de la formation, une attestation de fin de formation mentionnant les objectifs, la nature, la durée de l'action et les résultats de l'évaluation des acquis est remise au stagiaire (art. L. 6353-1 du Code du travail).
+          </Text>
+        </View>
+
         {/* Conditions financières */}
         <View style={shared.section}>
           <PdfSectionTitle>Prix de la formation</PdfSectionTitle>
@@ -376,6 +408,18 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               TVA non applicable — article 261-4-4°a du CGI (action de formation professionnelle continue).
             </Text>
           )}
+        </View>
+
+        {/* Modalités de règlement (D. 6353-1) */}
+        <View style={shared.section}>
+          <PdfSectionTitle>Modalités de règlement</PdfSectionTitle>
+          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>
+            Le prix est payable à réception de facture, à trente (30) jours. En cas de prise en charge
+            par un OPCO ou un autre financeur et sous réserve d'un accord de subrogation, le financeur
+            règle directement l'organisme pour la part prise en charge ; le solde éventuel reste dû par
+            le bénéficiaire. À défaut de subrogation, le bénéficiaire règle l'intégralité du prix.
+            Règlement par virement bancaire{ofName ? ` à l'ordre de ${ofName}` : ''}.
+          </Text>
         </View>
 
         {/* Financement */}
