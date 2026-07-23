@@ -26,8 +26,12 @@ async function getOwnedSession(supabase: any, token: string, sessionId: string) 
 
 function revalidateEmargement(token: string, sessionId?: string) {
   revalidatePath(`/portail/${token}/emargement`)
+  // L'espace formateur connecté partage les mêmes vues : on rafraîchit aussi
+  // ses routes pour que l'action se reflète immédiatement des deux côtés.
+  revalidatePath('/mon-espace/emargement')
   if (sessionId) {
     revalidatePath(`/portail/${token}/emargement/${sessionId}`)
+    revalidatePath(`/mon-espace/emargement/${sessionId}`)
     revalidatePath(`/dashboard/sessions/${sessionId}`)
   }
 }

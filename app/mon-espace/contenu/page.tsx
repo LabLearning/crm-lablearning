@@ -1,9 +1,9 @@
 import { resolveFormateur } from '../_formateur/guard'
-import { EmargementListView } from '../_formateur/EmargementListView'
+import { ContenuListView } from '../_formateur/ContenuListView'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Page() {
   const { formateurId } = await resolveFormateur()
-  return <EmargementListView formateurId={formateurId} basePath="/mon-espace" />
+  return <ContenuListView formateurId={formateurId} basePath="/mon-espace" />
 }

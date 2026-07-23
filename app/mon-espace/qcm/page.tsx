@@ -1,9 +1,9 @@
 import { resolveFormateur } from '../_formateur/guard'
-import { EmargementListView } from '../_formateur/EmargementListView'
+import { QcmListView } from '../_formateur/QcmListView'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Page() {
   const { formateurId } = await resolveFormateur()
-  return <EmargementListView formateurId={formateurId} basePath="/mon-espace" />
+  return <QcmListView formateurId={formateurId} basePath="/mon-espace" />
 }

@@ -16,17 +16,18 @@ interface SessionRow {
 /**
  * Liste de sessions cliquables pour un formateur, partagée par les rubriques
  * Contenu pédagogique et Questionnaires. Chaque carte mène vers
- * `/portail/{token}/{segment}/{sessionId}`.
+ * `{basePath}/{segment}/{sessionId}` — `basePath` vaut `/mon-espace` (espace
+ * connecté) ou `/portail/{token}` (accès par lien).
  */
 export function FormateurSessionList({
-  token,
+  basePath,
   segment,
   title,
   subtitle,
   sessions,
   emptyLabel,
 }: {
-  token: string
+  basePath: string
   segment: string
   title: string
   subtitle: string
@@ -58,7 +59,7 @@ export function FormateurSessionList({
         {cards.map((s) => (
           <Link
             key={s.id}
-            href={`/portail/${token}/${segment}/${s.id}`}
+            href={`${basePath}/${segment}/${s.id}`}
             className={`card block p-4 sm:p-5 transition-colors active:bg-surface-50 hover:border-surface-300 ${
               s._isToday ? 'ring-2 ring-emerald-200' : ''
             }`}

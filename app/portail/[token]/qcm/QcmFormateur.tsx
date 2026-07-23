@@ -21,12 +21,14 @@ interface Stagiaire { id: string; prenom: string; nom: string }
  */
 export function QcmFormateur({
   token,
+  basePath,
   sessionId,
   qcmSessions,
   qcmReponses,
   stagiaires,
 }: {
   token: string
+  basePath: string
   sessionId: string
   qcmSessions: QcmSession[]
   qcmReponses: QcmReponse[]
@@ -34,6 +36,12 @@ export function QcmFormateur({
 }) {
   if (qcmSessions.length === 0) return null
   const nbStagiaires = stagiaires.length
+
+  // Espace connecté : l'API QR s'authentifie via le cookie de session, donc pas
+  // de token dans l'URL. Accès par lien de portail : on passe le token.
+  const qrHref = basePath === '/mon-espace'
+    ? `/api/sessions/${sessionId}/qr-codes`
+    : `/api/sessions/${sessionId}/qr-codes?token=${token}`
 
   return (
     <div className="card overflow-hidden">
@@ -45,7 +53,7 @@ export function QcmFormateur({
           </span>
         </div>
         <a
-          href={`/api/sessions/${sessionId}/qr-codes?token=${token}`}
+          href={qrHref}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-900 text-white text-xs font-medium hover:bg-surface-800 transition-colors"

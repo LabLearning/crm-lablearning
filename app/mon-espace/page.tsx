@@ -260,7 +260,7 @@ export default async function MonEspacePage() {
         {/* Accès rapides : émargement + apprenants (portail formateur) */}
         {portalToken && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Link href={`/portail/${portalToken}/emargement`}
+            <Link href="/mon-espace/emargement"
               className="card p-5 flex items-center gap-4 hover:shadow-card transition-all">
               <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                 <ClipboardCheck className="h-6 w-6 text-emerald-600" />
@@ -271,7 +271,7 @@ export default async function MonEspacePage() {
               </div>
               <ChevronRight className="h-5 w-5 text-surface-300" />
             </Link>
-            <Link href={`/portail/${portalToken}/apprenants`}
+            <Link href="/mon-espace/apprenants"
               className="card p-5 flex items-center gap-4 hover:shadow-card transition-all">
               <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                 <Users className="h-6 w-6 text-blue-600" />
@@ -292,7 +292,7 @@ export default async function MonEspacePage() {
           {allSessions.length > 0 ? (
             <div className="divide-y divide-surface-100">
               {allSessions.map((s: any) => (
-                <Link key={s.id} href={portalToken ? `/portail/${portalToken}/sessions` : '#'}
+                <Link key={s.id} href="/mon-espace/sessions"
                   className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface-50 transition-colors">
                   <div className="h-10 w-10 rounded-xl bg-surface-100 flex items-center justify-center shrink-0">
                     <Calendar className="h-5 w-5 text-surface-500" />

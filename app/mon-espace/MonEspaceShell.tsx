@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   LayoutDashboard, GraduationCap, FileText, ClipboardCheck, Calendar,
   ListChecks, Star, Users, CheckSquare, Receipt, UserPlus, Building2,
-  LogOut, ChevronDown, Menu, X,
+  LogOut, ChevronDown, Menu, X, BookOpen,
 } from 'lucide-react'
 import { Avatar } from '@/components/ui'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -27,8 +27,12 @@ const apprenantNav: NavItem[] = [
 const formateurNav: NavItem[] = [
   { label: 'Accueil', short: 'Accueil', href: '', icon: LayoutDashboard },
   { label: 'Mes sessions', short: 'Sessions', href: '/sessions', icon: Calendar },
-  { label: 'Émargement', short: 'Émargement', href: '/emargement', icon: CheckSquare },
-  { label: 'Mes apprenants', short: 'Apprenants', href: '/apprenants', icon: Users },
+  { label: 'Apprenants', short: 'Apprenants', href: '/apprenants', icon: Users },
+  { label: 'Émargement', short: 'Émarg.', href: '/emargement', icon: CheckSquare },
+  { label: 'Contenu pédagogique', short: 'Contenu', href: '/contenu', icon: BookOpen },
+  { label: 'Questionnaires', short: 'QCM', href: '/qcm', icon: ListChecks },
+  { label: 'Evaluations', short: 'Évals', href: '/evaluations', icon: Star },
+  { label: 'Documents', short: 'Docs', href: '/documents', icon: FileText },
 ]
 
 const apporteurNav: NavItem[] = [
@@ -68,7 +72,9 @@ export function MonEspaceShell({ user, orgName, children }: { user: User; orgNam
             : user.role === 'formateur' ? formateurNav
             : apporteurNav
 
-  const mobileNav = nav.length <= 5 ? nav : nav.slice(0, 5)
+  // Toutes les entrées restent accessibles sur mobile : au-delà de 5, la grille
+  // passe sur deux lignes (grid-cols-4) plutôt que de masquer des onglets.
+  const mobileNav = nav
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -189,6 +195,7 @@ export function MonEspaceShell({ user, orgName, children }: { user: User; orgNam
           mobileNav.length === 3 && 'grid-cols-3',
           mobileNav.length === 4 && 'grid-cols-4',
           mobileNav.length === 5 && 'grid-cols-5',
+          mobileNav.length > 5 && 'grid-cols-4',
         )}>
           {mobileNav.map((item) => {
             const active = isActive(item.href)
