@@ -197,6 +197,12 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     ? [signataire.civilite, signataire.prenom, (signataire.nom || '').toUpperCase()].filter(Boolean).join(' ').trim()
     : [client.civilite, client.prenom, (client.nom || '').toUpperCase()].filter(Boolean).join(' ').trim()
   const clientRepFonction = signataire?.poste || signataire?.service || null
+  // RCS dérivé du SIRET (SIREN = 9 premiers chiffres) + ville du greffe.
+  const clientSiren = String(client.siret || '').replace(/\D/g, '').slice(0, 9)
+  const clientRcs = clientSiren.length === 9
+    ? `RCS ${String(client.ville || '').toUpperCase()} ${clientSiren.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}`.replace(/\s+/g, ' ').trim()
+    : null
+  const clientTva = client.tva_intra || null
 
   const formationTitle = formation.intitule || convention.objet || '—'
   const modalite = MODALITE_LABELS[session.modalite || formation.modalite || 'presentiel'] || 'Présentiel'
@@ -295,6 +301,8 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{client.adresse}{clientCpVille ? `, ${clientCpVille}` : ''}</Text>}
             {client.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{client.siret}</Text></View>}
+            {!!clientRcs && <View style={shared.row}><Text style={shared.label}>RCS</Text><Text style={shared.value}>{clientRcs}</Text></View>}
+            {!!clientTva && <View style={shared.row}><Text style={shared.label}>TVA intra.</Text><Text style={shared.value}>{clientTva}</Text></View>}
             {!!clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}{clientRepFonction ? ` — ${clientRepFonction}` : ''}</Text></View>}
             {!!signataire?.email && <View style={shared.row}><Text style={shared.label}>Contact</Text><Text style={shared.value}>{signataire.email}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>Nb de stagiaires</Text><Text style={shared.value}>{participants.length || convention.nombre_stagiaires || '—'}</Text></View>
