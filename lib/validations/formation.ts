@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+// Un champ nombre laissé vide ("") ne doit pas devenir 0 : on le rend
+// undefined pour qu'il soit stocké null (prix absent ≠ prix nul).
+const emptyToUndefined = (v: unknown) => (v === '' || v == null ? undefined : v)
+
 export const createFormationSchema = z.object({
   reference: z.string().optional(),
   intitule: z.string().min(3, 'Intitulé requis (min. 3 caractères)'),
@@ -53,10 +57,10 @@ export const createSessionSchema = z.object({
   formateur_id: z.string().uuid().optional().or(z.literal('')),
   apprenant_ids: z.string().optional(),  // CSV des apprenants à inscrire
   status: z.enum(['planifiee', 'confirmee', 'en_cours', 'terminee', 'annulee']).optional(),
-  cout_formateur: z.coerce.number().min(0).optional(),
-  prix_ht: z.coerce.number().min(0).optional(),
-  cout_salle: z.coerce.number().min(0).optional(),
-  cout_materiel: z.coerce.number().min(0).optional(),
+  cout_formateur: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
+  prix_ht: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
+  cout_salle: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
+  cout_materiel: z.preprocess(emptyToUndefined, z.coerce.number().min(0).optional()),
   notes_internes: z.string().optional(),
   notes_logistiques: z.string().optional(),
 }).refine((data) => {

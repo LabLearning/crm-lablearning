@@ -13,6 +13,27 @@ import type { ActionResult } from '@/lib/types'
  * ce rafraîchissement, un apprenant créé entre-temps (fiche client) n'apparaît
  * pas, et l'utilisateur le recrée — d'où des doublons.
  */
+/**
+ * Le prix saisi sur la session fait foi pour la convention : on le propage à
+ * la convention liée tant qu'elle est en brouillon (jamais sur une convention
+ * déjà envoyée/signée). Organisme exonéré de TVA → TTC = HT.
+ */
+async function syncConventionPrix(
+  supabase: any,
+  sessionId: string,
+  orgId: string,
+  prixHt: number | null | undefined,
+) {
+  if (prixHt == null) return
+  const montant = Number(prixHt)
+  await supabase
+    .from('conventions')
+    .update({ montant_ht: montant, montant_ttc: montant, taux_tva: 0 })
+    .eq('session_id', sessionId)
+    .eq('organization_id', orgId)
+    .eq('status', 'brouillon')
+}
+
 export async function getApprenantsForClientAction(clientId: string): Promise<ActionResult> {
   const session = await getSession()
   if (!clientId) return { success: true, data: [] }
@@ -92,6 +113,9 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
     console.error('[Create Session]', error)
     return { success: false, error: 'Erreur lors de la création' }
   }
+
+  // Propager le prix vers une éventuelle convention liée déjà en brouillon
+  await syncConventionPrix(supabase, data.id, session.organization.id, parsed.data.prix_ht)
 
   // Inscrire les apprenants sélectionnés
   if (apprenantIds.length > 0) {
@@ -493,6 +517,9 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  // Le prix modifié sur la session se répercute sur la convention liée
+  await syncConventionPrix(supabase, id, session.organization.id, parsed.data.prix_ht)
 
   // Nouveau formateur assigné → notification + email de proposition de mission
   if (formateurChanged && newFormateurId) {
