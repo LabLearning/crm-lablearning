@@ -6,7 +6,8 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 export async function signConventionAction(
   token: string,
   conventionId: string,
-  signataireName: string
+  signataireName: string,
+  signatureDataUrl?: string | null
 ): Promise<{ success: boolean; error?: string }> {
   const context = await getPortalContext(token)
   if (!context || context.type !== 'client') {
@@ -38,6 +39,7 @@ export async function signConventionAction(
       status: 'signee_client',
       signature_client_date: new Date().toISOString(),
       signature_client_nom: signataireName,
+      ...(signatureDataUrl ? { signature_client_signature_data: signatureDataUrl } : {}),
     })
     .eq('id', conventionId)
 

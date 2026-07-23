@@ -430,6 +430,7 @@ export interface SignatoryCard {
   signedBy?: string | null
   signedDate?: string | null  // déjà formatée
   stamp?: string | null       // URL du tampon/cachet (côté OF) — affiché dans la zone signature
+  signature?: string | null   // signature manuscrite (data URL) tracée par le signataire
 }
 
 export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard[]; faitMention?: string }) {
@@ -452,6 +453,8 @@ export function PdfSignatureCards({ items, faitMention }: { items: SignatoryCard
                   <Text style={{ fontSize: 8, color: BRAND_GREEN, fontFamily: 'Satoshi', fontWeight: 700 }}>Signé électroniquement</Text>
                   {it.signedBy ? <Text style={{ fontSize: 7.5, color: SURFACE_700 }}>{it.signedBy}</Text> : null}
                   {it.signedDate ? <Text style={{ fontSize: 7, color: SURFACE_400 }}>Le {it.signedDate}</Text> : null}
+                  {/* Signature manuscrite tracée par le signataire */}
+                  {it.signature ? <Image src={it.signature} style={{ height: 40, maxWidth: 150, objectFit: 'contain', marginTop: 4 }} /> : null}
                 </View>
               ) : (
                 <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 4 }}>{it.hint || 'Signature et cachet'}</Text>

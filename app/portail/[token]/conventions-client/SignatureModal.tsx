@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { FileSignature, CheckCircle2, X } from 'lucide-react'
 import { signConventionAction } from './actions'
+import { SignaturePad } from '../emargement/SignaturePad'
 import { formatDate } from '@/lib/utils'
 
 interface SignatureModalProps {
@@ -30,8 +31,10 @@ export function SignatureModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signedAt, setSignedAt] = useState<string | null>(null)
+  const [showPad, setShowPad] = useState(false)
 
-  async function handleSign() {
+  // Étape 1 : valider nom + conditions, puis ouvrir le pad de signature
+  function handleContinue() {
     if (!name.trim()) {
       setError('Veuillez saisir votre nom complet.')
       return
@@ -40,13 +43,19 @@ export function SignatureModal({
       setError("Vous devez accepter les conditions pour signer.")
       return
     }
+    setError(null)
+    setShowPad(true)
+  }
 
+  // Étape 2 : signature tracée → enregistrement
+  async function handleSign(signatureDataUrl: string) {
     setLoading(true)
     setError(null)
 
-    const result = await signConventionAction(token, convention.id, name.trim())
+    const result = await signConventionAction(token, convention.id, name.trim(), signatureDataUrl)
 
     setLoading(false)
+    setShowPad(false)
 
     if (!result.success) {
       setError(result.error || 'Une erreur est survenue.')
@@ -59,6 +68,20 @@ export function SignatureModal({
     setTimeout(() => {
       onSuccess()
     }, 1800)
+  }
+
+  // Étape 2 : pad de signature (par-dessus la modale)
+  if (showPad && !signedAt) {
+    return (
+      <SignaturePad
+        title="Signer la convention"
+        subtitle={`${convention.numero} — ${name.trim()}`}
+        onSign={handleSign}
+        onCancel={() => setShowPad(false)}
+        isPending={loading}
+        validateLabel="Valider et signer"
+      />
+    )
   }
 
   return (
@@ -164,7 +187,7 @@ export function SignatureModal({
               </button>
               <button
                 type="button"
-                onClick={handleSign}
+                onClick={handleContinue}
                 disabled={loading}
                 className="btn-primary flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >

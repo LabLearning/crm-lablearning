@@ -463,6 +463,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               signed: !!convention.signature_client_nom,
               signedBy: convention.signature_client_nom,
               signedDate: convention.signature_client_date ? fmtDate(convention.signature_client_date) : null,
+              signature: convention.signature_client_signature_data || null,
             },
             {
               title: `Pour l'organisme — ${ofName}`,
