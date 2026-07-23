@@ -237,10 +237,17 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
           <Badge variant="default" className="!bg-sky-100 !text-sky-700 !border-transparent">{candidats.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
-          {candidats.length === 0 && (
+          {/* Devis prévisionnel (sans candidat, France Travail) : générer ou télécharger */}
+          {!devisByCandidat['previsionnel'] && candidats.length === 0 && (
             <Button onClick={handleGenerateDevisPrevisionnel} disabled={genPrev} size="sm" variant="secondary" icon={<Euro className="h-4 w-4" />}>
               {genPrev ? 'Génération…' : 'Devis prévisionnel (France Travail)'}
             </Button>
+          )}
+          {devisByCandidat['previsionnel'] && (
+            <a href={`/api/pdf/devis/${devisByCandidat['previsionnel'].id}`} target="_blank" rel="noreferrer"
+              className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+              <Download className="h-4 w-4" /> Devis prévisionnel{devisByCandidat['previsionnel'].numero ? ` ${devisByCandidat['previsionnel'].numero}` : ''}
+            </a>
           )}
           {candidats.length > 0 && (
             <>
