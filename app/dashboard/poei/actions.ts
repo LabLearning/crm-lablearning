@@ -576,8 +576,10 @@ export async function generateDevisPrevisionnelPoeiAction(
     .insert({
       organization_id: orgId, numero: '', client_id: poei.client_id, formation_id: poei.formation_id,
       objet: `POEI — Devis prévisionnel${places > 1 ? ` (${places} places)` : ''} — ${formationNom}`,
-      // Brouillon : à relire puis envoyer à France Travail depuis le module Devis
-      status: 'brouillon', date_emission: today, date_validite: validite.toISOString().slice(0, 10),
+      // Émis directement (dossier destiné à France Travail), comme les devis POEI
+      // par candidat : pas de statut brouillon.
+      status: 'envoye', date_emission: today, date_validite: validite.toISOString().slice(0, 10),
+      sent_at: new Date().toISOString(),
       taux_tva: 0, remise_pourcent: 0,
       notes_internes: `Devis prévisionnel POEI (sans candidat, validation France Travail). ${marker}`,
       created_by: session.user.id,
