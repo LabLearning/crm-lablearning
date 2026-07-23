@@ -204,12 +204,13 @@ export function PortalShell({ context, children }: PortalShellProps) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className={cn(
-          // Jusqu'à 5 entrées : grille répartie. Au-delà (formateur : 8 entrées),
-          // défilement horizontal pour que TOUTES restent accessibles sur mobile.
-          mobileNav.length <= 5 ? 'grid' : 'flex overflow-x-auto',
+          // Toutes les entrées visibles d'un coup : au-delà de 5, la grille
+          // passe sur deux lignes (grid-cols-4) plutôt qu'un défilement caché.
+          'grid',
           mobileNav.length === 3 && 'grid-cols-3',
           mobileNav.length === 4 && 'grid-cols-4',
           mobileNav.length === 5 && 'grid-cols-5',
+          mobileNav.length > 5 && 'grid-cols-4',
         )}>
           {mobileNav.map((item) => {
             const active = isActive(item.href)
@@ -217,10 +218,7 @@ export function PortalShell({ context, children }: PortalShellProps) {
               <Link
                 key={item.href}
                 href={basePath + item.href}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] transition-all duration-200 active:scale-95',
-                  mobileNav.length > 5 && 'shrink-0 basis-1/5 min-w-[72px]',
-                )}
+                className="relative flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] transition-all duration-200 active:scale-95"
               >
                 {/* Active indicator — top bar */}
                 {active && (
