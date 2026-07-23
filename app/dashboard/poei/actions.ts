@@ -533,6 +533,78 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
 }
 
 /**
+ * Devis PRÉVISIONNEL d'un projet POEI, SANS candidat : sert à faire valider
+ * le coût de la formation par France Travail AVANT le recrutement. 1 ligne
+ * (formation × taux horaire × durée), TVA 0. Idempotent (un seul prévisionnel
+ * par projet). `nbCandidats` (optionnel) permet un devis pour plusieurs places.
+ */
+export async function generateDevisPrevisionnelPoeiAction(
+  poeiId: string,
+  nbCandidats = 1,
+): Promise<ActionResult & { data?: { devisId: string } }> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  const supabase = await createServiceRoleClient()
+
+  const { data: poei } = await supabase
+    .from('poei')
+    .select('id, client_id, formation_id, duree_heures, montant_horaire, formation:formations(intitule)')
+    .eq('id', poeiId).eq('organization_id', orgId).single()
+  if (!poei) return { success: false, error: 'Projet introuvable' }
+  if (!poei.client_id) return { success: false, error: 'Aucune entreprise liée au projet' }
+  if (!(Number(poei.montant_horaire) > 0) || !(Number(poei.duree_heures) > 0)) {
+    return { success: false, error: 'Renseignez le taux horaire et la durée du projet avant de générer le devis' }
+  }
+
+  const marker = `[POEI:${poeiId}:previsionnel]`
+  const { data: existing } = await supabase
+    .from('devis').select('id').eq('organization_id', orgId).ilike('notes_internes', `%${marker}%`).maybeSingle()
+  if (existing) return { success: true, data: { devisId: existing.id }, warning: 'Un devis prévisionnel existe déjà pour ce projet.' }
+
+  const duree = Number(poei.duree_heures)
+  const taux = Number(poei.montant_horaire)
+  const places = Math.max(1, Number(nbCandidats) || 1)
+  const montantUnitaire = Math.round(duree * taux * 100) / 100
+  const montantHt = Math.round(montantUnitaire * places * 100) / 100
+  const formationNom = (poei as any).formation?.intitule || 'Formation POEI'
+  const today = new Date().toISOString().slice(0, 10)
+  const validite = new Date(); validite.setDate(validite.getDate() + 30)
+
+  const { data: devis, error } = await supabase
+    .from('devis')
+    .insert({
+      organization_id: orgId, numero: '', client_id: poei.client_id, formation_id: poei.formation_id,
+      objet: `POEI — Devis prévisionnel${places > 1 ? ` (${places} places)` : ''} — ${formationNom}`,
+      // Brouillon : à relire puis envoyer à France Travail depuis le module Devis
+      status: 'brouillon', date_emission: today, date_validite: validite.toISOString().slice(0, 10),
+      taux_tva: 0, remise_pourcent: 0,
+      notes_internes: `Devis prévisionnel POEI (sans candidat, validation France Travail). ${marker}`,
+      created_by: session.user.id,
+    })
+    .select('id').single()
+  if (error || !devis) return { success: false, error: 'Impossible de créer le devis' }
+
+  await supabase.from('devis_lignes').insert({
+    devis_id: devis.id,
+    designation: `${formationNom}${places > 1 ? ` — ${places} places` : ''}`,
+    description: `Formation POEI : ${duree} h × ${taux.toLocaleString('fr-FR')} €/h${places > 1 ? ` × ${places} candidats` : ''}`,
+    quantite: places > 1 ? places : duree,
+    unite: places > 1 ? 'candidat' : 'heure',
+    prix_unitaire_ht: places > 1 ? montantUnitaire : taux,
+    montant_ht: montantHt, position: 0,
+  })
+  await supabase.from('devis').update({
+    montant_ht: montantHt, montant_tva: 0, montant_ttc: montantHt, remise_montant: 0,
+  }).eq('id', devis.id)
+
+  await logAudit({ action: 'generate_devis_previsionnel_poei', entity_type: 'poei', entity_id: poeiId, details: { devisId: devis.id, places } })
+  revalidatePath('/dashboard/devis')
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  return { success: true, data: { devisId: devis.id } }
+}
+
+/**
  * Email groupé personnalisé aux candidats d'un projet POEI.
  * Le message accepte des variables remplacées pour chaque destinataire :
  * {prenom} {nom} {formation} {entreprise} {dates}

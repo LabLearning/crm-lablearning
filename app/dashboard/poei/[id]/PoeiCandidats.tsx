@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro, Download } from 'lucide-react'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect } from '@/components/ui'
-import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction, sendGroupEmailToCandidatsAction, getPoeiEmailTemplatesAction, savePoeiEmailTemplateAction } from '../actions'
+import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction, generateDevisPrevisionnelPoeiAction, sendGroupEmailToCandidatsAction, getPoeiEmailTemplatesAction, savePoeiEmailTemplateAction } from '../actions'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
 
@@ -55,6 +55,7 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
   const [apprenantId, setApprenantId] = useState('')
   const [genDevisOpen, setGenDevisOpen] = useState(false)
   const [genDevis, setGenDevis] = useState(false)
+  const [genPrev, setGenPrev] = useState(false)
   // Mail groupé personnalisé
   const [mailOpen, setMailOpen] = useState(false)
   const [mailSubject, setMailSubject] = useState('')
@@ -124,6 +125,18 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
       toast('error', "Erreur lors de l'envoi")
     } finally {
       setMailSending(false)
+    }
+  }
+
+  async function handleGenerateDevisPrevisionnel() {
+    setGenPrev(true)
+    const r = await generateDevisPrevisionnelPoeiAction(poeiId)
+    setGenPrev(false)
+    if (r.success) {
+      toast('success', r.warning || 'Devis prévisionnel créé — disponible dans le module Devis')
+      router.refresh()
+    } else {
+      toast('error', r.error || 'Erreur')
     }
   }
 
@@ -224,6 +237,11 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
           <Badge variant="default" className="!bg-sky-100 !text-sky-700 !border-transparent">{candidats.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
+          {candidats.length === 0 && (
+            <Button onClick={handleGenerateDevisPrevisionnel} disabled={genPrev} size="sm" variant="secondary" icon={<Euro className="h-4 w-4" />}>
+              {genPrev ? 'Génération…' : 'Devis prévisionnel (France Travail)'}
+            </Button>
+          )}
           {candidats.length > 0 && (
             <>
               <Button onClick={() => setGenDevisOpen(true)} size="sm" variant="secondary" icon={<Euro className="h-4 w-4" />}>
