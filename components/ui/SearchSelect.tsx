@@ -144,11 +144,11 @@ export function SearchSelect({
                     onClick={() => select(o.value)}
                     onMouseEnter={() => setHovered(o.value)}
                     className={cn(
-                      'w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50 transition-colors',
+                      'w-full flex items-start justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-surface-50 transition-colors',
                       o.value === value ? 'text-surface-900 font-medium' : 'text-surface-700',
                     )}
                   >
-                    <span className="truncate">{o.label}</span>
+                    <span className="break-words">{o.label}</span>
                     {o.value === value && <Check className="h-4 w-4 text-brand-500 shrink-0" />}
                   </button>
                 ))

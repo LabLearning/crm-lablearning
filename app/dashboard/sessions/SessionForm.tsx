@@ -326,10 +326,10 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
             formationsFiltrees.map(f => {
               const checked = formationIds.includes(f.id)
               return (
-                <label key={f.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface-50 cursor-pointer">
-                  <input type="checkbox" checked={checked} onChange={() => toggleFormation(f.id)} className="h-4 w-4 rounded border-surface-300 text-brand-600 focus:ring-brand-500" />
+                <label key={f.id} className="flex items-start gap-3 px-3 py-2 hover:bg-surface-50 cursor-pointer">
+                  <input type="checkbox" checked={checked} onChange={() => toggleFormation(f.id)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-300 text-brand-600 focus:ring-brand-500" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-surface-900 truncate">
+                    <div className="text-sm text-surface-900 break-words">
                       {f.reference && <span className="text-surface-500">{f.reference} — </span>}
                       {f.intitule}
                     </div>
