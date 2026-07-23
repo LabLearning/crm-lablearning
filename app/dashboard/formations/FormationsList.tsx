@@ -50,6 +50,8 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
+  const [filterCat, setFilterCat] = useState('')
+  const [filterModalite, setFilterModalite] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [editFormation, setEditFormation] = useState<Formation | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'intitule', dir: 'asc' })
@@ -59,15 +61,27 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
   }
 
+  // Catégories présentes au catalogue (pour le filtre)
+  const categories = useMemo(
+    () => Array.from(new Set(formations.map((f) => f.categorie).filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b), 'fr')),
+    [formations],
+  )
+  const modalites = useMemo(
+    () => Array.from(new Set(formations.map((f) => f.modalite).filter(Boolean))),
+    [formations],
+  )
+
   const filtered = useMemo(() => {
     return formations.filter((f) => {
       const matchSearch = f.intitule.toLowerCase().includes(search.toLowerCase()) ||
         (f.reference || '').toLowerCase().includes(search.toLowerCase()) ||
         (f.categorie || '').toLowerCase().includes(search.toLowerCase())
       const matchActive = filterActive === 'all' || (filterActive === 'active' ? f.is_active : !f.is_active)
-      return matchSearch && matchActive
+      const matchCat = !filterCat || f.categorie === filterCat
+      const matchMod = !filterModalite || f.modalite === filterModalite
+      return matchSearch && matchActive && matchCat && matchMod
     })
-  }, [formations, search, filterActive])
+  }, [formations, search, filterActive, filterCat, filterModalite])
 
   const sorted = useMemo(() => {
     const mul = sort.dir === 'asc' ? 1 : -1
@@ -117,11 +131,25 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 mb-5">
+        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 min-w-[220px] max-w-md">
           <Search className="h-4 w-4 text-surface-400" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher une formation..." className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1" />
         </div>
+        <select
+          value={filterCat} onChange={(e) => setFilterCat(e.target.value)}
+          className="rounded-xl border border-surface-200/80 bg-white px-3 py-2 text-xs font-medium text-surface-600 focus:outline-none focus:border-surface-300"
+        >
+          <option value="">Toutes catégories</option>
+          {categories.map((c) => <option key={c as string} value={c as string}>{c as string}</option>)}
+        </select>
+        <select
+          value={filterModalite} onChange={(e) => setFilterModalite(e.target.value)}
+          className="rounded-xl border border-surface-200/80 bg-white px-3 py-2 text-xs font-medium text-surface-600 focus:outline-none focus:border-surface-300"
+        >
+          <option value="">Toutes modalités</option>
+          {modalites.map((m) => <option key={m} value={m}>{MODALITE_LABELS[m]}</option>)}
+        </select>
         <div className="flex gap-1.5">
           {(['all', 'active', 'inactive'] as const).map((f) => (
             <button key={f} onClick={() => setFilterActive(f)}
@@ -130,6 +158,12 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
             </button>
           ))}
         </div>
+        {(filterCat || filterModalite) && (
+          <button onClick={() => { setFilterCat(''); setFilterModalite('') }}
+            className="text-xs font-medium text-surface-400 hover:text-surface-600 underline underline-offset-2">
+            Réinitialiser
+          </button>
+        )}
       </div>
 
       {/* Tableau — formations en lignes, colonnes triables */}
