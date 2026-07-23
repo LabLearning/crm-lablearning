@@ -4,10 +4,11 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Mail, Phone, Globe, MapPin, Building2, User, FileText,
-  Receipt, FolderOpen, Users, Hash, Banknote,
+  Receipt, FolderOpen, Users, Hash, Banknote, Calendar,
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/formation'
 import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import type { Client } from '@/lib/types/crm'
 import { ClientEditButton } from './ClientEditButton'
@@ -52,6 +53,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     { data: users },
     { data: participants },
     { data: documents },
+    { data: sessions },
   ] = await Promise.all([
     supabase.from('contacts').select('*').eq('client_id', params.id).order('est_principal', { ascending: false }),
     supabase.from('leads').select('*').eq('converted_client_id', params.id).order('created_at', { ascending: false }),
@@ -63,7 +65,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       : Promise.resolve({ data: [] as any[] }),
     supabase.from('apprenants').select('id, prenom, nom, email, telephone, poste').eq('client_id', params.id).order('nom'),
     supabase.from('documents').select('id, nom, type, description, file_name, file_size, storage_path, created_at').eq('client_id', params.id).order('created_at', { ascending: false }),
+    supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, status, formateur:formateurs(prenom, nom), formation:formation_id(intitule)').eq('client_id', params.id).order('date_debut', { ascending: false }),
   ])
+  const sessionsList = (sessions || []) as any[]
 
   // Nb d'apprenants inscrits par session (pour les dossiers liés à une session)
   const dossierSessionIds = (dossiers || []).map((d: any) => d.session?.id).filter(Boolean)
@@ -199,6 +203,45 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         <div className="lg:col-span-2 space-y-5">
           {/* Contacts (ajout / modification / suppression) */}
           <ClientContacts clientId={c.id} contacts={contactsList as any[]} />
+
+          {/* Sessions de formation du client */}
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-brand-500" />
+              <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Sessions de formation ({sessionsList.length})</span>
+            </div>
+            {sessionsList.length === 0 ? (
+              <div className="text-center py-8 text-sm text-surface-400">Aucune session</div>
+            ) : (
+              <div className="divide-y divide-surface-100">
+                {sessionsList.slice(0, 15).map((s) => {
+                  const formateurNom = s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null
+                  return (
+                    <Link key={s.id} href={`/dashboard/sessions/${s.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                      <Calendar className="h-4 w-4 text-surface-400 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-surface-900 truncate">
+                          {s.formation?.intitule || s.intitule || s.reference || 'Session'}
+                        </div>
+                        <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap mt-0.5">
+                          {s.reference && <span className="font-mono text-surface-400">{s.reference}</span>}
+                          {s.date_debut && (
+                            <span>{formatDate(s.date_debut, { day: 'numeric', month: 'short' })}{s.date_fin && s.date_fin !== s.date_debut ? ` → ${formatDate(s.date_fin, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</span>
+                          )}
+                          {formateurNom && <span className="flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{formateurNom}</span>}
+                        </div>
+                      </div>
+                      {s.status && (
+                        <Badge variant={SESSION_STATUS_COLORS[s.status as keyof typeof SESSION_STATUS_COLORS] || 'default'} dot>
+                          {SESSION_STATUS_LABELS[s.status as keyof typeof SESSION_STATUS_LABELS] || s.status}
+                        </Badge>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Dossiers de formation */}
           <div className="card overflow-hidden">
