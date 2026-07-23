@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Eye, EyeOff,
-  Clock, Users, Euro, GraduationCap, Award, Tag,
+  GraduationCap, Award, Tag, ArrowUp, ArrowDown, ChevronsUpDown,
 } from 'lucide-react'
 import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { FormationForm } from './FormationForm'
@@ -16,12 +17,47 @@ interface FormationsListProps {
   readOnly?: boolean
 }
 
+type SortKey = 'intitule' | 'categorie' | 'duree' | 'prix' | 'apprenants'
+
+// En-tête de colonne triable : clic pour trier, flèche indiquant le sens actif
+function SortHeader({ label, k, sort, onSort, className = '' }: {
+  label: string
+  k: SortKey
+  sort: { key: SortKey; dir: 'asc' | 'desc' }
+  onSort: (k: SortKey) => void
+  className?: string
+}) {
+  const active = sort.key === k
+  const alignRight = className.includes('text-right')
+  return (
+    <th className={`py-2.5 px-3 text-2xs font-semibold uppercase tracking-wider ${active ? 'text-surface-700' : 'text-surface-400'} ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={`inline-flex items-center gap-1 hover:text-surface-700 transition-colors ${alignRight ? 'flex-row-reverse' : ''}`}
+      >
+        {label}
+        {active
+          ? (sort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+          : <ChevronsUpDown className="h-3 w-3 text-surface-300" />}
+      </button>
+    </th>
+  )
+}
+
 export function FormationsList({ formations, readOnly }: FormationsListProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [editFormation, setEditFormation] = useState<Formation | null>(null)
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'intitule', dir: 'asc' })
+
+  // Clic sur un en-tête : même colonne → inverse le sens ; sinon tri croissant
+  function toggleSort(key: SortKey) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  }
 
   const filtered = useMemo(() => {
     return formations.filter((f) => {
@@ -32,6 +68,25 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
       return matchSearch && matchActive
     })
   }, [formations, search, filterActive])
+
+  const sorted = useMemo(() => {
+    const mul = sort.dir === 'asc' ? 1 : -1
+    const val = (f: Formation): string | number => {
+      switch (sort.key) {
+        case 'duree': return Number(f.duree_heures) || 0
+        case 'prix': return Number(f.tarif_inter_ht) || 0
+        case 'apprenants': return Number(f.nombre_apprenants_total) || 0
+        case 'categorie': return (f.categorie || '').toLowerCase()
+        default: return (f.intitule || '').toLowerCase()
+      }
+    }
+    return [...filtered].sort((a, b) => {
+      const va = val(a), vb = val(b)
+      if (va < vb) return -1 * mul
+      if (va > vb) return 1 * mul
+      return 0
+    })
+  }, [filtered, sort])
 
   async function handleDelete(id: string) {
     if (!confirm('Supprimer cette formation ?')) return
@@ -77,81 +132,78 @@ export function FormationsList({ formations, readOnly }: FormationsListProps) {
         </div>
       </div>
 
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map((f) => (
-          <div key={f.id} onClick={() => window.location.href = `/dashboard/formations/${f.id}`} className={`card p-5 hover:shadow-card transition-shadow cursor-pointer ${!f.is_active ? 'opacity-60' : ''}`}>
-            <div className="flex items-start justify-between mb-3">
-              <div className="min-w-0 flex-1">
-                {f.reference && (
-                  <div className="text-2xs font-mono text-surface-400 mb-0.5">{f.reference}</div>
-                )}
-                <h3 className="text-sm font-semibold text-surface-900 line-clamp-2">{f.intitule}</h3>
-                {f.sous_titre && <p className="text-xs text-surface-500 mt-0.5 truncate">{f.sous_titre}</p>}
-              </div>
-              {!readOnly && (
-                <div className="ml-2" onClick={(e) => e.stopPropagation()}>
-                  <RowMenu items={[
-                    { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormation(f) },
-                    {
-                      label: f.is_active ? 'Désactiver' : 'Activer',
-                      icon: f.is_active ? <EyeOff className="h-4 w-4 text-surface-400" /> : <Eye className="h-4 w-4 text-surface-400" />,
-                      onClick: () => handleToggle(f.id, f.is_active),
-                    },
-                    { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(f.id), danger: true },
-                  ]} />
-                </div>
-              )}
-            </div>
-
-            {/* Tags row */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              <Badge variant={MODALITE_COLORS[f.modalite]}>{MODALITE_LABELS[f.modalite]}</Badge>
-              {f.categorie && <Badge variant="default"><Tag className="h-3 w-3 mr-0.5" />{f.categorie}</Badge>}
-              {f.est_certifiante && <Badge variant="success"><Award className="h-3 w-3 mr-0.5" />Certifiante</Badge>}
-              {f.is_published && <Badge variant="info"><Eye className="h-3 w-3 mr-0.5" />Publiée</Badge>}
-            </div>
-
-            {/* Stats row */}
-            <div className="flex items-center gap-4 text-xs text-surface-500 pt-3 border-t border-surface-100">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> {f.duree_heures}h
-                {f.duree_jours && <span className="text-surface-400">({f.duree_jours}j)</span>}
-              </span>
-              {f.tarif_inter_ht && (
-                <span className="flex items-center gap-1">
-                  <Euro className="h-3.5 w-3.5" /> {Number(f.tarif_inter_ht).toLocaleString('fr-FR')} €
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" /> {f.nombre_apprenants_total} apprenants
-              </span>
-            </div>
-
-            {/* Satisfaction indicators */}
-            {(f.taux_satisfaction || f.taux_reussite) && (
-              <div className="flex gap-3 mt-2 pt-2 border-t border-surface-100">
-                {f.taux_satisfaction && (
-                  <div className="text-xs">
-                    <span className="text-surface-400">Satisfaction </span>
-                    <span className="font-medium text-success-600">{f.taux_satisfaction}%</span>
-                  </div>
-                )}
-                {f.taux_reussite && (
-                  <div className="text-xs">
-                    <span className="text-surface-400">Réussite </span>
-                    <span className="font-medium text-brand-600">{f.taux_reussite}%</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Version */}
-            <div className="text-2xs text-surface-400 mt-2">
-              v{f.version} · MAJ {f.date_derniere_maj}
-            </div>
-          </div>
-        ))}
+      {/* Tableau — formations en lignes, colonnes triables */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="border-b border-surface-100 bg-surface-50/60">
+                <SortHeader label="Formation" k="intitule" sort={sort} onSort={toggleSort} className="text-left pl-4" />
+                <SortHeader label="Catégorie" k="categorie" sort={sort} onSort={toggleSort} className="text-left" />
+                <th className="py-2.5 px-3 text-left text-2xs font-semibold uppercase tracking-wider text-surface-400">Modalité</th>
+                <SortHeader label="Durée" k="duree" sort={sort} onSort={toggleSort} className="text-right" />
+                <SortHeader label="Prix inter" k="prix" sort={sort} onSort={toggleSort} className="text-right" />
+                <SortHeader label="Apprenants" k="apprenants" sort={sort} onSort={toggleSort} className="text-right" />
+                <th className="py-2.5 px-3 text-left text-2xs font-semibold uppercase tracking-wider text-surface-400">État</th>
+                {!readOnly && <th className="py-2.5 px-2 w-10" />}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((f) => (
+                <tr
+                  key={f.id}
+                  onClick={() => router.push(`/dashboard/formations/${f.id}`)}
+                  className={`border-b border-surface-100 last:border-0 hover:bg-surface-50/70 cursor-pointer transition-colors ${!f.is_active ? 'opacity-55' : ''}`}
+                >
+                  <td className="py-2.5 pl-4 pr-3 max-w-[320px]">
+                    {f.reference && <div className="text-2xs font-mono text-surface-400 leading-none mb-0.5">{f.reference}</div>}
+                    <div className="font-medium text-surface-900 truncate">{f.intitule}</div>
+                    {f.sous_titre && <div className="text-xs text-surface-500 truncate">{f.sous_titre}</div>}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    {f.categorie
+                      ? <Badge variant="default"><Tag className="h-3 w-3 mr-0.5" />{f.categorie}</Badge>
+                      : <span className="text-surface-300">—</span>}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <Badge variant={MODALITE_COLORS[f.modalite]}>{MODALITE_LABELS[f.modalite]}</Badge>
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
+                    <span className="font-medium text-surface-800">{f.duree_heures}h</span>
+                    {f.duree_jours ? <span className="text-surface-400"> · {f.duree_jours}j</span> : null}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums whitespace-nowrap">
+                    {f.tarif_inter_ht
+                      ? <span className="text-surface-800">{Number(f.tarif_inter_ht).toLocaleString('fr-FR')} €</span>
+                      : <span className="text-surface-300">—</span>}
+                  </td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-surface-600">{f.nombre_apprenants_total}</td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex items-center gap-1.5">
+                      {f.est_certifiante && <Badge variant="success"><Award className="h-3 w-3 mr-0.5" />Certif.</Badge>}
+                      {f.is_active
+                        ? (f.is_published ? <Badge variant="info">Publiée</Badge> : <Badge variant="default">Active</Badge>)
+                        : <Badge variant="default">Inactive</Badge>}
+                    </div>
+                  </td>
+                  {!readOnly && (
+                    <td className="py-2.5 px-2" onClick={(e) => e.stopPropagation()}>
+                      <RowMenu items={[
+                        { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormation(f) },
+                        {
+                          label: f.is_active ? 'Désactiver' : 'Activer',
+                          icon: f.is_active ? <EyeOff className="h-4 w-4 text-surface-400" /> : <Eye className="h-4 w-4 text-surface-400" />,
+                          onClick: () => handleToggle(f.id, f.is_active),
+                        },
+                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(f.id), danger: true },
+                      ]} />
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {filtered.length === 0 && (
