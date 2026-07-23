@@ -2,7 +2,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Download } from 'lucide-react'
 import { sortCreneaux, todayISO } from '@/app/portail/[token]/emargement/helpers'
 import { SessionDays, type DayRow } from '@/app/portail/[token]/emargement/[sessionId]/SessionDays'
 import { ModeEmargement } from '@/app/portail/[token]/emargement/[sessionId]/ModeEmargement'
@@ -109,6 +109,14 @@ export async function EmargementSessionView({
   const totalFeuilles = days.reduce((n, d) => n + d.creneaux.length, 0)
   const validated = days.reduce((n, d) => n + d.creneaux.filter((c) => c.feuille?.validated_at).length, 0)
 
+  // Feuilles signées téléchargeables dès qu'au moins une signature existe.
+  const nbSignatures = emargements.filter((e) => e.signature_data).length
+  const toutSigne = validated === totalFeuilles && totalFeuilles > 0
+  const pdfSigneHref =
+    basePath === '/mon-espace'
+      ? `/api/pdf/emargement-signe/${session.id}`
+      : `/api/pdf/emargement-signe/${session.id}?token=${token}`
+
   return (
     <div className="space-y-5 animate-fade-in">
       <Link
@@ -132,6 +140,33 @@ export async function EmargementSessionView({
           )
         }
       />
+
+      {nbSignatures > 0 && (
+        <a
+          href={pdfSigneHref}
+          target="_blank"
+          rel="noreferrer"
+          className={`flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${
+            toutSigne
+              ? 'border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50'
+              : 'border-surface-200 bg-white hover:bg-surface-50'
+          }`}
+        >
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-surface-900">
+              Télécharger la feuille d&apos;émargement signée
+            </div>
+            <div className="text-xs text-surface-500 mt-0.5">
+              {toutSigne
+                ? 'Toutes les feuilles sont signées — PDF avec les signatures des stagiaires'
+                : `PDF avec les ${nbSignatures} signature${nbSignatures > 1 ? 's' : ''} recueillie${nbSignatures > 1 ? 's' : ''} à ce jour`}
+            </div>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-900 text-white text-xs font-medium">
+            <Download className="h-4 w-4" /> PDF
+          </span>
+        </a>
+      )}
 
       <ModeEmargement
         token={token}
