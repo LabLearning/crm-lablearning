@@ -56,8 +56,12 @@ export async function GET(_req: NextRequest, { params }: { params: { sessionId: 
     .eq('session_id', params.sessionId).not('status', 'in', '("annule","abandonne")')
 
   const formation: any = (sess as any).formation
+  // Le prix saisi sur la session fait foi ; sinon repli sur le tarif catalogue
+  // (mêmes règles que la création réelle de la convention).
   const tarifBase = sess.type_session === 'intra' ? formation?.tarif_intra_ht : formation?.tarif_inter_ht
-  const montantHt = tarifBase ? tarifBase * (nbApprenants || 1) : null
+  const montantHt = (sess as any).prix_ht != null
+    ? Number((sess as any).prix_ht)
+    : (tarifBase ? tarifBase * (nbApprenants || 1) : null)
 
   const convention: any = {
     numero: 'APERÇU — non générée',

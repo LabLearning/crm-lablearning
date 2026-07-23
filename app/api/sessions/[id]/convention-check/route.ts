@@ -36,8 +36,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const participants = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
 
   const formation: any = (sess as any).formation
+  // Le prix saisi sur la session fait foi ; sinon repli sur le tarif catalogue
   const tarifBase = sess.type_session === 'intra' ? formation?.tarif_intra_ht : formation?.tarif_inter_ht
-  const montantHt = tarifBase ? tarifBase * (participants.length || 1) : null
+  const montantHt = (sess as any).prix_ht != null
+    ? Number((sess as any).prix_ht)
+    : (tarifBase ? tarifBase * (participants.length || 1) : null)
 
   const { data: org } = await supabase.from('organizations').select('*').eq('id', sess.organization_id).single()
 
