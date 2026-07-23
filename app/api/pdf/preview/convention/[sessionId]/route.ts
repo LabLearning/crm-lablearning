@@ -77,11 +77,14 @@ export async function GET(_req: NextRequest, { params }: { params: { sessionId: 
     montant_ttc: montantHt,
     date_emission: new Date().toISOString(),
     client: (sess as any).client,
+    client_id: sess.client_id,
     formation,
     session: sess,
     participants: (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean),
     dossier: null,
   }
+  const { loadSignataireContact } = await import('@/lib/pdf/convention-data')
+  convention.signataire_contact = await loadSignataireContact(supabase, sess.client_id, null)
 
   const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', sess.organization_id).single()
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')

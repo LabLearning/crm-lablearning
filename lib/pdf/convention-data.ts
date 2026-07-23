@@ -1,6 +1,33 @@
 // Chargement unifié des données nécessaires au PDF de convention
 // (utilisé par la route /api/pdf/convention/[id] et par signature-actions).
 
+/**
+ * Contact référent signataire du client à faire figurer sur la convention.
+ * Priorité : contact désigné sur la convention > contact marqué signataire >
+ * contact principal > référent formation > premier contact. Retourne null si
+ * le client n'a aucun contact.
+ */
+export async function loadSignataireContact(
+  supabase: any,
+  clientId: string | null,
+  contactId?: string | null,
+) {
+  if (!clientId) return null
+  const { data: contacts } = await supabase
+    .from('contacts')
+    .select('id, prenom, nom, civilite, poste, service, email, telephone, mobile, est_signataire, est_principal, est_referent_formation')
+    .eq('client_id', clientId)
+  const list = (contacts || []) as any[]
+  return (
+    (contactId && list.find((c) => c.id === contactId)) ||
+    list.find((c) => c.est_signataire) ||
+    list.find((c) => c.est_principal) ||
+    list.find((c) => c.est_referent_formation) ||
+    list[0] ||
+    null
+  )
+}
+
 export async function loadConventionForPdf(supabase: any, conventionId: string) {
   const { data: convention } = await supabase
     .from('conventions')
@@ -55,6 +82,7 @@ export async function loadConventionForPdf(supabase: any, conventionId: string) 
   convention.session = session
   convention.participants = participants
   convention.dossier = dossier
+  convention.signataire_contact = await loadSignataireContact(supabase, convention.client_id, convention.contact_id)
 
   const { withDocumentLogo } = await import('./org-logo')
   const orgForDoc = await withDocumentLogo(supabase, org)

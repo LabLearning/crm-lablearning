@@ -190,7 +190,13 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
 
   const clientName = client.raison_sociale || convention.client?.raison_sociale || '—'
   const clientCpVille = [client.code_postal, client.ville].filter(Boolean).join(' ')
-  const clientRep = [client.civilite, client.prenom, (client.nom || '').toUpperCase()].filter(Boolean).join(' ').trim()
+  // Représentant / signataire : le contact référent du client fait foi ; à défaut
+  // on retombe sur la personne portée par la fiche client.
+  const signataire = convention.signataire_contact
+  const clientRep = signataire
+    ? [signataire.civilite, signataire.prenom, (signataire.nom || '').toUpperCase()].filter(Boolean).join(' ').trim()
+    : [client.civilite, client.prenom, (client.nom || '').toUpperCase()].filter(Boolean).join(' ').trim()
+  const clientRepFonction = signataire?.poste || signataire?.service || null
 
   const formationTitle = formation.intitule || convention.objet || '—'
   const modalite = MODALITE_LABELS[session.modalite || formation.modalite || 'presentiel'] || 'Présentiel'
@@ -289,7 +295,8 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, marginBottom: 3 }}>{clientName}</Text>
             {client.adresse && <Text style={{ fontSize: 8, color: SURFACE_700, marginBottom: 2 }}>{client.adresse}{clientCpVille ? `, ${clientCpVille}` : ''}</Text>}
             {client.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{client.siret}</Text></View>}
-            {!!clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}</Text></View>}
+            {!!clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}{clientRepFonction ? ` — ${clientRepFonction}` : ''}</Text></View>}
+            {!!signataire?.email && <View style={shared.row}><Text style={shared.label}>Contact</Text><Text style={shared.value}>{signataire.email}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>Nb de stagiaires</Text><Text style={shared.value}>{participants.length || convention.nombre_stagiaires || '—'}</Text></View>
           </View>
         </View>
@@ -458,7 +465,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           items={[
             {
               title: `Pour le bénéficiaire — ${clientName}`,
-              name: clientRep || '—',
+              name: [clientRep || '—', clientRepFonction].filter(Boolean).join(' — '),
               mention: 'Lu et approuvé, bon pour accord',
               signed: !!convention.signature_client_nom,
               signedBy: convention.signature_client_nom,
