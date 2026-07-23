@@ -88,7 +88,7 @@ export default async function PortalQcmSessionPage({
           sessionId={session.id}
           qcmSessions={qcmSessions}
           qcmReponses={qcmReponses}
-          nbStagiaires={stagiaires.length}
+          stagiaires={stagiaires}
         />
         {positionnement.length === 0 && qcmSessions.length === 0 && (
           <div className="card p-8 text-center text-sm text-surface-400">
