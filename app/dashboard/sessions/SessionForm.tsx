@@ -36,6 +36,8 @@ interface SessionFormProps {
   apprenants?: ApprenantLite[]
   /** IDs des apprenants déjà inscrits à la session (édition) */
   initialInscrits?: string[]
+  /** Formation présélectionnée à la création (ex : depuis la fiche formation) */
+  initialFormationId?: string
   onSuccess: () => void
   onCancel: () => void
 }
@@ -60,7 +62,7 @@ function heuresJour(h: HoraireJour): number {
   return diff(h.matin_debut, h.matin_fin) + diff(h.aprem_debut, h.aprem_fin)
 }
 
-export function SessionForm({ session, formations, formateurs, clients = [], apprenants = [], initialInscrits = [], onSuccess, onCancel }: SessionFormProps) {
+export function SessionForm({ session, formations, formateurs, clients = [], apprenants = [], initialInscrits = [], initialFormationId, onSuccess, onCancel }: SessionFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +71,11 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
   const [formationIds, setFormationIds] = useState<string[]>(
     (session as any)?._formation_ids?.length > 0
       ? (session as any)._formation_ids
-      : (session?.formation_id ? [session.formation_id] : [])
+      : session?.formation_id
+      ? [session.formation_id]
+      : initialFormationId
+      ? [initialFormationId]
+      : []
   )
   const formationId = formationIds[0] || ''
   // Vide au départ (nouvelle session) : le choix inter/intra est imposé avant validation

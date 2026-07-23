@@ -65,10 +65,16 @@ export default async function FormationDetailPage({ params }: { params: { id: st
             <Badge variant={formation.is_active ? 'success' : 'default'}>{formation.is_active ? 'Active' : 'Inactive'}</Badge>
           </div>
         </div>
-        <a href={`/api/pdf/programme/${params.id}`} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white shrink-0 transition-colors" style={{ backgroundColor: '#195245' }}>
-          <Download className="h-4 w-4" /> Programme PDF
-        </a>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href={`/dashboard/sessions?formation=${params.id}`}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-surface-900 text-white hover:bg-surface-800 transition-colors">
+            <Calendar className="h-4 w-4" /> Créer une session
+          </Link>
+          <a href={`/api/pdf/programme/${params.id}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors" style={{ backgroundColor: '#195245' }}>
+            <Download className="h-4 w-4" /> Programme PDF
+          </a>
+        </div>
       </div>
 
       {/* KPIs */}

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useState, useMemo, useEffect } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Users, QrCode,
   Calendar, MapPin, Video, Clock, User as UserIcon, Building2,
@@ -83,6 +83,20 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   const [view, setView] = useState<'liste' | 'kanban'>('liste')
   const [createOpen, setCreateOpen] = useState(false)
   const [editSession, setEditSession] = useState<Session | null>(null)
+  const [prefillFormationId, setPrefillFormationId] = useState<string | undefined>(undefined)
+
+  // Ouverture directe du formulaire préréglé depuis la fiche formation (?formation=<id>)
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const fid = searchParams.get('formation')
+    if (fid) {
+      setPrefillFormationId(fid)
+      setCreateOpen(true)
+      // Nettoie l'URL pour éviter la réouverture au refresh
+      router.replace(pathname)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const filtered = useMemo(() => {
     return sessions.filter((s) => {
@@ -350,8 +364,8 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
         </div>
       )}
 
-      <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouvelle session" size="lg">
-        <SessionForm formations={formations} formateurs={formateurs} clients={clients} apprenants={apprenants} onSuccess={() => { setCreateOpen(false); toast('success', 'Session créée') }} onCancel={() => setCreateOpen(false)} />
+      <Modal isOpen={createOpen} onClose={() => { setCreateOpen(false); setPrefillFormationId(undefined) }} title="Nouvelle session" size="lg">
+        <SessionForm formations={formations} formateurs={formateurs} clients={clients} apprenants={apprenants} initialFormationId={prefillFormationId} onSuccess={() => { setCreateOpen(false); setPrefillFormationId(undefined); toast('success', 'Session créée') }} onCancel={() => { setCreateOpen(false); setPrefillFormationId(undefined) }} />
       </Modal>
       <Modal isOpen={!!editSession} onClose={() => setEditSession(null)} title="Modifier la session" size="lg">
         {editSession && <SessionForm session={editSession} formations={formations} formateurs={formateurs} clients={clients} apprenants={apprenants} initialInscrits={(editSession as any)._inscrits_ids || []} onSuccess={() => { setEditSession(null); toast('success', 'Session mise à jour') }} onCancel={() => setEditSession(null)} />}
