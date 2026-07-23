@@ -414,8 +414,10 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
   if (!formateur) return { success: false, error: 'Formateur introuvable' }
   if (!formateur.email) return { success: false, error: "Le formateur n'a pas d'adresse email renseignée" }
 
-  // Un contrat existe en base → on envoie une VRAIE demande de signature
-  // (lien tokenisé), et non une simple copie PDF pour information.
+  // On envoie une VRAIE demande de signature (lien tokenisé). Si aucun contrat
+  // n'existe encore (formateur pas encore passé par l'acceptation), on le crée
+  // à la volée : sans ça l'envoi ne faisait qu'expédier un PDF statique et
+  // l'état restait « non envoyé ».
   const { data: contratExistant } = await supabase
     .from('contrats_formateur')
     .select('id, signature_formateur_date')
@@ -425,11 +427,16 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
     .limit(1)
     .maybeSingle()
 
-  if (contratExistant && !contratExistant.signature_formateur_date) {
-    const { sendContratForSignature } = await import('@/lib/contrat-formateur')
-    const r = await sendContratForSignature(supabase, contratExistant.id)
+  const dejaSigne = !!contratExistant?.signature_formateur_date
+  if (!dejaSigne) {
+    const { ensureContratFormateur, sendContratForSignature } = await import('@/lib/contrat-formateur')
+    const cid = contratExistant?.id
+      ? { id: contratExistant.id }
+      : await ensureContratFormateur(supabase, sessionId, session.user.id)
+    if (!cid) return { success: false, error: 'Impossible de préparer le contrat' }
+    const r = await sendContratForSignature(supabase, cid.id)
     if (!r.success) return { success: false, error: r.error }
-    await logAudit({ action: 'send_contrat_signature', entity_type: 'contrat_formateur', entity_id: contratExistant.id, details: { sessionId } })
+    await logAudit({ action: 'send_contrat_signature', entity_type: 'contrat_formateur', entity_id: cid.id, details: { sessionId } })
     revalidatePath(`/dashboard/sessions/${sessionId}`)
     return { success: true, data: { email: formateur.email } }
   }

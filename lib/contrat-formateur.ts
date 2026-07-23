@@ -82,6 +82,68 @@ export async function cancelContratOnFormateurChange(
  * (Re)met un contrat en signature : régénère le lien s'il a expiré,
  * repositionne la date d'envoi et renvoie l'email au formateur.
  */
+/**
+ * Garantit qu'un contrat de prestation existe pour la session (non annulé).
+ * S'il n'y en a pas, il est créé en brouillon avec le montant issu du coût
+ * formateur (ou tarif journalier × jours). Retourne l'id du contrat, ou null si
+ * la session n'a pas de formateur. Utilisé avant un envoi en signature pour que
+ * l'état passe bien à « envoyé » même si le contrat n'avait jamais été généré.
+ */
+export async function ensureContratFormateur(
+  supabase: any,
+  sessionId: string,
+  createdBy: string,
+): Promise<{ id: string } | null> {
+  const { data: existing } = await supabase
+    .from('contrats_formateur')
+    .select('id')
+    .eq('session_id', sessionId)
+    .neq('status', 'annule')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (existing) return { id: existing.id }
+
+  const { data: sess } = await supabase
+    .from('sessions')
+    .select('id, organization_id, formateur_id, cout_formateur, formation:formation_id(duree_jours)')
+    .eq('id', sessionId)
+    .single()
+  if (!sess || !sess.formateur_id) return null
+
+  const { count } = await supabase
+    .from('contrats_formateur')
+    .select('*', { count: 'exact', head: true })
+    .eq('organization_id', sess.organization_id)
+  const numero = `CT-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
+
+  const { data: formateurRow } = await supabase
+    .from('formateurs').select('tarif_journalier').eq('id', sess.formateur_id).single()
+  const tarif = formateurRow?.tarif_journalier || null
+  const duree = (sess as any).formation?.duree_jours || null
+  const montant = sess.cout_formateur != null
+    ? Number(sess.cout_formateur)
+    : (tarif && duree ? Number(tarif) * Number(duree) : null)
+
+  const { data: created, error } = await supabase
+    .from('contrats_formateur')
+    .insert({
+      organization_id: sess.organization_id,
+      session_id: sessionId,
+      formateur_id: sess.formateur_id,
+      numero,
+      status: 'brouillon',
+      tarif_journalier: tarif,
+      nombre_jours: duree,
+      montant_ht: montant,
+      created_by: createdBy,
+    })
+    .select('id')
+    .single()
+  if (error || !created) return null
+  return { id: created.id }
+}
+
 export async function sendContratForSignature(
   supabase: any,
   contratId: string,
