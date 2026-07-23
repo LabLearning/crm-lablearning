@@ -647,3 +647,39 @@ export async function updateCoutFormateurAction(sessionId: string, montant: numb
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true, data: { contratMisAJour: !!contrat && !contrat.signature_formateur_date } }
 }
+
+/**
+ * Prix de vente HT de la session (celui qui figure sur la convention).
+ * Modifiable directement depuis la fiche session ; répercuté sur la convention
+ * liée tant qu'elle est en brouillon. Organisme exonéré de TVA → TTC = HT.
+ */
+export async function updateSessionPrixAction(sessionId: string, montant: number | null): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  const { error } = await supabase
+    .from('sessions')
+    .update({ prix_ht: montant })
+    .eq('id', sessionId)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+
+  let conventionMaj = false
+  if (montant != null) {
+    const { data: conv } = await supabase
+      .from('conventions')
+      .update({ montant_ht: montant, montant_ttc: montant, taux_tva: 0 })
+      .eq('session_id', sessionId)
+      .eq('organization_id', session.organization.id)
+      .eq('status', 'brouillon')
+      .select('id')
+    conventionMaj = !!(conv && conv.length)
+  }
+
+  await logAudit({ action: 'update_prix_session', entity_type: 'session', entity_id: sessionId, details: { montant } })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true, data: { conventionMaj } }
+}

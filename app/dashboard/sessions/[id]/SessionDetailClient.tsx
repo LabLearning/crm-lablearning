@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { Badge, PoeiBadge } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
-import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction, attachQcmToSessionAction } from './actions'
+import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction, updateSessionPrixAction, attachQcmToSessionAction } from './actions'
 import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
@@ -93,6 +93,9 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
   // Rémunération formateur éditable depuis la fiche
   const [editCout, setEditCout] = useState(false)
   const [coutValue, setCoutValue] = useState('')
+  // Prix de vente de la session (→ convention) éditable depuis la fiche
+  const [editPrix, setEditPrix] = useState(false)
+  const [prixValue, setPrixValue] = useState('')
   // Rattachement d'un QCM de la banque à la session
   const [attachQcmId, setAttachQcmId] = useState('')
   const [expandedQcm, setExpandedQcm] = useState<Record<string, boolean>>({})
@@ -111,6 +114,13 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
     if (montant !== null && !Number.isFinite(montant)) return
     setEditCout(false)
     startTransition(async () => { await updateCoutFormateurAction(session.id, montant) })
+  }
+
+  function savePrix() {
+    const montant = prixValue.trim() === '' ? null : Number(prixValue)
+    if (montant !== null && !Number.isFinite(montant)) return
+    setEditPrix(false)
+    startTransition(async () => { await updateSessionPrixAction(session.id, montant); router.refresh() })
   }
 
   const formation = session.formation
@@ -314,6 +324,53 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ═══════════════════════════════════════════════ */}
       {tab === 'session' && (
         <div className="space-y-4">
+          {/* Prix de vente de la session (→ convention) — éditable ici */}
+          {!isFormateur && (
+            <div className="card p-4 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
+                <Euro className="h-5 w-5 text-brand-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs uppercase tracking-wider text-surface-400 leading-none">Prix de la session (HT)</div>
+                <div className="text-lg font-heading font-bold text-surface-900 mt-1">
+                  {session.prix_ht != null
+                    ? `${Number(session.prix_ht).toLocaleString('fr-FR')} €`
+                    : <span className="text-sm font-normal text-surface-400">À définir</span>}
+                </div>
+                <div className="text-2xs text-surface-500 mt-0.5">Ce montant est repris sur la convention de formation.</div>
+              </div>
+              {editPrix ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="relative">
+                    <input
+                      type="number" step="0.01" autoFocus value={prixValue}
+                      onChange={(e) => setPrixValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') savePrix(); if (e.key === 'Escape') setEditPrix(false) }}
+                      placeholder="0"
+                      className="w-32 pl-3 pr-7 py-2 rounded-xl border border-brand-300 bg-white text-sm font-semibold text-surface-900 text-right focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-surface-400 pointer-events-none">€</span>
+                  </div>
+                  <button onClick={savePrix} disabled={isPending} title="Enregistrer"
+                    className="h-9 w-9 flex items-center justify-center rounded-xl bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50 transition-colors">
+                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  </button>
+                  <button onClick={() => setEditPrix(false)} title="Annuler"
+                    className="h-9 w-9 flex items-center justify-center rounded-xl border border-surface-200 text-surface-400 hover:bg-surface-50 hover:text-surface-600 transition-colors">
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setPrixValue(session.prix_ht != null ? String(session.prix_ht) : ''); setEditPrix(true) }}
+                  title="Modifier le prix de la session"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-surface-200 text-surface-600 text-sm font-medium hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-600 transition-colors shrink-0"
+                >
+                  <PenTool className="h-3.5 w-3.5" /> Modifier
+                </button>
+              )}
+            </div>
+          )}
           {/* Documents de la session : aperçu, envoi, état de signature */}
           {!isFormateur && (
             <SessionDocuments
