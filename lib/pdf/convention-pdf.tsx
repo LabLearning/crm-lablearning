@@ -184,7 +184,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   const ofName = org?.name || 'Lab Learning'
   const ofEmail = org?.email_contact || org?.email || 'digital@lab-learning.fr'
   const repOf = [org?.representant_legal_civilite, org?.representant_legal_prenom, org?.representant_legal_nom].filter(Boolean).join(' ').trim()
-  const repOfLine = [repOf, org?.representant_legal_fonction || 'Signataire'].filter(Boolean).join(', ')
+  const repOfLine = [repOf, org?.representant_legal_fonction || 'Président'].filter(Boolean).join(', ')
   const ville = org?.city || 'Montpellier'
   const refHandicap = [org?.referent_handicap_nom, org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
   // Mentions légales de l'organisme (forme, capital, TVA) — D. 6353-1
@@ -317,7 +317,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             {client.siret && <View style={shared.row}><Text style={shared.label}>SIRET</Text><Text style={shared.value}>{client.siret}</Text></View>}
             {!!clientRcs && <View style={shared.row}><Text style={shared.label}>RCS</Text><Text style={shared.value}>{clientRcs}</Text></View>}
             {!!clientTva && <View style={shared.row}><Text style={shared.label}>TVA intra.</Text><Text style={shared.value}>{clientTva}</Text></View>}
-            {!!clientRep && <View style={shared.row}><Text style={shared.label}>Représentant</Text><Text style={shared.value}>{clientRep}{clientRepFonction ? ` — ${clientRepFonction}` : ''}</Text></View>}
+            {!!clientRep && <View style={shared.row}><Text style={shared.label}>Signataire</Text><Text style={shared.value}>{clientRep}</Text></View>}
             {!!signataire?.email && <View style={shared.row}><Text style={shared.label}>Contact</Text><Text style={shared.value}>{signataire.email}</Text></View>}
             <View style={shared.row}><Text style={shared.label}>Nb de stagiaires</Text><Text style={shared.value}>{participants.length || convention.nombre_stagiaires || '—'}</Text></View>
           </View>
@@ -477,7 +477,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           items={[
             {
               title: `Pour le bénéficiaire — ${clientName}`,
-              name: [clientRep || '—', clientRepFonction].filter(Boolean).join(' — '),
+              name: [clientRep || '—', 'Signataire'].filter(Boolean).join(' — '),
               mention: 'Lu et approuvé, bon pour accord',
               signed: !!convention.signature_client_nom,
               signedBy: convention.signature_client_nom,
