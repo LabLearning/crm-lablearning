@@ -683,3 +683,72 @@ export async function updateSessionPrixAction(sessionId: string, montant: number
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true, data: { conventionMaj } }
 }
+
+/**
+ * Recherche d'apprenants pour les ajouter à une session, par nom, prénom,
+ * email ou entreprise. Scopée à l'organisation. Les apprenants déjà inscrits
+ * à la session sont marqués (dejaInscrit) plutôt qu'exclus, pour le feedback.
+ */
+export async function searchApprenantsForSessionAction(
+  sessionId: string,
+  query: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const q = (query || '').trim()
+  if (q.length < 2) return { success: true, data: [] }
+  const supabase = await createServiceRoleClient()
+
+  const like = `%${q}%`
+  const { data, error } = await supabase
+    .from('apprenants')
+    .select('id, prenom, nom, email, entreprise, client:clients(raison_sociale)')
+    .eq('organization_id', session.organization.id)
+    .or(`prenom.ilike.${like},nom.ilike.${like},email.ilike.${like},entreprise.ilike.${like}`)
+    .order('nom', { ascending: true })
+    .limit(20)
+  if (error) return { success: false, error: 'Erreur de recherche' }
+
+  const { data: inscrits } = await supabase
+    .from('inscriptions')
+    .select('apprenant_id')
+    .eq('session_id', sessionId)
+    .not('status', 'in', '("annule","abandonne")')
+  const inscritsSet = new Set((inscrits || []).map((i: any) => i.apprenant_id))
+
+  const results = (data || []).map((a: any) => ({
+    id: a.id, prenom: a.prenom, nom: a.nom, email: a.email,
+    entreprise: a.entreprise || a.client?.raison_sociale || null,
+    dejaInscrit: inscritsSet.has(a.id),
+  }))
+  return { success: true, data: results }
+}
+
+/**
+ * Retire un apprenant d'une session (désinscription). L'inscription est
+ * marquée « annule » plutôt que supprimée, pour conserver l'historique.
+ */
+export async function desinscrireApprenantAction(
+  sessionId: string,
+  apprenantId: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+
+  const { error } = await supabase
+    .from('inscriptions')
+    .update({ status: 'annule' })
+    .eq('session_id', sessionId)
+    .eq('apprenant_id', apprenantId)
+    .eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors du retrait' }
+
+  await logAudit({ action: 'desinscription', entity_type: 'session', entity_id: sessionId, details: { apprenant_id: apprenantId } })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true }
+}

@@ -8,11 +8,12 @@ import {
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
   Star, ListChecks, FileSignature, Award, Euro, BookOpen,
-  QrCode, ChevronRight, CheckCircle, MinusCircle,
+  QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2,
 } from 'lucide-react'
-import { Badge, PoeiBadge } from '@/components/ui'
+import { Badge, PoeiBadge, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
-import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction, updateSessionPrixAction, attachQcmToSessionAction } from './actions'
+import { updateSessionStatusAction, togglePresenceAction, createEmargementJourAction, signEmargementAction, updateCoutFormateurAction, updateSessionPrixAction, attachQcmToSessionAction, desinscrireApprenantAction } from './actions'
+import { SessionParticipants } from './SessionParticipants'
 import { SignaturePad } from './SignaturePad'
 import { SendDocButton } from './SendDocButton'
 import { SessionDocActions } from './SessionDocActions'
@@ -80,6 +81,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
 
 export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], isFormateur, userRole, isPoei }: Props) {
   const router = useRouter()
+  const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
   const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'contenu'>('session')
   const [showStatusMenu, setShowStatusMenu] = useState(false)
@@ -121,6 +123,16 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
     if (montant !== null && !Number.isFinite(montant)) return
     setEditPrix(false)
     startTransition(async () => { await updateSessionPrixAction(session.id, montant); router.refresh() })
+  }
+
+  function handleDesinscrire(apprenantId: string, nom: string) {
+    if (!apprenantId) return
+    if (!confirm(`Retirer ${nom} de cette session ?`)) return
+    startTransition(async () => {
+      const r = await desinscrireApprenantAction(session.id, apprenantId)
+      if (r.success) { toast('success', 'Apprenant retiré'); router.refresh() }
+      else toast('error', r.error || 'Erreur')
+    })
   }
 
   const formation = session.formation
@@ -731,6 +743,10 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ONGLET APPRENANTS — Liste simple
           ═══════════════════════════════════════════════ */}
       {tab === 'apprenants' && (
+        <div className="space-y-4">
+        {!isFormateur && (
+          <SessionParticipants sessionId={session.id} clientId={session.client_id || null} clients={clientsRef as any} />
+        )}
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-surface-100">
             <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">
@@ -806,6 +822,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                           <Download className="h-3 w-3" /> Certificat
                         </a>
                         <SendDocButton sessionId={session.id} apprenantId={a?.id} docType="certificat" label="Envoyer" />
+                        <button
+                          onClick={() => handleDesinscrire(a?.id, `${a?.prenom || ''} ${a?.nom || ''}`.trim())}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-50 text-red-600 text-[10px] font-medium hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" /> Retirer
+                        </button>
                       </div>
                     )}
                   </div>
@@ -815,6 +837,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ) : (
             <div className="text-center py-12 text-sm text-surface-400">Aucun apprenant inscrit</div>
           )}
+        </div>
         </div>
       )}
 

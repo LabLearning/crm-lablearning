@@ -105,6 +105,7 @@ export const createApprenantSchema = z.object({
   code_postal: z.string().optional(),
   ville: z.string().optional(),
   type_contrat: z.string().optional(),
+  sexe: z.string().optional(),
   entreprise: z.string().optional(),
   poste: z.string().optional(),
   situation_handicap: z.coerce.boolean().optional(),
