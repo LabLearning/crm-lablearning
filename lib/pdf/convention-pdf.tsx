@@ -184,7 +184,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   const ofName = org?.name || 'Lab Learning'
   const ofEmail = org?.email_contact || org?.email || 'digital@lab-learning.fr'
   const repOf = [org?.representant_legal_civilite, org?.representant_legal_prenom, org?.representant_legal_nom].filter(Boolean).join(' ').trim()
-  const repOfLine = [repOf, org?.representant_legal_fonction || 'Président'].filter(Boolean).join(', ')
+  const repOfLine = [repOf, org?.representant_legal_fonction || 'Signataire'].filter(Boolean).join(', ')
   const ville = org?.city || 'Montpellier'
   const refHandicap = [org?.referent_handicap_nom, org?.referent_handicap_email, org?.referent_handicap_telephone].filter(Boolean).join(' · ')
   // Mentions légales de l'organisme (forme, capital, TVA) — D. 6353-1
