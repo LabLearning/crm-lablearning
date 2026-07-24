@@ -402,7 +402,7 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
 
   const { data: sess } = await supabase
     .from('sessions')
-    .select('*, formation:formation_id(intitule, duree_heures), formateur:formateurs(id)')
+    .select('*, formation:formation_id(intitule, duree_heures, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation), formateur:formateurs(id)')
     .eq('id', sessionId)
     .eq('organization_id', session.organization.id)
     .single()

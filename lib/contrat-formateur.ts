@@ -227,7 +227,7 @@ export async function archiveSignedContrat(supabase: any, contratId: string): Pr
   let sessionFull: any = null
   if (session?.id) {
     const { data } = await supabase
-      .from('sessions').select('*, formation:formation_id(intitule, duree_heures)')
+      .from('sessions').select('*, formation:formation_id(intitule, duree_heures, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation)')
       .eq('id', session.id).single()
     sessionFull = data
   }
@@ -235,7 +235,7 @@ export async function archiveSignedContrat(supabase: any, contratId: string): Pr
   if (!sessionFull && intervention?.id) {
     const { data } = await supabase
       .from('poei_interventions')
-      .select('*, poei:poei(numero, formation:formations(intitule), client:clients(raison_sociale))')
+      .select('*, poei:poei(numero, formation:formations(intitule, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation), client:clients(raison_sociale))')
       .eq('id', intervention.id).single()
     interventionFull = data
   }
