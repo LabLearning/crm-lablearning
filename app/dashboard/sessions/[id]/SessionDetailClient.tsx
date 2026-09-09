@@ -11,6 +11,7 @@ import {
   Star, ListChecks, FileSignature, Award, Euro, BookOpen, ClipboardList, FolderCheck, Mails, Route,
   QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2, Pencil, Sparkles, ReceiptEuro, Printer,
   TrendingUp,
+  ShieldCheck as PackHygieneIcon,
 } from '@/components/ui/icons'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
 import { SessionRetourClient } from './SessionRetourClient'
@@ -25,6 +26,7 @@ import { cn, formatDate, companyLabel } from '@/lib/utils'
 import { updateSessionStatusAction, togglePresenceAction, updateCoutFormateurAction, updateSessionPrixAction, desinscrireApprenantAction } from './actions'
 import { SessionParticipants } from './SessionParticipants'
 import { SessionDocsTab } from './SessionDocsTab'
+import { SessionPackHygiene } from './SessionPackHygiene'
 import { LiensSignatureEmargement } from '@/components/sessions/LiensSignatureEmargement'
 import { SessionDocuments } from './SessionDocuments'
 import { SessionMails } from './SessionMails'
@@ -159,7 +161,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
     } else toast('error', (r as any).error || 'Erreur')
   }
   const estAgefice = dossiersAgefice.length > 0 || (session as any).client?.financeur_type === 'agefice'
-  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation'>(() => {
+  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>(() => {
     // Arrivée ciblée (ex. ?tab=facturation depuis la vue AGEFICE)
     if (typeof window !== 'undefined') {
       const t = new URLSearchParams(window.location.search).get('tab')
@@ -440,6 +442,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           { id: 'rapport' as const, label: 'Bilan', icon: FileText },
           ...(!isFormateur ? [{ id: 'conventions' as const, label: 'Contractualisation', icon: FileSignature }] : []),
           ...(!isFormateur ? [{ id: 'docs' as const, label: 'Documents', icon: FileText }] : []),
+          ...(!isFormateur && estFormationHygiene((session as any).formation || { intitule: session.intitule }) ? [{ id: 'pack' as const, label: 'Pack Hygiène', icon: PackHygieneIcon }] : []),
           ...(!isFormateur ? [{ id: 'facturation' as const, label: estAgefice ? 'AGEFICE' : 'Facturation', icon: ReceiptEuro }] : []),
           ...(!isFormateur ? [{ id: 'mails' as const, label: `Mails (${emailLogs.length})`, icon: Mails }] : []),
         ].map(t => (
@@ -1462,6 +1465,15 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           apprenants={inscriptions.map((i: any) => i.apprenant).filter(Boolean)}
         />
         </div>
+      )}
+
+      {tab === 'pack' && !isFormateur && (
+        <SessionPackHygiene
+          sessionId={session.id}
+          etablissement={(session as any).client?.nom_commercial || (session as any).client?.raison_sociale || null}
+          franchiseNom={(session as any).client?.franchise?.nom || null}
+          formateur={(session as any).formateur || null}
+        />
       )}
 
       {tab === 'conventions' && !isFormateur && (

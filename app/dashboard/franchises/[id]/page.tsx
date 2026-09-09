@@ -7,6 +7,7 @@ import { ArrowLeft, Store, Building2, Banknote, Target, ClipboardCheck, Star } f
 import { commissionTypeLabel, syncFranchiseCommissions } from '@/lib/commission'
 import { getFranchiseCommissionLines } from '@/lib/franchise-data'
 import FranchiseDetailClient from './FranchiseDetailClient'
+import { FranchiseGabaritsClient } from './FranchiseGabaritsClient'
 import FranchiseAccessClient from './FranchiseAccessClient'
 import FranchiseCoverageClient from './FranchiseCoverageClient'
 import FranchiseLogoClient from './FranchiseLogoClient'
@@ -127,6 +128,13 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
       <div className="card p-4">
         <FranchiseLogoClient franchiseId={franchise.id} logoUrl={franchise.logo_url} />
       </div>
+
+      {/* Gabarits du Pack Hygiène (PMS, affichages, livret) */}
+      <FranchiseGabaritsClient
+        franchiseId={franchise.id}
+        gabarits={{ pms: (franchise as any).pms_path || null, affichages: (franchise as any).affichages_path || null, livret: (franchise as any).livret_path || null }}
+        pmsPersonnalisable={(franchise as any).pms_personnalisable !== false}
+      />
 
       {/* Financier global */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
