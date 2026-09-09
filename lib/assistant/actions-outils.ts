@@ -203,6 +203,123 @@ export const OUTILS_ACTIONS = [
       required: ['dossier_id', 'mode', 'libelle'],
     },
   },
+  {
+    name: 'action_creer_session',
+    description: "PROPOSE la création d'une session de formation : formation, client, dates, type (intra/inter), lieu, formateur éventuel, stagiaires à inscrire, prix HT. Vérifie d'abord avec `rechercher`/`detail_client` que le client, la formation et les apprenants existent (UUID). Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        formation_id: { type: 'string', description: 'UUID de la formation' },
+        client_id: { type: 'string', description: 'UUID du client' },
+        date_debut: { type: 'string', description: 'AAAA-MM-JJ' }, date_fin: { type: 'string', description: 'AAAA-MM-JJ (défaut : date_debut)' },
+        type_session: { type: 'string', enum: ['intra', 'inter'], description: 'Défaut : intra quand un client est donné' },
+        modalite: { type: 'string', enum: ['presentiel', 'distanciel', 'mixte'] },
+        lieu: { type: 'string', description: 'Lieu (défaut : dans les locaux du client)' },
+        horaires: { type: 'string', description: 'Ex. « 9h00-12h30 / 13h30-17h00 »' },
+        formateur_id: { type: 'string', description: 'UUID du formateur (la mission lui est proposée)' },
+        apprenant_ids: { type: 'array', items: { type: 'string' }, description: 'UUID des apprenants à inscrire' },
+        prix_ht: { type: 'number', description: 'Prix HT de la session' },
+        libelle: { type: 'string', description: 'Résumé humain, ex. « Créer la session Hygiène du 14 octobre chez Boucherie Dari (4 stagiaires, formateur Sofiane El Ouahid) »' },
+      },
+      required: ['formation_id', 'date_debut', 'libelle'],
+    },
+  },
+  {
+    name: 'action_creer_devis',
+    description: "PROPOSE la création d'un devis pour un client, avec une ligne (formation, quantité, prix unitaire HT). Le numéro est attribué automatiquement. Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        client_id: { type: 'string' }, formation_id: { type: 'string', description: 'UUID de la formation (optionnel)' },
+        objet: { type: 'string', description: 'Objet du devis, ex. « Formation Hygiène alimentaire, 4 stagiaires »' },
+        designation: { type: 'string', description: 'Libellé de la ligne (défaut : l’objet)' },
+        quantite: { type: 'number', description: 'Défaut : 1' },
+        prix_unitaire_ht: { type: 'number', description: 'Prix unitaire HT' },
+        date_validite: { type: 'string', description: 'AAAA-MM-JJ (défaut : +30 jours)' },
+        libelle: { type: 'string', description: 'Résumé humain' },
+      },
+      required: ['client_id', 'objet', 'prix_unitaire_ht', 'libelle'],
+    },
+  },
+  {
+    name: 'action_enregistrer_accord_pec',
+    description: "PROPOSE l'enregistrement de l'accord de prise en charge OPCO sur une session : montant financé et numéro de dossier OPCO (sert de base à la facture OPCO et aux commissions franchise). Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        session_id: { type: 'string' },
+        montant_finance: { type: 'number', description: 'Montant pris en charge (HT, en euros)' },
+        numero_dossier: { type: 'string', description: 'Numéro de dossier OPCO (optionnel)' },
+        libelle: { type: 'string', description: 'Résumé humain' },
+      },
+      required: ['session_id', 'montant_finance', 'libelle'],
+    },
+  },
+  {
+    name: 'action_generer_facture_opco',
+    description: "PROPOSE la génération de la facture OPCO d'une session (numérotée, adressée au financeur, montant = prise en charge enregistrée sauf montant_ht fourni). Refuse si une facture existe déjà sauf forcer. Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        session_id: { type: 'string' },
+        montant_ht: { type: 'number', description: 'Montant HT à facturer (défaut : prise en charge de la session)' },
+        forcer: { type: 'boolean', description: 'true pour régénérer malgré une facture existante' },
+        libelle: { type: 'string', description: 'Résumé humain' },
+      },
+      required: ['session_id', 'libelle'],
+    },
+  },
+  {
+    name: 'action_proposer_mission_formateur',
+    description: "PROPOSE d'affecter un formateur à une session et de lui proposer la mission (notification + email ; il accepte depuis son espace). Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        session_id: { type: 'string' }, formateur_id: { type: 'string' },
+        libelle: { type: 'string', description: 'Résumé humain, ex. « Proposer la session du 14 octobre à Sofiane El Ouahid »' },
+      },
+      required: ['session_id', 'formateur_id', 'libelle'],
+    },
+  },
+  {
+    name: 'action_envoyer_contrat_formateur',
+    description: "PROPOSE l'envoi du contrat de prestation au formateur de la session, avec son lien de signature (renvoi possible tant qu'il n'est pas signé). Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: { session_id: { type: 'string' }, libelle: { type: 'string', description: 'Résumé humain' } },
+      required: ['session_id', 'libelle'],
+    },
+  },
+  {
+    name: 'action_envoyer_pack_hygiene',
+    description: "PROPOSE l'envoi au formateur du Pack Hygiène de la session (classeur PDF à imprimer : PMS personnalisé, affichages, livret, règlement, programme, émargements, attestations, diplôme). Sessions hygiène uniquement. Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: { session_id: { type: 'string' }, libelle: { type: 'string', description: 'Résumé humain' } },
+      required: ['session_id', 'libelle'],
+    },
+  },
+  {
+    name: 'action_relancer_signatures',
+    description: "PROPOSE la relance de toutes les conventions envoyées et non signées (de l'organisme, ou d'une seule session si session_id) : le lien de signature est renvoyé au client avec sa validité prolongée. Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        session_id: { type: 'string', description: 'Limiter à une session (optionnel)' },
+        libelle: { type: 'string', description: 'Résumé humain, ex. « Relancer les 5 conventions en attente de signature »' },
+      },
+      required: ['libelle'],
+    },
+  },
+  {
+    name: 'action_creer_dossier_agefice',
+    description: "PROPOSE la création d'un dossier AGEFICE pour le prochain dirigeant inscrit à la session qui n'en a pas encore. Confirmation utilisateur requise.",
+    input_schema: {
+      type: 'object',
+      properties: { session_id: { type: 'string' }, libelle: { type: 'string', description: 'Résumé humain' } },
+      required: ['session_id', 'libelle'],
+    },
+  },
 ] as const
 
 export const NOMS_ACTIONS = new Set<string>(OUTILS_ACTIONS.map((o) => o.name))
@@ -461,6 +578,111 @@ export async function executerAction(type: string, params: any, orgId: string, u
       if (error || !data) return { success: false, message: error?.message || 'Dossier introuvable' }
       const a: any = (data as any).apprenant
       return { success: true, message: `Règlement ${params.mode}${params.reference ? ` n° ${params.reference}` : ''} enregistré sur le dossier ${data.numero_dossier || ''} de ${a?.prenom || ''} ${a?.nom || ''} — statut : remboursement demandé` }
+    }
+    if (type === 'action_creer_session') {
+      const { createSessionAction } = await import('@/app/dashboard/sessions/actions')
+      const fd = new FormData()
+      const champs: Record<string, any> = {
+        formation_id: params.formation_id, client_id: params.client_id || '',
+        date_debut: params.date_debut, date_fin: params.date_fin || params.date_debut,
+        type_session: params.type_session || (params.client_id ? 'intra' : 'inter'),
+        modalite: params.modalite || 'presentiel', lieu: params.lieu || '', horaires: params.horaires || '',
+        formateur_id: params.formateur_id || '', apprenant_ids: Array.isArray(params.apprenant_ids) ? params.apprenant_ids.join(',') : '',
+        prix_ht: params.prix_ht != null ? String(params.prix_ht) : '', status: 'planifiee',
+      }
+      for (const [k, v] of Object.entries(champs)) if (v !== undefined && v !== null) fd.append(k, String(v))
+      const r = await createSessionAction(fd)
+      if (!r.success) return { success: false, message: r.error || Object.values((r as any).errors || {}).flat().join(', ') || 'Création impossible' }
+      const id = (r as any).data?.id
+      return { success: true, message: `Session ${(r as any).data?.reference || ''} créée${params.formateur_id ? ', mission proposée au formateur' : ''} : /dashboard/sessions/${id}` }
+    }
+    if (type === 'action_creer_devis') {
+      const { createDevisAction, addDevisLigneAction } = await import('@/app/dashboard/devis/actions')
+      const validite = params.date_validite || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+      const fd = new FormData()
+      fd.append('client_id', String(params.client_id)); fd.append('objet', String(params.objet)); fd.append('date_validite', validite)
+      if (params.formation_id) fd.append('formation_id', String(params.formation_id))
+      const r = await createDevisAction(fd)
+      if (!r.success) return { success: false, message: r.error || 'Création du devis impossible' }
+      const devisId = (r as any).data?.id
+      const fl = new FormData()
+      fl.append('designation', String(params.designation || params.objet)); fl.append('quantite', String(params.quantite || 1))
+      fl.append('prix_unitaire_ht', String(params.prix_unitaire_ht)); fl.append('unite', 'forfait')
+      const l = await addDevisLigneAction(devisId, fl)
+      const total = Number(params.quantite || 1) * Number(params.prix_unitaire_ht)
+      return { success: true, message: `Devis ${(r as any).data?.numero || ''} créé (${total.toLocaleString('fr-FR')} € HT)${l.success ? '' : ' mais la ligne n’a pas pu être ajoutée'} : /dashboard/devis/${devisId}` }
+    }
+    if (type === 'action_enregistrer_accord_pec') {
+      const supabase = await createServiceRoleClient()
+      const montant = Number(params.montant_finance)
+      if (!montant || montant <= 0) return { success: false, message: 'Montant invalide' }
+      const patch: any = { montant_finance_opco: montant }
+      if (params.numero_dossier) patch.numero_dossier_opco = String(params.numero_dossier)
+      const { data, error } = await supabase.from('sessions').update(patch)
+        .eq('id', String(params.session_id)).eq('organization_id', orgId).select('reference').maybeSingle()
+      if (error || !data) return { success: false, message: error?.message || 'Session introuvable' }
+      return { success: true, message: `Prise en charge de ${montant.toLocaleString('fr-FR')} € enregistrée sur la session ${data.reference || ''}${params.numero_dossier ? ` (dossier ${params.numero_dossier})` : ''}` }
+    }
+    if (type === 'action_generer_facture_opco') {
+      const { genererFactureOpcoAction } = await import('@/app/dashboard/sessions/[id]/facture-opco-actions')
+      const r = await genererFactureOpcoAction(String(params.session_id), { montantHt: params.montant_ht != null ? Number(params.montant_ht) : undefined, forcer: !!params.forcer })
+      return r.success
+        ? { success: true, message: `Facture OPCO générée${(r as any).data?.numero ? ` : ${(r as any).data.numero}` : ''}` }
+        : { success: false, message: r.error || 'Génération impossible' }
+    }
+    if (type === 'action_proposer_mission_formateur') {
+      const supabase = await createServiceRoleClient()
+      const { data: f } = await supabase.from('formateurs').select('id, prenom, nom').eq('id', String(params.formateur_id)).eq('organization_id', orgId).maybeSingle()
+      if (!f) return { success: false, message: 'Formateur introuvable' }
+      const { data: s, error } = await supabase.from('sessions').update({
+        formateur_id: f.id, mission_status: 'pending', mission_proposed_at: new Date().toISOString(),
+        mission_proposed_by: userId || null, mission_responded_at: null,
+      }).eq('id', String(params.session_id)).eq('organization_id', orgId).select('id, reference').maybeSingle()
+      if (error || !s) return { success: false, message: error?.message || 'Session introuvable' }
+      try {
+        const { getSession } = await import('@/lib/auth')
+        const { notifyFormateurOfMission } = await import('@/app/dashboard/sessions/actions')
+        await notifyFormateurOfMission(f.id, s.id, supabase, await getSession())
+      } catch (e) { console.error('[starkk mission]', e) }
+      return { success: true, message: `Mission proposée à ${f.prenom} ${f.nom} sur la session ${s.reference || ''} (il l’accepte depuis son espace)` }
+    }
+    if (type === 'action_envoyer_contrat_formateur') {
+      const { sendContratToFormateurAction } = await import('@/app/dashboard/sessions/[id]/actions')
+      const r = await sendContratToFormateurAction(String(params.session_id))
+      return r.success
+        ? { success: true, message: `Contrat envoyé${(r as any).data?.email ? ` à ${(r as any).data.email}` : ''}` }
+        : { success: false, message: r.error || 'Envoi impossible' }
+    }
+    if (type === 'action_envoyer_pack_hygiene') {
+      const { envoyerPackHygieneFormateurAction } = await import('@/app/dashboard/sessions/[id]/pack-hygiene-actions')
+      const r = await envoyerPackHygieneFormateurAction(String(params.session_id))
+      return r.success
+        ? { success: true, message: `Pack Hygiène envoyé à ${r.data?.to} (${r.data?.tailleKo} Ko)` }
+        : { success: false, message: r.error || 'Envoi impossible' }
+    }
+    if (type === 'action_relancer_signatures') {
+      const supabase = await createServiceRoleClient()
+      let q = supabase.from('conventions').select('id, numero, type, session_id, client_id')
+        .eq('organization_id', orgId).not('sent_at', 'is', null).is('signature_client_date', null)
+        .not('status', 'in', '("annulee","brouillon","signee_client","signee_complete")').order('sent_at').limit(10)
+      if (params.session_id) q = q.eq('session_id', String(params.session_id))
+      const { data: convs } = await q
+      if (!convs?.length) return { success: false, message: 'Aucune convention en attente de signature' }
+      const { sendConventionForSignatureAction, envoyerConventionEntrepriseInterAction } = await import('@/app/dashboard/sessions/[id]/actions')
+      const faites: string[] = [], ratees: string[] = []
+      for (const c of convs) {
+        if (!c.session_id) { ratees.push(c.numero); continue }
+        const r = c.type === 'inter_entreprise' && c.client_id
+          ? await envoyerConventionEntrepriseInterAction(c.session_id, c.client_id)
+          : await sendConventionForSignatureAction(c.session_id, c.id)
+        ;(r.success ? faites : ratees).push(c.numero)
+      }
+      return { success: faites.length > 0, message: `${faites.length} relance${faites.length > 1 ? 's' : ''} envoyée${faites.length > 1 ? 's' : ''}${faites.length ? ` (${faites.join(', ')})` : ''}${ratees.length ? ` ; échec : ${ratees.join(', ')}` : ''}` }
+    }
+    if (type === 'action_creer_dossier_agefice') {
+      const { creerDossierDepuisSessionAction } = await import('@/app/dashboard/agefice/actions')
+      const r = await creerDossierDepuisSessionAction(String(params.session_id))
+      return r.success ? { success: true, message: 'Dossier AGEFICE créé pour le prochain dirigeant inscrit' } : { success: false, message: r.error || 'Création impossible' }
     }
     return { success: false, message: `Action inconnue : ${type}` }
   } catch (e: any) {

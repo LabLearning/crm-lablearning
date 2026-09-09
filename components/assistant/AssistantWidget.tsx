@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X, Send, Loader2, CheckCircle2, XCircle, Zap, RotateCcw } from '@/components/ui/icons'
+import { usePathname } from 'next/navigation'
+import { X, Send, Loader2, CheckCircle2, XCircle, Zap, RotateCcw, MapPin, ListChecks } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 interface ActionProposee {
@@ -12,7 +13,7 @@ interface ActionProposee {
   etat?: 'en_attente' | 'en_cours' | 'faite' | 'ignoree' | 'erreur'
   resultat?: string
 }
-interface Message { role: 'user' | 'assistant'; content: string; actions?: ActionProposee[] }
+interface Message { role: 'user' | 'assistant'; content: string; actions?: ActionProposee[]; contexte?: string | null }
 
 const CLE_HISTO = 'll_assistant_conversation'
 
@@ -99,6 +100,14 @@ export function AssistantWidget() {
   const [saisie, setSaisie] = useState('')
   const [busy, setBusy] = useState(false)
   const finRef = useRef<HTMLDivElement>(null)
+  // Contexte de page : Starkk sait sur quelle fiche on se trouve
+  const pathname = usePathname()
+  const [contexte, setContexte] = useState<string | null>(null)
+  useEffect(() => {
+    if (!open || !pathname) return
+    fetch('/api/assistant/contexte?chemin=' + encodeURIComponent(pathname))
+      .then((r) => (r.ok ? r.json() : null)).then((j) => setContexte(j?.libelle || null)).catch(() => setContexte(null))
+  }, [open, pathname])
 
   // La conversation survit à la navigation entre pages du CRM.
   useEffect(() => {
@@ -125,12 +134,12 @@ export function AssistantWidget() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         // L'API n'attend que role/content : on ne renvoie pas les cartes d'action.
-        body: JSON.stringify({ messages: suivant.map(({ role, content }) => ({ role, content })) }),
+        body: JSON.stringify({ messages: suivant.map(({ role, content }) => ({ role, content })), chemin: pathname }),
       })
       const j = await r.json().catch(() => null)
       const reponse = r.ok && j?.reponse ? j.reponse : (j?.error || 'L’assistant est indisponible, réessaie.')
       const actions: ActionProposee[] = (j?.actions || []).map((a: any) => ({ ...a, etat: 'en_attente' }))
-      setMessages((prev) => [...prev, { role: 'assistant', content: reponse, actions: actions.length ? actions : undefined }])
+      setMessages((prev) => [...prev, { role: 'assistant', content: reponse, actions: actions.length ? actions : undefined, contexte: j?.contexte?.libelle || null }])
     } catch {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Connexion impossible, réessaie dans un instant.' }])
     }
@@ -144,7 +153,7 @@ export function AssistantWidget() {
     }))
   }
 
-  async function confirmerAction(idxMessage: number, action: ActionProposee) {
+  async function confirmerAction(idxMessage: number, action: ActionProposee): Promise<boolean> {
     majAction(idxMessage, action.id, { etat: 'en_cours' })
     try {
       const r = await fetch('/api/assistant/action', {
@@ -153,11 +162,51 @@ export function AssistantWidget() {
         body: JSON.stringify({ type: action.type, params: action.params }),
       })
       const j = await r.json().catch(() => null)
-      if (r.ok && j?.success) majAction(idxMessage, action.id, { etat: 'faite', resultat: j.message })
-      else majAction(idxMessage, action.id, { etat: 'erreur', resultat: j?.message || j?.error || 'Échec' })
+      if (r.ok && j?.success) { majAction(idxMessage, action.id, { etat: 'faite', resultat: j.message }); return true }
+      majAction(idxMessage, action.id, { etat: 'erreur', resultat: j?.message || j?.error || 'Échec' })
+      return false
     } catch {
       majAction(idxMessage, action.id, { etat: 'erreur', resultat: 'Connexion impossible' })
+      return false
     }
+  }
+
+  const [planEnCours, setPlanEnCours] = useState<number | null>(null)
+  /** Plan : toutes les actions en attente d'un message, exécutées dans l'ordre, une confirmation. */
+  async function confirmerPlan(idxMessage: number, actions: ActionProposee[]) {
+    setPlanEnCours(idxMessage)
+    for (const a of actions.filter((x) => x.etat === 'en_attente')) {
+      await confirmerAction(idxMessage, a)
+    }
+    setPlanEnCours(null)
+  }
+
+  /** En-tête de plan : quand un message porte plusieurs actions à confirmer. */
+  function EnTetePlan({ idxMessage, actions }: { idxMessage: number; actions: ActionProposee[] }) {
+    const attente = actions.filter((a) => a.etat === 'en_attente')
+    const faites = actions.filter((a) => a.etat === 'faite').length
+    if (actions.length < 2) return null
+    return (
+      <div className="mt-2 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
+        <ListChecks className="h-4 w-4 text-brand-600 shrink-0" />
+        <div className="flex-1 text-xs font-semibold text-surface-800">
+          Plan en {actions.length} étapes{faites ? ` · ${faites} faite${faites > 1 ? 's' : ''}` : ''}
+        </div>
+        {attente.length > 0 && (
+          <>
+            <button onClick={() => confirmerPlan(idxMessage, actions)} disabled={planEnCours !== null}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50">
+              {planEnCours === idxMessage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              Tout confirmer ({attente.length})
+            </button>
+            <button onClick={() => attente.forEach((a) => majAction(idxMessage, a.id, { etat: 'ignoree' }))} disabled={planEnCours !== null}
+              className="rounded-lg border border-surface-200 bg-white px-2.5 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50">
+              Ignorer
+            </button>
+          </>
+        )}
+      </div>
+    )
   }
 
   function CarteAction({ action, idxMessage }: { action: ActionProposee; idxMessage: number }) {
@@ -230,7 +279,13 @@ export function AssistantWidget() {
             <AvatarStarkk taille="h-9 w-9" className="ring-2 ring-white/25" />
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold">Starkk</div>
-              <div className="text-[11px] text-white/70">L&apos;assistant Lab Learning · les actions partent après votre confirmation</div>
+              {contexte ? (
+                <div className="text-[11px] text-white/80 inline-flex items-center gap-1 truncate max-w-full" title="Starkk sait sur quelle fiche vous êtes">
+                  <MapPin className="h-3 w-3 text-[#5CD9A0] shrink-0" /> <span className="truncate">{contexte}</span>
+                </div>
+              ) : (
+                <div className="text-[11px] text-white/70">L&apos;assistant Lab Learning · les actions partent après votre confirmation</div>
+              )}
             </div>
             {messages.length > 0 && (
               <button onClick={() => setMessages([])} title="Nouvelle conversation" aria-label="Nouvelle conversation"
@@ -271,6 +326,7 @@ export function AssistantWidget() {
                   mes.role === 'user' ? 'bg-brand-500 text-white text-sm' : 'bg-white ring-1 ring-black/5 text-surface-700',
                 )}>
                   {mes.role === 'user' ? mes.content : <MessageRendu contenu={mes.content} />}
+                  {mes.actions && mes.actions.length > 1 && <EnTetePlan idxMessage={i} actions={mes.actions} />}
                   {mes.actions?.map((a) => <CarteAction key={a.id} action={a} idxMessage={i} />)}
                 </div>
               </div>

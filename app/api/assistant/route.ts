@@ -34,6 +34,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Message manquant' }, { status: 400 })
   }
 
+  // Contexte de page : l'entité que l'utilisateur regarde (session, client…)
+  const { resoudreContexte } = await import('@/lib/assistant/contexte')
+  const contexte = await resoudreContexte(typeof corps?.chemin === 'string' ? corps.chemin : null, organization.id).catch(() => null)
+
   const systeme = [
     `Tu es Starkk, l'assistant IA interne du CRM de ${organization.name}, un organisme de formation certifié Qualiopi (métiers de bouche et restauration).`,
     `Ton style : efficace et direct, avec une pointe d'esprit sobre à la Jarvis (le majordome brillant qui a toujours un coup d'avance) — jamais de familiarité avec les données ni de blabla.`,
@@ -43,7 +47,9 @@ export async function POST(req: Request) {
     `- Donne les liens en markdown : [Fiche de la session](/dashboard/sessions/xxx), [Convention signée (PDF)](/api/pdf/convention/xxx). L'utilisateur est connecté au CRM, les liens s'ouvrent directement.`,
     `- Réponds en français, court et précis. Dates au format « 28 juillet 2026 », montants en euros.`,
     `- Si une recherche ne donne rien, dis-le et propose une orthographe ou un angle différent.`,
-    `- ACTIONS : tu disposes d'un large jeu d'actions action_* (envois de documents, relances, liens de signature, paiements, création/modification de fiches client et apprenant, inscriptions, présences, statut de session, règlement AGEFICE, attestations d'hygiène). Tu les PROPOSES uniquement. Elles ne s'exécutent JAMAIS directement : l'utilisateur les confirme d'un clic dans l'interface. Propose une action seulement quand on te le demande clairement, avec un libellé précis (qui, quoi, quel montant). Pour tout le reste (modifier un statut, créer une fiche…), indique où le faire dans le CRM avec le lien.`,
+    `- ACTIONS : tu disposes d'un large jeu d'actions action_* (envois de documents, relances, liens de signature, paiements, fiches client et apprenant, inscriptions, présences, statut de session, AGEFICE, attestations d'hygiène, pack hygiène, contrat et mission formateur, facture OPCO, accord de prise en charge, devis, création de session, relance des signatures). Tu les PROPOSES uniquement : elles ne s'exécutent JAMAIS directement, l'utilisateur les confirme d'un clic. Chaque action porte un libellé précis (qui, quoi, quel montant).`,
+    `- PLANS : quand la demande couvre plusieurs étapes (« prépare la session », « clôture la session », « lance la facturation »), propose TOUTES les actions nécessaires dans la même réponse, dans l'ordre d'exécution : elles s'affichent comme un plan que l'utilisateur confirme en un clic (ou ligne par ligne). Vérifie d'abord l'état réel avec les outils de lecture pour ne proposer que ce qui manque (ne renvoie pas une convention déjà signée, n'inscris pas un stagiaire déjà inscrit). Annonce le plan en une ligne, sans paraphraser chaque action.`,
+    contexte ? `- CONTEXTE DE PAGE : ${contexte.prompt}` : `- L'utilisateur n'est sur aucune fiche précise : demande ou recherche l'entité concernée avant d'agir.`,
     `- Vocabulaire : jamais d'emoji ni de tiret cadratin.`,
   ].join('\n')
 
@@ -72,7 +78,7 @@ export async function POST(req: Request) {
       if (rep.stop_reason !== 'tool_use' || appels.length === 0) {
         // Réponse finale : ne garder que les blocs texte (jamais le thinking).
         const texte = (rep.content || []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n').trim()
-        return NextResponse.json({ reponse: texte || 'Je n’ai pas de réponse à te donner sur ce point.', actions: propositions })
+        return NextResponse.json({ reponse: texte || 'Je n’ai pas de réponse à te donner sur ce point.', actions: propositions, contexte: contexte ? { type: contexte.type, libelle: contexte.libelle } : null })
       }
 
       messages.push({ role: 'assistant', content: rep.content })

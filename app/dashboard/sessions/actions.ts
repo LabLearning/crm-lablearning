@@ -171,8 +171,8 @@ function safeParseJson(s: string): any[] {
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : [] } catch { return [] }
 }
 
-/** Helper : notif in-app + email "mission proposée" pour le formateur */
-async function notifyFormateurOfMission(formateurId: string, sessionId: string, supabase: any, session: any) {
+/** Helper : notif in-app + email "mission proposée" pour le formateur (aussi utilisé par Starkk) */
+export async function notifyFormateurOfMission(formateurId: string, sessionId: string, supabase: any, session: any) {
   const { createNotification, sendDocumentEmail } = await import('@/lib/email')
   const { data: formateur } = await supabase
     .from('formateurs').select('user_id, prenom, nom, email').eq('id', formateurId).single()
