@@ -48,12 +48,15 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
       .eq('id', conventionId)
   }
 
-  // Si un token existe déjà, on le réutilise
+  // Le lien vaut 30 jours à compter de CET envoi. Un jeton existant est
+  // réutilisé (le lien déjà reçu reste bon) mais sa validité repart : sans
+  // ça, tout renvoi après 30 jours envoyait un lien déjà expiré (CT Le Havre,
+  // conventions renvoyées trois fois sur un jeton mort du 3 août).
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + 30)
   let token = conv.signature_token
   if (!token) {
     token = createHash('sha256').update(randomBytes(32)).digest('hex')
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 30)  // 30 jours de validité
     await supabase
       .from('conventions')
       .update({
@@ -62,6 +65,11 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
         status: conv.status === 'brouillon' ? 'envoyee' : conv.status,
         sent_at: conv.status === 'brouillon' ? new Date().toISOString() : undefined,
       })
+      .eq('id', conventionId)
+  } else {
+    await supabase
+      .from('conventions')
+      .update({ signature_token_expires_at: expiresAt.toISOString() })
       .eq('id', conventionId)
   }
 
