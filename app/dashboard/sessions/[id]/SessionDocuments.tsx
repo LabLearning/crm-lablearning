@@ -359,12 +359,26 @@ export function SessionDocuments(props: Props) {
                       <div className="text-xs text-surface-400 truncate">{(apps || []).map((a) => `${a.prenom || ''} ${a.nom || ''}`.trim()).join(', ')}</div>
                     </div>
                     {c ? <StatutBadge etat={c.signature_client_date ? 'signe' : c.sent_at ? 'attente' : 'absent'} date={c.signature_client_date || c.sent_at} /> : <StatutBadge etat="absent" />}
-                    {c && (
+                    {c ? (
                       <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noreferrer"
                         title={c.signature_client_date ? 'Télécharger la convention signée' : 'Télécharger la convention'}
                         className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                         <Download className="h-3.5 w-3.5" /> {c.signature_client_date ? 'Signée' : 'PDF'}
                       </a>
+                    ) : (
+                      /* Pas encore envoyée : aperçu et téléchargement de la projection pour cette entreprise */
+                      <>
+                        <a href={`/api/pdf/preview/convention/${sessionId}?client=${cid}`} target="_blank" rel="noreferrer"
+                          title="Aperçu de la convention telle qu'elle sera envoyée"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                          <Eye className="h-3.5 w-3.5" /> Aperçu
+                        </a>
+                        <a href={`/api/pdf/preview/convention/${sessionId}?client=${cid}&download=1`}
+                          title="Télécharger la convention (non envoyée)"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                          <Download className="h-3.5 w-3.5" /> PDF
+                        </a>
+                      </>
                     )}
                     {!c?.signature_client_date && (
                       <button disabled={envoiContrat === cid} onClick={() => envoyerConventionEntreprise(cid)}
