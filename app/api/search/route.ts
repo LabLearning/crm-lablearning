@@ -56,12 +56,12 @@ export async function GET(req: NextRequest) {
     })),
     ...(apprenants.data || []).map((a: any) => ({
       group: 'Apprenants', label: `${a.prenom || ''} ${a.nom || ''}`.trim(), sublabel: a.entreprise || '',
-      href: `/dashboard/apprenants?q=${encodeURIComponent(a.nom || '')}`,
+      href: `/dashboard/apprenants/${a.id}`,
       preview: { title: `${a.prenom || ''} ${a.nom || ''}`.trim(), lines: clean([line('Entreprise', a.entreprise), line('Email', a.email), line('Téléphone', a.telephone)]) },
     })),
     ...(formateurs.data || []).map((f: any) => ({
       group: 'Formateurs', label: `${f.prenom || ''} ${f.nom || ''}`.trim(), sublabel: f.zone_intervention || '',
-      href: `/dashboard/formateurs`,
+      href: `/dashboard/formateurs/${f.id}`,
       preview: { title: `${f.prenom || ''} ${f.nom || ''}`.trim(), lines: clean([line('Email', f.email), line('Téléphone', f.telephone), line('Zone', f.zone_intervention)]) },
     })),
     ...(formations.data || []).map((f: any) => ({
