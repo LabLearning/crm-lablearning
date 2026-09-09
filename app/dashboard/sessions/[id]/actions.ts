@@ -1289,8 +1289,12 @@ export async function envoyerConventionEntrepriseInterAction(
     const numero = `CV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(3, '0')}`
     const token = createHash('sha256').update(randomBytes(32)).digest('hex')
     const expire = new Date(); expire.setDate(expire.getDate() + 30)
+    // Le prix saisi sur la session fait foi pour l'entreprise de la session ;
+    // le tarif catalogue × nb de stagiaires ne sert qu'aux autres entreprises
+    // d'une inter multi-clients (ou quand aucun prix n'est saisi).
     const tarifUnitaire = (sess as any).formation?.tarif_inter_ht != null ? Number((sess as any).formation.tarif_inter_ht) : null
-    const montant = tarifUnitaire != null ? tarifUnitaire * siens.length : null
+    const prixSession = (sess as any).prix_ht != null && (sess.client_id === clientId || !sess.client_id) ? Number((sess as any).prix_ht) : null
+    const montant = prixSession ?? (tarifUnitaire != null ? tarifUnitaire * siens.length : null)
     const { data: cree, error: eConv } = await supabase.from('conventions').insert({
       organization_id: orgId, numero, type: 'inter_entreprise', session_id: sessionId,
       client_id: clientId, formation_id: sess.formation_id, status: 'envoyee',
