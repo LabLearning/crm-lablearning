@@ -282,6 +282,8 @@ const fmtFr = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateStr
 export async function sendConventionForSignatureAction(
   sessionId: string,
   conventionId?: string,
+  /** lienSeul : prépare la convention et son lien de signature SANS envoyer d'email. */
+  opts?: { lienSeul?: boolean },
 ): Promise<ActionResult & { data?: { url: string; email?: string } }> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
@@ -388,6 +390,14 @@ export async function sendConventionForSignatureAction(
   const link = await generateSignatureLinkAction(convId)
   if (!link.success || !link.data?.url) return { success: false, error: link.error || 'Erreur lien de signature' }
   const url = (link.data as any).url as string
+
+  // Lien seul : la convention est prête et son lien valide, mais rien ne part
+  // (le gestionnaire le transmet lui-même : WhatsApp, autre adresse, en main propre).
+  if (opts?.lienSeul) {
+    revalidatePath(`/dashboard/sessions/${sessionId}`)
+    revalidatePath('/dashboard/conventions')
+    return { success: true, data: { url } }
+  }
 
   // Email destinataire : email client, sinon premier contact
   const { data: client } = await supabase
@@ -1241,6 +1251,8 @@ export async function envoyerContratParticulierAction(
 export async function envoyerConventionEntrepriseInterAction(
   sessionId: string,
   clientId: string,
+  /** lienSeul : prépare la convention et son lien de signature SANS envoyer d'email (lien à transmettre soi-même). */
+  opts?: { lienSeul?: boolean },
 ): Promise<ActionResult & { data?: { url: string } }> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
@@ -1305,6 +1317,12 @@ export async function envoyerConventionEntrepriseInterAction(
   }
 
   const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'}/convention/${conv!.signature_token}/signer`
+
+  if (opts?.lienSeul) {
+    await logAudit({ action: 'generate_signature_link', entity_type: 'convention', entity_id: conv!.id })
+    revalidatePath(`/dashboard/sessions/${sessionId}`)
+    return { success: true, data: { url } }
+  }
 
   // Destinataire : email client, sinon premier contact
   let toEmail: string | null = client.email || null

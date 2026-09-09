@@ -91,6 +91,16 @@ export function SessionDocuments(props: Props) {
     if (r.success) { toast('success', 'Convention envoyée pour signature'); router.refresh() }
     else toast('error', r.error || 'Erreur')
   }
+  /** Lien de signature seul (sans email) : la convention est préparée, le lien s'affiche à copier. */
+  async function genererLienEntreprise(clientId: string) {
+    setEnvoiContrat(`lien:${clientId}`)
+    setSignUrl(null); setCopied(false)
+    const { envoyerConventionEntrepriseInterAction } = await import('./actions')
+    const r = await envoyerConventionEntrepriseInterAction(props.sessionId, clientId, { lienSeul: true })
+    setEnvoiContrat(null)
+    if (r.success && r.data?.url) { setSignUrl(r.data.url); toast('success', 'Lien de signature prêt (à copier ci-dessous)'); router.refresh() }
+    else toast('error', r.error || 'Erreur')
+  }
 
   const {
     sessionId, hasClient, hasFormateur, formateurId, formateurNom, formateurEmail,
@@ -145,6 +155,19 @@ export function SessionDocuments(props: Props) {
       if (r.success) {
         toast('success', (r as any).data?.email ? `Convention envoyée à ${(r as any).data.email}` : 'Convention prête à signer')
         if ((r as any).data?.url) setSignUrl((r as any).data.url)
+        router.refresh()
+      } else toast('error', r.error || 'Erreur')
+    })
+  }
+  /** Lien de signature seul, sans email : la convention est préparée et le lien s'affiche à copier. */
+  function doLinkConvention() {
+    setBusy('conv'); setSignUrl(null); setCopied(false)
+    startTransition(async () => {
+      const r = await sendConventionForSignatureAction(sessionId, undefined, { lienSeul: true })
+      setBusy(null)
+      if (r.success && (r as any).data?.url) {
+        setSignUrl((r as any).data.url)
+        toast('success', 'Lien de signature prêt (à copier ci-dessous)')
         router.refresh()
       } else toast('error', r.error || 'Erreur')
     })
@@ -236,13 +259,15 @@ export function SessionDocuments(props: Props) {
 
   // ── Ligne document ──
   function DocRow({
-    icon, titre, sousTitre, etat, date, onPreview, onSend, sendLabel, downloadUrl, disabled, disabledReason, busyKey, onCancel, envois,
+    icon, titre, sousTitre, etat, date, onPreview, onSend, sendLabel, downloadUrl, disabled, disabledReason, busyKey, onCancel, envois, onLink,
   }: {
     icon: React.ReactNode; titre: string; sousTitre: string
     etat: 'absent' | 'attente' | 'partiel' | 'signe'; date?: string | null
     onPreview: () => void; onSend: () => void; sendLabel: string
     downloadUrl: string | null; disabled?: boolean; disabledReason?: string; busyKey: 'conv' | 'contrat'
     onCancel?: () => void; envois: EnvoiDoc[]
+    /** Génère le lien de signature sans envoyer d'email */
+    onLink?: () => void
   }) {
     const ouvert = histo === busyKey
     return (
@@ -294,6 +319,16 @@ export function SessionDocuments(props: Props) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-danger-200 text-danger-600 text-xs font-medium hover:bg-danger-50 disabled:opacity-40"
             >
               <XCircle className="h-3.5 w-3.5" /> Annuler
+            </button>
+          )}
+          {onLink && etat !== 'signe' && (
+            <button
+              onClick={onLink}
+              disabled={disabled || pending}
+              title={disabled ? disabledReason : 'Générer le lien de signature sans envoyer d\'email'}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Copy className="h-3.5 w-3.5" /> Lien
             </button>
           )}
           {etat !== 'signe' && (
@@ -381,11 +416,19 @@ export function SessionDocuments(props: Props) {
                       </>
                     )}
                     {!c?.signature_client_date && (
-                      <button disabled={envoiContrat === cid} onClick={() => envoyerConventionEntreprise(cid)}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
-                        {envoiContrat === cid ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                        {c ? 'Renvoyer' : 'Envoyer la convention'}
-                      </button>
+                      <>
+                        <button disabled={envoiContrat === `lien:${cid}`} onClick={() => genererLienEntreprise(cid)}
+                          title="Générer le lien de signature sans envoyer d'email"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
+                          {envoiContrat === `lien:${cid}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                          Lien
+                        </button>
+                        <button disabled={envoiContrat === cid} onClick={() => envoyerConventionEntreprise(cid)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
+                          {envoiContrat === cid ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                          {c ? 'Renvoyer' : 'Envoyer la convention'}
+                        </button>
+                      </>
                     )}
                   </div>
                 )
@@ -430,6 +473,7 @@ export function SessionDocuments(props: Props) {
           etat={convEtat} date={convDate}
           onPreview={() => openPreview('conv')}
           onSend={doSendConvention}
+          onLink={doLinkConvention}
           onCancel={() => setConfirmCancelOpen(true)}
           sendLabel="Envoyer en signature"
           downloadUrl={convention ? `/api/pdf/convention/${convention.id}` : null}
