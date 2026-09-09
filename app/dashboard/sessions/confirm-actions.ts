@@ -77,19 +77,26 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
     .eq('session_id', sessionId)
     .maybeSingle()
 
+  // Le lien vaut 30 jours à compter de CET envoi : un jeton réutilisé voit sa
+  // validité repartir (sinon un renvoi tardif part avec un lien expiré).
+  const convExpires = new Date()
+  convExpires.setDate(convExpires.getDate() + 30)
   let convToken = convention?.signature_token
   if (convention && !convToken) {
     convToken = newToken()
-    const expires = new Date()
-    expires.setDate(expires.getDate() + 30)
     await supabase
       .from('conventions')
       .update({
         signature_token: convToken,
-        signature_token_expires_at: expires.toISOString(),
+        signature_token_expires_at: convExpires.toISOString(),
         status: 'envoyee',
         sent_at: new Date().toISOString(),
       })
+      .eq('id', convention.id)
+  } else if (convention && convToken) {
+    await supabase
+      .from('conventions')
+      .update({ signature_token_expires_at: convExpires.toISOString() })
       .eq('id', convention.id)
   }
 
@@ -145,6 +152,14 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
       .select()
       .single()
     contratId = contrat?.id
+  } else if (contratToken) {
+    // Renvoi du lien : validité prolongée de 30 jours
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 30)
+    await supabase
+      .from('contrats_formateur')
+      .update({ signature_token_expires_at: expires.toISOString() })
+      .eq('id', contratId)
   }
 
   // ── 4. Envoyer les 2 emails (+ WhatsApp si opt-in) ──

@@ -1251,6 +1251,12 @@ export async function acceptPoeiInterventionAction(interventionId: string): Prom
         sent_at: new Date().toISOString(),
         created_by: iv.mission_proposed_by || session.user.id,
       })
+    } else if (token && existing?.status !== 'signe_formateur') {
+      // Renvoi du lien : validité prolongée de 30 jours
+      const expires = new Date(); expires.setDate(expires.getDate() + 30)
+      await supabase.from('contrats_formateur')
+        .update({ signature_token_expires_at: expires.toISOString() })
+        .eq('id', existing.id)
     }
     if (token && existing?.status !== 'signe_formateur') {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'

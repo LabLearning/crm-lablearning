@@ -1178,6 +1178,14 @@ export async function envoyerContratParticulierAction(
     }).select('id, numero, signature_token').single()
     if (eConv || !cree) return { success: false, error: 'Création du contrat impossible' }
     conv = cree as any
+  } else {
+    // Renvoi : le lien repart pour 30 jours (jeton créé s'il manque)
+    const expire = new Date(); expire.setDate(expire.getDate() + 30)
+    const token = (conv as any).signature_token || createHash('sha256').update(randomBytes(32)).digest('hex')
+    await supabase.from('conventions')
+      .update({ signature_token: token, signature_token_expires_at: expire.toISOString() })
+      .eq('id', (conv as any).id)
+    conv = { ...(conv as any), signature_token: token } as any
   }
 
   const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'}/convention/${conv!.signature_token}/signer`
@@ -1286,6 +1294,14 @@ export async function envoyerConventionEntrepriseInterAction(
     }).select('id, numero, signature_token').single()
     if (eConv || !cree) return { success: false, error: 'Création de la convention impossible' }
     conv = cree as any
+  } else {
+    // Renvoi : le lien repart pour 30 jours (jeton créé s'il manque)
+    const expire = new Date(); expire.setDate(expire.getDate() + 30)
+    const token = (conv as any).signature_token || createHash('sha256').update(randomBytes(32)).digest('hex')
+    await supabase.from('conventions')
+      .update({ signature_token: token, signature_token_expires_at: expire.toISOString() })
+      .eq('id', (conv as any).id)
+    conv = { ...(conv as any), signature_token: token } as any
   }
 
   const url = `${process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'}/convention/${conv!.signature_token}/signer`

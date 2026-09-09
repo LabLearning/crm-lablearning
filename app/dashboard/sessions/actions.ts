@@ -358,6 +358,13 @@ export async function acceptMissionAction(sessionId: string): Promise<ActionResu
         sent_at: new Date().toISOString(),
         created_by: sess.mission_proposed_by || session.user.id,
       })
+    } else if (contratToken && existingContrat?.status !== 'signe') {
+      // Renvoi du lien : validité prolongée de 30 jours
+      const expires = new Date()
+      expires.setDate(expires.getDate() + 30)
+      await supabase.from('contrats_formateur')
+        .update({ signature_token_expires_at: expires.toISOString() })
+        .eq('id', existingContrat.id)
     }
     if (contratToken && existingContrat?.status !== 'signe') {
       contratSignUrl = `${appUrl}/contrat-formateur/${contratToken}/signer`
