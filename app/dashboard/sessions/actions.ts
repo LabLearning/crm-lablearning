@@ -606,6 +606,13 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
     }
   }
 
+  // Dates ou horaires modifiés, stagiaires ajoutés : la grille d'émargement
+  // se complète (jamais de suppression, les créneaux signés restent).
+  try {
+    const { ensureEmargements } = await import('@/lib/emargements')
+    await ensureEmargements(supabase, id, session.organization.id)
+  } catch (e) { console.error('[grille émargement]', e) }
+
   await logAudit({ action: 'update', entity_type: 'session', entity_id: id })
   revalidatePath('/dashboard/sessions')
   return { success: true }

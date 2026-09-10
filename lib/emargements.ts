@@ -16,7 +16,7 @@ export async function ensureEmargements(
 ): Promise<number> {
   const { data: sess } = await supabase
     .from('sessions')
-    .select('id, date_debut, date_fin, poei_intervention_id')
+    .select('id, date_debut, date_fin, poei_intervention_id, horaires_jours')
     .eq('id', sessionId)
     .single()
   if (!sess?.date_debut || !sess?.date_fin) return 0
@@ -37,18 +37,39 @@ export async function ensureEmargements(
     .filter(Boolean) as string[]
   if (apprenantIds.length === 0) return 0
 
-  // Samedi et dimanche sont exclus : générer des feuilles le week-end
-  // produisait des journées fantômes que le formateur ne peut ni signer ni
-  // valider. Une séance exceptionnelle un samedi s'ajoute à la main.
-  const jours: string[] = []
-  const d = new Date(sess.date_debut)
-  const fin = new Date(sess.date_fin)
-  while (d <= fin) {
-    const jourSemaine = d.getDay()
-    if (inclureWeekend || (jourSemaine !== 0 && jourSemaine !== 6)) {
-      jours.push(d.toISOString().split('T')[0])
+  // Les jours réellement planifiés font foi quand ils sont saisis
+  // (horaires_jours : une formation « 3 jours par semaine » n'a pas de
+  // créneau les autres jours, une demi-journée n'a qu'un créneau). Sinon,
+  // repli : chaque jour entre les deux dates, samedi et dimanche exclus,
+  // sauf POEI en entreprise.
+  type Creneau = { date: string; creneau: 'matin' | 'apres_midi'; heure_debut: string | null; heure_fin: string | null }
+  const creneaux: Creneau[] = []
+  const planning = Array.isArray(sess.horaires_jours) ? sess.horaires_jours.filter((j: any) => j?.date) : []
+  if (planning.length) {
+    for (const j of planning) {
+      const date = String(j.date).slice(0, 10)
+      const matin = !!(j.matin_debut && j.matin_fin)
+      const aprem = !!(j.aprem_debut && j.aprem_fin)
+      if (matin) creneaux.push({ date, creneau: 'matin', heure_debut: j.matin_debut, heure_fin: j.matin_fin })
+      if (aprem) creneaux.push({ date, creneau: 'apres_midi', heure_debut: j.aprem_debut, heure_fin: j.aprem_fin })
+      // Jour saisi sans horaires : journée complète par défaut
+      if (!matin && !aprem) {
+        creneaux.push({ date, creneau: 'matin', heure_debut: null, heure_fin: null })
+        creneaux.push({ date, creneau: 'apres_midi', heure_debut: null, heure_fin: null })
+      }
     }
-    d.setDate(d.getDate() + 1)
+  } else {
+    const d = new Date(sess.date_debut)
+    const fin = new Date(sess.date_fin)
+    while (d <= fin) {
+      const jourSemaine = d.getDay()
+      if (inclureWeekend || (jourSemaine !== 0 && jourSemaine !== 6)) {
+        const date = d.toISOString().split('T')[0]
+        creneaux.push({ date, creneau: 'matin', heure_debut: null, heure_fin: null })
+        creneaux.push({ date, creneau: 'apres_midi', heure_debut: null, heure_fin: null })
+      }
+      d.setDate(d.getDate() + 1)
+    }
   }
 
   // Une seule lecture de l'existant plutôt qu'une par jour et par créneau
@@ -61,19 +82,19 @@ export async function ensureEmargements(
   )
 
   const aCreer: any[] = []
-  for (const jour of jours) {
-    for (const creneau of ['matin', 'apres_midi']) {
-      for (const apprenant_id of apprenantIds) {
-        if (deja.has(`${jour}|${creneau}|${apprenant_id}`)) continue
-        aCreer.push({
-          organization_id: organizationId,
-          session_id: sessionId,
-          apprenant_id,
-          date: jour,
-          creneau,
-          est_present: false,
-        })
-      }
+  for (const c of creneaux) {
+    for (const apprenant_id of apprenantIds) {
+      if (deja.has(`${c.date}|${c.creneau}|${apprenant_id}`)) continue
+      aCreer.push({
+        organization_id: organizationId,
+        session_id: sessionId,
+        apprenant_id,
+        date: c.date,
+        creneau: c.creneau,
+        heure_debut: c.heure_debut,
+        heure_fin: c.heure_fin,
+        est_present: false,
+      })
     }
   }
 
