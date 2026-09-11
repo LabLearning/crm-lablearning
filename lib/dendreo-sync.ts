@@ -4,6 +4,8 @@
 // Utilisé par le cron quotidien (/api/cron/dendreo-sync) et exportable
 // pour un run manuel. Reprend fidèlement migration/dendreo-sync.mjs.
 
+import { cleExploitable, cleIdentite } from '@/lib/dendreo-participants'
+
 // ── Nettoyage HTML des champs Dendreo (aligné sur migration/html-clean.mjs) ──
 const HTML_ENTITIES: Record<string, string> = {
   '&amp;': '&', '&lt;': '<', '&gt;': '>', '&nbsp;': ' ', '&quot;': '"',
@@ -47,7 +49,7 @@ function fieldItems(s: any): string[] {
     const text = decodeEntities(raw.replace(/<\/(p|div|h[1-6])>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '))
     return mergeContinuations(text.split('\n').map((l) => stripBullet(stripPua(l)).trim()).filter(Boolean))
   }
-  return mergeContinuations(raw.split('\n').map((l) => stripBullet(stripPua(l)).trim()).filter(Boolean))
+  return mergeContinuations(raw.split('\n').map((l: string) => stripBullet(stripPua(l)).trim()).filter(Boolean))
 }
 function htmlFieldToText(s: any): string | null {
   const items = fieldItems(s)
@@ -59,8 +61,8 @@ export interface SyncReport {
   formateurs: { new: number; existing: number }
   formations: { new: number; existing: number }
   contacts: { new: number; existing: number; orphan: number }
-  apprenants: { new: number; existing: number; orphan: number }
-  sessions: { new: number; existing: number; orphan_formation: number; formateur_backfill?: number }
+  apprenants: { new: number; existing: number; orphan: number; relies_par_nom?: number }
+  sessions: { new: number; existing: number; orphan_formation: number; formateur_backfill?: number; archivees_ignorees?: number }
 }
 
 const norm = (s: any) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ')
@@ -248,13 +250,39 @@ export async function runDendreoSync(apply: boolean): Promise<SyncReport> {
 
   // PARTICIPANTS → apprenants
   {
-    const toInsert: any[] = []; let orphan = 0
+    // Une fiche saisie à la main pour la même personne du même client reçoit
+    // l'identifiant Dendreo au lieu d'être doublée : sans cela, une fusion de
+    // doublons qui garde la fiche manuelle est défaite au sync suivant.
+    const orphelines = new Map<string, string[]>()
+    for (let from = 0; ; from += 1000) {
+      const r = await fetch(`${SBASE}/rest/v1/apprenants?organization_id=eq.${ORG}&dendreo_id=is.null&client_id=not.is.null&select=id,nom,prenom,client_id&order=id`, { headers: { ...sbHeaders, Range: `${from}-${from + 999}` }, cache: 'no-store' })
+      if (!r.ok) throw new Error(`GET apprenants → ${r.status}`)
+      const batch = await r.json()
+      for (const a of batch) {
+        const k = `${a.client_id}|${cleIdentite(a.prenom, a.nom)}`
+        orphelines.set(k, [...(orphelines.get(k) || []), a.id])
+      }
+      if (batch.length < 1000) break
+    }
+    const toInsert: any[] = []; let orphan = 0; let reliesParNom = 0
     for (const p of participants) {
       const did = String(p.id_participant)
       if (apprenantMap.has(did)) continue
       if (!clean(p.nom) && !clean(p.prenom)) continue
       const clientId = p.id_entreprise ? clientMap.get(String(p.id_entreprise)) : null
       if (p.id_entreprise && !entrepriseIds.has(String(p.id_entreprise))) orphan++
+      const cle = cleIdentite(p.prenom, p.nom)
+      const memes = clientId && cleExploitable(cle) ? orphelines.get(`${clientId}|${cle}`) || [] : []
+      if (memes.length === 1) {
+        orphelines.delete(`${clientId}|${cle}`)
+        apprenantMap.set(did, memes[0])
+        reliesParNom++
+        if (apply) {
+          try { await sb('PATCH', `/apprenants?id=eq.${memes[0]}&dendreo_id=is.null`, { dendreo_id: did }) }
+          catch (e) { console.error('[dendreo-sync] liaison par nom', did, e) }
+        }
+        continue
+      }
       toInsert.push({
         organization_id: ORG, dendreo_id: did, client_id: clientId || null,
         civilite: clean(p.civilite), nom: clean(p.nom) || '—', prenom: clean(p.prenom) || '',
@@ -265,7 +293,7 @@ export async function runDendreoSync(apply: boolean): Promise<SyncReport> {
       })
     }
     await insertBatch('apprenants', toInsert)
-    report.apprenants = { new: toInsert.length, existing: participants.length - toInsert.length, orphan }
+    report.apprenants = { new: toInsert.length, existing: participants.length - toInsert.length - reliesParNom, orphan, relies_par_nom: reliesParNom }
   }
 
   // ACTIONS_DE_FORMATION → sessions
@@ -274,7 +302,7 @@ export async function runDendreoSync(apply: boolean): Promise<SyncReport> {
     const fuzzyForm = (intit: any) => {
       const q = norm(intit); if (!q) return null
       for (const [k, id] of formationEntries) if (k.includes(q) || q.includes(k)) return id
-      const qt = new Set(q.split(' ').filter((w) => w.length > 3))
+      const qt = new Set(q.split(' ').filter((w: string) => w.length > 3))
       if (!qt.size) return null
       let best: string | null = null, bestScore = 0
       for (const [k, id] of formationEntries) {
@@ -291,10 +319,21 @@ export async function runDendreoSync(apply: boolean): Promise<SyncReport> {
       for (const fd of dids) { const id = formateurMap.get(fd); if (id) return id }
       return null
     }
-    const toInsert: any[] = []; let orphanForm = 0
+    // Une seule clé Dendreo est branchée : une action présente dans une autre
+    // organisation y a été rangée (archive). La recréer ici défait le tri.
+    const rangees = new Set<string>()
+    for (let from = 0; ; from += 1000) {
+      const r = await fetch(`${SBASE}/rest/v1/sessions?organization_id=neq.${ORG}&dendreo_id=not.is.null&select=dendreo_id&order=id`, { headers: { ...sbHeaders, Range: `${from}-${from + 999}` }, cache: 'no-store' })
+      if (!r.ok) throw new Error(`GET sessions rangées → ${r.status}`)
+      const batch = await r.json()
+      for (const x of batch) rangees.add(String(x.dendreo_id))
+      if (batch.length < 1000) break
+    }
+    const toInsert: any[] = []; let orphanForm = 0; let archiveesIgnorees = 0
     for (const a of actions) {
       const did = String(a.id_action_de_formation)
       if (sessionMap.has(did)) continue
+      if (rangees.has(did)) { archiveesIgnorees++; continue }
       const formationId = formationByName.get(norm(a.intitule)) || formationByName.get(norm(a.formation)) || fuzzyForm(a.intitule)
       if (!formationId) orphanForm++
       const clientId = a.id_entreprise ? clientMap.get(String(a.id_entreprise)) : null
@@ -332,7 +371,7 @@ export async function runDendreoSync(apply: boolean): Promise<SyncReport> {
         formateurBackfill++
       }
     }
-    report.sessions = { new: insertable.length, existing: actions.length - toInsert.length, orphan_formation: orphanForm, formateur_backfill: formateurBackfill }
+    report.sessions = { new: insertable.length, existing: actions.length - toInsert.length - archiveesIgnorees, orphan_formation: orphanForm, formateur_backfill: formateurBackfill, archivees_ignorees: archiveesIgnorees }
   }
 
   return report as SyncReport

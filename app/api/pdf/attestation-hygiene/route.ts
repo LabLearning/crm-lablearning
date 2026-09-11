@@ -76,16 +76,29 @@ export async function GET(req: NextRequest) {
       : dureePrevue
   }
 
+  // Comme pour l'envoi automatique, aucune attestation à 0 heure une fois la
+  // session passée. Avant sa fin, la grille n'est pas encore signée : le pack
+  // Hygiène imprime les attestations à l'avance.
+  const fin = String((sess as any).date_fin || '').slice(0, 10)
+  const passee = !!fin && fin < new Date().toISOString().slice(0, 10)
+  const aAttester = passee ? apprenants.filter((a: any) => (heuresParApprenant[a.id] || 0) > 0) : apprenants
+  if (aAttester.length === 0) {
+    return NextResponse.json(
+      { error: apprenantId ? "Aucune présence relevée pour ce stagiaire : l'attestation attend ses émargements" : 'Aucune présence relevée sur cette session : les attestations attendent les émargements' },
+      { status: 422 },
+    )
+  }
+
   const org = await withDocumentLogo(supabase, orgRow)
 
   const buffer = await renderToBuffer(
     createElement(AttestationHygienePDF, {
-      apprenants, session: sess as any, formation, org, heuresParApprenant,
+      apprenants: aAttester, session: sess as any, formation, org, heuresParApprenant,
     }) as any,
   )
 
-  const nom = apprenantId && apprenants[0]
-    ? `Attestation hygiene - ${apprenants[0].nom} ${apprenants[0].prenom}`
+  const nom = apprenantId && aAttester[0]
+    ? `Attestation hygiene - ${aAttester[0].nom} ${aAttester[0].prenom}`
     : `Attestations hygiene - ${(sess as any).reference || 'session'}`
 
   return new NextResponse(new Uint8Array(buffer), {

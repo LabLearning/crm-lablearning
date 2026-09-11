@@ -306,9 +306,26 @@ export async function envoyerDocumentsAuReferentAction(
     .select('apprenant:apprenants(*)')
     .eq('session_id', sessionId)
     .not('status', 'in', '("annule","abandonne")')
-  const apprenants = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
+  const inscrits = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
     .sort((a: any, b: any) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr'))
-  if (apprenants.length === 0) return { success: false, error: 'Aucun stagiaire sur cette session' }
+  if (inscrits.length === 0) return { success: false, error: 'Aucun stagiaire sur cette session' }
+
+  // L'assiduité de chaque stagiaire, comme sur les envois individuels.
+  const { data: em } = await supabase.from('emargements')
+    .select('apprenant_id, est_present').eq('session_id', sessionId)
+  const dureePrevue = Number(formation?.duree_heures || 0)
+  const assiduiteDe = (apprenantId: string) => {
+    const lignes = (em || []).filter((e: any) => e.apprenant_id === apprenantId)
+    if (lignes.length === 0) return { assiduite: undefined as number | undefined, heures: dureePrevue }
+    const presents = lignes.filter((e: any) => e.est_present).length
+    const pct = Math.round((presents / lignes.length) * 100)
+    return { assiduite: pct, heures: Math.round(dureePrevue * pct) / 100 }
+  }
+  // Même règle que l'envoi automatique : aucune attestation d'hygiène à 0 heure
+  const apprenants = type === 'hygiene' ? inscrits.filter((a: any) => assiduiteDe(a.id).heures > 0) : inscrits
+  if (apprenants.length === 0) {
+    return { success: false, error: "Aucun stagiaire n'a de présence relevée : les attestations d'hygiène attendent les émargements" }
+  }
 
   const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
   const formationNom = formation?.intitule || (sess as any).intitule || 'Formation'
@@ -349,18 +366,6 @@ export async function envoyerDocumentsAuReferentAction(
   const { renderToBuffer } = await import('@react-pdf/renderer')
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
   const orgDoc = await withDocumentLogo(supabase, org)
-
-  // L'assiduité de chaque stagiaire, comme sur les envois individuels.
-  const { data: em } = await supabase.from('emargements')
-    .select('apprenant_id, est_present').eq('session_id', sessionId)
-  const dureePrevue = Number(formation?.duree_heures || 0)
-  const assiduiteDe = (apprenantId: string) => {
-    const lignes = (em || []).filter((e: any) => e.apprenant_id === apprenantId)
-    if (lignes.length === 0) return { assiduite: undefined as number | undefined, heures: dureePrevue }
-    const presents = lignes.filter((e: any) => e.est_present).length
-    const pct = Math.round((presents / lignes.length) * 100)
-    return { assiduite: pct, heures: Math.round(dureePrevue * pct) / 100 }
-  }
 
   const attachments: { filename: string; content: Buffer }[] = []
   try {
