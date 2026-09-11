@@ -176,6 +176,9 @@ export async function inscrireApprenantAction(apprenantId: string, sessionId: st
     return { success: false, error: 'Erreur lors de l\'inscription' }
   }
 
+  // Session imminente (aujourd'hui à J+3) : la convocation part tout de suite
+  try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, sessionId, session.user.id) } catch { /* le cron rattrape */ }
+
   // Convention déjà envoyée/signée ? → avenant automatique
   try {
     const { syncConventionAvenant } = await import('@/lib/convention-avenants')

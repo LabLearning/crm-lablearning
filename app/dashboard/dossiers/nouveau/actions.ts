@@ -144,6 +144,9 @@ export async function creerDossierCompletAction(formData: FormData): Promise<Act
   )
   if (eIns) console.error('[dossier inscriptions]', eIns.message)
 
+  // Session imminente (aujourd'hui à J+3) : la convocation part tout de suite
+  try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, sess.id, session.user.id) } catch { /* le cron rattrape */ }
+
   // ── 5. Financement AGEFICE : dossier de prise en charge créé et relié ──
   let warning: string | undefined
   if (String(formData.get('financement') || '') === 'agefice') {

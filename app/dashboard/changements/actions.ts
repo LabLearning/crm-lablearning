@@ -84,6 +84,7 @@ export async function validateChangeAction(id: string, reponse?: string): Promis
         status: 'confirme',
         date_inscription: new Date().toISOString(),
       })
+      try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, d.session_id, null) } catch { /* le cron rattrape */ }
     }
   }
 

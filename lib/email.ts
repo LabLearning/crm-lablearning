@@ -525,6 +525,7 @@ export async function sendDocumentEmail(params: {
   entityType?: string
   entityId?: string
   triggeredBy?: string
+  templateSlug?: string
 }): Promise<{ success: boolean; error?: string }> {
   const html = buildDocumentEmailHtml(params)
 
@@ -555,6 +556,7 @@ export async function sendDocumentEmail(params: {
     entityType: params.entityType,
     entityId: params.entityId,
     triggeredBy: params.triggeredBy,
+    templateSlug: params.templateSlug,
   })
 }
 

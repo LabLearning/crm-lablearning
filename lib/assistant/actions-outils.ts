@@ -533,6 +533,7 @@ export async function executerAction(type: string, params: any, orgId: string, u
           date: m.date, creneau: m.creneau, heure_debut: m.heure_debut, heure_fin: m.heure_fin,
         })))
       }
+      try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, sess.id, userId || null) } catch { /* le cron rattrape */ }
       return { success: true, message: `Inscription faite${grille?.length ? ` (+ ${grille.length} créneaux d'émargement)` : ''}` }
     }
     if (type === 'action_poser_presence') {

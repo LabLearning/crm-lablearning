@@ -131,6 +131,7 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
       const { lierInscritsAuxQcmSession } = await import('@/lib/qcm-auto-seed')
       await lierInscritsAuxQcmSession(supabase, data.id)
     } catch (e) { console.error('[lien qcm]', e) }
+    try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, data.id, session.user.id) } catch { /* le cron rattrape */ }
     // Un apprenant créé à la volée sans client hérite de celui de la session,
     // sinon il n'apparaît sur aucune fiche client
     if (parsed.data.client_id) {
@@ -605,6 +606,8 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
       } catch (e) { console.error('[avenant]', e) }
     }
   }
+  // Dates avancées ou stagiaires ajoutés sur une session imminente : convocations manquantes
+  try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, id, session.user.id) } catch { /* le cron rattrape */ }
 
   // Dates ou horaires modifiés, stagiaires ajoutés : la grille d'émargement
   // se complète (jamais de suppression, les créneaux signés restent).

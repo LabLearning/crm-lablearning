@@ -193,6 +193,7 @@ export async function addApprenantBySessionFormateurAction(
       const { syncConventionAvenant } = await import('@/lib/convention-avenants')
       await syncConventionAvenant(supabase, sessionId, null)
     } catch (e) { console.error('[avenant formateur ajout]', e) }
+    try { const { convoquerSiImminente } = await import('@/lib/convocations'); await convoquerSiImminente(supabase, sessionId, null) } catch { /* le cron rattrape */ }
   }
 
   revalidatePath(`/portail/${token}/apprenants`)
