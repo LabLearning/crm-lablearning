@@ -392,6 +392,8 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
       est_organisme_formation: lead.est_organisme_formation,
       // Classe l'établissement dans son réseau de franchise dès la conversion
       franchise_id: lead.franchise_id || null,
+      // L'apporteur du lead suit l'établissement : sa commission se calcule par le client
+      apporteur_id: lead.apporteur_id || null,
       adresse: lead.adresse,
       code_postal: lead.code_postal,
       ville: lead.ville,
@@ -704,6 +706,7 @@ async function resolveLeadClient(supabase: any, orgId: string, lead: any, userId
     telephone: lead.contact_telephone || null, email: lead.contact_email || null,
     financeur_type: lead.financeur_type || null, opco_id: lead.opco_id || null,
     numero_opco: lead.numero_opco || null, franchise_id: lead.franchise_id || null,
+    apporteur_id: lead.apporteur_id || null,
     assigned_to: lead.assigned_to || userId, created_by: userId,
   }).select('id').single()
   if (error || !created) { console.error('[resolveLeadClient] create client', error); return null }

@@ -179,6 +179,106 @@ export interface SessionCommissionResult {
   status: CommissionStatus
 }
 
+/** Ligne `commissions_sessions` déjà enregistrée, telle que relue. */
+export interface CommissionSessionExistante {
+  status: CommissionStatus | string | null
+  commission_montant: number | string | null
+  base_montant: number | string | null
+  base_source: string | null
+  cout_formateur: number | string | null
+  cout_formateur_manuel?: number | string | null
+  commission_type: string | null
+}
+
+/** Tout ce que le calcul d'une commission de session doit connaître, déjà lu. */
+export interface EntreeCommissionSession {
+  franchiseId: string | null
+  franchise: { commission_type: string | null; taux_commission: number | string | null } | null
+  estPoei: boolean
+  nbInscritsActifs: number
+  sessionAnnulee: boolean
+  montantFinanceOpco: number | null
+  prixHt: number | null
+  /** Σ montant_ht des factures de la session (session_id), hors brouillons et annulées, toutes origines */
+  totalFacturesSession: number
+  /** Σ montant_ht des contrats formateur non annulés de la session */
+  coutContratsHt: number
+  coutFormateurManuelJour: number | null
+  /** max(1, jours planifiés || durée catalogue || 1) */
+  nbJours: number
+  coutFormateurSession: number | null
+  existante: CommissionSessionExistante | null
+}
+
+export type MotifSansCommission = 'sans_franchise' | 'poei' | 'sans_inscrit' | 'franchise_introuvable'
+
+export type ResultatCommissionSession =
+  | { kind: 'aucune'; motif: MotifSansCommission; figee: SessionCommissionResult | null }
+  | { kind: 'calculee'; fige: boolean; resultat: SessionCommissionResult; taux: number }
+
+const estFigee = (e: CommissionSessionExistante | null) =>
+  !!e && (e.status === 'validee' || e.status === 'payee')
+
+function snapshotCommission(e: CommissionSessionExistante): SessionCommissionResult {
+  return {
+    montant: Number(e.commission_montant || 0), base: Number(e.base_montant || 0),
+    baseSource: (e.base_source as SessionCommissionResult['baseSource']) || 'aucune',
+    coutFormateur: Number(e.cout_formateur || 0),
+    type: (e.commission_type as CommissionType) || 'budget_debloque',
+    status: e.status as CommissionStatus,
+  }
+}
+
+/**
+ * Calcul pur de la commission franchise d'une session (aucune lecture, aucune
+ * écriture). Même règle que recalcSessionCommission, qui lui délègue : la
+ * marge d'une session affiche ainsi exactement ce que la franchise touchera.
+ */
+export function calculerCommissionSession(e: EntreeCommissionSession & { force?: boolean }): ResultatCommissionSession {
+  const figee = estFigee(e.existante) ? snapshotCommission(e.existante!) : null
+
+  if (!e.franchiseId) return { kind: 'aucune', motif: 'sans_franchise', figee }
+  // Les POEI sont HORS commission franchise pour l'instant (décision Brahim,
+  // 08/09/2026 : leur économie demande un calcul spécifique, à traiter à part).
+  if (e.estPoei) return { kind: 'aucune', motif: 'poei', figee }
+  // Une session sans aucun inscrit (résidu d'import, doublon) n'est pas une
+  // formation délivrée : pas de ligne de commission.
+  if (!e.nbInscritsActifs) return { kind: 'aucune', motif: 'sans_inscrit', figee }
+  if (figee && !e.force) {
+    const type: CommissionType = (e.franchise?.commission_type as CommissionType) || figee.type
+    return { kind: 'calculee', fige: true, resultat: figee, taux: Number(e.franchise?.taux_commission || (type === 'budget_net' ? 40 : 10)) }
+  }
+  if (!e.franchise) return { kind: 'aucune', motif: 'franchise_introuvable', figee }
+
+  const type: CommissionType = (e.franchise.commission_type as CommissionType) || 'budget_debloque'
+  const taux = Number(e.franchise.taux_commission || (type === 'budget_net' ? 40 : 10))
+
+  // Base : prise en charge OPCO de la session, sinon prix HT, sinon ce qui a
+  // été facturé pour la session (factures rattachées, hors brouillons et annulées).
+  const opco = Number(e.montantFinanceOpco || 0)
+  const prix = Number(e.prixHt || 0)
+  let base = opco > 0 ? opco : prix
+  let baseSource: SessionCommissionResult['baseSource'] = opco > 0 ? 'opco' : prix > 0 ? 'prix_ht' : 'aucune'
+  if (base <= 0) {
+    const facture = Number(e.totalFacturesSession || 0)
+    if (facture > 0) { base = facture; baseSource = 'factures' }
+  }
+  // Coût formateur de la session : contrats, sinon tarif journalier saisi × jours, sinon champ session
+  let coutFormateur = Number(e.coutContratsHt || 0)
+  if (coutFormateur <= 0 && e.coutFormateurManuelJour != null) {
+    coutFormateur = (Number(e.coutFormateurManuelJour) || 0) * Math.max(1, e.nbJours || 1)
+  }
+  if (coutFormateur <= 0) coutFormateur = Number(e.coutFormateurSession || 0)
+
+  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur })
+  const exStatus = e.existante?.status
+  const status: CommissionStatus = e.sessionAnnulee
+    ? 'annulee'
+    : (exStatus && exStatus !== 'annulee' ? exStatus as CommissionStatus : 'a_venir')
+
+  return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource, coutFormateur, type, status }, taux }
+}
+
 /**
  * Recalcule et persiste la commission d'une session.
  * - Franchise déduite de l'établissement (clients.franchise_id) : sans
@@ -203,11 +303,20 @@ export async function recalcSessionCommission(
   if (!sess) return null
 
   const franchiseId: string | null = (sess.client as any)?.franchise_id || null
-  const { data: existante } = await supabase
-    .from('commissions_sessions')
-    .select('id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type')
-    .eq('session_id', sessionId)
-    .maybeSingle()
+  const [{ data: existante }, { data: poei }, { count: nbInscrits }, franchiseRes, { data: factures }, { data: contrats }] = await Promise.all([
+    supabase.from('commissions_sessions')
+      .select('id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type')
+      .eq('session_id', sessionId).maybeSingle(),
+    supabase.from('poei').select('id').eq('session_id', sessionId).maybeSingle(),
+    supabase.from('inscriptions').select('id', { count: 'exact', head: true })
+      .eq('session_id', sessionId).not('status', 'in', '("annule","abandonne")'),
+    franchiseId
+      ? supabase.from('franchises').select('commission_type, taux_commission').eq('id', franchiseId).single()
+      : Promise.resolve({ data: null }),
+    supabase.from('factures').select('montant_ht, status').eq('session_id', sessionId)
+      .not('status', 'in', '("brouillon","annulee")'),
+    supabase.from('contrats_formateur').select('montant_ht').eq('session_id', sessionId).neq('status', 'annule'),
+  ])
   const retirer = async () => {
     if (existante && !['validee', 'payee'].includes(existante.status)) {
       await supabase.from('commissions_sessions').delete().eq('id', existante.id)
@@ -215,67 +324,31 @@ export async function recalcSessionCommission(
     return null
   }
 
-  if (!franchiseId) return retirer()
+  const nbHoraires = Array.isArray(sess.horaires_jours) ? sess.horaires_jours.length : 0
+  const r = calculerCommissionSession({
+    franchiseId,
+    franchise: (franchiseRes as any)?.data || null,
+    estPoei: !!poei || !!sess.poei_intervention_id,
+    nbInscritsActifs: nbInscrits || 0,
+    sessionAnnulee: sess.status === 'annulee',
+    montantFinanceOpco: sess.montant_finance_opco,
+    prixHt: sess.prix_ht,
+    totalFacturesSession: (factures || []).reduce((s: number, f: any) => s + Number(f.montant_ht || 0), 0),
+    coutContratsHt: (contrats || []).reduce((s: number, c: any) => s + Number(c.montant_ht || 0), 0),
+    coutFormateurManuelJour: existante?.cout_formateur_manuel ?? null,
+    nbJours: Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1),
+    coutFormateurSession: sess.cout_formateur,
+    existante: existante || null,
+    force: opts?.force,
+  })
 
-  // Les POEI sont HORS commission franchise pour l'instant (décision Brahim,
-  // 08/09/2026 : leur économie demande un calcul spécifique, à traiter à part).
-  // Ni la session principale du dossier, ni ses sessions d'intervention.
-  const { data: poei } = await supabase
-    .from('poei').select('id').eq('session_id', sessionId).maybeSingle()
-  if (poei || sess.poei_intervention_id) return retirer()
-
-  // Une session sans aucun inscrit (résidu d'import, doublon) n'est pas une
-  // formation délivrée : pas de ligne de commission.
-  const { count: nbInscrits } = await supabase
-    .from('inscriptions').select('id', { count: 'exact', head: true })
-    .eq('session_id', sessionId).not('status', 'in', '("annule","abandonne")')
-  if (!nbInscrits) return retirer()
-
-  const fige = existante && (existante.status === 'validee' || existante.status === 'payee')
-  if (fige && !opts?.force) {
-    return {
-      montant: Number(existante.commission_montant || 0), base: Number(existante.base_montant || 0),
-      baseSource: existante.base_source || 'aucune', coutFormateur: Number(existante.cout_formateur || 0),
-      type: (existante.commission_type as CommissionType) || 'budget_debloque', status: existante.status,
-    }
+  if (r.kind === 'aucune') {
+    if (r.motif === 'franchise_introuvable') return null
+    return retirer()
   }
+  if (r.fige) return r.resultat
 
-  const { data: franchise } = await supabase
-    .from('franchises').select('commission_type, taux_commission').eq('id', franchiseId).single()
-  if (!franchise) return null
-  const type: CommissionType = (franchise.commission_type as CommissionType) || 'budget_debloque'
-  const taux = Number(franchise.taux_commission || (type === 'budget_net' ? 40 : 10))
-
-  // Base : prise en charge OPCO de la session, sinon prix HT, sinon ce qui a
-  // été facturé pour la session (factures rattachées, hors brouillons et
-  // annulées), sinon le montant du dossier POEI dont elle est la session.
-  const opco = Number(sess.montant_finance_opco || 0)
-  const prix = Number(sess.prix_ht || 0)
-  let base = opco > 0 ? opco : prix
-  let baseSource: SessionCommissionResult['baseSource'] = opco > 0 ? 'opco' : prix > 0 ? 'prix_ht' : 'aucune'
-  if (base <= 0) {
-    const { data: factures } = await supabase
-      .from('factures').select('montant_ht, status').eq('session_id', sessionId)
-      .not('status', 'in', '("brouillon","annulee")')
-    const facture = (factures || []).reduce((s: number, f: any) => s + Number(f.montant_ht || 0), 0)
-    if (facture > 0) { base = facture; baseSource = 'factures' }
-  }
-  // Coût formateur de la session : contrats, sinon tarif journalier saisi × jours, sinon champ session
-  const { data: contrats } = await supabase
-    .from('contrats_formateur').select('montant_ht').eq('session_id', sessionId).neq('status', 'annule')
-  let coutFormateur = (contrats || []).reduce((s: number, c: any) => s + Number(c.montant_ht || 0), 0)
-  if (coutFormateur <= 0 && existante?.cout_formateur_manuel != null) {
-    const nbHoraires = Array.isArray(sess.horaires_jours) ? sess.horaires_jours.length : 0
-    const nbJours = Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1)
-    coutFormateur = (Number(existante.cout_formateur_manuel) || 0) * nbJours
-  }
-  if (coutFormateur <= 0) coutFormateur = Number(sess.cout_formateur || 0)
-
-  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur })
-  const status: CommissionStatus = sess.status === 'annulee'
-    ? 'annulee'
-    : (existante?.status && existante.status !== 'annulee' ? existante.status : 'a_venir')
-
+  const { montant, base, baseSource, coutFormateur, type, status } = r.resultat
   await supabase.from('commissions_sessions').upsert({
     organization_id: organizationId,
     franchise_id: franchiseId,
@@ -285,14 +358,14 @@ export async function recalcSessionCommission(
     base_source: baseSource,
     cout_formateur: coutFormateur,
     commission_type: type,
-    commission_taux: taux,
+    commission_taux: r.taux,
     commission_montant: montant,
     status,
     calculee_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }, { onConflict: 'session_id' })
 
-  return { montant, base, baseSource, coutFormateur, type, status }
+  return r.resultat
 }
 
 /**

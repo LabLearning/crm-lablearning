@@ -182,8 +182,24 @@ export async function sendFormateurAccessAction(formateurId: string): Promise<Ac
   return { success: true, data: { email: formateur.email } }
 }
 
+/**
+ * TVA facturée par le formateur, enregistrée à part : la colonne n'existe
+ * qu'après la migration 149, et la fiche doit s'enregistrer sans elle.
+ */
+async function enregistrerTauxTva(supabase: any, formateurId: string, orgId: string, taux: number | undefined): Promise<string | undefined> {
+  if (taux === undefined) return undefined
+  const { error } = await supabase.from('formateurs').update({ taux_tva: taux }).eq('id', formateurId).eq('organization_id', orgId)
+  if (!error) return undefined
+  if ((error as any).code === '42703' || (error as any).code === 'PGRST204') return 'TVA non enregistrée : appliquez la migration 149.'
+  console.error('[formateur taux_tva]', error)
+  return 'TVA non enregistrée.'
+}
+
 export async function createFormateurAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) { raw[key] = value }
 
@@ -219,6 +235,7 @@ export async function createFormateurAction(formData: FormData): Promise<ActionR
     .single()
 
   if (error) return { success: false, error: 'Erreur lors de la création' }
+  const warning = await enregistrerTauxTva(supabase, data.id, session.organization.id, parsed.data.taux_tva)
 
   // Onboarding : compte CRM + outil audit (si coché) + email de bienvenue unique
   if (parsed.data.email) {
@@ -237,11 +254,14 @@ export async function createFormateurAction(formData: FormData): Promise<ActionR
 
   await logAudit({ action: 'create', entity_type: 'formateur', entity_id: data.id })
   revalidatePath('/dashboard/formateurs')
-  return { success: true, data }
+  return { success: true, data, warning }
 }
 
 export async function updateFormateurAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) { raw[key] = value }
 
@@ -276,10 +296,11 @@ export async function updateFormateurAction(id: string, formData: FormData): Pro
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+  const warning = await enregistrerTauxTva(supabase, id, session.organization.id, parsed.data.taux_tva)
 
   await logAudit({ action: 'update', entity_type: 'formateur', entity_id: id })
   revalidatePath('/dashboard/formateurs')
-  return { success: true }
+  return { success: true, warning }
 }
 
 export async function updateHabilitationAction(id: string, formData: FormData): Promise<ActionResult> {

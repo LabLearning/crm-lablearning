@@ -97,8 +97,6 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
       status: parsed.data.status || 'planifiee',
       cout_formateur: parsed.data.cout_formateur || null,
       prix_ht: parsed.data.prix_ht ?? null,
-      cout_salle: parsed.data.cout_salle || null,
-      cout_materiel: parsed.data.cout_materiel || null,
       notes_internes: parsed.data.notes_internes || null,
       notes_logistiques: parsed.data.notes_logistiques || null,
       created_by: session.user.id,
@@ -535,8 +533,6 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
       status: parsed.data.status || undefined,
       cout_formateur: parsed.data.cout_formateur || null,
       prix_ht: parsed.data.prix_ht ?? null,
-      cout_salle: parsed.data.cout_salle || null,
-      cout_materiel: parsed.data.cout_materiel || null,
       notes_internes: parsed.data.notes_internes || null,
       notes_logistiques: parsed.data.notes_logistiques || null,
     })

@@ -2,6 +2,8 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SessionDetailClient } from './SessionDetailClient'
+import { peutVoirMarge } from '@/lib/rentabilite'
+import { rentabiliteSession, MESSAGE_RENTABILITE_INDISPONIBLE } from '@/lib/rentabilite-data'
 
 export default async function SessionDetailPage({ params }: { params: { id: string } }) {
   const session = await getSession()
@@ -17,6 +19,12 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     .single()
 
   if (!sessionData) redirect('/dashboard/sessions')
+
+  // Rentabilité : chargée en parallèle du reste de la fiche, attendue au rendu
+  const rentabiliteP = peutVoirMarge(session.user.role)
+    ? rentabiliteSession(supabase, session.organization.id, params.id, session.user.role)
+        .catch(() => ({ erreur: MESSAGE_RENTABILITE_INDISPONIBLE }))
+    : Promise.resolve(null)
 
   // POEI : formation éligible OU projet POEI rattaché à la session
   const { data: poeiLink } = await supabase
@@ -332,6 +340,8 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     dossiersAgefice = dAg || []
   } catch { /* table absente avant migration 143 */ }
 
+  const rentabilite = await rentabiliteP
+
   return (
     <div className="animate-fade-in">
       <SessionDetailClient
@@ -376,6 +386,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         etatsPieces={etatsPieces}
         piecesTableManquante={piecesTableManquante}
         estHygiene={estHygiene}
+        rentabilite={rentabilite}
       />
     </div>
   )

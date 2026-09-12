@@ -109,6 +109,7 @@ export const createFormateurSchema = z.object({
   zone_intervention: z.string().optional(),
   photo_url: z.string().optional(),
   facture_modele: z.enum(['epure', 'classique', 'moderne']).optional(),
+  taux_tva: z.coerce.number().min(0).max(30).optional(),
 })
 
 export const createApprenantSchema = z.object({

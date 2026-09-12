@@ -531,10 +531,9 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
       </div>
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-1">Coûts internes</div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
         <Input id="cout_formateur" name="cout_formateur" type="number" label="Coût formateur (€)" value={coutFormateur} onChange={e => setCoutFormateur(e.target.value)} placeholder={nbJours > 0 ? `(${nbJours} jour${nbJours > 1 ? 's' : ''})` : ''} />
-        <Input id="cout_salle" name="cout_salle" type="number" label="Coût salle (€)" defaultValue={session?.cout_salle?.toString() || ''} />
-        <Input id="cout_materiel" name="cout_materiel" type="number" label="Coût matériel (€)" defaultValue={session?.cout_materiel?.toString() || ''} />
+        <p className="sm:col-span-2 text-2xs text-surface-500 pb-2.5">Salle, matériel, déplacements et autres frais se saisissent dans l&apos;onglet Facturation de la session.</p>
       </div>
 
       {/* ── Lieu ── */}

@@ -86,6 +86,7 @@ export const navigation: NavSection[] = [
       { label: 'Paiements', href: '/dashboard/paiements', icon: 'CreditCard', module: 'paiements' },
       { label: 'Factures formateurs', href: '/dashboard/factures-formateurs', icon: 'ReceiptText', module: 'factures' },
       { label: 'Affacturage', href: '/dashboard/affacturage', icon: 'Banknote', module: 'factures' },
+      { label: 'Rentabilité', href: '/dashboard/rentabilite', icon: 'PieChart', module: 'factures', hideForRoles: ['commercial', 'directeur_commercial', 'formateur', 'apprenant', 'apporteur_affaires', 'franchise'] },
     ],
   },
   // ── QUALITÉ ──────────────────────────────────────────────

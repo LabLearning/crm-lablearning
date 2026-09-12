@@ -62,7 +62,11 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
     setIsLoading(true); setErrors({})
     const fd = new FormData(e.currentTarget)
     const result = formateur ? await updateFormateurAction(formateur.id, fd) : await createFormateurAction(fd)
-    if (result.success) { toast('success', formateur ? 'Formateur mis à jour' : 'Formateur créé'); onDone() }
+    if (result.success) {
+      toast('success', formateur ? 'Formateur mis à jour' : 'Formateur créé')
+      if (result.warning) toast('warning', result.warning)
+      onDone()
+    }
     else if (result.errors) setErrors(result.errors)
     else toast('error', result.error || 'Erreur')
     setIsLoading(false)
@@ -135,6 +139,14 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
       <div className="grid grid-cols-2 gap-3">
         <Input id="tarif_journalier" name="tarif_journalier" type="number" label="Tarif journalier (€)" defaultValue={formateur?.tarif_journalier?.toString() || ''} />
         <Input id="tarif_horaire" name="tarif_horaire" type="number" label="Tarif horaire (€)" defaultValue={formateur?.tarif_horaire?.toString() || ''} />
+      </div>
+      <div>
+        <Select id="taux_tva" name="taux_tva" label="TVA facturée"
+          options={[{ value: '0', label: '0 % (non assujetti ou exonéré)' }, { value: '20', label: '20 %' }]}
+          defaultValue={String((formateur as any)?.taux_tva ?? 0)} />
+        <p className="text-2xs text-surface-400 mt-1">
+          Sert au calcul de la marge des sessions : l&apos;organisme ne récupère pas la TVA, le coût réel d&apos;un contrat HT inclut donc celle du formateur.
+        </p>
       </div>
       <Input id="zone_intervention" name="zone_intervention" label="Zone d'intervention" placeholder="Île-de-France, National, Grand Est..." defaultValue={(formateur as any)?.zone_intervention || ''} />
 

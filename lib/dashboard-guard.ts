@@ -45,6 +45,7 @@ const ROUTE_MODULE: [string, CRMModule][] = [
   ['/dashboard/vivier', 'conventions'],
   ['/dashboard/factures', 'factures'],
   ['/dashboard/affacturage', 'factures'],
+  ['/dashboard/rentabilite', 'factures'],
   ['/dashboard/paiements', 'paiements'],
   ['/dashboard/documents', 'documents'],
   ['/dashboard/signatures', 'signatures'],
