@@ -12,6 +12,7 @@ interface Franchise {
   siret: string | null
   secteur: string | null
   nombre_etablissements: number | null
+  date_partenariat?: string | null
   zone_geographique: string | null
   contact_nom: string | null
   contact_email: string | null
@@ -95,6 +96,13 @@ export function FranchiseSettingsClient({ franchise }: { franchise: Franchise })
                 {F('Établissements déclarés', 'nombre_etablissements', 'number')}
               </div>
               {F('Zone géographique', 'zone_geographique')}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-surface-500">Début du partenariat</label>
+                <input type="date" name="date_partenariat" defaultValue={franchise.date_partenariat ?? ''} className="input-base text-sm" />
+                <p className="text-[11px] text-surface-400">
+                  Les formations délivrées avant cette date n&apos;ouvrent droit à aucune commission. Laissez vide pour commissionner tout l&apos;historique.
+                </p>
+              </div>
 
               <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Contact référent</div>
               <div className="grid grid-cols-2 gap-3">

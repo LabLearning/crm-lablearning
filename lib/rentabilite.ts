@@ -254,7 +254,7 @@ export interface ConventionRentab { id: string; numero: string | null; session_i
 export interface DossierAgeficeRentab { id: string; session_id: string | null; statut: string | null; cout_pedagogique: Num; montant_accorde: Num; montant_demande: Num; facture_id: string | null }
 export interface InscriptionRentab { session_id: string; status: string | null; client_id: string | null }
 export interface FormateurRentab { id: string; prenom: string | null; nom: string | null; tarif_journalier: Num; type_contrat: string | null; taux_tva?: Num }
-export interface FranchiseRentab { id: string; nom: string | null; commission_type: string | null; taux_commission: Num }
+export interface FranchiseRentab { id: string; nom: string | null; commission_type: string | null; taux_commission: Num; date_partenariat?: string | null }
 export interface ApporteurRentab {
   id: string; nom: string | null; prenom: string | null; raison_sociale: string | null
   mode_calcul: string | null; taux_commission: Num; commission_fixe: Num
@@ -1214,6 +1214,8 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
     const r = calculerCommissionSession({
       franchiseId,
       franchise,
+      dateSession: s.date_debut,
+      horsPartenariat: !!(s.client as any)?.franchise_hors_partenariat,
       estPoei: u.type === 'poei' || !!s.poei_intervention_id || d.poei.some((p) => p.session_id === s.id),
       nbInscritsActifs: nbInscrits,
       sessionAnnulee: s.status === 'annulee',

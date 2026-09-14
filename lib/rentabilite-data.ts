@@ -20,7 +20,7 @@ const TABLE_ABSENTE = ['PGRST205', '42P01']
 const COLONNE_ABSENTE = '42703'
 export const MESSAGE_RENTABILITE_INDISPONIBLE = 'Le calcul de la rentabilité est momentanément indisponible.'
 
-const SEL_SESSION = 'id, reference, intitule, status, type_session, date_debut, date_fin, client_id, formateur_id, poei_intervention_id, dendreo_id, prix_ht, montant_finance_opco, deja_facture_ailleurs, numero_dossier_opco, cout_formateur, cout_salle, cout_materiel, horaires_jours, formation:formation_id(intitule, duree_jours, is_poei, tarif_inter_ht, tarif_intra_ht), client:client_id(id, raison_sociale, nom_commercial, franchise_id, financeur_type)'
+const SEL_SESSION = 'id, reference, intitule, status, type_session, date_debut, date_fin, client_id, formateur_id, poei_intervention_id, dendreo_id, prix_ht, montant_finance_opco, deja_facture_ailleurs, numero_dossier_opco, cout_formateur, cout_salle, cout_materiel, horaires_jours, formation:formation_id(intitule, duree_jours, is_poei, tarif_inter_ht, tarif_intra_ht), client:client_id(*)'
 const SEL_VOISINE = 'id, reference, client_id, date_debut, numero_dossier_opco, prix_ht, montant_finance_opco, deja_facture_ailleurs, status'
 const SEL_FACTURE = 'id, numero, status, montant_ht, montant_ttc, montant_paye, session_id, client_id, financeur_nom, financeur_type, dendreo_id, notes_internes, numero_prise_en_charge, date_emission'
 
@@ -200,7 +200,8 @@ export async function chargerDonneesRentabilite(
   const [formateursRes, franchises, clientsRes, voisinsDossier, voisinsJour, urlsSignees] = await Promise.all([
     tolerant(lireFormateurs('id, prenom, nom, tarif_journalier, type_contrat, taux_tva'), [COLONNE_ABSENTE]),
     L.tout<FranchiseRentab>((from, to) => supabase.from('franchises')
-      .select('id, nom, commission_type, taux_commission').eq('organization_id', orgId).order('id').range(from, to)),
+      // select('*') : date_partenariat n'existe qu'après la migration 150
+      .select('*').eq('organization_id', orgId).order('id').range(from, to)),
     tolerant(lireClients('id, raison_sociale, nom_commercial, apporteur_id'), [COLONNE_ABSENTE]),
     // Onglet : même accord OPCO ailleurs (comparaison sans espaces ni casse, faite en mémoire)
     opts.onglet && dossiers.length

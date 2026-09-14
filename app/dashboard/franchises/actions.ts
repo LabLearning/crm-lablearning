@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import { sendInvitationEmail } from '@/lib/email'
-import { recalcDossierCommission, type CommissionType } from '@/lib/commission'
+import { recalcDossierCommission, recalcSessionCommission, type CommissionType } from '@/lib/commission'
 import { notifyFranchiseUsers } from '@/lib/franchise-notify'
 
 const fmtEuro = (n: number) =>
@@ -92,6 +92,9 @@ export async function updateFranchiseAction(id: string, formData: FormData): Pro
   if (formData.has('objectif_annuel_ca')) {
     const v = formData.get('objectif_annuel_ca') as string
     updates.objectif_annuel_ca = v ? parseFloat(v) : null
+  }
+  if (formData.has('date_partenariat')) {
+    updates.date_partenariat = (formData.get('date_partenariat') as string) || null
   }
 
   const { error } = await supabase
@@ -407,7 +410,6 @@ export async function linkClientToFranchiseAction(
   }
   // Modèle courant : les sessions de l'établissement entrent (ou sortent) du
   // périmètre de la franchise
-  const { recalcSessionCommission } = await import('@/lib/commission')
   const { data: sessionsClient } = await supabase
     .from('sessions').select('id').eq('client_id', clientId).eq('organization_id', session.organization.id)
   for (const s of sessionsClient || []) {
@@ -463,5 +465,47 @@ export async function payAllValidatedAction(franchiseId: string): Promise<Result
   await logAudit({ action: 'commission_pay_all', entity_type: 'franchise', entity_id: franchiseId })
   revalidatePath('/dashboard/franchises')
   revalidatePath(`/dashboard/franchises/${franchiseId}`)
+  return { success: true }
+}
+
+/**
+ * Sort un établissement de l'accord de commission de son réseau, ou l'y remet.
+ * Les lignes non figées sont recalculées derrière : celles qui n'ont plus lieu
+ * d'être disparaissent, les autres reviennent.
+ */
+export async function setEtablissementHorsPartenariatAction(
+  clientId: string,
+  hors: boolean,
+): Promise<Result> {
+  const session = await getSession()
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+
+  const { data: client } = await supabase
+    .from('clients').select('id, franchise_id').eq('id', clientId).eq('organization_id', orgId).maybeSingle()
+  if (!client) return { success: false, error: 'Établissement introuvable' }
+
+  const { error } = await supabase
+    .from('clients').update({ franchise_hors_partenariat: hors })
+    .eq('id', clientId).eq('organization_id', orgId)
+  if (error) {
+    // Colonne absente : la migration 150 n'est pas encore appliquée
+    if (['PGRST204', '42703'].includes(String((error as any).code))) {
+      return { success: false, error: 'Appliquez la migration 150 pour gérer le périmètre du partenariat.' }
+    }
+    return { success: false, error: error.message }
+  }
+
+  const { data: sessions } = await supabase
+    .from('sessions').select('id').eq('organization_id', orgId).eq('client_id', clientId)
+  for (const s of (sessions || []) as any[]) await recalcSessionCommission(supabase, s.id, orgId)
+
+  await logAudit({
+    action: 'update', entity_type: 'client', entity_id: clientId,
+    details: { franchise_hors_partenariat: hors },
+  })
+  revalidatePath('/dashboard/franchises')
+  if (client.franchise_id) revalidatePath(`/dashboard/franchises/${client.franchise_id}`)
+  revalidatePath(`/dashboard/clients/${clientId}`)
   return { success: true }
 }

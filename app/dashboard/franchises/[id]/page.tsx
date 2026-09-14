@@ -1,17 +1,17 @@
-import Link from 'next/link'
 import { BackLink } from '@/components/ui'
 import { notFound } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { ArrowLeft, Store, Building2, Banknote, Target, ClipboardCheck, Star } from '@/components/ui/icons'
+import { Store, ClipboardCheck, Star } from '@/components/ui/icons'
 import { commissionTypeLabel, syncFranchiseCommissions } from '@/lib/commission'
-import { getFranchiseCommissionLines } from '@/lib/franchise-data'
+import { getFranchiseCommissionLines, getFranchiseParcours } from '@/lib/franchise-data'
+import FranchisePhases from './FranchisePhases'
 import FranchiseDetailClient from './FranchiseDetailClient'
 import { FranchiseGabaritsClient } from './FranchiseGabaritsClient'
 import FranchiseAccessClient from './FranchiseAccessClient'
 import FranchiseCoverageClient from './FranchiseCoverageClient'
 import FranchiseLogoClient from './FranchiseLogoClient'
-import LinkEtablissementClient, { UnlinkButton } from './LinkEtablissementClient'
+import LinkEtablissementClient from './LinkEtablissementClient'
 import { FranchiseSettingsClient } from './FranchiseSettingsClient'
 
 export const dynamic = 'force-dynamic'
@@ -74,7 +74,12 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
   // Le financier est assis sur les SESSIONS des établissements : on aligne les
   // lignes de commission (création / recalcul des non figées) avant de lire.
   await syncFranchiseCommissions(supabase, params.id, orgId)
-  const lignes = await getFranchiseCommissionLines(supabase, params.id, orgId)
+  const [lignes, groupes] = await Promise.all([
+    getFranchiseCommissionLines(supabase, params.id, orgId),
+    // date_partenariat n'existe qu'après la migration 150 : absente, aucun
+    // établissement ne bascule en « avant le partenariat ».
+    getFranchiseParcours(supabase, params.id, orgId, (franchise as any).date_partenariat || null),
+  ])
 
   const auditsList = audits || []
   const auditsWithNote = auditsList.filter((a) => a.note_globale != null)
@@ -214,42 +219,8 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
         )}
       </div>
 
-      {/* Établissements */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-heading font-semibold text-surface-900">
-            Établissements ({(etablissements || []).length})
-          </div>
-        </div>
-        {(etablissements || []).length === 0 ? (
-          <div className="card p-6 text-center text-sm text-surface-400">
-            Aucun établissement rattaché. Utilisez « Rattacher un établissement » ci-dessus.
-          </div>
-        ) : (
-          <div className="card divide-y divide-surface-100">
-            {(etablissements || []).map((c) => {
-              const cSessions = actives.filter((l) => l.client?.id === c.id)
-              return (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50/60 transition-colors">
-                  <Link href={`/dashboard/clients/${c.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
-                      <Building2 className="h-4 w-4 text-surface-500" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-surface-900 truncate">{c.raison_sociale}</div>
-                      <div className="text-xs text-surface-500">{[c.code_postal, c.ville].filter(Boolean).join(' ')}</div>
-                    </div>
-                    <div className="text-xs text-surface-500 shrink-0">
-                      {cSessions.length} session{cSessions.length > 1 ? 's' : ''}
-                    </div>
-                  </Link>
-                  <UnlinkButton clientId={c.id} />
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      {/* Le réseau par avancement de dossier */}
+      <FranchisePhases groupes={groupes} />
     </div>
   )
 }

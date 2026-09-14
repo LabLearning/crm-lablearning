@@ -193,8 +193,12 @@ export interface CommissionSessionExistante {
 /** Tout ce que le calcul d'une commission de session doit connaître, déjà lu. */
 export interface EntreeCommissionSession {
   franchiseId: string | null
-  franchise: { commission_type: string | null; taux_commission: number | string | null } | null
+  franchise: { commission_type: string | null; taux_commission: number | string | null; date_partenariat?: string | null } | null
   estPoei: boolean
+  /** Date de début de la session (ISO), comparée au début du partenariat. */
+  dateSession?: string | null
+  /** Établissement explicitement sorti de l'accord de commission. */
+  horsPartenariat?: boolean
   nbInscritsActifs: number
   sessionAnnulee: boolean
   montantFinanceOpco: number | null
@@ -210,7 +214,7 @@ export interface EntreeCommissionSession {
   existante: CommissionSessionExistante | null
 }
 
-export type MotifSansCommission = 'sans_franchise' | 'poei' | 'sans_inscrit' | 'franchise_introuvable'
+export type MotifSansCommission = 'sans_franchise' | 'poei' | 'sans_inscrit' | 'franchise_introuvable' | 'avant_partenariat'
 
 export type ResultatCommissionSession =
   | { kind: 'aucune'; motif: MotifSansCommission; figee: SessionCommissionResult | null }
@@ -241,6 +245,12 @@ export function calculerCommissionSession(e: EntreeCommissionSession & { force?:
   // Les POEI sont HORS commission franchise pour l'instant (décision Brahim,
   // 08/09/2026 : leur économie demande un calcul spécifique, à traiter à part).
   if (e.estPoei) return { kind: 'aucune', motif: 'poei', figee }
+  // Hors accord de commission : établissement écarté, ou formation délivrée
+  // avant la date de début du partenariat.
+  if (e.horsPartenariat) return { kind: 'aucune', motif: 'avant_partenariat', figee }
+  if (e.franchise?.date_partenariat && e.dateSession && e.dateSession < e.franchise.date_partenariat) {
+    return { kind: 'aucune', motif: 'avant_partenariat', figee }
+  }
   // Une session sans aucun inscrit (résidu d'import, doublon) n'est pas une
   // formation délivrée : pas de ligne de commission.
   if (!e.nbInscritsActifs) return { kind: 'aucune', motif: 'sans_inscrit', figee }
@@ -296,7 +306,9 @@ export async function recalcSessionCommission(
 ): Promise<SessionCommissionResult | null> {
   const { data: sess } = await supabase
     .from('sessions')
-    .select('id, client_id, status, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formation:formation_id(duree_jours), client:client_id(franchise_id)')
+    // client:client_id(*) : franchise_hors_partenariat n'existe qu'après la
+    // migration 150, une liste de colonnes ferait échouer la lecture avant.
+    .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formation:formation_id(duree_jours), client:client_id(*)')
     .eq('id', sessionId)
     .eq('organization_id', organizationId)
     .maybeSingle()
@@ -311,7 +323,9 @@ export async function recalcSessionCommission(
     supabase.from('inscriptions').select('id', { count: 'exact', head: true })
       .eq('session_id', sessionId).not('status', 'in', '("annule","abandonne")'),
     franchiseId
-      ? supabase.from('franchises').select('commission_type, taux_commission').eq('id', franchiseId).single()
+      // select('*') : date_partenariat n'existe qu'après la migration 150,
+      // une liste de colonnes ferait échouer la lecture avant son application.
+      ? supabase.from('franchises').select('*').eq('id', franchiseId).single()
       : Promise.resolve({ data: null }),
     supabase.from('factures').select('montant_ht, status').eq('session_id', sessionId)
       .not('status', 'in', '("brouillon","annulee")'),
@@ -329,6 +343,8 @@ export async function recalcSessionCommission(
     franchiseId,
     franchise: (franchiseRes as any)?.data || null,
     estPoei: !!poei || !!sess.poei_intervention_id,
+    dateSession: sess.date_debut,
+    horsPartenariat: !!(sess.client as any)?.franchise_hors_partenariat,
     nbInscritsActifs: nbInscrits || 0,
     sessionAnnulee: sess.status === 'annulee',
     montantFinanceOpco: sess.montant_finance_opco,
