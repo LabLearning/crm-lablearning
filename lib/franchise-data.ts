@@ -567,6 +567,44 @@ export async function getFranchiseAudits(
   return parClient
 }
 
+/**
+ * Synthèse à partir de la liste complète : compte aussi les établissements
+ * audités que l'outil n'a pas encore rapprochés d'un client du CRM, qui
+ * apparaissent bien dans la liste.
+ */
+export function syntheseAuditsListe(liste: AuditDetail[]): {
+  nbEtablissements: number; nbAudits: number
+  moyenneEntree: number | null; moyenneSortie: number | null; progression: number | null
+  nbSuivis: number; nbEnHausse: number
+} {
+  const parSite = new Map<string, AuditDetail[]>()
+  for (const a of liste) {
+    if (!parSite.has(a.sourceId)) parSite.set(a.sourceId, [])
+    parSite.get(a.sourceId)!.push(a)
+  }
+  const paires: { entree: number; sortie: number }[] = []
+  for (const audits of parSite.values()) {
+    const tri = audits.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    const entree = tri.find((a) => /premier/i.test(String(a.type))) || tri[0]
+    const apres = tri.filter((a) => estSuivi(a.type) && String(a.date) > String(entree?.date))
+    const sortie = apres[apres.length - 1]
+    if (entree?.score != null && sortie?.score != null) paires.push({ entree: entree.score, sortie: sortie.score })
+  }
+  const moy = (l: number[]) => (l.length ? Math.round((l.reduce((t, n) => t + n, 0) / l.length) * 10) / 10 : null)
+  // Deux fiches de l'outil peuvent viser le même établissement : on compte des
+  // établissements, pas des fiches.
+  const distincts = new Set(liste.map((a) => a.clientId || a.sourceId))
+  return {
+    nbEtablissements: distincts.size,
+    nbAudits: liste.length,
+    moyenneEntree: moy(paires.map((p) => p.entree)),
+    moyenneSortie: moy(paires.map((p) => p.sortie)),
+    progression: paires.length ? moy(paires.map((p) => p.sortie - p.entree)) : null,
+    nbSuivis: paires.length,
+    nbEnHausse: paires.filter((p) => p.sortie > p.entree).length,
+  }
+}
+
 /** Synthèse réseau : moyennes d'entrée et de sortie, progression. */
 export function syntheseAudits(audits: Map<string, AuditsClient>): {
   nbEtablissements: number; nbAudits: number
@@ -585,4 +623,90 @@ export function syntheseAudits(audits: Map<string, AuditsClient>): {
     nbSuivis: suivis.length,
     nbEnHausse: suivis.filter((a) => (a.gain || 0) > 0).length,
   }
+}
+
+export interface AuditDetail extends AuditEtablissement {
+  id: string
+  /** Fiche de l'outil terrain : un même client peut en avoir deux. */
+  sourceId: string
+  clientId: string | null
+  etablissement: string
+  ville: string | null
+  formateur: string | null
+  nbConformes: number | null
+  nbPartiels: number | null
+  nbNonConformes: number | null
+  bilan: string | null
+  actions: string | null
+  recommandations: string | null
+  /** Position dans le parcours de l'établissement : 1 = premier passage. */
+  rang: number
+  /** Points gagnés depuis le passage précédent du même établissement. */
+  evolution: number | null
+}
+
+/**
+ * Tous les audits hygiène d'une franchise, du plus récent au plus ancien,
+ * avec l'établissement et l'évolution depuis le passage précédent.
+ */
+export async function getFranchiseAuditsListe(
+  supabase: any,
+  franchiseId: string,
+  orgId: string,
+): Promise<AuditDetail[]> {
+  const { data: etabs, error } = await supabase
+    .from('ah_etablissements').select('id, nom, ville, client_id')
+    .eq('organization_id', orgId).eq('franchise_id', franchiseId)
+  if (error || !etabs?.length) return []
+
+  const { data: clients } = await supabase
+    .from('clients').select('id, raison_sociale, ville').eq('organization_id', orgId).eq('franchise_id', franchiseId)
+  const parClient = new Map((clients || []).map((c: any) => [c.id, c]))
+
+  const ids = (etabs as any[]).map((e) => e.id)
+  const brut: any[] = []
+  for (let i = 0; i < ids.length; i += 50) {
+    const { data } = await supabase.from('ah_audits')
+      .select('id, etablissement_id, num_rapport, date_audit, type_audit, formateur_nom, score_global, mention, nb_conformes, nb_partiels, nb_non_conformes, obs_bilan, obs_actions, obs_reco')
+      .in('etablissement_id', ids.slice(i, i + 50))
+    brut.push(...((data || []) as any[]))
+  }
+
+  const infoEtab = new Map((etabs as any[]).map((e) => [e.id, e]))
+  // Rang et évolution se lisent établissement par établissement, du plus ancien au plus récent
+  const parEtab = new Map<string, any[]>()
+  for (const a of brut) {
+    if (a.score_global == null || Number(a.score_global) === 0) continue
+    if (!parEtab.has(a.etablissement_id)) parEtab.set(a.etablissement_id, [])
+    parEtab.get(a.etablissement_id)!.push(a)
+  }
+
+  const liste: AuditDetail[] = []
+  for (const [etabId, audits] of parEtab) {
+    const e = infoEtab.get(etabId)
+    const c: any = e?.client_id ? parClient.get(e.client_id) : null
+    const tri = audits.sort((a, b) => String(a.date_audit).localeCompare(String(b.date_audit)))
+    tri.forEach((a, i) => {
+      const precedent = i > 0 ? Number(tri[i - 1].score_global) : null
+      liste.push({
+        id: a.id,
+        sourceId: etabId,
+        clientId: e?.client_id || null,
+        etablissement: c?.raison_sociale || e?.nom || 'Établissement',
+        ville: c?.ville || e?.ville || null,
+        date: a.date_audit, score: a.score_global == null ? null : Number(a.score_global),
+        mention: a.mention, type: a.type_audit, rapport: a.num_rapport,
+        formateur: a.formateur_nom || null,
+        nbConformes: a.nb_conformes ?? null,
+        nbPartiels: a.nb_partiels ?? null,
+        nbNonConformes: a.nb_non_conformes ?? null,
+        bilan: a.obs_bilan || null,
+        actions: a.obs_actions || null,
+        recommandations: a.obs_reco || null,
+        rang: i + 1,
+        evolution: precedent == null ? null : Math.round((Number(a.score_global) - precedent) * 10) / 10,
+      })
+    })
+  }
+  return liste.sort((a, b) => String(b.date).localeCompare(String(a.date)))
 }

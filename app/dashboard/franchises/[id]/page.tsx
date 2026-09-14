@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { Store, ClipboardCheck, Star } from '@/components/ui/icons'
 import { commissionTypeLabel, syncFranchiseCommissions } from '@/lib/commission'
-import { getFranchiseCommissionLines, getFranchiseParcours, getFranchiseAudits, syntheseAudits } from '@/lib/franchise-data'
+import { getFranchiseCommissionLines, getFranchiseParcours, getFranchiseAudits, getFranchiseAuditsListe, syntheseAuditsListe } from '@/lib/franchise-data'
 import FranchisePhases from './FranchisePhases'
 import FranchiseDetailClient from './FranchiseDetailClient'
 import { FranchiseGabaritsClient } from './FranchiseGabaritsClient'
@@ -65,14 +65,15 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
   // Le financier est assis sur les SESSIONS des établissements : on aligne les
   // lignes de commission (création / recalcul des non figées) avant de lire.
   await syncFranchiseCommissions(supabase, params.id, orgId)
-  const [lignes, groupes, audits] = await Promise.all([
+  const [lignes, groupes, audits, listeAudits] = await Promise.all([
     getFranchiseCommissionLines(supabase, params.id, orgId),
     // date_partenariat n'existe qu'après la migration 150 : absente, aucun
     // établissement ne bascule en « avant le partenariat ».
     getFranchiseParcours(supabase, params.id, orgId, (franchise as any).date_partenariat || null),
     getFranchiseAudits(supabase, params.id, orgId),
+    getFranchiseAuditsListe(supabase, params.id, orgId),
   ])
-  const bilanAudits = syntheseAudits(audits)
+  const bilanAudits = syntheseAuditsListe(listeAudits)
 
   const name = franchise.nom || franchise.raison_sociale || 'Franchise'
 
