@@ -1,3 +1,14 @@
+/** Une ligne qui porte une trace est une preuve : elle ne se supprime pas. */
+function aUneTrace(e: {
+  est_present?: boolean | null
+  signature_data?: string | null
+  signed_at?: string | null
+  motif_absence?: string | null
+  notes?: string | null
+}): boolean {
+  return !!(e.est_present || e.signature_data || e.signed_at || e.motif_absence || e.notes)
+}
+
 /**
  * Génération des feuilles d'émargement d'une session.
  *
@@ -7,7 +18,9 @@
  * déclenchée aussi côté formateur et à la création d'une session
  * d'intervention POEI.
  *
- * Idempotente : ne crée que les lignes manquantes.
+ * Idempotente : crée les lignes manquantes et retire celles qui ne sont plus
+ * au planning, sauf si elles portent déjà une trace.
+ * @returns le nombre de lignes créées.
  */
 export async function ensureEmargements(
   supabase: any,
@@ -75,11 +88,27 @@ export async function ensureEmargements(
   // Une seule lecture de l'existant plutôt qu'une par jour et par créneau
   const { data: existants } = await supabase
     .from('emargements')
-    .select('apprenant_id, date, creneau')
+    .select('id, apprenant_id, date, creneau, est_present, signature_data, signed_at, motif_absence, notes')
     .eq('session_id', sessionId)
   const deja = new Set(
     (existants || []).map((e: any) => `${e.date}|${e.creneau}|${e.apprenant_id}`),
   )
+
+  // Retirer les créneaux qui ne sont plus au planning : une session ramenée de
+  // 16 à 10 jours laissait sinon six journées fantômes sur la feuille. Une
+  // ligne qui porte une trace (signature, présence, absence motivée, note) est
+  // une preuve : elle reste, quoi qu'il arrive au planning.
+  const attendus = new Set(creneaux.map((c) => `${c.date}|${c.creneau}`))
+  const aRetirer = (existants || []).filter((e: any) =>
+    !attendus.has(`${e.date}|${e.creneau}`) && !aUneTrace(e),
+  )
+  if (aRetirer.length) {
+    for (let i = 0; i < aRetirer.length; i += 500) {
+      const { error } = await supabase.from('emargements').delete()
+        .in('id', aRetirer.slice(i, i + 500).map((e: any) => e.id))
+      if (error) { console.error('[ensureEmargements nettoyage]', error); break }
+    }
+  }
 
   const aCreer: any[] = []
   for (const c of creneaux) {
