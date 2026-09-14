@@ -275,6 +275,16 @@ export async function synchroniserAuditHygiene(
     const { data: franchises } = await crm
       .from('franchises').select('id, nom').eq('organization_id', organizationId).eq('is_active', true)
 
+    // La franchise du client rapproché fait foi : « Chamas Beziers »,
+    // « Michel Tacos » ou « HA Tacos » ne portent pas le nom du réseau, mais
+    // leur client CRM, lui, y est rattaché.
+    const { data: clientsFranchise } = await crm
+      .from('clients').select('id, franchise_id')
+      .eq('organization_id', organizationId).not('franchise_id', 'is', null)
+    const franchiseDuClient = new Map(
+      ((clientsFranchise || []) as any[]).map((c) => [c.id, c.franchise_id as string]),
+    )
+
     // Rapprochements déjà validés à la main : on ne les écrase jamais
     const { data: existants } = await crm
       .from('ah_etablissements')
@@ -289,7 +299,9 @@ export async function synchroniserAuditHygiene(
       const manuel = anterieur?.match_valide_at || anterieur?.ignore_rapprochement
       const auto = manuel ? null : rapprocher(e, idx)
       if (auto?.client_id) rapprochesAuto++
-      const franchiseId = rapprocherFranchise(e, (franchises || []) as any[])
+      const clientId = manuel ? anterieur.client_id : auto!.client_id
+      const franchiseId = (clientId ? franchiseDuClient.get(clientId) : null)
+        || rapprocherFranchise(e, (franchises || []) as any[])
       if (franchiseId) franchisesReconnues++
       return {
         organization_id: organizationId,
@@ -305,7 +317,7 @@ export async function synchroniserAuditHygiene(
         siret: e.siret || null,
         latitude: e.latitude ?? null,
         longitude: e.longitude ?? null,
-        client_id: manuel ? anterieur.client_id : auto!.client_id,
+        client_id: clientId,
         match_methode: manuel ? anterieur.match_methode : auto!.methode,
         franchise_id: franchiseId,
         source_created_at: e.created_at || null,
