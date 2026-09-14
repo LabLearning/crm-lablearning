@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
+import { heuresFacturables, montantTotalPoei, MESSAGE_MIGRATION_PERIODE } from '@/lib/poei-candidat'
 
 function canManage(role: string) {
   return ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'].includes(role)
@@ -22,15 +23,38 @@ function num(fd: FormData, key: string): number | null {
 }
 
 
-// Recalcule le montant total du projet : taux horaire × durée (h) × nombre de candidats
+/**
+ * Période saisie sur un candidat. Les trois champs sont facultatifs : vides,
+ * le candidat suit le calendrier du projet.
+ */
+function periodeSaisie(fd: FormData): Record<string, unknown> {
+  return {
+    date_debut: str(fd, 'date_debut'),
+    date_fin: str(fd, 'date_fin'),
+    duree_heures: num(fd, 'duree_heures'),
+  }
+}
+
+/**
+ * Recalcule le montant total du projet : la somme de ce que vaut chaque
+ * candidat, et non une durée unique multipliée par l'effectif. Une entrée
+ * décalée ou un abandon change le total d'un seul candidat.
+ */
 async function recalcPoeiTotal(supabase: any, orgId: string, poeiId: string) {
   const { data: p } = await supabase.from("poei").select("duree_heures, montant_horaire").eq("id", poeiId).eq("organization_id", orgId).single()
   if (!p) return
-  const { count } = await supabase.from("poei_candidats").select("*", { count: "exact", head: true }).eq("poei_id", poeiId).eq("organization_id", orgId)
-  const total = (p.duree_heures != null && p.montant_horaire != null && (count || 0) > 0)
-    ? Math.round(Number(p.duree_heures) * Number(p.montant_horaire) * (count || 0) * 100) / 100
-    : null
-  await supabase.from("poei").update({ montant_total: total }).eq("id", poeiId)
+  // Lecture résiliente : les colonnes de période n'existent qu'après la
+  // migration 151, et celles d'abandon qu'après la 140.
+  let candidats: any[] = []
+  const r = await supabase.from("poei_candidats")
+    .select("date_debut, date_fin, duree_heures, statut, date_abandon, heures_effectuees")
+    .eq("poei_id", poeiId).eq("organization_id", orgId)
+  if (r.error) {
+    const { data } = await supabase.from("poei_candidats").select("statut")
+      .eq("poei_id", poeiId).eq("organization_id", orgId)
+    candidats = data || []
+  } else candidats = r.data || []
+  await supabase.from("poei").update({ montant_total: montantTotalPoei(candidats, p) }).eq("id", poeiId)
 }
 
 // ─── Projet POEI ──────────────────────────────────────────────────────────────
@@ -268,8 +292,15 @@ export async function addPoeiCandidatAction(poeiId: string, formData: FormData):
       date_embauche_prevue: str(formData, "date_embauche_prevue"),
       numero_convention: str(formData, "numero_convention"),
       statut: "inscrit",
+      ...periodeSaisie(formData),
     })
-  if (error) return { success: false, error: 'Erreur lors de l\'ajout du candidat' }
+  if (error) {
+    // Colonnes de période absentes : la migration 151 n'est pas appliquée
+    if (/date_debut|date_fin|duree_heures/.test(error.message)) {
+      return { success: false, error: MESSAGE_MIGRATION_PERIODE }
+    }
+    return { success: false, error: 'Erreur lors de l\'ajout du candidat' }
+  }
 
   await recalcPoeiTotal(supabase, orgId, poeiId)
 
@@ -331,6 +362,7 @@ export async function updatePoeiCandidatAction(candidatId: string, poeiId: strin
     numero_convention: str(formData, "numero_convention"),
     entretien: str(formData, "entretien"),
     entretien_date: str(formData, "entretien_date"),
+    ...periodeSaisie(formData),
   }
   let { error } = await supabase.from("poei_candidats").update(champsCandidat)
     .eq('id', candidatId).eq('organization_id', session.organization.id)
@@ -341,7 +373,13 @@ export async function updatePoeiCandidatAction(candidatId: string, poeiId: strin
     ;({ error } = await supabase.from("poei_candidats").update(champsCandidat)
       .eq('id', candidatId).eq('organization_id', session.organization.id))
   }
+  if (error && /date_debut|date_fin|duree_heures/.test(error.message)) {
+    return { success: false, error: MESSAGE_MIGRATION_PERIODE }
+  }
   if (error) return { success: false, error: 'Erreur mise à jour candidat' }
+
+  // Une période propre change le montant France Travail du projet
+  await recalcPoeiTotal(supabase, session.organization.id, poeiId)
 
   await logAudit({ action: 'update', entity_type: 'poei_candidat', entity_id: candidatId })
   revalidatePath(`/dashboard/poei/${poeiId}`)
@@ -672,13 +710,19 @@ export async function generateFacturesPerCandidatPoeiAction(
   let candidats: any[] | null = null
   {
     const r = await supabase.from('poei_candidats')
-      .select('id, numero_engagement, statut, heures_effectuees, date_abandon, apprenant:apprenants(nom, prenom)')
+      .select('id, numero_engagement, statut, heures_effectuees, date_abandon, date_debut, date_fin, duree_heures, apprenant:apprenants(nom, prenom)')
       .eq('poei_id', poeiId).order('created_at', { ascending: true })
     if (r.error) {
-      const r2 = await supabase.from('poei_candidats')
-        .select('id, numero_engagement, statut, apprenant:apprenants(nom, prenom)')
+      // Migration 151 absente : on retombe sur la lecture d'avant
+      const r1 = await supabase.from('poei_candidats')
+        .select('id, numero_engagement, statut, heures_effectuees, date_abandon, apprenant:apprenants(nom, prenom)')
         .eq('poei_id', poeiId).order('created_at', { ascending: true })
-      candidats = r2.data
+      if (r1.error) {
+        const r2 = await supabase.from('poei_candidats')
+          .select('id, numero_engagement, statut, apprenant:apprenants(nom, prenom)')
+          .eq('poei_id', poeiId).order('created_at', { ascending: true })
+        candidats = r2.data
+      } else candidats = r1.data
     } else candidats = r.data
   }
   if (!candidats || candidats.length === 0) return { success: false, error: 'Aucun candidat à facturer' }
@@ -690,14 +734,15 @@ export async function generateFacturesPerCandidatPoeiAction(
   const echeance = new Date(); echeance.setDate(echeance.getDate() + 60)
 
   // Heures facturables d'un candidat : le prorata du temps passé en cas
-  // d'abandon (modèle France Travail), la durée du projet sinon.
-  const heuresDe = (c: any) =>
-    c.statut === 'abandonne' && c.heures_effectuees != null ? Number(c.heures_effectuees) : duree
+  // d'abandon (modèle France Travail), sa durée propre s'il est entré en cours
+  // de route, la durée du projet sinon.
+  const heuresDe = (c: any) => heuresFacturables(c, poei as any)
 
   const applyLigneEtTotaux = async (factureId: string, nom: string, c: any) => {
     const heures = heuresDe(c)
     const montantHt = Math.round(heures * taux * 100) / 100
     const abandon = c.statut === 'abandonne' && c.heures_effectuees != null
+    const entreeDecalee = !abandon && c.duree_heures != null && Number(c.duree_heures) !== duree
     await supabase.from('facture_lignes').delete().eq('facture_id', factureId)
     // Présentation identique à la facture France Travail : une ligne au nom du
     // participant, le temps de présence en sous-titre, quantité 1 et le montant
@@ -705,7 +750,12 @@ export async function generateFacturesPerCandidatPoeiAction(
     await supabase.from('facture_lignes').insert({
       facture_id: factureId,
       designation: nom,
-      description: `Temps de présence : ${heures.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}${abandon ? ` sur ${duree.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} prévues — abandon${c.date_abandon ? ` le ${new Date(c.date_abandon).toLocaleDateString('fr-FR')}` : ''}, facturation au prorata` : ''}`,
+      description: `Temps de présence : ${heures.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}`
+        + (abandon
+          ? ` sur ${duree.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} prévues — abandon${c.date_abandon ? ` le ${new Date(c.date_abandon).toLocaleDateString('fr-FR')}` : ''}, facturation au prorata`
+          : entreeDecalee
+            ? ` sur ${duree.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} du parcours — entrée en formation${c.date_debut ? ` le ${new Date(c.date_debut).toLocaleDateString('fr-FR')}` : ''}`
+            : ''),
       quantite: 1, unite: 'forfait', prix_unitaire_ht: montantHt, montant_ht: montantHt, position: 0,
     })
     // TVA 0 → HT = TTC = restant

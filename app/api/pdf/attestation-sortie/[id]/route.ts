@@ -29,6 +29,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { data: cand } = await supabase.from('poei_candidats').select('*').eq('id', candidatId).eq('poei_id', poeiId).single()
   if (!cand) return NextResponse.json({ error: 'Candidat introuvable' }, { status: 404 })
 
+  const { periodeCandidat } = await import('@/lib/poei-candidat')
+  const periode = periodeCandidat(cand as any, p)
+
   let formation: any = null
   if (p.formation_id) {
     const { data: f } = await supabase.from('formations').select('*').eq('id', p.formation_id).single()
@@ -51,10 +54,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       apprenant,
       formation,
       org,
-      dateDebut: p.date_debut,
+      // Le candidat entré en cours de parcours atteste de ses propres dates
+      dateDebut: periode.debut,
       dateSortie: (cand as any).date_abandon || null,
       dureeHeures: p.duree_heures,
-      heuresEffectuees: (cand as any).heures_effectuees ?? null,
+      heuresEffectuees: (cand as any).heures_effectuees ?? (periode.personnalisee ? periode.heures : null),
       motif: (cand as any).motif_abandon || null,
       poei: { identifiant_ft: cand.identifiant_ft, poste_vise: cand.poste_vise, employeur },
     }) as any,

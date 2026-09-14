@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { zipSync } from 'fflate'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
+import { periodeCandidat } from '@/lib/poei-candidat'
 import { FacturePDF } from '@/lib/pdf/facture-pdf'
 import type { Facture } from '@/lib/types/facture'
 
@@ -48,7 +49,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   // Candidats du dossier : nom du participant et références France Travail
   const { data: candidats } = await supabase
     .from('poei_candidats')
-    .select('id, numero_engagement, numero_convention, apprenant:apprenant_id(prenom, nom)')
+    .select('*, apprenant:apprenant_id(prenom, nom)')
     .eq('poei_id', params.id)
   const parCandidat = new Map((candidats || []).map((c: any) => [c.id, c]))
 
@@ -61,8 +62,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const p: any = poei
   const fr = (d?: string | null) => (d ? new Date(d).toLocaleDateString('fr-FR') : '')
-  const heures = Number(p.duree_heures) || 0
-  const jours = heures ? Math.round(heures / 7) : 0
+
   const lieu = [p.session?.adresse || p.session?.lieu, p.session?.code_postal, p.session?.ville].filter(Boolean).join(', ')
     || [p.client?.adresse, p.client?.code_postal, p.client?.ville].filter(Boolean).join(', ')
 
@@ -79,7 +79,12 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     const detail: { label: string; valeur: string }[] = [{ label: 'Type', valeur: 'INTER' }]
     if (p.session?.reference) detail.push({ label: 'Référence', valeur: p.session.reference })
     if (participant) detail.push({ label: 'Participant', valeur: participant })
-    if (p.date_debut) detail.push({ label: 'Dates', valeur: `du ${fr(p.date_debut)} au ${fr(p.date_fin)}` })
+    // Dates et durée du candidat : une entrée décalée ou un abandon ne se
+    // facture pas sur le calendrier du projet.
+    const periode = cand ? periodeCandidat(cand, p) : { debut: p.date_debut, fin: p.date_fin, heures: Number(p.duree_heures) || 0 }
+    const heures = Number(periode.heures) || 0
+    const jours = heures ? Math.round(heures / 7) : 0
+    if (periode.debut) detail.push({ label: 'Dates', valeur: `du ${fr(periode.debut)} au ${fr(periode.fin)}` })
     if (heures) detail.push({ label: 'Durée', valeur: `${heures}h${jours ? ` (${jours} jours)` : ''}` })
     if (lieu) detail.push({ label: 'Lieu', valeur: lieu })
     const engagement = facture.numero_engagement || cand?.numero_engagement

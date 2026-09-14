@@ -37,12 +37,29 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       const { data: f } = await supabase.from('formations').select('*').eq('id', p.formation_id).single()
       formation = f
     }
-    // Identifiant France Travail et poste visé sont portés par le CANDIDAT.
+    // Identifiant France Travail, poste visé et PÉRIODE sont portés par le
+    // CANDIDAT : celui qui entre en cours de parcours atteste de ses dates.
     let identifiantFt: string | null = null
     let posteVise: string | null = null
     if (candidatId) {
-      const { data: c } = await supabase.from('poei_candidats').select('identifiant_ft, poste_vise').eq('id', candidatId).single()
-      if (c) { identifiantFt = c.identifiant_ft || identifiantFt; posteVise = c.poste_vise || posteVise }
+      let c: any = null
+      const r = await supabase.from('poei_candidats')
+        .select('identifiant_ft, poste_vise, date_debut, date_fin, duree_heures, statut, date_abandon, heures_effectuees')
+        .eq('id', candidatId).single()
+      if (r.error) {
+        // Migration 151 absente : le candidat suit le calendrier du projet
+        const r2 = await supabase.from('poei_candidats').select('identifiant_ft, poste_vise').eq('id', candidatId).single()
+        c = r2.data
+      } else c = r.data
+      if (c) {
+        identifiantFt = c.identifiant_ft || identifiantFt
+        posteVise = c.poste_vise || posteVise
+        const { periodeCandidat } = await import('@/lib/poei-candidat')
+        const periode = periodeCandidat(c, p)
+        dateDebut = periode.debut
+        dateFin = periode.fin
+        if (periode.heures != null) dureeHeures = periode.heures
+      }
     }
     let employeur: string | null = null
     if (p.client_id) {

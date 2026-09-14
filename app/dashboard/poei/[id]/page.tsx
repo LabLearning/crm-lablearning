@@ -430,7 +430,14 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         }}
         dossier={<PoeiEditor poei={p} clients={clients || []} formations={formations || []} nbCandidats={candidats.length} finances={finances} agences={(agencesFt || []) as any[]} referent={referent} />}
         candidats={
-          <PoeiCandidats poeiId={p.id} candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus} clientNom={companyLabel(p.client) || null} clientId={p.client_id} devisByCandidat={devisByCandidat} sessionTerminee={formationTerminee} />
+          <PoeiCandidats
+            poeiId={p.id}
+            projet={{ date_debut: p.date_debut, date_fin: p.date_fin, duree_heures: p.duree_heures }}
+            interventions={((interventions || []) as any[]).map((iv) => ({ date_debut: iv.date_debut, nb_heures: iv.nb_heures, libelle: iv.libelle }))}
+            candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus}
+            clientNom={companyLabel(p.client) || null} clientId={p.client_id}
+            devisByCandidat={devisByCandidat} sessionTerminee={formationTerminee}
+          />
         }
         interventions={
           <PoeiInterventions

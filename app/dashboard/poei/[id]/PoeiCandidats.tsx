@@ -2,15 +2,32 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro, Download, FileDown } from '@/components/ui/icons'
+import { UserPlus, Trash2, Users, FileText, GraduationCap, Pencil, Mail, Send, CheckCircle2, XCircle, Paperclip, Euro, Download, FileDown, CalendarClock } from '@/components/ui/icons'
 import { Button, Badge, Modal, Input, Select, useToast, SearchSelect, RowMenu } from '@/components/ui'
 import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAction, updatePoeiCandidatAction, sendAttestationsEntreeAction, generateDevisPerCandidatAction, generateDevisPrevisionnelPoeiAction, sendGroupEmailToCandidatsAction, getPoeiEmailTemplatesAction, savePoeiEmailTemplateAction, declarerAbandonCandidatAction } from '../actions'
 import { PoeiSection } from './PoeiSection'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
+import { heuresDepuisInterventions } from '@/lib/poei-candidat'
+
+/** Calendrier du projet, pour situer la période d'un candidat. */
+export interface ProjetPoeiPeriode {
+  date_debut: string | null
+  date_fin: string | null
+  duree_heures: number | null
+}
+
+/** Périodes du planning, pour déduire les heures d'une entrée décalée. */
+export interface InterventionPlanning {
+  date_debut: string | null
+  nb_heures: number | null
+  libelle?: string | null
+}
 
 interface Props {
   poeiId: string
+  projet: ProjetPoeiPeriode
+  interventions?: InterventionPlanning[]
   sessionTerminee?: boolean
   candidats: PoeiCandidat[]
   apprenants: { id: string; nom: string | null; prenom: string | null; email?: string | null }[]
@@ -49,7 +66,7 @@ function fmtDateTime(d: string | null): string {
   try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
-export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {}, sessionTerminee = false }: Props) {
+export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {}, sessionTerminee = false }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -282,6 +299,16 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
                   <div className="text-xs text-surface-500 truncate">
                     {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null, (c as any).numero_convention ? `Conv. ${(c as any).numero_convention}` : null, (c as any).entretien ? `Entretien${(c as any).entretien_date ? ` du ${new Date((c as any).entretien_date).toLocaleDateString('fr-FR')}` : ' mené'}` : null].filter(Boolean).join(' · ') || '—'}
                   </div>
+                  {c.statut !== 'abandonne' && ((c as any).date_debut || (c as any).date_fin || (c as any).duree_heures != null) && (
+                    <div className="text-xs text-brand-600 mt-0.5">
+                      {(c as any).date_debut && (c as any).date_debut !== projet.date_debut
+                        ? `Entré le ${frDate((c as any).date_debut)}`
+                        : (c as any).date_fin && (c as any).date_fin !== projet.date_fin
+                          ? `Sortie le ${frDate((c as any).date_fin)}`
+                          : 'Période propre'}
+                      {(c as any).duree_heures != null ? ` · ${Number((c as any).duree_heures).toLocaleString('fr-FR')} h sur ${projet.duree_heures ?? '—'} h` : ''}
+                    </div>
+                  )}
                   {c.statut === 'abandonne' && (c as any).date_abandon && (
                     <div className="text-xs text-red-600 mt-0.5">
                       Abandon le {new Date((c as any).date_abandon).toLocaleDateString('fr-FR')}
@@ -609,6 +636,8 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
             <Input id="numero_convention" name="numero_convention" label="N° de convention" placeholder="Ex. CONV-2026-001 ou n° France Travail" />
           </div>
 
+          <PeriodeCandidatChamps key={open ? 'ouvert' : 'ferme'} prefixe="" projet={projet} interventions={interventions} />
+
           <div className="flex justify-end gap-3 pt-1">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
             <Button type="submit" isLoading={saving} icon={<UserPlus className="h-4 w-4" />} className="">Ajouter</Button>
@@ -683,6 +712,18 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
                 <Input id="e_entretien_date" name="entretien_date" type="date" label="Date de l'entretien" defaultValue={(editCand as any).entretien_date || ''} />
               </div>
             </div>
+
+            <PeriodeCandidatChamps
+              key={editCand.id}
+              prefixe="e_"
+              projet={projet}
+              interventions={interventions}
+              valeurs={{
+                date_debut: (editCand as any).date_debut || '',
+                date_fin: (editCand as any).date_fin || '',
+                duree_heures: (editCand as any).duree_heures ?? '',
+              }}
+            />
             <div className="flex justify-end gap-3 pt-1">
               <Button type="button" variant="secondary" onClick={() => setEditCand(null)}>Annuler</Button>
               <Button type="submit" isLoading={saving} icon={<Pencil className="h-4 w-4" />}>Enregistrer</Button>
@@ -691,5 +732,98 @@ export function PoeiCandidats({ poeiId, candidats, apprenants, emailStatus = {},
         )}
       </Modal>
     </PoeiSection>
+  )
+}
+
+const frDate = (d?: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : null)
+
+/**
+ * Période propre à un candidat. Laissée vide, le candidat suit le calendrier
+ * du projet : c'est le cas courant, la saisie ne sert qu'aux entrées décalées.
+ */
+function PeriodeCandidatChamps({
+  prefixe, projet, interventions, valeurs,
+}: {
+  prefixe: string
+  projet: ProjetPoeiPeriode
+  interventions: InterventionPlanning[]
+  valeurs?: { date_debut: string; date_fin: string; duree_heures: number | string }
+}) {
+  const [ouvert, setOuvert] = useState(
+    !!(valeurs && (valeurs.date_debut || valeurs.date_fin || valeurs.duree_heures !== '')),
+  )
+  const [debut, setDebut] = useState(valeurs?.date_debut || '')
+  const [fin, setFin] = useState(valeurs?.date_fin || '')
+  const [heures, setHeures] = useState(
+    valeurs?.duree_heures === '' || valeurs?.duree_heures == null ? '' : String(valeurs.duree_heures),
+  )
+  // Heures du planning comprises dans la période saisie : une entrée décalée
+  // dont on oublie la durée serait facturée plein temps.
+  const suggestion = heuresDepuisInterventions(interventions, debut || null, fin || null)
+  const proposer = suggestion != null && heures !== String(suggestion)
+  const calendrier = [
+    frDate(projet.date_debut) && frDate(projet.date_fin)
+      ? `du ${frDate(projet.date_debut)} au ${frDate(projet.date_fin)}`
+      : frDate(projet.date_debut) ? `à partir du ${frDate(projet.date_debut)}` : null,
+    projet.duree_heures != null ? `${projet.duree_heures} h` : null,
+  ].filter(Boolean).join(' · ')
+
+  if (!ouvert) {
+    return (
+      <div className="border-t border-surface-100 pt-3">
+        <button
+          type="button" onClick={() => setOuvert(true)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
+        >
+          <CalendarClock className="h-4 w-4" /> Ce candidat entre en cours de parcours
+        </button>
+        <p className="text-xs text-surface-400 mt-1">
+          Par défaut il suit le calendrier du projet{calendrier ? ` : ${calendrier}` : ''}.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-t border-surface-100 pt-3 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-surface-800">Période propre à ce candidat</div>
+          <p className="text-xs text-surface-400 mt-0.5">
+            Ses dates figureront sur sa convention, son attestation d&apos;entrée et sa facture France Travail.
+            {calendrier ? ` Le projet court ${calendrier}.` : ''}
+          </p>
+        </div>
+        <button
+          type="button" onClick={() => setOuvert(false)}
+          className="text-xs font-medium text-surface-400 hover:text-surface-600 shrink-0"
+        >
+          Suivre le projet
+        </button>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Input id={`${prefixe}date_debut`} name="date_debut" type="date" label="Entrée en formation"
+          value={debut} onChange={(e) => setDebut(e.target.value)}
+          min={projet.date_debut || undefined} max={projet.date_fin || undefined} />
+        <Input id={`${prefixe}date_fin`} name="date_fin" type="date" label="Sortie prévue"
+          value={fin} onChange={(e) => setFin(e.target.value)}
+          min={projet.date_debut || undefined} max={projet.date_fin || undefined} />
+        <Input id={`${prefixe}duree_heures`} name="duree_heures" type="number" step="0.5" min="0"
+          label="Heures suivies" placeholder={projet.duree_heures != null ? String(projet.duree_heures) : 'ex. 250'}
+          value={heures} onChange={(e) => setHeures(e.target.value)} />
+      </div>
+      {proposer ? (
+        <button
+          type="button" onClick={() => setHeures(String(suggestion))}
+          className="text-xs font-medium text-brand-600 hover:text-brand-700"
+        >
+          Le planning compte {suggestion!.toLocaleString('fr-FR')} h sur cette période — reprendre cette durée
+        </button>
+      ) : (
+        <p className="text-xs text-surface-400">
+          Les heures servent à facturer France Travail. Laissez le champ vide pour facturer la durée complète du parcours.
+        </p>
+      )}
+    </div>
   )
 }
