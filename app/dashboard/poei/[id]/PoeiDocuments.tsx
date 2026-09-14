@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Euro, FileText, GraduationCap, ClipboardCheck, Award, ReceiptEuro,
-  Download, Loader2, Check,
+  Download, Loader2, Check, ShieldCheck,
 } from '@/components/ui/icons'
 import { useToast } from '@/components/ui'
 import { cn } from '@/lib/utils'
@@ -93,6 +93,16 @@ export function PoeiDocuments({
       zip: null,
       lien: (c: CandidatDoc) =>
         c.apprenantId ? { href: `/api/pdf/attestation-entree/${c.apprenantId}?poei=${poeiId}&candidat=${c.id}`, texte: 'Télécharger' } : null,
+    },
+    {
+      cle: 'hygiene',
+      icone: ShieldCheck,
+      titre: "Attestations d'hygiène alimentaire",
+      sous: 'Module de 14 heures, arrêté du 12 février 2024',
+      compte: `${nb}/${nb}`,
+      complet: nb > 0,
+      zip: nb > 0 ? `/api/pdf/attestation-hygiene?poei=${poeiId}` : null,
+      lien: (c: CandidatDoc) => ({ href: `/api/pdf/attestation-hygiene?poei=${poeiId}&candidat=${c.id}`, texte: 'Télécharger' }),
     },
     {
       cle: 'grilles',

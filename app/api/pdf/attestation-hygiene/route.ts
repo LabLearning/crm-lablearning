@@ -18,7 +18,19 @@ export const dynamic = 'force-dynamic'
  * certificat de réalisation, il s'y ajoute.
  *
  *   /api/pdf/attestation-hygiene?session=<uuid>[&apprenant=<uuid>]
+ *
+ * Sur un parcours POEI, le module hygiène n'est pas une session à part : sa
+ * durée est saisie par le gestionnaire (14 h par défaut, l'obligation de
+ * l'arrêté du 12 février 2024) et l'attestation se tire du parcours.
+ *
+ *   /api/pdf/attestation-hygiene?poei=<uuid>[&candidat=<uuid>][&heures=14]
  */
+
+/** Durée réglementaire du module hygiène d'un parcours POEI. */
+const HEURES_HYGIENE_POEI = 14
+
+/** Intitulé porté sur les attestations du module hygiène d'une POEI. */
+const INTITULE_MODULE_HYGIENE = 'Hygiène alimentaire et prévention des risques'
 export async function GET(req: NextRequest) {
   const auth = await requireApiUser()
   if ('error' in auth) return auth.error
@@ -26,9 +38,13 @@ export async function GET(req: NextRequest) {
 
   const sessionId = req.nextUrl.searchParams.get('session') || ''
   const apprenantId = req.nextUrl.searchParams.get('apprenant') || ''
-  if (!sessionId) return NextResponse.json({ error: 'Session requise' }, { status: 400 })
+  const poeiId = req.nextUrl.searchParams.get('poei') || ''
+  const candidatId = req.nextUrl.searchParams.get('candidat') || ''
+  if (!sessionId && !poeiId) return NextResponse.json({ error: 'Session ou parcours POEI requis' }, { status: 400 })
 
   const supabase = await createServiceRoleClient()
+
+  if (poeiId) return attestationsPoei(supabase, orgId, poeiId, candidatId, req.nextUrl.searchParams.get('heures'))
 
   const [{ data: orgRow }, { data: sess }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
@@ -101,6 +117,67 @@ export async function GET(req: NextRequest) {
     ? `Attestation hygiene - ${aAttester[0].nom} ${aAttester[0].prenom}`
     : `Attestations hygiene - ${(sess as any).reference || 'session'}`
 
+  return new NextResponse(new Uint8Array(buffer), {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${nom.replace(/[^\w\s.-]/g, '').replace(/\s+/g, '_')}.pdf"`,
+    },
+  })
+}
+
+/**
+ * Attestations d'hygiène d'un parcours POEI. Le module est un volet du
+ * parcours : ni session ni émargement propre, la durée attestée est celle
+ * saisie, jamais nulle.
+ */
+async function attestationsPoei(
+  supabase: any,
+  orgId: string,
+  poeiId: string,
+  candidatId: string,
+  heuresParam: string | null,
+): Promise<NextResponse> {
+  const heures = heuresParam ? Number(String(heuresParam).replace(',', '.')) : HEURES_HYGIENE_POEI
+  if (!(heures > 0)) {
+    return NextResponse.json({ error: 'La durée du module hygiène doit être supérieure à 0 heure' }, { status: 400 })
+  }
+
+  const [{ data: orgRow }, { data: poei }] = await Promise.all([
+    supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
+    supabase.from('poei').select('id, numero, date_debut, date_fin').eq('id', poeiId).eq('organization_id', orgId).maybeSingle(),
+  ])
+  if (!poei) return NextResponse.json({ error: 'Parcours POEI introuvable' }, { status: 404 })
+
+  let q = supabase.from('poei_candidats')
+    .select('id, statut, apprenant:apprenants(id, civilite, prenom, nom, date_naissance, entreprise)')
+    .eq('poei_id', poeiId).eq('organization_id', orgId)
+  if (candidatId) q = q.eq('id', candidatId)
+  const { data: candidats } = await q
+
+  const apprenants = (candidats || [])
+    .filter((c: any) => c.statut !== 'abandonne' && c.apprenant)
+    .map((c: any) => c.apprenant)
+    .sort((a: any, b: any) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr'))
+  if (!apprenants.length) {
+    return NextResponse.json({ error: 'Aucun candidat actif sur ce parcours' }, { status: 404 })
+  }
+
+  const heuresParApprenant: Record<string, number> = {}
+  for (const a of apprenants) heuresParApprenant[a.id] = heures
+
+  const org = await withDocumentLogo(supabase, orgRow)
+  const buffer = await renderToBuffer(
+    createElement(AttestationHygienePDF, {
+      apprenants,
+      session: { reference: (poei as any).numero, date_debut: (poei as any).date_debut, date_fin: (poei as any).date_fin } as any,
+      formation: { intitule: INTITULE_MODULE_HYGIENE, duree_heures: heures },
+      org, heuresParApprenant,
+    }) as any,
+  )
+
+  const nom = candidatId && apprenants[0]
+    ? `Attestation hygiene - ${apprenants[0].nom} ${apprenants[0].prenom}`
+    : `Attestations hygiene - ${(poei as any).numero || 'POEI'}`
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
