@@ -718,6 +718,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
               prefixe="e_"
               projet={projet}
               interventions={interventions}
+              toujoursVisible
               valeurs={{
                 date_debut: (editCand as any).date_debut || '',
                 date_fin: (editCand as any).date_fin || '',
@@ -742,15 +743,17 @@ const frDate = (d?: string | null) => (d ? new Date(d + 'T00:00:00').toLocaleDat
  * du projet : c'est le cas courant, la saisie ne sert qu'aux entrées décalées.
  */
 function PeriodeCandidatChamps({
-  prefixe, projet, interventions, valeurs,
+  prefixe, projet, interventions, valeurs, toujoursVisible,
 }: {
   prefixe: string
   projet: ProjetPoeiPeriode
   interventions: InterventionPlanning[]
   valeurs?: { date_debut: string; date_fin: string; duree_heures: number | string }
+  /** En modification, les champs restent affichés : c'est là qu'on corrige une entrée décalée. */
+  toujoursVisible?: boolean
 }) {
   const [ouvert, setOuvert] = useState(
-    !!(valeurs && (valeurs.date_debut || valeurs.date_fin || valeurs.duree_heures !== '')),
+    toujoursVisible || !!(valeurs && (valeurs.date_debut || valeurs.date_fin || valeurs.duree_heures !== '')),
   )
   const [debut, setDebut] = useState(valeurs?.date_debut || '')
   const [fin, setFin] = useState(valeurs?.date_fin || '')
@@ -795,7 +798,8 @@ function PeriodeCandidatChamps({
           </p>
         </div>
         <button
-          type="button" onClick={() => setOuvert(false)}
+          type="button"
+          onClick={() => { setDebut(''); setFin(''); setHeures(''); if (!toujoursVisible) setOuvert(false) }}
           className="text-xs font-medium text-surface-400 hover:text-surface-600 shrink-0"
         >
           Suivre le projet

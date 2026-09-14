@@ -74,6 +74,11 @@ export function CertificatRealisationPage({ apprenant, session, formation, org, 
           <Text style={{ fontSize: 10, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, marginTop: 8 }}>
             {stagiaire}
           </Text>
+          {apprenant.date_naissance ? (
+            <Text style={{ fontSize: 9, color: SURFACE_900, marginTop: 2 }}>
+              {`né(e) le ${fmtCourt(apprenant.date_naissance)}`}
+            </Text>
+          ) : null}
           {entreprise && (
             <Text style={{ fontSize: 9, color: SURFACE_900, marginTop: 2 }}>{`salarié(e) de l'entreprise ${entreprise}`}</Text>
           )}

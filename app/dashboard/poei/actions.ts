@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
-import { heuresFacturables, montantTotalPoei, MESSAGE_MIGRATION_PERIODE } from '@/lib/poei-candidat'
+import { heuresFacturables, montantTotalPoei, periodeCandidat, MESSAGE_MIGRATION_PERIODE } from '@/lib/poei-candidat'
 
 function canManage(role: string) {
   return ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'].includes(role)
@@ -26,13 +26,17 @@ function num(fd: FormData, key: string): number | null {
 /**
  * Période saisie sur un candidat. Les trois champs sont facultatifs : vides,
  * le candidat suit le calendrier du projet.
+ *
+ * Un champ absent du formulaire n'est PAS un champ vidé : sans cette
+ * distinction, modifier l'identité d'un candidat depuis un formulaire qui
+ * n'affiche pas la période l'effaçait au passage.
  */
 function periodeSaisie(fd: FormData): Record<string, unknown> {
-  return {
-    date_debut: str(fd, 'date_debut'),
-    date_fin: str(fd, 'date_fin'),
-    duree_heures: num(fd, 'duree_heures'),
-  }
+  const patch: Record<string, unknown> = {}
+  if (fd.has('date_debut')) patch.date_debut = str(fd, 'date_debut')
+  if (fd.has('date_fin')) patch.date_fin = str(fd, 'date_fin')
+  if (fd.has('duree_heures')) patch.duree_heures = num(fd, 'duree_heures')
+  return patch
 }
 
 /**
@@ -499,7 +503,7 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
 
   const { data: poei } = await supabase
     .from('poei')
-    .select('id, client_id, formation_id, duree_heures, montant_horaire, formation:formations(intitule)')
+    .select('id, client_id, formation_id, date_debut, date_fin, duree_heures, montant_horaire, formation:formations(intitule)')
     .eq('id', poeiId).eq('organization_id', orgId).single()
   if (!poei) return { success: false, error: 'Projet introuvable' }
   if (!poei.client_id) return { success: false, error: 'Aucune entreprise liée au projet' }
@@ -507,16 +511,23 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
     return { success: false, error: 'Renseignez le taux horaire et la durée du projet avant de générer les devis' }
   }
 
-  const { data: candidats } = await supabase
-    .from('poei_candidats')
-    .select('id, apprenant:apprenants(nom, prenom)')
-    .eq('poei_id', poeiId)
-    .order('created_at', { ascending: true })
+  // Lecture résiliente : les colonnes de période n'existent qu'après la migration 151
+  let candidats: any[] | null = null
+  {
+    const r = await supabase.from('poei_candidats')
+      .select('id, date_debut, date_fin, duree_heures, statut, date_abandon, heures_effectuees, apprenant:apprenants(nom, prenom)')
+      .eq('poei_id', poeiId).order('created_at', { ascending: true })
+    if (r.error) {
+      const r2 = await supabase.from('poei_candidats')
+        .select('id, apprenant:apprenants(nom, prenom)')
+        .eq('poei_id', poeiId).order('created_at', { ascending: true })
+      candidats = r2.data
+    } else candidats = r.data
+  }
   if (!candidats || candidats.length === 0) return { success: false, error: 'Aucun candidat à facturer' }
 
-  const duree = Number(poei.duree_heures)
+  const dureeProjet = Number(poei.duree_heures)
   const taux = Number(poei.montant_horaire)
-  const montantHt = Math.round(duree * taux * 100) / 100
   const formationNom = (poei as any).formation?.intitule || 'Formation POEI'
   const today = new Date().toISOString().slice(0, 10)
   const validite = new Date(); validite.setDate(validite.getDate() + 30)
@@ -525,6 +536,14 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
   for (const c of candidats) {
     const marker = `[POEI:${poeiId}:${c.id}]`
     const nom = `${(c as any).apprenant?.prenom || ''} ${(c as any).apprenant?.nom || ''}`.trim() || 'Candidat'
+    // Un candidat entré en cours de parcours suit moins d'heures : son devis
+    // doit porter les siennes, sinon France Travail reçoit un chiffrage faux.
+    const periode = periodeCandidat(c as any, poei as any)
+    const duree = periode.heures ?? dureeProjet
+    const montantHt = Math.round(duree * taux * 100) / 100
+    const mention = duree !== dureeProjet && periode.debut
+      ? ` — entrée en formation le ${new Date(periode.debut).toLocaleDateString('fr-FR')}, ${duree} h sur ${dureeProjet} h du parcours`
+      : ''
 
     // Un devis existe déjà pour ce candidat : on le met à jour au prix courant
     // (le taux/durée du projet a pu changer) — sauf s'il est déjà accepté.
@@ -537,7 +556,7 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
       await supabase.from('devis_lignes').insert({
         devis_id: existingDevis.id,
         designation: `${formationNom} — ${nom}`,
-        description: `Formation POEI : ${duree} h × ${taux.toLocaleString('fr-FR')} €/h`,
+        description: `Formation POEI : ${duree} h × ${taux.toLocaleString('fr-FR')} €/h${mention}`,
         quantite: duree, unite: 'heure', prix_unitaire_ht: taux, montant_ht: montantHt, position: 0,
       })
       await supabase.from('devis').update({
@@ -565,7 +584,7 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
     await supabase.from('devis_lignes').insert({
       devis_id: devis.id,
       designation: `${formationNom} — ${nom}`,
-      description: `Formation POEI : ${duree} h × ${taux.toLocaleString('fr-FR')} €/h`,
+      description: `Formation POEI : ${duree} h × ${taux.toLocaleString('fr-FR')} €/h${mention}`,
       quantite: duree, unite: 'heure', prix_unitaire_ht: taux, montant_ht: montantHt, position: 0,
     })
     // Totaux (TVA 0 → TTC = HT)

@@ -34,6 +34,11 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
           <Text style={{ fontSize: 10, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, marginBottom: 4 }}>
             {apprenant.prenom} {apprenant.nom}
           </Text>
+          {apprenant.date_naissance ? (
+            <Text style={shared.infoBoxText}>
+              {`Né(e) le ${new Date(apprenant.date_naissance).toLocaleDateString('fr-FR')}`}
+            </Text>
+          ) : null}
           {apprenant.entreprise && <Text style={shared.infoBoxText}>Entreprise : {apprenant.entreprise}</Text>}
         </View>
 
