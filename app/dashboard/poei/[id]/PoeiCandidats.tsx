@@ -8,6 +8,7 @@ import { addPoeiCandidatAction, removePoeiCandidatAction, updateCandidatStatutAc
 import { PoeiSection } from './PoeiSection'
 import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
+import { cn } from '@/lib/utils'
 import { heuresDepuisInterventions } from '@/lib/poei-candidat'
 
 /** Calendrier du projet, pour situer la période d'un candidat. */
@@ -292,21 +293,32 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
         <div className="divide-y divide-surface-100">
           {candidats.map((c) => {
             const st = statusFor(c)
+            // Un candidat entré après le démarrage suit moins d'heures : il se
+            // repère dans la liste, sinon on le facture comme les autres.
+            const entreApres = c.statut !== 'abandonne'
+              && !!(c as any).date_debut && !!projet.date_debut && (c as any).date_debut > projet.date_debut
             return (
-              <div key={c.id} className="flex items-center gap-2.5 py-2.5">
+              <div key={c.id} className={cn('flex items-center gap-2.5 py-2.5', entreApres && 'border-l-2 border-amber-400 -ml-3 pl-3 bg-amber-50/30')}>
                 <button onClick={() => setEditCand(c)} className="flex-1 min-w-0 text-left group">
-                  <div className="text-sm font-medium text-surface-900 truncate group-hover:text-brand-600 transition-colors">{nom(c)}</div>
+                  <div className="text-sm font-medium text-surface-900 truncate group-hover:text-brand-600 transition-colors flex items-center gap-2">
+                    <span className="truncate">{nom(c)}</span>
+                    {entreApres && (
+                      <span className="shrink-0 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                        <CalendarClock className="h-3 w-3" /> Entré en cours
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-surface-500 truncate">
                     {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null, (c as any).numero_convention ? `Conv. ${(c as any).numero_convention}` : null, (c as any).entretien ? `Entretien${(c as any).entretien_date ? ` du ${new Date((c as any).entretien_date).toLocaleDateString('fr-FR')}` : ' mené'}` : null].filter(Boolean).join(' · ') || '—'}
                   </div>
                   {c.statut !== 'abandonne' && ((c as any).date_debut || (c as any).date_fin || (c as any).duree_heures != null) && (
-                    <div className="text-xs text-brand-600 mt-0.5">
+                    <div className={cn('text-xs mt-0.5 font-medium', entreApres ? 'text-amber-700' : 'text-brand-600')}>
                       {(c as any).date_debut && (c as any).date_debut !== projet.date_debut
                         ? `Entré le ${frDate((c as any).date_debut)}`
                         : (c as any).date_fin && (c as any).date_fin !== projet.date_fin
                           ? `Sortie le ${frDate((c as any).date_fin)}`
                           : 'Période propre'}
-                      {(c as any).duree_heures != null ? ` · ${Number((c as any).duree_heures).toLocaleString('fr-FR')} h sur ${projet.duree_heures ?? '—'} h` : ''}
+                      {(c as any).duree_heures != null ? ` · ${Number((c as any).duree_heures).toLocaleString('fr-FR')} h sur ${projet.duree_heures ?? '—'} h du parcours` : ''}
                     </div>
                   )}
                   {c.statut === 'abandonne' && (c as any).date_abandon && (
