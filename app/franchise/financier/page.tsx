@@ -3,7 +3,7 @@ import { getFranchiseSession } from '@/lib/franchise-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getFranchiseStats, getFranchiseCommissionLines, type LigneCommissionSession } from '@/lib/franchise-data'
 import { commissionTypeLabel, syncFranchiseCommissions } from '@/lib/commission'
-import { Percent, Info, Banknote, Clock, CheckCircle } from '@/components/ui/icons'
+import { Percent, Info, Banknote, Clock, CheckCircle, Download } from '@/components/ui/icons'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,6 +123,12 @@ export default async function FranchiseFinancierPage() {
               </div>
               <div className="text-right shrink-0">
                 <div className={`text-lg font-heading font-bold tabular-nums ${b.couleur}`}>{fmtEuroPrecis(totalDe(l))}</div>
+                <a
+                  href={`/api/pdf/releve-commissions/${franchise.id}?etat=${b.etat}`}
+                  className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-surface-500 hover:text-brand-600"
+                >
+                  <Download className="h-3.5 w-3.5" /> Relevé PDF
+                </a>
               </div>
             </div>
             <p className="text-xs text-surface-500 px-4 pt-2 pb-3 max-w-3xl">{b.texte}</p>

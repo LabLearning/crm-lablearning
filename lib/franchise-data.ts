@@ -122,7 +122,7 @@ export interface LigneCommissionSession {
   commission_taux: number
   commission_type: string
   payee_at: string | null
-  client: { id: string; raison_sociale: string } | null
+  client: { id: string; raison_sociale: string; ville: string | null } | null
   session: {
     id: string; reference: string | null; intitule: string | null
     date_debut: string | null; date_fin: string | null; status: string
@@ -137,7 +137,7 @@ export async function getFranchiseCommissionLines(supabase: any, franchiseId: st
     .select(`
       id, session_id, status, base_montant, base_source, cout_formateur, cout_formateur_manuel,
       commission_montant, commission_taux, commission_type, payee_at,
-      client:client_id(id, raison_sociale),
+      client:client_id(id, raison_sociale, ville),
       session:session_id(id, reference, intitule, date_debut, date_fin, status, formation:formation_id(intitule))
     `)
     .eq('organization_id', orgId).eq('franchise_id', franchiseId)

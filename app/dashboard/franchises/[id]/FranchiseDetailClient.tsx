@@ -6,6 +6,7 @@ import Link from 'next/link'
 import {
   Settings2, Check, Loader2, RefreshCw, BadgeCheck, Wallet, Clock, X, ExternalLink, Banknote,
   ChevronRight, Building2, AlertTriangle,
+  Download,
 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { commissionTypeLabel } from '@/lib/commission'
@@ -197,9 +198,20 @@ export default function FranchiseDetailClient({
           <div className="text-xs text-surface-500">À venir</div>
           <div className="text-lg font-heading font-bold text-surface-700 tabular-nums mt-1">{fmtEuro(commAVenir)}</div>
         </div>
-        <div className="card p-4">
-          <div className="text-xs text-surface-500">Validées (à payer)</div>
-          <div className="text-lg font-heading font-bold text-blue-600 tabular-nums mt-1">{fmtEuro(commValidee)}</div>
+        <div className="card p-4 flex items-center justify-between gap-2">
+          <div>
+            <div className="text-xs text-surface-500">Validées (à payer)</div>
+            <div className="text-lg font-heading font-bold text-blue-600 tabular-nums mt-1">{fmtEuro(commValidee)}</div>
+          </div>
+          {commValidee > 0 && (
+            <a
+              href={`/api/pdf/releve-commissions/${franchiseId}`}
+              title="Relevé PDF des commissions à verser, dossier par dossier"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-50 shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" /> Relevé
+            </a>
+          )}
         </div>
         <div className="card p-4 flex items-center justify-between">
           <div>
