@@ -469,3 +469,120 @@ export async function getFranchiseFormations(
     }
   }).filter((g) => g.formations.length > 0)
 }
+
+// ─── Audits hygiène du réseau ───────────────────────────────────────────────
+
+export interface AuditEtablissement {
+  date: string | null
+  score: number | null
+  mention: string | null
+  type: string | null
+  rapport: string | null
+}
+
+export interface AuditsClient {
+  nb: number
+  /** Premier passage : la photo de départ. */
+  entree: AuditEtablissement | null
+  /** Dernier audit de suivi ou de sortie, quand il existe. */
+  sortie: AuditEtablissement | null
+  /** Points gagnés entre l'entrée et la sortie. */
+  gain: number | null
+  /** Tous les audits, du plus récent au plus ancien. */
+  historique: AuditEtablissement[]
+}
+
+const estSuivi = (type: string | null) => /suivi|sortie/i.test(String(type || ''))
+
+/**
+ * Les audits hygiène des établissements d'une franchise, indexés par client.
+ *
+ * L'outil terrain (AuditHygiène) alimente les tables ah_* ; le rapprochement
+ * avec le CRM se fait par ah_etablissements.client_id. Un établissement audité
+ * mais pas encore rapproché n'apparaît donc pas ici : c'est voulu, on ne
+ * devine pas un rattachement.
+ */
+export async function getFranchiseAudits(
+  supabase: any,
+  franchiseId: string,
+  orgId: string,
+): Promise<Map<string, AuditsClient>> {
+  const parClient = new Map<string, AuditsClient>()
+
+  const { data: etabs, error } = await supabase
+    .from('ah_etablissements').select('id, client_id')
+    .eq('organization_id', orgId).eq('franchise_id', franchiseId).not('client_id', 'is', null)
+  // Tables ah_* absentes (outil non branché) : la franchise s'affiche sans audits
+  if (error || !etabs?.length) return parClient
+
+  // Le rapprochement de l'outil peut pointer vers un client qui n'est plus (ou
+  // pas encore) rattaché au réseau : on ne compte que les établissements
+  // réellement dans la franchise, sinon la synthèse annonce des scores qui
+  // n'apparaissent nulle part dans la liste.
+  const { data: clients } = await supabase
+    .from('clients').select('id').eq('organization_id', orgId).eq('franchise_id', franchiseId)
+  const duReseau = new Set((clients || []).map((c: any) => c.id))
+
+  const parEtab = new Map<string, string>()
+  for (const e of etabs as any[]) if (duReseau.has(e.client_id)) parEtab.set(e.id, e.client_id)
+  if (!parEtab.size) return parClient
+
+  const ids = [...parEtab.keys()]
+  const audits: any[] = []
+  for (let i = 0; i < ids.length; i += 50) {
+    const { data } = await supabase.from('ah_audits')
+      .select('etablissement_id, num_rapport, date_audit, type_audit, score_global, mention')
+      .in('etablissement_id', ids.slice(i, i + 50))
+    audits.push(...((data || []) as any[]))
+  }
+
+  const brut = new Map<string, any[]>()
+  for (const a of audits) {
+    // Un score à zéro est un rapport ouvert mais pas rempli : il fausserait la progression
+    if (a.score_global == null || Number(a.score_global) === 0) continue
+    const clientId = parEtab.get(a.etablissement_id)
+    if (!clientId) continue
+    if (!brut.has(clientId)) brut.set(clientId, [])
+    brut.get(clientId)!.push(a)
+  }
+
+  for (const [clientId, liste] of brut) {
+    const tri = liste
+      .map((a) => ({
+        date: a.date_audit as string | null,
+        score: a.score_global == null ? null : Number(a.score_global),
+        mention: a.mention as string | null,
+        type: a.type_audit as string | null,
+        rapport: a.num_rapport as string | null,
+      }))
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+
+    const entree = tri.find((a) => /premier/i.test(String(a.type))) || tri[0] || null
+    const apres = tri.filter((a) => estSuivi(a.type) && String(a.date) > String(entree?.date))
+    const sortie = apres[apres.length - 1] || null
+    const gain = entree?.score != null && sortie?.score != null ? Math.round((sortie.score - entree.score) * 10) / 10 : null
+
+    parClient.set(clientId, { nb: tri.length, entree, sortie, gain, historique: tri.slice().reverse() })
+  }
+  return parClient
+}
+
+/** Synthèse réseau : moyennes d'entrée et de sortie, progression. */
+export function syntheseAudits(audits: Map<string, AuditsClient>): {
+  nbEtablissements: number; nbAudits: number
+  moyenneEntree: number | null; moyenneSortie: number | null; progression: number | null
+  nbSuivis: number; nbEnHausse: number
+} {
+  const tous = [...audits.values()]
+  const suivis = tous.filter((a) => a.entree?.score != null && a.sortie?.score != null)
+  const moy = (l: number[]) => (l.length ? Math.round((l.reduce((t, n) => t + n, 0) / l.length) * 10) / 10 : null)
+  return {
+    nbEtablissements: tous.length,
+    nbAudits: tous.reduce((t, a) => t + a.nb, 0),
+    moyenneEntree: moy(suivis.map((a) => a.entree!.score!)),
+    moyenneSortie: moy(suivis.map((a) => a.sortie!.score!)),
+    progression: suivis.length ? moy(suivis.map((a) => a.sortie!.score! - a.entree!.score!)) : null,
+    nbSuivis: suivis.length,
+    nbEnHausse: suivis.filter((a) => (a.gain || 0) > 0).length,
+  }
+}

@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { Building2, BadgeEuro, Clock, CalendarClock, FileQuestion, GraduationCap, History, Store } from '@/components/ui/icons'
-import { LIBELLES_PHASES, type GroupePhase, type PhaseFranchise } from '@/lib/franchise-data'
+import { Building2, BadgeEuro, Clock, CalendarClock, FileQuestion, GraduationCap, History, Store, ShieldCheck, TrendingUp } from '@/components/ui/icons'
+import { LIBELLES_PHASES, type GroupePhase, type PhaseFranchise, type AuditsClient } from '@/lib/franchise-data'
 import { UnlinkButton } from './LinkEtablissementClient'
 import { HorsPartenariatToggle } from './HorsPartenariatToggle'
 
@@ -35,7 +35,19 @@ const ICONES: Record<PhaseFranchise, typeof Building2> = {
  * ce qui bloque. Remplace la liste plate des établissements, qui ne disait pas
  * où en était chacun.
  */
-export default function FranchisePhases({ groupes }: { groupes: GroupePhase[] }) {
+interface BilanAudits {
+  nbEtablissements: number; nbAudits: number
+  moyenneEntree: number | null; moyenneSortie: number | null; progression: number | null
+  nbSuivis: number; nbEnHausse: number
+}
+
+export default function FranchisePhases({
+  groupes, audits = {}, bilanAudits,
+}: {
+  groupes: GroupePhase[]
+  audits?: Record<string, AuditsClient>
+  bilanAudits?: BilanAudits
+}) {
   if (!groupes.length) {
     return (
       <div className="card p-6 text-center text-sm text-surface-400">
@@ -50,6 +62,8 @@ export default function FranchisePhases({ groupes }: { groupes: GroupePhase[] })
       <div className="text-sm font-heading font-semibold text-surface-900">
         Où en est le réseau ({total} établissement{total > 1 ? 's' : ''})
       </div>
+
+      {bilanAudits && bilanAudits.nbAudits > 0 && <BandeauAudits bilan={bilanAudits} />}
 
       {groupes.map((g) => {
         const { titre, texte } = LIBELLES_PHASES[g.phase]
@@ -104,6 +118,7 @@ export default function FranchisePhases({ groupes }: { groupes: GroupePhase[] })
                           <Puce ton="neutre">{e.nbAvantPartenariat} session{e.nbAvantPartenariat > 1 ? 's' : ''} avant le partenariat</Puce>
                         )}
                         {e.horsPartenariat && <Puce ton="neutre">Sorti de l&apos;accord</Puce>}
+                        <PuceAudit audit={audits[e.id]} />
                       </div>
                     </div>
                     <div className="text-right shrink-0 hidden sm:block">
@@ -125,11 +140,66 @@ export default function FranchisePhases({ groupes }: { groupes: GroupePhase[] })
   )
 }
 
-function Puce({ ton, children }: { ton: 'warn' | 'info' | 'neutre'; children: React.ReactNode }) {
+function Puce({ ton, children }: { ton: 'warn' | 'info' | 'neutre' | 'ok'; children: React.ReactNode }) {
   const cls = ton === 'warn'
     ? 'bg-amber-50 text-amber-700'
     : ton === 'info'
       ? 'bg-sky-50 text-sky-700'
-      : 'bg-surface-100 text-surface-500'
+      : ton === 'ok'
+        ? 'bg-emerald-50 text-emerald-700'
+        : 'bg-surface-100 text-surface-500'
   return <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${cls}`}>{children}</span>
+}
+
+/** Progression du réseau entre le premier audit et le dernier suivi. */
+function BandeauAudits({ bilan }: { bilan: BilanAudits }) {
+  const progression = bilan.progression
+  return (
+    <div className="card p-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+        </div>
+        <div>
+          <div className="text-sm font-heading font-semibold text-surface-900">Audits hygiène</div>
+          <div className="text-xs text-surface-500">
+            {bilan.nbAudits} audit{bilan.nbAudits > 1 ? 's' : ''} sur {bilan.nbEtablissements} établissement{bilan.nbEtablissements > 1 ? 's' : ''}
+          </div>
+        </div>
+      </div>
+      {bilan.moyenneEntree != null && bilan.moyenneSortie != null && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-surface-400 tabular-nums">{bilan.moyenneEntree}</span>
+          <span className="text-surface-300">→</span>
+          <span className="font-heading font-bold text-surface-900 tabular-nums">{bilan.moyenneSortie}</span>
+          <span className="text-xs text-surface-500">sur 100, à l&apos;entrée puis après suivi</span>
+        </div>
+      )}
+      {progression != null && progression > 0 && (
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
+          <TrendingUp className="h-4 w-4" /> +{progression} points
+        </span>
+      )}
+      {bilan.nbSuivis > 0 && (
+        <span className="text-xs text-surface-500">
+          {bilan.nbEnHausse} sur {bilan.nbSuivis} en progression
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Le score d'un établissement : entrée, sortie, et le gain quand il existe. */
+function PuceAudit({ audit }: { audit?: AuditsClient }) {
+  if (!audit?.entree?.score) return null
+  const { entree, sortie, gain } = audit
+  if (sortie?.score == null) {
+    return <Puce ton="info">Audit {entree.score}/100</Puce>
+  }
+  const ton = (gain || 0) > 0 ? 'ok' : 'neutre'
+  return (
+    <Puce ton={ton}>
+      Audit {entree.score} → {sortie.score}/100{gain ? ` (${gain > 0 ? '+' : ''}${gain})` : ''}
+    </Puce>
+  )
 }

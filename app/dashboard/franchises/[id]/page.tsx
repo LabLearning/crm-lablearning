@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { Store, ClipboardCheck, Star } from '@/components/ui/icons'
 import { commissionTypeLabel, syncFranchiseCommissions } from '@/lib/commission'
-import { getFranchiseCommissionLines, getFranchiseParcours } from '@/lib/franchise-data'
+import { getFranchiseCommissionLines, getFranchiseParcours, getFranchiseAudits, syntheseAudits } from '@/lib/franchise-data'
 import FranchisePhases from './FranchisePhases'
 import FranchiseDetailClient from './FranchiseDetailClient'
 import { FranchiseGabaritsClient } from './FranchiseGabaritsClient'
@@ -38,7 +38,6 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
     { data: etablissements },
     { data: allClients },
     { data: franchiseUsers },
-    { data: audits },
   ] = await Promise.all([
     // Établissements
     supabase
@@ -61,31 +60,19 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
       .eq('role', 'franchise')
       .eq('franchise_id', params.id)
       .order('created_at', { ascending: true }),
-    // Audits de la franchise (récents)
-    supabase
-      .from('audits_etablissement')
-      .select('id, date_audit, type_audit, note_globale, note_sur, client:clients(raison_sociale)')
-      .eq('franchise_id', params.id)
-      .eq('organization_id', orgId)
-      .order('date_audit', { ascending: false })
-      .limit(8),
   ])
 
   // Le financier est assis sur les SESSIONS des établissements : on aligne les
   // lignes de commission (création / recalcul des non figées) avant de lire.
   await syncFranchiseCommissions(supabase, params.id, orgId)
-  const [lignes, groupes] = await Promise.all([
+  const [lignes, groupes, audits] = await Promise.all([
     getFranchiseCommissionLines(supabase, params.id, orgId),
     // date_partenariat n'existe qu'après la migration 150 : absente, aucun
     // établissement ne bascule en « avant le partenariat ».
     getFranchiseParcours(supabase, params.id, orgId, (franchise as any).date_partenariat || null),
+    getFranchiseAudits(supabase, params.id, orgId),
   ])
-
-  const auditsList = audits || []
-  const auditsWithNote = auditsList.filter((a) => a.note_globale != null)
-  const avgAudit = auditsWithNote.length
-    ? auditsWithNote.reduce((s, a) => s + (Number(a.note_globale) / a.note_sur) * 20, 0) / auditsWithNote.length
-    : null
+  const bilanAudits = syntheseAudits(audits)
 
   const name = franchise.nom || franchise.raison_sociale || 'Franchise'
 
@@ -175,52 +162,8 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
         lignes={lignes}
       />
 
-      {/* Audits */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-heading font-semibold text-surface-900">
-            Audits récents ({auditsList.length})
-          </div>
-          {avgAudit != null && (
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
-              <Star className="h-4 w-4" /> {avgAudit.toFixed(1)}/20 de moyenne
-            </span>
-          )}
-        </div>
-        {auditsList.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-surface-400">
-            Aucun audit pour cette franchise. Les audits arrivent via l'outil terrain (API) ou en saisie manuelle dans Audits.
-          </div>
-        ) : (
-          <div className="card divide-y divide-surface-100">
-            {auditsList.map((a) => {
-              const pct = a.note_globale != null ? (Number(a.note_globale) / a.note_sur) * 100 : null
-              const noteCol = pct == null ? 'text-surface-400' : pct >= 80 ? 'text-emerald-600' : pct >= 60 ? 'text-amber-600' : 'text-rose-600'
-              return (
-                <div key={a.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
-                    <ClipboardCheck className="h-4 w-4 text-surface-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-surface-900 truncate">
-                      {(a.client as any)?.raison_sociale || 'Établissement'}
-                    </div>
-                    <div className="text-xs text-surface-500">
-                      {a.type_audit} · {new Date(a.date_audit).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </div>
-                  </div>
-                  <div className={`text-sm font-heading font-bold tabular-nums shrink-0 ${noteCol}`}>
-                    {a.note_globale != null ? `${a.note_globale}/${a.note_sur}` : '—'}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Le réseau par avancement de dossier */}
-      <FranchisePhases groupes={groupes} />
+      <FranchisePhases groupes={groupes} audits={Object.fromEntries(audits)} bilanAudits={bilanAudits} />
     </div>
   )
 }

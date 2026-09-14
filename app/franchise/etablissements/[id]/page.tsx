@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { commissionStatusLabel } from '@/lib/commission'
 import {
   ArrowLeft, Building2, MapPin, GraduationCap, Banknote, Users, FileText,
-  Calendar, Hash, BadgeCheck,
+  Calendar, Hash, BadgeCheck, ShieldCheck,
 } from '@/components/ui/icons'
 
 export const dynamic = 'force-dynamic'
@@ -64,6 +64,10 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
 
   if (!client || client.franchise_id !== franchise.id) notFound()
 
+  const { getFranchiseAudits } = await import('@/lib/franchise-data')
+  const auditsReseau = await getFranchiseAudits(supabase, franchise.id, orgId)
+  const audits = auditsReseau.get(client.id) || null
+
   const [{ data: dossiers }, { data: apprenants }] = await Promise.all([
     supabase
       .from('dossiers_formation')
@@ -113,6 +117,55 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
         <Stat icon={FileText} tint="blue" value={fmtEuro(pec)} label="Prise en charge" />
         <Stat icon={Banknote} tint="amber" value={fmtEuro(comm)} label="Commission générée TTC" />
       </div>
+
+      {/* Audits hygiène : la photo d'entrée, puis ce qui a bougé */}
+      {audits && audits.historique.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+            <div className="text-sm font-heading font-semibold text-surface-900">
+              Audits hygiène ({audits.nb})
+            </div>
+            {audits.entree?.score != null && audits.sortie?.score != null && (
+              <span className="inline-flex items-center gap-2 text-sm">
+                <span className="text-surface-400 tabular-nums">{audits.entree.score}</span>
+                <span className="text-surface-300">→</span>
+                <span className="font-heading font-bold text-surface-900 tabular-nums">{audits.sortie.score}</span>
+                <span className="text-xs text-surface-500">sur 100</span>
+                {audits.gain != null && audits.gain > 0 && (
+                  <span className="text-sm font-semibold text-emerald-600">+{audits.gain} points</span>
+                )}
+              </span>
+            )}
+          </div>
+          <div className="card divide-y divide-surface-100">
+            {audits.historique.map((a, i) => (
+              <div key={`${a.rapport}-${i}`} className="flex items-center gap-3 px-4 py-3">
+                <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-surface-900 truncate">{a.type || 'Audit hygiène'}</div>
+                  <div className="text-xs text-surface-500">
+                    {a.date ? new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                    {a.rapport ? ` · ${a.rapport}` : ''}
+                  </div>
+                </div>
+                {a.mention && (
+                  <span className={`text-[11px] font-semibold px-2 py-1 rounded-md shrink-0 ${
+                    /SATISFAISANT/i.test(a.mention) ? 'bg-emerald-50 text-emerald-700'
+                      : /INSUFFISANT/i.test(a.mention) ? 'bg-rose-50 text-rose-700'
+                        : 'bg-amber-50 text-amber-700'}`}>
+                    {a.mention}
+                  </span>
+                )}
+                <div className="text-sm font-heading font-bold text-surface-900 tabular-nums shrink-0 w-14 text-right">
+                  {a.score != null ? `${a.score}/100` : '—'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Dossiers détaillés */}
       <div>
