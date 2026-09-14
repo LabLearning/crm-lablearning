@@ -57,7 +57,6 @@ const COL = { formation: '44%', stagiaires: '12%', base: '20%', commission: '24%
  */
 export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }: ReleveCommissionsProps) {
   const total = lignes.reduce((t, l) => t + l.commission, 0)
-  const totalBase = lignes.reduce((t, l) => t + l.base, 0)
   const totalStagiaires = lignes.reduce((t, l) => t + l.nbStagiaires, 0)
   const estNet = franchise.commission_type === 'budget_net'
   const taux = Number(franchise.taux_commission || (estNet ? 40 : 10))
@@ -118,9 +117,6 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
             </Text>
             <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 2 }}>
               {totalStagiaires} stagiaire{totalStagiaires > 1 ? 's' : ''} formé{totalStagiaires > 1 ? 's' : ''}
-            </Text>
-            <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 2 }}>
-              {euro(totalBase)} de budget débloqué
             </Text>
           </View>
         </View>
