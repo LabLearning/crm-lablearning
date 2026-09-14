@@ -105,6 +105,16 @@ export function PoeiDocuments({
       lien: (c: CandidatDoc) => ({ href: `/api/pdf/attestation-hygiene?poei=${poeiId}&candidat=${c.id}`, texte: 'Télécharger' }),
     },
     {
+      cle: 'diplome',
+      icone: Award,
+      titre: "Diplôme de l'établissement",
+      sous: "Document d'affichage au nom de l'établissement et de son équipe",
+      compte: nb > 0 ? '1' : '0',
+      complet: nb > 0,
+      zip: nb > 0 ? `/api/pdf/diplome-etablissement/${poeiId}?poei=1` : null,
+      lien: () => null,
+    },
+    {
       cle: 'grilles',
       icone: ClipboardCheck,
       titre: "Grilles d'évaluation",
