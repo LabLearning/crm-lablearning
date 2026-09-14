@@ -1,3 +1,5 @@
+import type { CommissionStatus } from '@/lib/commission'
+
 /**
  * Agrégations de données pour le portail franchise, assises sur les SESSIONS
  * des établissements rattachés (l'unité réelle de l'activité), et sur les
@@ -334,4 +336,136 @@ export async function getFranchiseParcours(
       nbParticipants: l.reduce((t, e) => t + e.nbParticipants, 0),
     }
   }).filter((g) => g.etablissements.length > 0)
+}
+
+// ─── Formations du réseau, vues côté franchise ──────────────────────────────
+
+export type EtatFormation = 'a_venir' | 'en_cours' | 'terminee'
+
+export interface FormationFranchise {
+  id: string
+  reference: string | null
+  titre: string
+  clientId: string | null
+  client: string | null
+  ville: string | null
+  dateDebut: string | null
+  dateFin: string | null
+  nbParticipants: number
+  /** null quand la session ne relève pas de l'accord (POEI, hors partenariat). */
+  commission: number | null
+  statutCommission: CommissionStatus | null
+  base: number
+  poei: boolean
+  horsPartenariat: boolean
+  etat: EtatFormation
+}
+
+export interface GroupeFormations {
+  etat: EtatFormation
+  formations: FormationFranchise[]
+  nbParticipants: number
+  commission: number
+}
+
+export const ORDRE_ETATS: EtatFormation[] = ['en_cours', 'a_venir', 'terminee']
+
+export const LIBELLES_ETATS: Record<EtatFormation, { titre: string; texte: string }> = {
+  en_cours: { titre: 'En cours', texte: 'Formations qui se déroulent en ce moment dans votre réseau.' },
+  a_venir: { titre: 'À venir', texte: 'Formations programmées, pas encore démarrées.' },
+  terminee: { titre: 'Terminées', texte: 'Formations délivrées. Leur commission suit le règlement du dossier.' },
+}
+
+const ETAT_DE: Record<string, EtatFormation> = {
+  terminee: 'terminee',
+  en_cours: 'en_cours',
+  planifiee: 'a_venir',
+  confirmee: 'a_venir',
+  brouillon: 'a_venir',
+}
+
+/**
+ * Les formations du réseau, groupées par état, avec l'état de leur commission.
+ * Destiné au portail franchise : une seule lecture pour savoir ce qui est
+ * délivré, ce qui arrive, et ce que chaque dossier rapporte.
+ */
+export async function getFranchiseFormations(
+  supabase: any,
+  franchiseId: string,
+  orgId: string,
+  debutPartenariat?: string | null,
+): Promise<GroupeFormations[]> {
+  const { data: clients } = await supabase
+    .from('clients').select('*')
+    .eq('franchise_id', franchiseId).eq('organization_id', orgId)
+  const liste = (clients || []) as any[]
+  if (!liste.length) return []
+  const parClient = new Map(liste.map((c) => [c.id, c]))
+  const ids = liste.map((c) => c.id)
+
+  const sessions: any[] = []
+  for (let i = 0; i < ids.length; i += 30) {
+    const { data } = await supabase
+      .from('sessions')
+      .select('id, reference, intitule, client_id, status, date_debut, date_fin, poei_intervention_id, formation:formation_id(intitule)')
+      .eq('organization_id', orgId).in('client_id', ids.slice(i, i + 30)).neq('status', 'annulee')
+    sessions.push(...((data || []) as any[]))
+  }
+  if (!sessions.length) return []
+
+  const [{ data: poeiRows }, { data: lignes }] = await Promise.all([
+    supabase.from('poei').select('session_id').eq('organization_id', orgId),
+    supabase.from('commissions_sessions')
+      .select('session_id, base_montant, commission_montant, status')
+      .eq('organization_id', orgId).eq('franchise_id', franchiseId).neq('status', 'annulee'),
+  ])
+  const poeiSet = new Set(((poeiRows || []) as any[]).map((p) => p.session_id))
+  const parSession = new Map(((lignes || []) as any[]).map((l) => [l.session_id, l]))
+
+  const inscrits = new Map<string, number>()
+  const sessionIds = sessions.map((s) => s.id)
+  for (let i = 0; i < sessionIds.length; i += 100) {
+    const { data } = await supabase.from('inscriptions').select('session_id')
+      .in('session_id', sessionIds.slice(i, i + 100)).not('status', 'in', '("annule","abandonne")')
+    for (const r of (data || []) as any[]) inscrits.set(r.session_id, (inscrits.get(r.session_id) || 0) + 1)
+  }
+
+  const formations: FormationFranchise[] = sessions.map((s) => {
+    const c = parClient.get(s.client_id)
+    const l = parSession.get(s.id)
+    const formation = Array.isArray(s.formation) ? s.formation[0] : s.formation
+    const horsPartenariat = !!c?.franchise_hors_partenariat
+      || !!(debutPartenariat && s.date_debut && s.date_debut < debutPartenariat)
+    return {
+      id: s.id,
+      reference: s.reference,
+      titre: formation?.intitule || s.intitule || 'Formation',
+      clientId: s.client_id || null,
+      client: c?.raison_sociale || null,
+      ville: c?.ville || null,
+      dateDebut: s.date_debut,
+      dateFin: s.date_fin,
+      nbParticipants: inscrits.get(s.id) || 0,
+      commission: l ? Number(l.commission_montant || 0) : null,
+      statutCommission: (l?.status as CommissionStatus) || null,
+      base: Number(l?.base_montant || 0),
+      poei: !!s.poei_intervention_id || poeiSet.has(s.id),
+      horsPartenariat,
+      etat: ETAT_DE[s.status as string] || 'a_venir',
+    }
+  })
+
+  return ORDRE_ETATS.map((etat) => {
+    const l = formations
+      .filter((f) => f.etat === etat)
+      // À venir : la prochaine d'abord. Terminées et en cours : la plus récente d'abord.
+      .sort((a, b) => etat === 'a_venir'
+        ? String(a.dateDebut).localeCompare(String(b.dateDebut))
+        : String(b.dateDebut).localeCompare(String(a.dateDebut)))
+    return {
+      etat, formations: l,
+      nbParticipants: l.reduce((t, f) => t + f.nbParticipants, 0),
+      commission: l.reduce((t, f) => t + (f.commission || 0), 0),
+    }
+  }).filter((g) => g.formations.length > 0)
 }

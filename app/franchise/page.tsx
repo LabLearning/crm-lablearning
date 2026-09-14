@@ -53,7 +53,7 @@ export default async function FranchiseDashboard() {
         <Kpi icon={Building2} tint="blue" value={String(stats.nbEtablissementsFormes)} label="Établissements formés"
           sub={`sur ${stats.nbEtablissements} rattachés`} />
         <Kpi icon={GraduationCap} tint="brand" value={String(stats.nbSessionsRealisees)} label="Formations réalisées"
-          sub={`${stats.nbSessions} au total`} />
+          sub={`${stats.nbSessions} au total`} href="/franchise/formations" />
         <Kpi icon={Users} tint="violet" value={String(stats.nbParticipants)} label="Participants" />
         <Kpi icon={UserCheck} tint="emerald" value={stats.tauxPresence != null ? `${stats.tauxPresence}%` : '—'} label="Taux de présence"
           sub={`${stats.nbAbsences} absence${stats.nbAbsences > 1 ? 's' : ''}`} />
@@ -70,13 +70,13 @@ export default async function FranchiseDashboard() {
             </span>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <CommBox label="À venir" value={fmtEuro(stats.commissionAVenir)} tone="surface" />
-            <CommBox label="Validées" value={fmtEuro(stats.commissionValidee)} tone="blue" />
-            <CommBox label="Payées" value={fmtEuro(stats.commissionPayee)} tone="emerald" />
+            <CommBox label="À vous verser" value={fmtEuro(stats.commissionValidee)} tone="blue" />
+            <CommBox label="En cours" value={fmtEuro(stats.commissionAVenir)} tone="surface" />
+            <CommBox label="Déjà versées" value={fmtEuro(stats.commissionPayee)} tone="emerald" />
           </div>
           <Link href="/franchise/financier"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-            Détail dossier par dossier <ArrowRight className="h-4 w-4" />
+            Détail formation par formation <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
@@ -138,23 +138,27 @@ export default async function FranchiseDashboard() {
   )
 }
 
-function Kpi({ icon: Icon, tint, value, label, sub }: { icon: any; tint: string; value: string; label: string; sub?: string }) {
+function Kpi({ icon: Icon, tint, value, label, sub, href }: { icon: any; tint: string; value: string; label: string; sub?: string; href?: string }) {
   const tints: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600',
     brand: 'bg-brand-50 text-brand-600',
     violet: 'bg-violet-50 text-violet-600',
     emerald: 'bg-emerald-50 text-emerald-600',
   }
-  return (
-    <div className="card p-4">
+  const contenu = (
+    <>
       <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${tints[tint]}`}>
         <Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
       </div>
       <div className="text-2xl font-heading font-bold text-surface-900 mt-3 tabular-nums">{value}</div>
       <div className="text-xs text-surface-500 mt-0.5">{label}</div>
       {sub && <div className="text-[11px] text-surface-400 mt-0.5">{sub}</div>}
-    </div>
+    </>
   )
+  if (href) {
+    return <Link href={href} className="card p-4 hover:border-brand-300 transition-colors">{contenu}</Link>
+  }
+  return <div className="card p-4">{contenu}</div>
 }
 
 function CommBox({ label, value, tone }: { label: string; value: string; tone: 'surface' | 'blue' | 'emerald' }) {

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { LayoutDashboard, Building2, ClipboardCheck, Banknote, AlertTriangle, TrendingUp, LogOut, ChevronDown, UserCog, X } from '@/components/ui/icons'
+import { LayoutDashboard, Building2, GraduationCap, ClipboardCheck, Banknote, AlertTriangle, TrendingUp, LogOut, ChevronDown, UserCog, X } from '@/components/ui/icons'
 import { Avatar } from '@/components/ui'
 import { ToastProvider } from '@/components/ui/Toast'
 import { NotificationsBell } from '@/components/layout/NotificationsBell'
@@ -16,10 +16,11 @@ interface NavItem { label: string; short: string; href: string; icon: React.Elem
 
 const nav: NavItem[] = [
   { label: 'Tableau de bord', short: 'Accueil', href: '', icon: LayoutDashboard },
+  { label: 'Formations', short: 'Format.', href: '/formations', icon: GraduationCap },
+  { label: 'Commissions', short: 'Commis.', href: '/financier', icon: Banknote },
   { label: 'Établissements', short: 'Établis.', href: '/etablissements', icon: Building2 },
   { label: 'Audits', short: 'Audits', href: '/audits', icon: ClipboardCheck },
   { label: 'Incidents', short: 'Incidents', href: '/incidents', icon: AlertTriangle },
-  { label: 'Financier', short: 'Financier', href: '/financier', icon: Banknote },
   { label: 'Prévision', short: 'Prévision', href: '/prevision', icon: TrendingUp },
 ]
 
