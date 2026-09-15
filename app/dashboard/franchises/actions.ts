@@ -11,7 +11,9 @@ import { notifyFranchiseUsers } from '@/lib/franchise-notify'
 const fmtEuro = (n: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0)
 
-type Result<T = unknown> = { success: true; data?: T } | { success: false; error: string }
+type Result<T = unknown> =
+  | { success: true; data?: T; warning?: string }
+  | { success: false; error: string }
 
 // ════════════════════════════════════════════════════════════
 // CRUD FRANCHISES
@@ -162,14 +164,21 @@ export async function inviteFranchiseUserAction(franchiseId: string, emailRaw: s
     .single()
   if (!franchise) return { success: false, error: 'Franchise introuvable' }
 
-  // Déjà membre ?
+  // Déjà membre ? Un compte actif, oui ; un accès révoqué ou une invitation
+  // restée en plan, non : réinviter doit relancer, pas buter. Sans cela, une
+  // révocation ou un envoi manqué rendait l'adresse définitivement inutilisable.
   const { data: existingUser } = await supabase
     .from('users')
-    .select('id')
+    .select('id, role, status, franchise_id')
     .eq('organization_id', session.organization.id)
-    .eq('email', email)
+    .ilike('email', email)
     .maybeSingle()
-  if (existingUser) return { success: false, error: 'Cet email a déjà un compte dans l\'organisme' }
+  if (existingUser && existingUser.status === 'active') {
+    return { success: false, error: 'Cet email a déjà un compte actif dans l\'organisme' }
+  }
+  if (existingUser && existingUser.role !== 'franchise') {
+    return { success: false, error: `Cet email est déjà utilisé par un compte ${existingUser.role} de l'organisme` }
+  }
 
   // Invitation
   const { data: invitation, error: inviteError } = await supabase
@@ -193,20 +202,21 @@ export async function inviteFranchiseUserAction(franchiseId: string, emailRaw: s
   if (authError && !authError.message.includes('already')) {
     console.error('[invite franchise]', authError)
   }
-  let authUserId = authData?.user?.id || ''
+  let authUserId = authData?.user?.id || existingUser?.id || ''
   if (!authUserId) {
     const { data: { users: allUsers } } = await supabase.auth.admin.listUsers()
-    authUserId = (allUsers || []).find((u: any) => u.email === email)?.id || ''
+    authUserId = (allUsers || []).find((u: any) => String(u.email).toLowerCase() === email.toLowerCase())?.id || ''
   }
   if (!authUserId) return { success: false, error: 'Impossible de créer le compte utilisateur' }
 
-  // Ligne users avec rôle franchise + rattachement franchise
+  // Ligne users avec rôle franchise + rattachement franchise. Une réinvitation
+  // remet le compte en « invité » : c'est ce qui débloque un accès révoqué.
   await supabase.from('users').upsert({
     id: authUserId,
     organization_id: session.organization.id,
     email,
-    first_name: '',
-    last_name: '',
+    first_name: existingUser ? undefined as any : '',
+    last_name: existingUser ? undefined as any : '',
     role: 'franchise',
     franchise_id: franchiseId,
     status: 'invited',
@@ -216,20 +226,31 @@ export async function inviteFranchiseUserAction(franchiseId: string, emailRaw: s
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
   const inviteUrl = `${appUrl}/setup-account?token=${invitation.token}&uid=${authUserId}`
   const inviterName = `${session.user.first_name} ${session.user.last_name}`.trim() || session.user.email
-  await sendInvitationEmail({
-    toEmail: email,
-    role: 'franchise',
-    orgName: session.organization.name,
-    orgEmail: (session.organization as any).email_contact || (session.organization as any).email || '',
-    orgLogoUrl: (session.organization as any).logo_url || null,
-    qualiopiCertified: (session.organization as any).is_qualiopi !== false,
-    invitedByName: inviterName,
-    inviteUrl,
-  })
+  let envoi: any = null
+  try {
+    envoi = await sendInvitationEmail({
+      toEmail: email,
+      role: 'franchise',
+      orgName: session.organization.name,
+      orgEmail: (session.organization as any).email_contact || (session.organization as any).email || '',
+      orgLogoUrl: (session.organization as any).logo_url || null,
+      qualiopiCertified: (session.organization as any).is_qualiopi !== false,
+      invitedByName: inviterName,
+      inviteUrl,
+    })
+  } catch (e) {
+    console.error('[invite franchise · email]', e)
+  }
 
   await logAudit({ action: 'invite_franchise', entity_type: 'franchise', entity_id: franchiseId, details: { email } })
   revalidatePath(`/dashboard/franchises/${franchiseId}`)
-  return { success: true, data: { email } }
+
+  // Le compte est prêt même si le mail n'est pas parti : on rend le lien pour
+  // qu'il puisse être transmis à la main plutôt que de laisser l'invité sans rien.
+  if (envoi && envoi.success === false) {
+    return { success: true, data: { email, inviteUrl }, warning: `Le compte est créé mais l'email n'a pas pu partir. Transmettez ce lien : ${inviteUrl}` }
+  }
+  return { success: true, data: { email, inviteUrl } }
 }
 
 /** Révoque l'accès d'un utilisateur franchise (status suspended). */

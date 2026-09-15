@@ -31,6 +31,8 @@ export default function FranchiseAccessClient({
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** Lien d'activation, à transmettre à la main si le mail n'arrive pas. */
+  const [lien, setLien] = useState<string | null>(null)
 
   const handleImpersonate = (userId: string) => {
     startTransition(async () => {
@@ -50,11 +52,17 @@ export default function FranchiseAccessClient({
       const r = await inviteFranchiseUserAction(franchiseId, email)
       setSending(false)
       if (r.success) {
-        setSent(email)
+        // Le compte est prêt même si l'email n'est pas parti : le lien
+        // d'activation s'affiche pour être transmis à la main.
+        const avertissement = (r as any).warning as string | undefined
+        if (avertissement) setError(avertissement)
+        else setSent(email)
+        setLien(((r as any).data?.inviteUrl as string) || null)
         setEmail('')
         router.refresh()
       } else {
         setError((r as any).error || 'Erreur')
+        setLien(null)
       }
     })
   }
@@ -137,6 +145,21 @@ export default function FranchiseAccessClient({
         </div>
       )}
       {error && <div className="mt-2 text-xs text-rose-600">{error}</div>}
+      {lien && (
+        <div className="mt-2 rounded-lg bg-surface-50 border border-surface-200 p-2.5">
+          <div className="text-[11px] font-semibold text-surface-600 mb-1">Lien d&apos;activation, à transmettre si besoin</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 min-w-0 truncate text-[11px] text-surface-700">{lien}</code>
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard?.writeText(lien); setSent('Lien copié') }}
+              className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded border border-surface-200 text-surface-600 hover:bg-white"
+            >
+              Copier
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
