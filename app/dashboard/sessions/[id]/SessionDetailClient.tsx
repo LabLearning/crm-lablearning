@@ -1036,6 +1036,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                   <div>
                     <div className="text-sm font-semibold text-surface-900">Rapport de session</div>
                     <div className="text-xs text-surface-500">
+                      {rapport.formateur ? `${rapport.formateur.prenom || ''} ${rapport.formateur.nom || ''}`.trim() + ' · ' : ''}
                       {rapport.status === 'valide'
                         ? `Validé${rapport.submitted_at ? ` — soumis le ${formatDate(rapport.submitted_at, { day: 'numeric', month: 'long' })}` : ''}`
                         : rapport.status === 'soumis' ? 'Soumis le ' + formatDate(rapport.submitted_at, { day: 'numeric', month: 'long' }) : 'Brouillon en cours'}
@@ -1063,6 +1064,11 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                   </div>
                 ))}
               </div>
+              {rapport.status === 'brouillon' && !isFormateur && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  Le formateur n&apos;a pas encore transmis ce bilan : le contenu peut encore changer.
+                </p>
+              )}
               {isFormateur && (
                 <Link href="/dashboard/formateur-home/rapports"
                   className="btn-primary inline-flex items-center gap-2 text-sm">

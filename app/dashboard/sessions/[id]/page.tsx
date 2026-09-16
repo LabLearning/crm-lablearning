@@ -77,15 +77,16 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
       .select('id, date, heure_arrivee, heure_depart, photo_arrivee_url, photo_depart_url')
       .eq('session_id', params.id)
       .order('date', { ascending: true }),
-    // Rapport de session
-    formateurId
-      ? supabase
-          .from('rapports_session')
-          .select('id, status, submitted_at')
-          .eq('session_id', params.id)
-          .eq('formateur_id', formateurId)
-          .single()
-      : Promise.resolve({ data: null }),
+    // Rapport de session : le contenu, et pas seulement le statut. Sans filtre
+    // sur le formateur, pour qu'un bilan écrit par un intervenant remplaçant
+    // reste visible côté gestionnaire.
+    supabase
+      .from('rapports_session')
+      .select('id, status, submitted_at, created_at, formateur_id, contenu_aborde, objectifs_atteints, objectifs_non_atteints, difficultes_rencontrees, recommandations, points_positifs, commentaires_generaux, formateur:formateur_id(prenom, nom)')
+      .eq('session_id', params.id)
+      .eq('organization_id', session.organization.id)
+      .order('submitted_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false }),
     // Évaluations de satisfaction (apprenants)
     supabase
       .from('evaluations_satisfaction')
@@ -148,7 +149,12 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  const rapport = rapportRes
+  // Le bilan transmis prime sur un brouillon, quel que soit son auteur
+  const rapports = ((rapportRes as any) || []) as any[]
+  const rapport = rapports.find((r) => r.status === 'valide')
+    || rapports.find((r) => r.status === 'soumis')
+    || rapports[0]
+    || null
 
   // Retours client (appels post-formation) — appréciations d'entreprise
   // rattachées à la session. Résilient avant migration 134.
