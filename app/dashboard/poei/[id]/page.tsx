@@ -8,6 +8,7 @@ import { POEI_STATUS_LABELS, POEI_STATUS_COLORS } from '@/lib/types/poei'
 import { formatDate, companyLabel } from '@/lib/utils'
 import { PoeiEditor } from './PoeiEditor'
 import { PoeiCandidats } from './PoeiCandidats'
+import { PoeiPositionnement, type PositionnementCandidat } from './PoeiPositionnement'
 import { PoeiFacturation } from './PoeiFacturation'
 import { PoeiEvaluations } from './PoeiEvaluations'
 import { PoeiEmailHistory } from './PoeiEmailHistory'
@@ -282,6 +283,30 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     return { id: c.id, nom, apprenantId, references, attestation, planCharge, evaluations, certificat, facture }
   })
 
+  // Positionnements d'entrée. Table absente tant que la migration 152 n'est
+  // pas appliquée : la section s'affiche vide plutôt que de casser la fiche.
+  let positionnements: any[] = []
+  {
+    const { data } = await supabase
+      .from('poei_positionnements')
+      .select('candidat_id, reponses, maitrise_globale, heures_preconisees, realise_le, commentaire')
+      .eq('poei_id', params.id).eq('organization_id', session.organization.id)
+    positionnements = data || []
+  }
+  const parCandidat = new Map(positionnements.map((x: any) => [x.candidat_id, x]))
+  const candidatsPositionnement: PositionnementCandidat[] = candidats.map((c: any) => {
+    const p2: any = parCandidat.get(c.id)
+    return {
+      candidatId: c.id,
+      nom: `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat',
+      reponses: p2?.reponses || null,
+      maitrise: p2?.maitrise_globale != null ? Number(p2.maitrise_globale) : null,
+      heures: p2?.heures_preconisees != null ? Number(p2.heures_preconisees) : null,
+      realiseLe: p2?.realise_le || null,
+      commentaire: p2?.commentaire || null,
+    }
+  })
+
   const candidatsDocs: CandidatDoc[] = candidats.map((c: any) => {
     const aid = c.apprenant?.id || c.apprenant_id || null
     return {
@@ -437,6 +462,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus}
             clientNom={companyLabel(p.client) || null} clientId={p.client_id}
             devisByCandidat={devisByCandidat} sessionTerminee={formationTerminee}
+          />
+        }
+        positionnement={
+          <PoeiPositionnement
+            poeiId={p.id}
+            dureeParcours={p.duree_heures ? Number(p.duree_heures) : null}
+            candidats={candidatsPositionnement}
           />
         }
         interventions={
