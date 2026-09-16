@@ -47,23 +47,6 @@ CREATE TABLE IF NOT EXISTS poei_positionnements (
   UNIQUE (candidat_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_poei_positionnements_poei ON poei_positionnements(poei_id);
-CREATE INDEX IF NOT EXISTS idx_poei_positionnements_token ON poei_positionnements(token);
-
-DROP TRIGGER IF EXISTS tr_poei_positionnements_updated_at ON poei_positionnements;
-CREATE TRIGGER tr_poei_positionnements_updated_at
-  BEFORE UPDATE ON poei_positionnements
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
--- Sans politique : seule la clé de service y accède, comme les autres tables
--- POEI. Le niveau d'un candidat n'a rien à faire derrière la clé publique.
-ALTER TABLE poei_positionnements ENABLE ROW LEVEL SECURITY;
-
-COMMENT ON TABLE poei_positionnements IS
-  'Positionnement d''entrée d''un candidat POEI : écart au référentiel et heures de formation justifiées.';
-COMMENT ON COLUMN poei_positionnements.resultats IS
-  'Résultats figés à l''enregistrement : un barème modifié ne réécrit pas un document déjà transmis.';
-
 -- ------------------------------------------------------------
 -- Rattrapage : une première version de cette migration créait la table pour
 -- une grille remplie par le formateur. Le questionnaire est désormais rempli
@@ -89,5 +72,22 @@ BEGIN
       ADD CONSTRAINT poei_positionnements_statut_check CHECK (statut IN ('envoye', 'complete'));
   END IF;
 END $$;
+
+CREATE INDEX IF NOT EXISTS idx_poei_positionnements_poei ON poei_positionnements(poei_id);
+CREATE INDEX IF NOT EXISTS idx_poei_positionnements_token ON poei_positionnements(token);
+
+DROP TRIGGER IF EXISTS tr_poei_positionnements_updated_at ON poei_positionnements;
+CREATE TRIGGER tr_poei_positionnements_updated_at
+  BEFORE UPDATE ON poei_positionnements
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Sans politique : seule la clé de service y accède, comme les autres tables
+-- POEI. Le niveau d'un candidat n'a rien à faire derrière la clé publique.
+ALTER TABLE poei_positionnements ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE poei_positionnements IS
+  'Positionnement d''entrée d''un candidat POEI : écart au référentiel et heures de formation justifiées.';
+COMMENT ON COLUMN poei_positionnements.resultats IS
+  'Résultats figés à l''enregistrement : un barème modifié ne réécrit pas un document déjà transmis.';
 
 NOTIFY pgrst, 'reload schema';
