@@ -30,6 +30,8 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [createOpen, setCreateOpen] = useState(false)
+  /** Le financement OPCO ne concerne qu'une partie des factures : replié par défaut. */
+  const [financeurOuvert, setFinanceurOuvert] = useState(false)
   const [detailFacture, setDetailFacture] = useState<Facture | null>(null)
   const [paiementFacture, setPaiementFacture] = useState<Facture | null>(null)
   const [cessionFacture, setCessionFacture] = useState<Facture | null>(null)
@@ -264,21 +266,53 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
             <Select id="type" name="type" label="Type" options={Object.entries(FACTURE_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))} defaultValue="facture" />
             <Select id="client_id" name="client_id" label="Client *" options={clientOptions} placeholder="Sélectionner" error={errors.client_id?.[0]} />
           </div>
-          <Input id="objet" name="objet" label="Objet *" placeholder="Formation Management — Facture de solde" error={errors.objet?.[0]} />
+          <Input id="objet" name="objet" label="Objet *" placeholder="Prestation de formation — septembre 2026" error={errors.objet?.[0]} />
           <div className="grid grid-cols-2 gap-3">
             <Input id="date_echeance" name="date_echeance" type="date" label="Échéance *"
               defaultValue={new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]} error={errors.date_echeance?.[0]} />
             <Input id="taux_tva" name="taux_tva" type="number" label="TVA (%)" defaultValue="20" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Select id="financeur_type" name="financeur_type" label="Financeur" options={financeurOpts} />
-            <Input id="financeur_nom" name="financeur_nom" label="Nom financeur" />
+
+          {/* Première prestation : la facture sort complète, sans passer par la fiche */}
+          <div className="rounded-xl border border-surface-200 bg-surface-50/60 p-3.5 space-y-3">
+            <div className="text-xs font-semibold text-surface-700">Prestation facturée</div>
+            <Input id="ligne_designation" name="ligne_designation" label="Désignation"
+              placeholder="Formation hygiène alimentaire — 2 jours" />
+            <div className="grid grid-cols-3 gap-3">
+              <Input id="ligne_quantite" name="ligne_quantite" type="number" step="0.01" min="0.01" label="Quantité" defaultValue="1" />
+              <Input id="ligne_unite" name="ligne_unite" label="Unité" defaultValue="forfait" />
+              <Input id="ligne_prix" name="ligne_prix" type="number" step="0.01" min="0" label="Prix unitaire HT" placeholder="0,00" />
+            </div>
+            <p className="text-[11px] text-surface-400">
+              Laissez vide pour créer la facture sans ligne et la compléter ensuite. D&apos;autres prestations s&apos;ajoutent depuis la fiche.
+            </p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-surface-700">
-            <input type="checkbox" name="subrogation" value="true" className="rounded border-surface-300" />
-            Subrogation de paiement (paiement direct par le financeur)
-          </label>
+
           <Input id="conditions_paiement" name="conditions_paiement" label="Conditions de paiement" defaultValue="Paiement à 30 jours" />
+
+          {/* Financement OPCO, France Travail… : replié, la plupart des factures s'en passent */}
+          {financeurOuvert ? (
+            <div className="rounded-xl border border-surface-200 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold text-surface-700">Prise en charge par un financeur</div>
+                <button type="button" onClick={() => setFinanceurOuvert(false)}
+                  className="text-[11px] font-medium text-surface-400 hover:text-surface-600">Retirer</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Select id="financeur_type" name="financeur_type" label="Financeur" options={financeurOpts} />
+                <Input id="financeur_nom" name="financeur_nom" label="Nom du financeur" />
+              </div>
+              <label className="flex items-center gap-2 text-sm text-surface-700">
+                <input type="checkbox" name="subrogation" value="true" className="rounded border-surface-300" />
+                Subrogation de paiement (règlement direct par le financeur)
+              </label>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setFinanceurOuvert(true)}
+              className="text-sm font-medium text-brand-600 hover:text-brand-700">
+              Cette facture est prise en charge par un financeur
+            </button>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Annuler</Button>
             <Button type="submit" isLoading={isCreating} icon={<Receipt className="h-4 w-4" />}>Créer</Button>

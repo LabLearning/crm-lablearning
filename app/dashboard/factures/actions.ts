@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { createFactureSchema, createPaiementSchema } from '@/lib/validations/facture'
+import { createFactureSchema, createPaiementSchema, factureLigneSchema } from '@/lib/validations/facture'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
@@ -49,9 +49,36 @@ export async function createFactureAction(formData: FormData): Promise<ActionRes
     return { success: false, error: 'Erreur lors de la création' }
   }
 
+  // Première prestation saisie dans le même formulaire : une facture simple se
+  // crée d'un coup, sans rouvrir la fiche pour y ajouter une ligne.
+  const designation = String(formData.get('ligne_designation') || '').trim()
+  if (designation) {
+    const ligne = factureLigneSchema.safeParse({
+      designation,
+      description: formData.get('ligne_description') || '',
+      quantite: formData.get('ligne_quantite') || 1,
+      unite: formData.get('ligne_unite') || 'forfait',
+      prix_unitaire_ht: formData.get('ligne_prix') || 0,
+    })
+    if (ligne.success) {
+      await supabase.from('facture_lignes').insert({
+        facture_id: data.id,
+        designation: ligne.data.designation,
+        description: ligne.data.description || null,
+        quantite: ligne.data.quantite,
+        unite: ligne.data.unite,
+        prix_unitaire_ht: ligne.data.prix_unitaire_ht,
+        montant_ht: Math.round(ligne.data.quantite * ligne.data.prix_unitaire_ht * 100) / 100,
+        position: 0,
+      })
+      await recalculateFactureTotals(data.id)
+    }
+  }
+
   await logAudit({ action: 'create', entity_type: 'facture', entity_id: data.id })
   revalidatePath('/dashboard/factures')
-  return { success: true, data }
+  const { data: complete } = await supabase.from('factures').select('*, lignes:facture_lignes(*)').eq('id', data.id).single()
+  return { success: true, data: complete || data }
 }
 
 /** Vérifie que la facture appartient bien à l'organisation de l'utilisateur */
