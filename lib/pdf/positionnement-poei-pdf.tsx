@@ -4,7 +4,7 @@ import {
   PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared,
   BRAND_GREEN, BRAND_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
-import { DOMAINES, QUESTIONS, NIVEAUX, evaluerPositionnement, type Reponses } from '@/lib/poei-positionnement'
+import { DOMAINES, QUESTIONS, estJuste, evaluerPositionnement, type Reponses } from '@/lib/poei-positionnement'
 
 export interface CandidatPositionne {
   nom: string
@@ -80,6 +80,13 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                 </Text>
                 <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 2 }}>{r.niveauLibelle}</Text>
               </View>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 3 }}>Résultat au questionnaire</Text>
+                <Text style={{ fontSize: 19, fontFamily: 'Montserrat', fontWeight: 700, color: BRAND_GREEN, letterSpacing: -0.3 }}>
+                  {`${String(r.note).replace('.', ',')} / 20`}
+                </Text>
+                <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 2 }}>{`${r.justes} bonnes réponses sur ${r.nbQuestions}`}</Text>
+              </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 3 }}>Volume de formation justifié</Text>
                 <Text style={{ fontSize: 19, fontFamily: 'Montserrat', fontWeight: 700, color: BRAND_GREEN, letterSpacing: -0.3 }}>
@@ -104,7 +111,10 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                       <Text style={[shared.tableCell, { color: SURFACE_900 }]}>{d.libelle}</Text>
                       <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 1.5 }}>{`${d.heuresReferentiel} h au référentiel`}</Text>
                     </View>
-                    <Text style={[shared.tableCell, { width: '18%', textAlign: 'right' }]}>{pct(d.maitrise)}</Text>
+                    <View style={{ width: '18%' }}>
+                      <Text style={[shared.tableCell, { textAlign: 'right' }]}>{pct(d.maitrise)}</Text>
+                      <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 1.5, textAlign: 'right' }}>{`${d.justes}/${d.total} réponses justes`}</Text>
+                    </View>
                     <Text style={[shared.tableCell, { width: '18%', textAlign: 'right' }]}>{pct(d.ecart)}</Text>
                     <Text style={[shared.tableCell, { width: '18%', textAlign: 'right', fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }]}>
                       {heures(d.heuresPreconisees)}
@@ -130,41 +140,58 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
             </View>
 
             <View style={shared.section} break>
-              <PdfSectionTitle>Détail des situations de travail évaluées</PdfSectionTitle>
+              <PdfSectionTitle>Détail des réponses du candidat</PdfSectionTitle>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.55, marginBottom: 8 }}>
-                {`Vingt situations de travail, réparties sur les cinq domaines du métier. Chaque situation est cotée de « ${NIVEAUX[0].libelle} » à « ${NIVEAUX[3].libelle} ».`}
+                {`Vingt situations de travail, réparties sur les cinq domaines du métier. Le candidat a répondu lui-même, ${jour(c.realiseLe)}. Chaque réponse juste atteste d'un acquis, chaque réponse fausse ouvre un besoin de formation.`}
               </Text>
-              {DOMAINES.map((d) => (
-                <View key={d.code} style={{ marginBottom: 10 }} wrap={false}>
-                  <View style={{
-                    backgroundColor: SURFACE_50, paddingVertical: 5, paddingHorizontal: 9,
-                    borderRadius: 3, marginBottom: 3,
-                  }}>
-                    <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{d.libelle}</Text>
-                    <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 1 }}>{d.objectif}</Text>
-                  </View>
-                  {QUESTIONS.filter((q) => q.domaine === d.code).map((q) => {
-                    const v = c.reponses[q.code]
-                    const niv = NIVEAUX.find((n) => n.valeur === v)
-                    return (
-                      <View key={q.code} style={{
-                        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-                        paddingVertical: 3, paddingHorizontal: 9,
-                        borderBottomWidth: 0.4, borderBottomColor: SURFACE_200,
-                      }}>
-                        <Text style={{ fontSize: 8, color: SURFACE_700, width: '72%' }}>{q.intitule}</Text>
-                        <Text style={{
-                          fontSize: 8, width: '28%', textAlign: 'right',
-                          color: niv ? SURFACE_900 : SURFACE_400,
-                          fontFamily: 'Satoshi', fontWeight: niv && niv.valeur >= 2 ? 700 : 400,
-                        }}>
-                          {niv ? niv.libelle : 'Non évalué'}
-                        </Text>
+              {DOMAINES.map((d) => {
+                const dom = r.domaines.find((x) => x.code === d.code)
+                return (
+                  <View key={d.code} style={{ marginBottom: 10 }} wrap={false}>
+                    <View style={{
+                      backgroundColor: SURFACE_50, paddingVertical: 5, paddingHorizontal: 9,
+                      borderRadius: 3, marginBottom: 3, flexDirection: 'row', justifyContent: 'space-between',
+                    }}>
+                      <View style={{ width: '72%' }}>
+                        <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{d.libelle}</Text>
+                        <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 1 }}>{d.objectif}</Text>
                       </View>
-                    )
-                  })}
-                </View>
-              ))}
+                      <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_700, textAlign: 'right' }}>
+                        {dom ? `${dom.justes}/${dom.total}` : ''}
+                      </Text>
+                    </View>
+                    {QUESTIONS.filter((q) => q.domaine === d.code).map((q) => {
+                      const rep = c.reponses[q.code]
+                      const juste = estJuste(q, rep)
+                      const donnee = rep == null ? null : q.choix[Number(rep)]
+                      return (
+                        <View key={q.code} style={{
+                          paddingVertical: 3.5, paddingHorizontal: 9,
+                          borderBottomWidth: 0.4, borderBottomColor: SURFACE_200,
+                        }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Text style={{ fontSize: 8, color: SURFACE_900, width: '84%' }}>{q.intitule}</Text>
+                            <Text style={{
+                              fontSize: 8, width: '16%', textAlign: 'right',
+                              fontFamily: 'Satoshi', fontWeight: 700,
+                              color: juste ? BRAND_GREEN : donnee == null ? SURFACE_400 : SURFACE_700,
+                            }}>
+                              {juste ? 'Acquis' : donnee == null ? 'Sans réponse' : 'À former'}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 1.5 }}>
+                            {donnee == null
+                              ? `Attendu : ${q.choix[q.correct]}`
+                              : juste
+                                ? `Réponse : ${donnee}`
+                                : `Réponse : ${donnee} — attendu : ${q.choix[q.correct]}`}
+                          </Text>
+                        </View>
+                      )
+                    })}
+                  </View>
+                )
+              })}
             </View>
 
             {c.commentaire ? (
@@ -178,15 +205,15 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
               <PdfSectionTitle>Conclusion</PdfSectionTitle>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
                 {r.heuresPreconisees >= dureeParcours
-                  ? `L'évaluation situe ${c.prenom} ${String(c.nom).toUpperCase()} à ${pct(r.maitriseGlobale)} du référentiel de compétences du poste d'équipier polyvalent. L'écart constaté couvre l'intégralité des ${dureeParcours} heures du parcours, sur les cinq domaines du métier.`
-                  : `L'évaluation situe ${c.prenom} ${String(c.nom).toUpperCase()} à ${pct(r.maitriseGlobale)} du référentiel de compétences du poste d'équipier polyvalent. L'écart constaté justifie ${heures(r.heuresPreconisees)} de formation sur les ${dureeParcours} heures du parcours.`}
+                  ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} du référentiel de compétences du poste d'équipier polyvalent. L'écart constaté couvre l'intégralité des ${dureeParcours} heures du parcours, sur les cinq domaines du métier.`
+                  : `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} du référentiel de compétences du poste d'équipier polyvalent. L'écart constaté justifie ${heures(r.heuresPreconisees)} de formation sur les ${dureeParcours} heures du parcours.`}
               </Text>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
                 Le parcours est individualisé à partir de ce positionnement : les domaines les moins maîtrisés
                 concentrent le temps de formation, les acquis sont consolidés en situation de travail.
               </Text>
               <Text style={{ fontSize: 7.5, color: SURFACE_400, marginTop: 10 }}>
-                {`Positionnement réalisé le ${jour(c.realiseLe)} par ${org?.name || 'Lab Learning'}, organisme de formation certifié Qualiopi.`}
+                {`Questionnaire renseigné par le candidat le ${jour(c.realiseLe)}, dépouillé par ${org?.name || 'Lab Learning'}, organisme de formation certifié Qualiopi.`}
               </Text>
             </View>
 

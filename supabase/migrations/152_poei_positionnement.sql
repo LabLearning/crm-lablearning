@@ -3,9 +3,9 @@
 --
 -- France Travail finance un volume d'heures. Pour le justifier, il faut
 -- montrer candidat par candidat l'écart entre son niveau d'entrée et le
--- référentiel de compétences du poste visé. Vingt situations de travail,
--- réparties sur les cinq domaines du métier d'équipier polyvalent, situent
--- le candidat et déduisent le volume d'heures dont il a besoin.
+-- référentiel de compétences du poste visé. Le candidat répond lui-même à
+-- vingt questions, réparties sur les cinq domaines du métier d'équipier
+-- polyvalent : sa note et le volume d'heures se déduisent de ses réponses.
 --
 -- Les réponses restent en JSON : le référentiel vit dans le code
 -- (lib/poei-positionnement.ts), il évoluera plus vite qu'un schéma, et un
@@ -20,16 +20,24 @@ CREATE TABLE IF NOT EXISTS poei_positionnements (
   poei_id uuid NOT NULL REFERENCES poei(id) ON DELETE CASCADE,
   candidat_id uuid NOT NULL REFERENCES poei_candidats(id) ON DELETE CASCADE,
 
-  -- Ce qui a été répondu : { code_question: 0..3 }
+  -- Lien personnel envoyé au candidat, sans compte ni mot de passe
+  token text NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
+  -- envoye : le candidat a reçu le lien · complete : il a répondu
+  statut text NOT NULL DEFAULT 'envoye' CHECK (statut IN ('envoye', 'complete')),
+  envoye_le timestamptz,
+  complete_le timestamptz,
+
+  -- Ce qui a été répondu : { code_question: index du choix retenu }
   reponses jsonb NOT NULL DEFAULT '{}'::jsonb,
   -- Ce qui en a été déduit, figé au moment de l'enregistrement
   resultats jsonb,
+  note numeric(4,1),
   maitrise_globale numeric(5,1),
   heures_preconisees numeric(6,1),
   heures_referentiel numeric(6,1),
   niveau text,
 
-  realise_le date NOT NULL DEFAULT CURRENT_DATE,
+  realise_le date,
   realise_par uuid REFERENCES users(id) ON DELETE SET NULL,
   commentaire text,
 
@@ -40,6 +48,7 @@ CREATE TABLE IF NOT EXISTS poei_positionnements (
 );
 
 CREATE INDEX IF NOT EXISTS idx_poei_positionnements_poei ON poei_positionnements(poei_id);
+CREATE INDEX IF NOT EXISTS idx_poei_positionnements_token ON poei_positionnements(token);
 
 DROP TRIGGER IF EXISTS tr_poei_positionnements_updated_at ON poei_positionnements;
 CREATE TRIGGER tr_poei_positionnements_updated_at

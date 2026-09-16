@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/register') ||
     pathname.startsWith('/setup-account') ||
     pathname.startsWith('/portail') ||
+    pathname.startsWith('/positionnement') ||
     pathname.startsWith('/site') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/_next') ||

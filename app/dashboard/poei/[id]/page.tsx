@@ -289,21 +289,25 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   {
     const { data } = await supabase
       .from('poei_positionnements')
-      .select('candidat_id, reponses, maitrise_globale, heures_preconisees, realise_le, commentaire')
+      .select('candidat_id, token, statut, reponses, note, maitrise_globale, heures_preconisees, complete_le')
       .eq('poei_id', params.id).eq('organization_id', session.organization.id)
     positionnements = data || []
   }
+  const baseLien = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
   const parCandidat = new Map(positionnements.map((x: any) => [x.candidat_id, x]))
   const candidatsPositionnement: PositionnementCandidat[] = candidats.map((c: any) => {
     const p2: any = parCandidat.get(c.id)
     return {
       candidatId: c.id,
       nom: `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat',
+      email: c.apprenant?.email || null,
+      statut: (p2?.statut === 'complete' ? 'complete' : p2 ? 'envoye' : 'absent') as 'absent' | 'envoye' | 'complete',
+      lien: p2?.token ? `${baseLien}/positionnement/${p2.token}` : null,
       reponses: p2?.reponses || null,
+      note: p2?.note != null ? Number(p2.note) : null,
       maitrise: p2?.maitrise_globale != null ? Number(p2.maitrise_globale) : null,
       heures: p2?.heures_preconisees != null ? Number(p2.heures_preconisees) : null,
-      realiseLe: p2?.realise_le || null,
-      commentaire: p2?.commentaire || null,
+      completeLe: p2?.complete_le || null,
     }
   })
 
