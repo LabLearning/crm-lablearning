@@ -31,7 +31,7 @@ export interface PositionnementPdfProps {
 }
 
 const jour = (d?: string | null) =>
-  d ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('fr-FR') : '—'
+  d ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('fr-FR') : 'date non renseignée'
 const pct = (n: number) => `${String(n).replace('.', ',')} %`
 const heures = (n: number) => `${String(n).replace('.', ',')} h`
 
@@ -65,7 +65,7 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
               {c.identifiantFt ? <View style={shared.row}><Text style={shared.label}>Identifiant France Travail :</Text><Text style={shared.value}>{c.identifiantFt}</Text></View> : null}
               <View style={shared.row}><Text style={shared.label}>Poste visé :</Text><Text style={shared.value}>{poei.poste_vise || 'Équipier polyvalent en restauration rapide'}</Text></View>
               {employeur ? <View style={shared.row}><Text style={shared.label}>Employeur :</Text><Text style={shared.value}>{employeur}</Text></View> : null}
-              <View style={shared.row}><Text style={shared.label}>Parcours POEI :</Text><Text style={shared.value}>{`${poei.numero || ''} — ${dureeParcours} heures, du ${jour(poei.date_debut)} au ${jour(poei.date_fin)}`}</Text></View>
+              <View style={shared.row}><Text style={shared.label}>Parcours POEI :</Text><Text style={shared.value}>{`${poei.numero ? `${poei.numero}, ` : ''}${dureeParcours} heures, du ${jour(poei.date_debut)} au ${jour(poei.date_fin)}`}</Text></View>
             </View>
 
             {/* Le résultat, tout de suite : c'est ce que le financeur cherche */}
@@ -143,7 +143,7 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
             <View style={shared.section} break>
               <PdfSectionTitle>Détail des réponses du candidat</PdfSectionTitle>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.55, marginBottom: 8 }}>
-                {`Vingt situations de travail, réparties sur les cinq domaines du métier. Le candidat a répondu lui-même, ${jour(c.realiseLe)}. Chaque réponse juste atteste d'un acquis, chaque réponse fausse ouvre un besoin de formation.`}
+                {`Vingt situations de travail, réparties sur les cinq domaines du métier. Le candidat a répondu lui-même le ${jour(c.realiseLe)}. Chaque réponse juste atteste d'un acquis, chaque réponse fausse ouvre un besoin de formation.`}
               </Text>
               {DOMAINES.map((d) => {
                 const dom = r.domaines.find((x) => x.code === d.code)
@@ -185,7 +185,7 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                               ? `Attendu : ${q.choix[q.correct]}`
                               : juste
                                 ? `Réponse : ${donnee}`
-                                : `Réponse : ${donnee} — attendu : ${q.choix[q.correct]}`}
+                                : `Réponse : ${donnee}. Attendu : ${q.choix[q.correct]}`}
                           </Text>
                         </View>
                       )
