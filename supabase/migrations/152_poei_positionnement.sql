@@ -64,4 +64,30 @@ COMMENT ON TABLE poei_positionnements IS
 COMMENT ON COLUMN poei_positionnements.resultats IS
   'Résultats figés à l''enregistrement : un barème modifié ne réécrit pas un document déjà transmis.';
 
+-- ------------------------------------------------------------
+-- Rattrapage : une première version de cette migration créait la table pour
+-- une grille remplie par le formateur. Le questionnaire est désormais rempli
+-- par le candidat lui-même, d'où le lien personnel, le statut et la note.
+-- ------------------------------------------------------------
+ALTER TABLE poei_positionnements
+  ADD COLUMN IF NOT EXISTS token text NOT NULL DEFAULT encode(gen_random_bytes(16), 'hex'),
+  ADD COLUMN IF NOT EXISTS statut text NOT NULL DEFAULT 'envoye',
+  ADD COLUMN IF NOT EXISTS envoye_le timestamptz,
+  ADD COLUMN IF NOT EXISTS complete_le timestamptz,
+  ADD COLUMN IF NOT EXISTS note numeric(4,1);
+
+ALTER TABLE poei_positionnements ALTER COLUMN realise_le DROP NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_poei_positionnements_token_unique ON poei_positionnements(token);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'poei_positionnements_statut_check'
+  ) THEN
+    ALTER TABLE poei_positionnements
+      ADD CONSTRAINT poei_positionnements_statut_check CHECK (statut IN ('envoye', 'complete'));
+  END IF;
+END $$;
+
 NOTIFY pgrst, 'reload schema';
