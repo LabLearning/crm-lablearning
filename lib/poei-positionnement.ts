@@ -9,9 +9,15 @@
  *
  * Les heures de référence des cinq domaines totalisent exactement les 140 h du
  * parcours : c'est ce qui rend la justification lisible pour le financeur.
+ *
+ * La règle est un seuil : en dessous de 80 % de bonnes réponses, le candidat
+ * suit le parcours complet. Au-dessus, seul l'écart restant est à former.
  */
 
 export const DUREE_PARCOURS_REFERENCE = 140
+
+/** Part de bonnes réponses à partir de laquelle le parcours complet n'est plus requis. */
+export const SEUIL_REUSSITE = 80
 
 /** Le module hygiène est réglementaire : il se suit en entier, quel que soit le niveau. */
 export const HEURES_HYGIENE_INCOMPRESSIBLES = 14
@@ -346,6 +352,9 @@ export interface ResultatPositionnement {
   niveauLibelle: string
   heuresPreconisees: number
   heuresReferentiel: number
+  /** Vrai à partir de SEUIL_REUSSITE % de bonnes réponses. */
+  seuilAtteint: boolean
+  seuil: number
   complet: boolean
   nbReponses: number
   nbQuestions: number
@@ -355,10 +364,10 @@ const arrondiDemiHeure = (h: number) => Math.round(h * 2) / 2
 
 /** Niveau d'ensemble, tel qu'il sera lu par le financeur. */
 function niveauDe(maitrise: number): { cle: ResultatPositionnement['niveau']; libelle: string } {
-  if (maitrise < 25) return { cle: 'debutant', libelle: 'Débutant — découverte du métier' }
-  if (maitrise < 50) return { cle: 'initie', libelle: 'Initié — premières notions, pratique à construire' }
-  if (maitrise < 75) return { cle: 'intermediaire', libelle: 'Intermédiaire — bases acquises, à consolider' }
-  return { cle: 'autonome', libelle: 'Avancé — connaissances du poste maîtrisées' }
+  if (maitrise < 25) return { cle: 'debutant', libelle: 'Débutant : découverte du métier' }
+  if (maitrise < 50) return { cle: 'initie', libelle: 'Initié : premières notions, pratique à construire' }
+  if (maitrise < 75) return { cle: 'intermediaire', libelle: 'Intermédiaire : bases acquises, à consolider' }
+  return { cle: 'autonome', libelle: 'Avancé : connaissances du poste maîtrisées' }
 }
 
 /** Vrai si la réponse donnée est la bonne. */
@@ -370,13 +379,18 @@ export function estJuste(question: Question, reponse: number | null | undefined)
  * Corrige le questionnaire : réussite par domaine, écart au référentiel et
  * volume d'heures que cet écart justifie.
  *
- * Les heures d'un domaine sont proportionnelles à ce qui reste à construire :
- * un candidat qui répond juste partout n'a pas besoin du volume complet. Le
- * module hygiène ne descend jamais sous son plancher réglementaire. Une
- * question sans réponse compte comme fausse : on ne préjuge pas d'un acquis
- * qu'on n'a pas mesuré.
+ * En dessous du seuil de réussite, le parcours complet est requis : chaque
+ * domaine est compté pour son volume entier. Au-dessus, les heures d'un
+ * domaine sont proportionnelles à ce qui reste à construire, et le module
+ * hygiène ne descend jamais sous son plancher réglementaire. Une question
+ * sans réponse compte comme fausse : on ne préjuge pas d'un acquis qu'on n'a
+ * pas mesuré.
  */
 export function evaluerPositionnement(reponses: Reponses): ResultatPositionnement {
+  const justesTotal = QUESTIONS.filter((q) => estJuste(q, reponses[q.code])).length
+  const maitriseGlobale = QUESTIONS.length ? Math.round((justesTotal / QUESTIONS.length) * 1000) / 10 : 0
+  const seuilAtteint = maitriseGlobale >= SEUIL_REUSSITE
+
   const domaines: ResultatDomaine[] = DOMAINES.map((d) => {
     const questions = QUESTIONS.filter((q) => q.domaine === d.code)
     let justes = 0
@@ -390,35 +404,33 @@ export function evaluerPositionnement(reponses: Reponses): ResultatPositionnemen
     const maitrise = total ? Math.round((justes / total) * 1000) / 10 : 0
     const ecart = Math.round((100 - maitrise) * 10) / 10
     const brut = d.heures * (ecart / 100)
-    const heuresPreconisees = arrondiDemiHeure(Math.max(brut, d.plancher ?? 0))
+    const reduites = Math.min(arrondiDemiHeure(Math.max(brut, d.plancher ?? 0)), d.heures)
     return {
       code: d.code, libelle: d.libelle, objectif: d.objectif,
       justes, total, maitrise, ecart,
       heuresReferentiel: d.heures,
-      heuresPreconisees: Math.min(heuresPreconisees, d.heures),
+      heuresPreconisees: seuilAtteint ? reduites : d.heures,
       nonRepondues,
     }
   })
 
   const totalHeuresRef = DOMAINES.reduce((t, d) => t + d.heures, 0)
-  // Pondération par les heures : une lacune en hygiène pèse plus qu'une lacune
-  // sur la posture, puisque le parcours y consacre davantage de temps.
-  const maitriseGlobale = Math.round(
-    (domaines.reduce((t, d) => t + d.maitrise * d.heuresReferentiel, 0) / totalHeuresRef) * 10,
-  ) / 10
-  const justes = domaines.reduce((t, d) => t + d.justes, 0)
   const n = niveauDe(maitriseGlobale)
   const nbReponses = QUESTIONS.filter((q) => reponses[q.code] !== null && reponses[q.code] !== undefined).length
 
   return {
     domaines,
-    note: Math.round((justes / QUESTIONS.length) * 20 * 10) / 10,
+    note: Math.round((justesTotal / QUESTIONS.length) * 20 * 10) / 10,
     maitriseGlobale,
-    justes,
+    justes: justesTotal,
     niveau: n.cle,
     niveauLibelle: n.libelle,
-    heuresPreconisees: arrondiDemiHeure(domaines.reduce((t, d) => t + d.heuresPreconisees, 0)),
+    heuresPreconisees: seuilAtteint
+      ? arrondiDemiHeure(domaines.reduce((t, d) => t + d.heuresPreconisees, 0))
+      : totalHeuresRef,
     heuresReferentiel: totalHeuresRef,
+    seuilAtteint,
+    seuil: SEUIL_REUSSITE,
     complet: nbReponses === QUESTIONS.length,
     nbReponses,
     nbQuestions: QUESTIONS.length,
@@ -427,10 +439,12 @@ export function evaluerPositionnement(reponses: Reponses): ResultatPositionnemen
 
 /** Phrase de synthèse pour le dossier France Travail. */
 export function syntheseFranceTravail(r: ResultatPositionnement): string {
-  const manque = r.heuresReferentiel - r.heuresPreconisees
-  const base = `Le questionnaire de positionnement situe le candidat à ${r.justes} bonnes réponses sur ${r.nbQuestions}, soit ${r.note}/20 et ${r.maitriseGlobale} % du référentiel de compétences.`
+  const base = `Le questionnaire de positionnement situe le candidat à ${r.justes} bonnes réponses sur ${r.nbQuestions}, soit ${r.note}/20 et ${r.maitriseGlobale} % de réussite.`
+  if (!r.seuilAtteint) {
+    return `${base} Le seuil de ${r.seuil} % de bonnes réponses n'est pas atteint : le parcours complet de ${r.heuresReferentiel} heures est requis.`
+  }
   if (r.heuresPreconisees >= r.heuresReferentiel) {
     return `${base} L'écart mesuré couvre l'intégralité des ${r.heuresReferentiel} heures du parcours.`
   }
-  return `${base} L'écart mesuré justifie ${r.heuresPreconisees} heures de formation sur les ${r.heuresReferentiel} heures du parcours.`
+  return `${base} Le seuil de ${r.seuil} % est atteint : l'écart restant justifie ${r.heuresPreconisees} heures de formation sur les ${r.heuresReferentiel} heures du parcours.`
 }

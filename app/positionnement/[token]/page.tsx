@@ -1,6 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { QUESTIONS } from '@/lib/poei-positionnement'
-import { PositionnementClient } from './PositionnementClient'
+import { PositionnementClient, PositionnementCadre } from './PositionnementClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,12 +18,12 @@ export default async function PositionnementPage({ params }: { params: { token: 
 
   if (!pos) {
     return (
-      <Cadre>
+      <PositionnementCadre>
         <h1 className="text-xl font-heading font-bold text-surface-900">Lien introuvable</h1>
         <p className="text-sm text-surface-600 mt-2">
           Ce questionnaire n&apos;existe pas ou a été retiré. Rapprochez-vous de votre organisme de formation.
         </p>
-      </Cadre>
+      </PositionnementCadre>
     )
   }
 
@@ -35,13 +35,13 @@ export default async function PositionnementPage({ params }: { params: { token: 
 
   if (pos.statut === 'complete') {
     return (
-      <Cadre logo={org?.logo_url}>
+      <PositionnementCadre logo={org?.logo_url}>
         <h1 className="text-xl font-heading font-bold text-surface-900">Questionnaire déjà rendu</h1>
         <p className="text-sm text-surface-600 mt-2">
           Merci, vos réponses ont bien été enregistrées. Votre formateur les reprendra avec vous au démarrage
           de la formation.
         </p>
-      </Cadre>
+      </PositionnementCadre>
     )
   }
 
@@ -54,16 +54,5 @@ export default async function PositionnementPage({ params }: { params: { token: 
       orgLogo={org?.logo_url || null}
       nbQuestions={QUESTIONS.length}
     />
-  )
-}
-
-function Cadre({ children, logo }: { children: React.ReactNode; logo?: string | null }) {
-  return (
-    <div className="min-h-screen bg-surface-50 flex items-center justify-center px-4 py-10">
-      <div className="card p-6 max-w-md w-full text-center">
-        {logo && <img src={logo} alt="" className="h-9 mx-auto mb-4 object-contain" />}
-        {children}
-      </div>
-    </div>
   )
 }

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Modal, useToast } from '@/components/ui'
 import { Target, Download, Send, Users, Check, Clock, RefreshCw, Copy } from '@/components/ui/icons'
 import { PoeiSection } from './PoeiSection'
-import { DOMAINES, QUESTIONS, evaluerPositionnement, type Reponses } from '@/lib/poei-positionnement'
+import { DOMAINES, QUESTIONS, SEUIL_REUSSITE, evaluerPositionnement, type Reponses } from '@/lib/poei-positionnement'
 import { envoyerPositionnementAction, reinitialiserPositionnementAction } from '../positionnement-actions'
 
 export interface PositionnementCandidat {
@@ -109,7 +109,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
             <div className="text-xl font-heading font-bold text-surface-900 tabular-nums">{synthese.note}<span className="text-sm text-surface-400">/20</span></div>
           </div>
           <div>
-            <div className="text-xs text-surface-500">Niveau moyen à l&apos;entrée</div>
+            <div className="text-xs text-surface-500">Bonnes réponses en moyenne</div>
             <div className="text-xl font-heading font-bold text-surface-900 tabular-nums">{synthese.maitrise} %</div>
           </div>
           <div>
@@ -119,7 +119,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
             </div>
           </div>
           <p className="text-xs text-surface-500 max-w-xs">
-            L&apos;écart entre les réponses des candidats et le référentiel de compétences justifie le volume du parcours.
+            En dessous de {SEUIL_REUSSITE} % de bonnes réponses, le parcours complet est requis. Au-delà, seul l&apos;écart restant est à former.
           </p>
         </div>
       )}
@@ -137,7 +137,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
                 <div className="text-sm font-medium text-surface-900 truncate">{c.nom}</div>
                 <div className="text-xs text-surface-500 truncate">
                   {c.statut === 'complete'
-                    ? `${c.note}/20 · ${c.maitrise} % du référentiel · ${c.heures} h justifiées${fr(c.completeLe) ? ` · le ${fr(c.completeLe)}` : ''}`
+                    ? `${c.note}/20 · ${c.maitrise} % de bonnes réponses · ${(c.maitrise ?? 0) < SEUIL_REUSSITE ? `parcours complet, ${c.heures} h` : `${c.heures} h justifiées`}${fr(c.completeLe) ? ` · le ${fr(c.completeLe)}` : ''}`
                     : c.statut === 'envoye'
                       ? `En attente de réponse${c.email ? ` · ${c.email}` : ' · pas d’email en fiche, transmettez le lien'}`
                       : 'Questionnaire pas encore envoyé'}

@@ -92,7 +92,9 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                 <Text style={{ fontSize: 19, fontFamily: 'Montserrat', fontWeight: 700, color: BRAND_GREEN, letterSpacing: -0.3 }}>
                   {heures(r.heuresPreconisees)}
                 </Text>
-                <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 2 }}>{`sur les ${dureeParcours} heures du parcours`}</Text>
+                <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 2 }}>
+                  {r.seuilAtteint ? `sur les ${dureeParcours} heures du parcours` : `parcours complet : seuil de ${r.seuil} % non atteint`}
+                </Text>
               </View>
             </View>
 
@@ -134,8 +136,7 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                 </View>
               </View>
               <Text style={{ fontSize: 7.5, color: SURFACE_500, lineHeight: 1.5 }}>
-                Le module d&apos;hygiène alimentaire est suivi dans son volume réglementaire quel que soit le niveau
-                d&apos;entrée, conformément à l&apos;arrêté du 12 février 2024.
+                {`Règle de positionnement : en dessous de ${r.seuil} % de bonnes réponses, le parcours complet de ${r.heuresReferentiel} heures est requis. Au-delà, seul l'écart restant par domaine est à former. Le module d'hygiène alimentaire est suivi dans son volume réglementaire quel que soit le niveau d'entrée.`}
               </Text>
             </View>
 
@@ -204,9 +205,11 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
             <View style={shared.section} wrap={false}>
               <PdfSectionTitle>Conclusion</PdfSectionTitle>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
-                {r.heuresPreconisees >= dureeParcours
-                  ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} du référentiel de compétences du poste d'équipier polyvalent. L'écart constaté couvre l'intégralité des ${dureeParcours} heures du parcours, sur les cinq domaines du métier.`
-                  : `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} du référentiel de compétences du poste d'équipier polyvalent. L'écart constaté justifie ${heures(r.heuresPreconisees)} de formation sur les ${dureeParcours} heures du parcours.`}
+                {!r.seuilAtteint
+                  ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses sur le référentiel de compétences du poste d'équipier polyvalent. Le seuil de ${r.seuil} % n'est pas atteint : le parcours complet de ${dureeParcours} heures est requis, sur les cinq domaines du métier.`
+                  : r.heuresPreconisees >= dureeParcours
+                    ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses. L'écart constaté couvre l'intégralité des ${dureeParcours} heures du parcours.`
+                    : `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses. Le seuil de ${r.seuil} % est atteint : l'écart restant justifie ${heures(r.heuresPreconisees)} de formation sur les ${dureeParcours} heures du parcours.`}
               </Text>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
                 Le parcours est individualisé à partir de ce positionnement : les domaines les moins maîtrisés
