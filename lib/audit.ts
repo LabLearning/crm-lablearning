@@ -7,12 +7,13 @@ interface AuditLogEntry {
   details?: Record<string, unknown>
 }
 
-export async function logAudit(entry: AuditLogEntry) {
+/** Écrit une ligne d'audit ; renvoie true si elle est bien enregistrée. */
+export async function logAudit(entry: AuditLogEntry): Promise<boolean> {
   try {
     const supabase = await createServerSupabaseClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) return false
 
     const { data: profile } = await supabase
       .from('users')
@@ -20,9 +21,9 @@ export async function logAudit(entry: AuditLogEntry) {
       .eq('id', user.id)
       .single()
 
-    if (!profile) return
+    if (!profile) return false
 
-    await supabase.from('audit_logs').insert({
+    const { error } = await supabase.from('audit_logs').insert({
       organization_id: profile.organization_id,
       user_id: user.id,
       action: entry.action,
@@ -30,7 +31,10 @@ export async function logAudit(entry: AuditLogEntry) {
       entity_id: entry.entity_id || null,
       details: entry.details || null,
     })
+    if (error) { console.error('[Audit Log Error]', error); return false }
+    return true
   } catch (error) {
     console.error('[Audit Log Error]', error)
+    return false
   }
 }

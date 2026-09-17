@@ -13,20 +13,22 @@ export interface EncryptedBlob {
   ct: string     // base64 (ciphertext)
   tag: string    // base64 (auth tag GCM)
   hint?: string | null
+  /** Identifiant de la clé de chiffrement, pour retrouver la bonne clé d'un trousseau. */
+  kid?: string | null
 }
 
 function deriveKey(password: string, salt: Buffer): Buffer {
   return scryptSync(password, salt, 32, { N: 16384, r: 8, p: 1 })
 }
 
-export function encryptSecret(plain: unknown, password: string, hint?: string | null): EncryptedBlob {
+export function encryptSecret(plain: unknown, password: string, hint?: string | null, kid?: string | null): EncryptedBlob {
   const salt = randomBytes(16)
   const iv = randomBytes(12)
   const key = deriveKey(password, salt)
   const cipher = createCipheriv('aes-256-gcm', key, iv)
   const ct = Buffer.concat([cipher.update(JSON.stringify(plain), 'utf8'), cipher.final()])
   const tag = cipher.getAuthTag()
-  return { v: 1, salt: salt.toString('base64'), iv: iv.toString('base64'), ct: ct.toString('base64'), tag: tag.toString('base64'), hint: hint || null }
+  return { v: 1, salt: salt.toString('base64'), iv: iv.toString('base64'), ct: ct.toString('base64'), tag: tag.toString('base64'), hint: hint || null, kid: kid || null }
 }
 
 /** Retourne l'objet déchiffré, ou null si le mot de passe est incorrect. */

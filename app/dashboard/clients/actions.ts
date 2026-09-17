@@ -260,24 +260,39 @@ const STATUTS_COMPTE_OPCO = ['aucun', 'courrier_envoye', 'en_attente_validation'
  * de création du compte ; on la laisse modifiable pour une saisie a posteriori.
  */
 /**
- * Clé de chiffrement du mot de passe OPCO : une variable d'environnement
- * dédiée, à défaut dérivée de la clé de service Supabase (déjà secrète).
- * Le mot de passe n'est jamais lisible en base ; il se déchiffre à la demande,
- * pour les rôles autorisés, avec une trace dans le journal d'audit.
+ * Trousseau de chiffrement du mot de passe OPCO, de la clé courante à la plus
+ * ancienne : OPCO_SECRET_KEY, puis OPCO_SECRET_KEY_PREVIOUS (liste séparée par
+ * des virgules), puis une clé dérivée de la clé de service Supabase (et de ses
+ * précédentes dans SUPABASE_SERVICE_ROLE_KEY_PREVIOUS). On chiffre toujours
+ * avec la première ; on déchiffre avec celle dont l'identifiant est inscrit
+ * dans le blob, et un blob lu avec une vieille clé est re-chiffré aussitôt.
+ * Changer de clé sans garder l'ancienne dans _PREVIOUS rendrait les mots de
+ * passe illisibles : c'est la règle à respecter.
  */
-async function cleCoffreOpco(): Promise<string> {
-  if (process.env.OPCO_SECRET_KEY) return process.env.OPCO_SECRET_KEY
+type CleCoffre = { kid: string; key: string }
+async function trousseauOpco(): Promise<CleCoffre[]> {
   const { createHash } = await import('crypto')
-  return createHash('sha256').update(`opco:${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`).digest('hex')
+  const empreinte = (k: string) => createHash('sha256').update(k).digest('hex').slice(0, 12)
+  const liste = (v?: string) => (v || '').split(',').map((x) => x.trim()).filter(Boolean)
+  const cles: CleCoffre[] = []
+  for (const k of [process.env.OPCO_SECRET_KEY || '', ...liste(process.env.OPCO_SECRET_KEY_PREVIOUS)].filter(Boolean)) {
+    cles.push({ kid: `env:${empreinte(k)}`, key: k })
+  }
+  for (const k of [process.env.SUPABASE_SERVICE_ROLE_KEY || '', ...liste(process.env.SUPABASE_SERVICE_ROLE_KEY_PREVIOUS)].filter(Boolean)) {
+    cles.push({ kid: `srk:${empreinte(k)}`, key: createHash('sha256').update(`opco:${k}`).digest('hex') })
+  }
+  if (!cles.length) throw new Error('Coffre OPCO : aucune clé de chiffrement (OPCO_SECRET_KEY)')
+  return cles
 }
 
 export async function setClientCompteOpcoAction(
   clientId: string,
   compte: {
     status: string
+    /** undefined : inchangée (date du jour si l'état change) ; null : effacée ; sinon enregistrée. */
     date?: string | null
     identifiant?: string | null
-    /** undefined : inchangé ; chaîne vide : effacé ; sinon enregistré chiffré. */
+    /** undefined : inchangé ; chaîne vide : effacé ; blanc : ignoré ; sinon enregistré chiffré. */
     mot_de_passe?: string | null
   },
 ): Promise<ActionResult> {
@@ -294,15 +309,20 @@ export async function setClientCompteOpcoAction(
   const patch: Record<string, unknown> = {
     opco_compte_status: compte.status,
     opco_compte_identifiant: (compte.identifiant || '').trim() || null,
-    // Date fournie, sinon aujourd'hui si l'état change, sinon inchangée
-    ...(compte.date ? { opco_compte_date: compte.date } : changeEtat ? { opco_compte_date: new Date().toISOString().slice(0, 10) } : {}),
+    // Date fournie : enregistrée ; null : effacée ; absente : aujourd'hui si l'état change, sinon inchangée
+    ...(compte.date ? { opco_compte_date: compte.date }
+      : compte.date === null ? { opco_compte_date: null }
+      : changeEtat ? { opco_compte_date: new Date().toISOString().slice(0, 10) } : {}),
   }
   if (compte.mot_de_passe !== undefined && compte.mot_de_passe !== null) {
-    const mdp = compte.mot_de_passe.trim()
-    if (!mdp) patch.opco_compte_chiffre = null
-    else {
+    // Chaîne vide : effacement demandé ; blanc seul : ignoré ; sinon chiffré tel que saisi (les espaces comptent)
+    const mdp = compte.mot_de_passe
+    if (mdp === '') patch.opco_compte_chiffre = null
+    else if (mdp.trim()) {
+      let courante: CleCoffre
+      try { [courante] = await trousseauOpco() } catch { return { success: false, error: 'Coffre OPCO non configuré : contactez l\u2019administrateur' } }
       const { encryptSecret } = await import('@/lib/secret-vault')
-      patch.opco_compte_chiffre = { ...encryptSecret({ mot_de_passe: mdp }, await cleCoffreOpco()), mode: 'serveur' }
+      patch.opco_compte_chiffre = { ...encryptSecret({ mot_de_passe: mdp }, courante.key, null, courante.kid), mode: 'serveur' }
     }
   }
   const { error } = await supabase.from('clients').update(patch)
@@ -338,9 +358,34 @@ export async function revealClientOpcoPasswordAction(clientId: string): Promise<
   if (blob.mode !== 'serveur') {
     return { success: false, error: 'Mot de passe enregistré avec l\u2019ancienne phrase secrète : ressaisissez-le.' }
   }
-  const { decryptSecret } = await import('@/lib/secret-vault')
-  const plain = decryptSecret<{ mot_de_passe: string }>(blob, await cleCoffreOpco())
-  if (!plain?.mot_de_passe) return { success: false, error: 'Mot de passe illisible : ressaisissez-le.' }
-  await logAudit({ action: 'reveal_opco_secret', entity_type: 'client', entity_id: clientId })
+  let trousseau: CleCoffre[]
+  try { trousseau = await trousseauOpco() } catch { return { success: false, error: 'Coffre OPCO non configuré : contactez l\u2019administrateur' } }
+  const { decryptSecret, encryptSecret } = await import('@/lib/secret-vault')
+  // La clé désignée par le blob d'abord, puis le reste du trousseau (blobs sans identifiant)
+  const candidates = [...trousseau.filter((c) => c.kid === blob.kid), ...trousseau.filter((c) => c.kid !== blob.kid)]
+  let plain: { mot_de_passe: string } | null = null
+  let cleUtilisee: CleCoffre | null = null
+  for (const c of candidates) {
+    plain = decryptSecret<{ mot_de_passe: string }>(blob, c.key)
+    if (plain?.mot_de_passe) { cleUtilisee = c; break }
+  }
+  if (!plain?.mot_de_passe || !cleUtilisee) {
+    const cleConnue = trousseau.some((c) => c.kid === blob.kid)
+    return {
+      success: false,
+      error: cleConnue || !blob.kid
+        ? 'Mot de passe illisible : ressaisissez-le.'
+        : 'La clé du coffre a changé : remettez l\u2019ancienne clé dans OPCO_SECRET_KEY_PREVIOUS, puis réessayez.',
+    }
+  }
+  // Chaque lecture laisse une trace ; sans trace, pas de lecture
+  const journalise = await logAudit({ action: 'reveal_opco_secret', entity_type: 'client', entity_id: clientId })
+  if (!journalise) return { success: false, error: 'Lecture non journalisée : réessayez.' }
+  // Blob lu avec une ancienne clé : re-chiffré avec la courante, sans bloquer la réponse
+  if (cleUtilisee.kid !== trousseau[0].kid) {
+    const neuf = { ...encryptSecret({ mot_de_passe: plain.mot_de_passe }, trousseau[0].key, null, trousseau[0].kid), mode: 'serveur' }
+    await supabase.from('clients').update({ opco_compte_chiffre: neuf }).eq('id', clientId).eq('organization_id', session.organization.id)
+    await logAudit({ action: 'rekey_opco_secret', entity_type: 'client', entity_id: clientId, details: { de: cleUtilisee.kid, vers: trousseau[0].kid } })
+  }
   return { success: true, data: { mot_de_passe: plain.mot_de_passe } }
 }

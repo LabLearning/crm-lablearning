@@ -57,10 +57,11 @@ export function ClientCompteOpco({ clientId, opcoNom, status, date, identifiant,
     setSaving(true)
     const r = await setClientCompteOpcoAction(clientId, {
       status: form.status,
+      // Date vidée dans le formulaire : effacée (null) ; renseignée : enregistrée
       date: form.date || null,
       identifiant: form.identifiant || null,
-      // Champ laissé vide : mot de passe inchangé, sauf demande d'effacement
-      mot_de_passe: form.effacerMdp ? '' : (form.mot_de_passe || undefined),
+      // Champ laissé vide ou blanc : mot de passe inchangé, sauf demande d'effacement
+      mot_de_passe: form.effacerMdp ? '' : (form.mot_de_passe.trim() ? form.mot_de_passe : undefined),
     })
     setSaving(false)
     if (retourEtat(r, 'Compte OPCO mis à jour')) { setEdition(false); setMdpRevele(null); router.refresh() }
