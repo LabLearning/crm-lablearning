@@ -1,6 +1,6 @@
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { Star, Building2, GraduationCap, Landmark, PhoneCall } from '@/components/ui/icons'
+import { Star, Building2, GraduationCap, Landmark, PhoneCall, Download } from '@/components/ui/icons'
 import { formatDate } from '@/lib/utils'
 import { BackLink } from '@/components/ui/BackLink'
 
@@ -101,8 +101,15 @@ export default async function AppreciationsPage() {
                           <PhoneCall className="h-3 w-3" /> téléphone
                         </span>
                       )}
-                      <span className="text-xs text-surface-400 ml-auto">
+                      <span className="text-xs text-surface-400 ml-auto inline-flex items-center gap-2">
                         {formatDate(r.created_at, { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {r.type === 'evaluation_formateur' && r.statut === 'repondu' && (
+                          <a href={`/api/pdf/evaluation-formateur-referent/${r.id}`} target="_blank" rel="noreferrer"
+                            title="Télécharger l'évaluation en PDF"
+                            className="inline-flex items-center gap-1 rounded-md border border-surface-200 bg-white px-1.5 py-0.5 text-surface-600 hover:text-surface-900 hover:bg-surface-50">
+                            <Download className="h-3 w-3" /> PDF
+                          </a>
+                        )}
                       </span>
                     </div>
                     {r.commentaire && <p className="text-sm text-surface-600 mt-1.5 whitespace-pre-line">{r.commentaire}</p>}

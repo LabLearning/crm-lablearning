@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, Send, GraduationCap, Award, Users, Check, Loader2, PenLine, ArrowLeft, ArrowRight, Eye, Paperclip, AlertTriangle, ClipboardCheck, ShieldCheck } from '@/components/ui/icons'
+import { Mail, Send, GraduationCap, Award, Users, Check, Loader2, PenLine, ArrowLeft, ArrowRight, Eye, Paperclip, AlertTriangle, ClipboardCheck, ShieldCheck, Download } from '@/components/ui/icons'
 import { Button, Modal, Input, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { PoeiSection } from './PoeiSection'
@@ -23,7 +23,7 @@ export interface CandidatMail {
 }
 
 export interface FormateurMail { id: string; nom: string }
-export type EtatEvaluation = { statut: string; date: string | null; note: number | null }
+export type EtatEvaluation = { id: string; statut: string; date: string | null; note: number | null }
 
 type TypeEnvoi = 'attestation' | 'certificat' | 'libre' | 'evaluation_formateur' | 'hygiene'
 
@@ -445,6 +445,11 @@ export function PoeiMails({
                           {etat?.statut === 'repondu' && (
                             <span className="text-[11px] text-success-600 shrink-0 inline-flex items-center gap-1">
                               <Check className="h-3 w-3" /> Évalué{etat.note != null ? ` ${etat.note}/5` : ''}{etat.date ? ` le ${formatDate(etat.date)}` : ''}
+                              <a href={`/api/pdf/evaluation-formateur-referent/${etat.id}`} target="_blank" rel="noreferrer"
+                                title="Télécharger l'évaluation en PDF"
+                                className="ml-1 inline-flex items-center gap-0.5 rounded-md border border-success-200 bg-white px-1.5 py-0.5 text-success-700 hover:bg-success-50">
+                                <Download className="h-3 w-3" /> PDF
+                              </a>
                             </span>
                           )}
                           {etat?.statut === 'envoye' && (

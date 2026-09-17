@@ -115,13 +115,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   )
   const { data: evalsFormateurs } = await supabase
     .from('appreciations_parties_prenantes')
-    .select('formateur_id, statut, sent_at, repondu_at, note_globale')
+    .select('id, formateur_id, statut, sent_at, repondu_at, note_globale')
     .eq('poei_id', params.id).eq('type', 'evaluation_formateur')
-  const etatEvaluations: Record<string, { statut: string; date: string | null; note: number | null }> = {}
+  const etatEvaluations: Record<string, { id: string; statut: string; date: string | null; note: number | null }> = {}
   for (const e of (evalsFormateurs || []) as any[]) {
     if (!e.formateur_id) continue
     const prev = etatEvaluations[e.formateur_id]
-    if (!prev || e.statut === 'repondu') etatEvaluations[e.formateur_id] = { statut: e.statut, date: e.repondu_at || e.sent_at || null, note: e.note_globale ?? null }
+    if (!prev || e.statut === 'repondu') etatEvaluations[e.formateur_id] = { id: e.id, statut: e.statut, date: e.repondu_at || e.sent_at || null, note: e.note_globale ?? null }
   }
   // Planning de travail des candidats (post-théorie) + période proposée par
   // défaut : du lendemain de la fin de POEI, sur 4 semaines.
