@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/icons'
 import { Button, Input, Select, Modal, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
+import { OPCO_COMPTE_STATUS_STYLES, libelleCompteOpco, type OpcoCompteStatus } from '@/lib/opco-compte'
 import {
   enregistrerFinancementOpcoAction, deposerAccordPecAction, genererFactureOpcoAction,
   recupererFinancementDendreoAction, basculerAffacturageFactureAction,
@@ -47,13 +48,16 @@ const PROVENANCES = [
  */
 export function FacturationOpco({
   sessionId, statutSession, opcos, opcoId, numeroDossier, montantFinance, accordDate,
-  prixHt, dejaFactureAilleurs, accord, facture, dendreoId,
+  prixHt, dejaFactureAilleurs, accord, facture, dendreoId, compteOpco = null, clientId = null,
 }: {
   sessionId: string
   statutSession: string | null
   dendreoId?: string | null
   opcos: Opco[]
   opcoId: string | null
+  /** État du compte OPCO du client : un dossier ne se dépose pas sans compte actif. */
+  compteOpco?: { status: OpcoCompteStatus; date: string | null; identifiant: string | null; opcoNom: string | null } | null
+  clientId?: string | null
   numeroDossier: string | null
   montantFinance: number | null
   accordDate: string | null
@@ -181,6 +185,20 @@ export function FacturationOpco({
             <p className="text-xs text-surface-500 mt-0.5">
               Le numéro de dossier est repris sur la facture comme numéro de prise en charge : sans lui, l&apos;OPCO ne règle pas.
             </p>
+            {compteOpco && (
+              <p className="mt-2 inline-flex items-center gap-2 flex-wrap text-xs">
+                <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-semibold ${OPCO_COMPTE_STATUS_STYLES[compteOpco.status]}`}>
+                  {libelleCompteOpco(compteOpco.status, compteOpco.opcoNom)}
+                </span>
+                {compteOpco.date && <span className="text-surface-500">{compteOpco.status === 'actif' ? 'créé le' : 'depuis le'} {formatDate(compteOpco.date)}</span>}
+                {compteOpco.identifiant && <span className="text-surface-500">identifiant <span className="font-mono text-surface-700">{compteOpco.identifiant}</span></span>}
+                {clientId && (
+                  <a href={`/dashboard/clients/${clientId}`} className="text-brand-600 hover:underline font-medium">
+                    {compteOpco.status === 'actif' ? 'Voir sur la fiche client' : 'Mettre à jour sur la fiche client'}
+                  </a>
+                )}
+              </p>
+            )}
           </div>
           {dendreoId && (
             <button type="button" onClick={recupererDepuisDendreo} disabled={recup}

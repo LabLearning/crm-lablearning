@@ -105,7 +105,8 @@ export default async function ClientsPage({
 
   // Attache le nom de l'assigné pour l'affichage
   const userMap = new Map((users || []).map((u: any) => [u.id, u]))
-  const clientsWithAssignee = (clients || []).map((c: any) => ({
+  // Le coffre chiffré du compte OPCO ne part jamais au navigateur
+  const clientsWithAssignee = (clients || []).map(({ opco_compte_chiffre: _coffre, ...c }: any) => ({
     ...c,
     assigned_user: c.assigned_to && userMap.has(c.assigned_to)
       ? { first_name: userMap.get(c.assigned_to).first_name, last_name: userMap.get(c.assigned_to).last_name }

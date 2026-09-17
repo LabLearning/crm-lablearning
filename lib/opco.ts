@@ -24,15 +24,7 @@ export interface OpcoMatch {
   libelle: string | null
 }
 
-export const OPCO_COMPTE_STATUS_LABELS = {
-  aucun: 'Aucun compte',
-  courrier_envoye: 'Courrier envoyé',
-  en_attente_validation: 'En attente de validation',
-  actif: 'Actif',
-  inactif: 'Inactif',
-} as const
-
-export type OpcoCompteStatus = keyof typeof OPCO_COMPTE_STATUS_LABELS
+export { OPCO_COMPTE_STATUS_LABELS, type OpcoCompteStatus } from './opco-compte'
 
 /** Liste tous les OPCOs (pour le dropdown manuel) */
 export async function listOpcos(): Promise<Opco[]> {

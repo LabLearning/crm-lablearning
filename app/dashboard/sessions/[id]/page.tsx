@@ -13,12 +13,21 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
   // Session avec formation et formateur
   const { data: sessionData } = await supabase
     .from('sessions')
-    .select('*, formation:formation_id(intitule, reference, duree_heures, categorie, modalite, is_poei), formateur:formateurs(id, prenom, nom, email, telephone, user_id, tarif_journalier), client:client_id(id, raison_sociale, nom_commercial, sigle, email, opco_id, financeur_type, franchise:franchise_id(nom))')
+    .select('*, formation:formation_id(intitule, reference, duree_heures, categorie, modalite, is_poei), formateur:formateurs(id, prenom, nom, email, telephone, user_id, tarif_journalier), client:client_id(*, franchise:franchise_id(nom))')
     .eq('id', params.id)
     .eq('organization_id', session.organization.id)
     .single()
 
   if (!sessionData) redirect('/dashboard/sessions')
+  // Le client est joint en « * » pour tolérer l'absence des colonnes de la
+  // migration 154, mais seuls les champs utiles à la fiche partent au
+  // composant client : ni notes internes, ni assignation, ni coffre chiffré.
+  if ((sessionData as any).client) {
+    const cl = (sessionData as any).client
+    const garde = ['id', 'raison_sociale', 'nom_commercial', 'sigle', 'email', 'opco_id', 'financeur_type',
+      'opco_compte_status', 'opco_compte_date', 'opco_compte_identifiant', 'franchise']
+    ;(sessionData as any).client = Object.fromEntries(garde.filter((k) => k in cl).map((k) => [k, cl[k]]))
+  }
 
   // Rentabilité : chargée en parallèle du reste de la fiche, attendue au rendu
   const rentabiliteP = peutVoirMarge(session.user.role)

@@ -11,7 +11,7 @@ import {
   Star, ListChecks, FileSignature, Award, Euro, BookOpen, ClipboardList, FolderCheck, Mails, Route,
   QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2, Pencil, Sparkles, ReceiptEuro, Printer,
   TrendingUp,
-  ShieldCheck as PackHygieneIcon,
+  ShieldCheck as PackHygieneIcon, Landmark,
 } from '@/components/ui/icons'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
 import { SessionRetourClient } from './SessionRetourClient'
@@ -31,6 +31,7 @@ import { LiensSignatureEmargement } from '@/components/sessions/LiensSignatureEm
 import { SessionDocuments } from './SessionDocuments'
 import { SessionMails } from './SessionMails'
 import { FacturationOpco } from './FacturationOpco'
+import { OPCO_COMPTE_STATUS_STYLES, libelleCompteOpco, type OpcoCompteStatus } from '@/lib/opco-compte'
 import { SessionAgefice } from './SessionAgefice'
 import { SessionRentabilite } from './SessionRentabilite'
 import { SaisieQuestionnaire } from '@/components/qcm/SaisieQuestionnaire'
@@ -232,6 +233,16 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
   const formation = session.formation
   const formateur = session.formateur
   const etablissement = companyLabel((session as any).client) || null
+  // Compte OPCO du client : seulement pour une entreprise rattachée à un OPCO
+  const clientOpcoId = (session as any).client?.opco_id || (session as any).opco_id || null
+  const compteOpco = session.client_id && clientOpcoId
+    ? {
+        status: (((session as any).client?.opco_compte_status || 'aucun') as OpcoCompteStatus),
+        date: ((session as any).client?.opco_compte_date || null) as string | null,
+        identifiant: ((session as any).client?.opco_compte_identifiant || null) as string | null,
+        opcoNom: (opcos.find((o: any) => o.id === clientOpcoId)?.nom || null) as string | null,
+      }
+    : null
   const adresseComplete = [session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ') || session.lieu || null
   // Les questionnaires de satisfaction vivent dans l'onglet « Évaluations »
@@ -355,6 +366,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
               ) : (
                 <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{etablissement}</span>
               )
+            )}
+            {compteOpco && (
+              <Link href={`/dashboard/clients/${session.client_id}`} title={compteOpco.date ? `Depuis le ${formatDate(compteOpco.date)}` : 'État du compte OPCO du client'}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold ${OPCO_COMPTE_STATUS_STYLES[compteOpco.status]}`}>
+                <Landmark className="h-3 w-3" />{libelleCompteOpco(compteOpco.status, compteOpco.opcoNom)}
+              </Link>
             )}
             {adresseComplete && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{adresseComplete}</span>}
             {formation?.duree_heures && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{formation.duree_heures}h</span>}
@@ -1442,6 +1459,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           dendreoId={(session as any).dendreo_id || null}
           opcos={opcos}
           opcoId={(session as any).opco_id || (session as any).client?.opco_id || null}
+          compteOpco={compteOpco}
+          clientId={session.client_id || null}
           numeroDossier={(session as any).numero_dossier_opco || null}
           montantFinance={(session as any).montant_finance_opco ?? null}
           accordDate={(session as any).accord_pec_date || null}

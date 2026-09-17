@@ -18,6 +18,7 @@ import { ClientSessionsList } from './ClientSessionsList'
 import { ClientDocuments } from './ClientDocuments'
 import { ClientAuditsHygiene } from './ClientAuditsHygiene'
 import { ClientContacts } from './ClientContacts'
+import { ClientCompteOpco } from './ClientCompteOpco'
 
 export const dynamic = 'force-dynamic'
 
@@ -134,6 +135,23 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const leadsList = (leads || []) as any[]
 
   const isEntreprise = c.type === 'entreprise'
+  // Le coffre chiffré du compte OPCO ne quitte jamais le serveur : on n'en
+  // garde que l'existence et l'indice, réservés aux rôles qui peuvent l'ouvrir,
+  // puis on retire le blob avant tout passage à un composant client
+  // (ClientEditButton sérialise la ligne entière).
+  const peutGererCompteOpco = ['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)
+  const coffre = peutGererCompteOpco ? ((c as any).opco_compte_chiffre as { hint?: string | null } | null | undefined) : null
+  const aCoffre = !!(c as any).opco_compte_chiffre
+  delete (c as any).opco_compte_chiffre
+  // Carte « Compte OPCO » : entreprise rattachée à un OPCO, ou données déjà saisies
+  const compteOpcoVisible = isEntreprise && (
+    !!(c as any).opco_id || ((c as any).opco_compte_status || 'aucun') !== 'aucun' || aCoffre
+  )
+  // Nom de l'OPCO de rattachement, pour nommer le compte (« Compte AKTO »)
+  const { data: opcoRow } = (c as any).opco_id
+    ? await supabase.from('opco').select('nom').eq('id', (c as any).opco_id).maybeSingle()
+    : { data: null as { nom: string } | null }
+  const opcoNom: string | null = opcoRow?.nom || null
   const displayName = isEntreprise
     ? (companyLabel(c) || 'Sans nom')
     : `${c.prenom || ''} ${c.nom || ''}`.trim() || 'Sans nom'
@@ -243,6 +261,19 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               {(c as any).tva_intra && <InfoRow icon={Hash} label="TVA intra" value={(c as any).tva_intra} />}
               {(c as any).convention_collective && <InfoRow icon={FileText} label="Convention collective" value={(c as any).convention_collective} />}
             </div>
+          )}
+
+          {compteOpcoVisible && (
+            <ClientCompteOpco
+              clientId={c.id}
+              opcoNom={opcoNom}
+              status={((c as any).opco_compte_status || 'aucun') as any}
+              date={(c as any).opco_compte_date || null}
+              identifiant={(c as any).opco_compte_identifiant || null}
+              aCoffre={peutGererCompteOpco && aCoffre}
+              indice={coffre?.hint || null}
+              peutModifier={peutGererCompteOpco}
+            />
           )}
 
         </div>
