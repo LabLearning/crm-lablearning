@@ -140,7 +140,6 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   // puis on retire le blob avant tout passage à un composant client
   // (ClientEditButton sérialise la ligne entière).
   const peutGererCompteOpco = ['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)
-  const coffre = peutGererCompteOpco ? ((c as any).opco_compte_chiffre as { hint?: string | null } | null | undefined) : null
   const aCoffre = !!(c as any).opco_compte_chiffre
   delete (c as any).opco_compte_chiffre
   // Carte « Compte OPCO » : entreprise rattachée à un OPCO, ou données déjà saisies
@@ -270,8 +269,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               status={((c as any).opco_compte_status || 'aucun') as any}
               date={(c as any).opco_compte_date || null}
               identifiant={(c as any).opco_compte_identifiant || null}
-              aCoffre={peutGererCompteOpco && aCoffre}
-              indice={coffre?.hint || null}
+              aMotDePasse={aCoffre}
               peutModifier={peutGererCompteOpco}
             />
           )}

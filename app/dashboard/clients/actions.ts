@@ -259,9 +259,27 @@ const STATUTS_COMPTE_OPCO = ['aucun', 'courrier_envoye', 'en_attente_validation'
  * La date suit l'état : quand on passe le compte à « actif », c'est le jour
  * de création du compte ; on la laisse modifiable pour une saisie a posteriori.
  */
+/**
+ * Clé de chiffrement du mot de passe OPCO : une variable d'environnement
+ * dédiée, à défaut dérivée de la clé de service Supabase (déjà secrète).
+ * Le mot de passe n'est jamais lisible en base ; il se déchiffre à la demande,
+ * pour les rôles autorisés, avec une trace dans le journal d'audit.
+ */
+async function cleCoffreOpco(): Promise<string> {
+  if (process.env.OPCO_SECRET_KEY) return process.env.OPCO_SECRET_KEY
+  const { createHash } = await import('crypto')
+  return createHash('sha256').update(`opco:${process.env.SUPABASE_SERVICE_ROLE_KEY || ''}`).digest('hex')
+}
+
 export async function setClientCompteOpcoAction(
   clientId: string,
-  compte: { status: string; date?: string | null; identifiant?: string | null },
+  compte: {
+    status: string
+    date?: string | null
+    identifiant?: string | null
+    /** undefined : inchangé ; chaîne vide : effacé ; sinon enregistré chiffré. */
+    mot_de_passe?: string | null
+  },
 ): Promise<ActionResult> {
   const session = await getSession()
   if (!OPCO_ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
@@ -279,116 +297,50 @@ export async function setClientCompteOpcoAction(
     // Date fournie, sinon aujourd'hui si l'état change, sinon inchangée
     ...(compte.date ? { opco_compte_date: compte.date } : changeEtat ? { opco_compte_date: new Date().toISOString().slice(0, 10) } : {}),
   }
+  if (compte.mot_de_passe !== undefined && compte.mot_de_passe !== null) {
+    const mdp = compte.mot_de_passe.trim()
+    if (!mdp) patch.opco_compte_chiffre = null
+    else {
+      const { encryptSecret } = await import('@/lib/secret-vault')
+      patch.opco_compte_chiffre = { ...encryptSecret({ mot_de_passe: mdp }, await cleCoffreOpco()), mode: 'serveur' }
+    }
+  }
   const { error } = await supabase.from('clients').update(patch)
     .eq('id', clientId).eq('organization_id', session.organization.id)
   let partiel = false
   if (error) {
     const code = String((error as any).code)
     if (code !== '42703' && code !== 'PGRST204') return { success: false, error: 'Enregistrement impossible' }
-    // Migration 154 non appliquée : l'état (colonne de 2025) s'enregistre quand même
-    const { error: e2 } = await supabase.from('clients').update({ opco_compte_status: compte.status })
+    // Migration 154 non appliquée : l'état et le mot de passe (colonnes existantes) s'enregistrent quand même
+    const repli: Record<string, unknown> = { opco_compte_status: compte.status }
+    if ('opco_compte_chiffre' in patch) repli.opco_compte_chiffre = patch.opco_compte_chiffre
+    const { error: e2 } = await supabase.from('clients').update(repli)
       .eq('id', clientId).eq('organization_id', session.organization.id)
     if (e2) return { success: false, error: 'Enregistrement impossible' }
     partiel = true
   }
-  await logAudit({ action: 'update', entity_type: 'client', entity_id: clientId, details: { compte_opco: partiel ? { opco_compte_status: compte.status } : patch } })
+  const trace: Record<string, unknown> = { ...(partiel ? { opco_compte_status: compte.status } : patch) }
+  if ('opco_compte_chiffre' in trace) trace.opco_compte_chiffre = patch.opco_compte_chiffre ? 'modifié' : 'effacé'
+  await logAudit({ action: 'update', entity_type: 'client', entity_id: clientId, details: { compte_opco: trace } })
   revalidatePath(`/dashboard/clients/${clientId}`)
   return { success: true, data: { partiel } }
 }
 
-const COFFRE_MAX_ECHECS = 5
-const COFFRE_FENETRE_MIN = 15
-
-/**
- * Le coffre n'a que la phrase secrète pour défense : après cinq phrases
- * fausses en quinze minutes sur un même client, l'utilisateur attend. Le
- * compteur vit dans le journal d'audit, qui survit aux instances serverless.
- */
-async function verrouCoffre(supabase: any, userId: string, clientId: string): Promise<string | null> {
-  const depuis = new Date(Date.now() - COFFRE_FENETRE_MIN * 60_000).toISOString()
-  const { count } = await supabase.from('audit_logs')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId).eq('entity_type', 'client').eq('entity_id', clientId)
-    .eq('action', 'opco_secret_echec').gte('created_at', depuis)
-  if ((count || 0) >= COFFRE_MAX_ECHECS) {
-    return `Trop de phrases secrètes erronées. Réessayez dans ${COFFRE_FENETRE_MIN} minutes.`
-  }
-  return null
-}
-
-/** Enregistre (chiffre) les identifiants du compte OPCO d'un client. */
-export async function saveClientOpcoSecretAction(
-  clientId: string,
-  secret: { identifiant?: string; mot_de_passe?: string; url?: string; notes?: string },
-  password: string,
-  hint?: string,
-): Promise<ActionResult> {
-  const session = await getSession()
-  if (!OPCO_ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
-  if (!password || password.length < 8) return { success: false, error: 'Phrase secrète trop courte : huit caractères au moins' }
-  const clean = {
-    identifiant: (secret.identifiant || '').trim(),
-    mot_de_passe: (secret.mot_de_passe || '').trim(),
-    url: (secret.url || '').trim(),
-    notes: (secret.notes || '').trim(),
-  }
-  if (!clean.identifiant && !clean.mot_de_passe && !clean.url && !clean.notes) {
-    return { success: false, error: 'Renseignez au moins un champ' }
-  }
-  const { encryptSecret } = await import('@/lib/secret-vault')
-  const blob = encryptSecret(clean, password, hint || null)
-
-  const supabase = await createServiceRoleClient()
-  const { error } = await supabase.from('clients')
-    .update({ opco_compte_chiffre: blob })
-    .eq('id', clientId).eq('organization_id', session.organization.id)
-  if (error) return { success: false, error: 'Erreur lors de l\'enregistrement' }
-  await logAudit({ action: 'save_opco_secret', entity_type: 'client', entity_id: clientId })
-  revalidatePath(`/dashboard/clients/${clientId}`)
-  return { success: true }
-}
-
-/** Déchiffre et renvoie le compte OPCO si le mot de passe est correct. */
-export async function revealClientOpcoSecretAction(
-  clientId: string, password: string,
-): Promise<ActionResult & { data?: any }> {
+/** Déchiffre le mot de passe du portail OPCO, pour l'afficher ou le copier. Chaque lecture est journalisée. */
+export async function revealClientOpcoPasswordAction(clientId: string): Promise<ActionResult<{ mot_de_passe: string }>> {
   const session = await getSession()
   if (!OPCO_ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const { data: c } = await supabase.from('clients')
     .select('opco_compte_chiffre').eq('id', clientId).eq('organization_id', session.organization.id).maybeSingle()
-  if (!c?.opco_compte_chiffre) return { success: false, error: 'Aucun compte OPCO enregistré' }
-  const verrou = await verrouCoffre(supabase, session.user.id, clientId)
-  if (verrou) return { success: false, error: verrou }
-  const { decryptSecret } = await import('@/lib/secret-vault')
-  const plain = decryptSecret(c.opco_compte_chiffre as any, password)
-  if (!plain) {
-    await logAudit({ action: 'opco_secret_echec', entity_type: 'client', entity_id: clientId, details: { operation: 'afficher' } })
-    return { success: false, error: 'Phrase secrète incorrecte' }
+  const blob: any = c?.opco_compte_chiffre
+  if (!blob) return { success: false, error: 'Aucun mot de passe enregistré' }
+  if (blob.mode !== 'serveur') {
+    return { success: false, error: 'Mot de passe enregistré avec l\u2019ancienne phrase secrète : ressaisissez-le.' }
   }
+  const { decryptSecret } = await import('@/lib/secret-vault')
+  const plain = decryptSecret<{ mot_de_passe: string }>(blob, await cleCoffreOpco())
+  if (!plain?.mot_de_passe) return { success: false, error: 'Mot de passe illisible : ressaisissez-le.' }
   await logAudit({ action: 'reveal_opco_secret', entity_type: 'client', entity_id: clientId })
-  return { success: true, data: plain }
-}
-
-/** Supprime le compte OPCO chiffré (mot de passe requis pour prouver l'accès). */
-export async function deleteClientOpcoSecretAction(clientId: string, password: string): Promise<ActionResult> {
-  const session = await getSession()
-  if (!OPCO_ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
-  const supabase = await createServiceRoleClient()
-  const { data: c } = await supabase.from('clients')
-    .select('opco_compte_chiffre').eq('id', clientId).eq('organization_id', session.organization.id).maybeSingle()
-  if (!c?.opco_compte_chiffre) return { success: false, error: 'Aucun compte OPCO' }
-  const verrou = await verrouCoffre(supabase, session.user.id, clientId)
-  if (verrou) return { success: false, error: verrou }
-  const { decryptSecret } = await import('@/lib/secret-vault')
-  if (!decryptSecret(c.opco_compte_chiffre as any, password)) {
-    await logAudit({ action: 'opco_secret_echec', entity_type: 'client', entity_id: clientId, details: { operation: 'supprimer' } })
-    return { success: false, error: 'Phrase secrète incorrecte' }
-  }
-  const { error } = await supabase.from('clients')
-    .update({ opco_compte_chiffre: null }).eq('id', clientId).eq('organization_id', session.organization.id)
-  if (error) return { success: false, error: 'Erreur' }
-  await logAudit({ action: 'delete_opco_secret', entity_type: 'client', entity_id: clientId })
-  revalidatePath(`/dashboard/clients/${clientId}`)
-  return { success: true }
+  return { success: true, data: { mot_de_passe: plain.mot_de_passe } }
 }
