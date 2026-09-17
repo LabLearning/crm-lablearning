@@ -13,9 +13,10 @@ const ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial']
 const marqueur = (sessionId: string) => `[SESSION-FACT:${sessionId}]`
 
 /**
- * Génère la facture OPCO d'une session, sur le modèle des factures Dendreo :
- * une facture par session, adressée à l'OPCO, « pour le compte de »
- * l'entreprise, avec une ligne unique « Formation ».
+ * Génère la facture d'une session, sur le modèle des factures Dendreo : une
+ * facture par session, une ligne unique « Formation ». Avec un OPCO, elle lui
+ * est adressée « pour le compte de » l'entreprise, par subrogation. Sans OPCO,
+ * elle est adressée directement à l'entreprise, qui règle l'organisme.
  *
  * Refuse si la session a déjà été facturée ailleurs (montant repris de
  * Dendreo) : c'est le cas de 158 sessions 2026, qu'il ne faut pas refacturer.
@@ -62,9 +63,11 @@ export async function genererFactureOpcoAction(
     return { success: false, error: `La facture ${(existante as any).numero} existe déjà pour cette session.` }
   }
 
-  const opcoId = (s as any).opco_id || (s as any).client?.opco_id
-  if (!opcoId) {
-    return { success: false, error: "Aucun OPCO rattaché : renseignez-le sur la session ou sur la fiche client." }
+  // Sans OPCO, la facture part à l'entreprise elle-même
+  const opcoId = (s as any).opco_id || (s as any).client?.opco_id || null
+  const directe = !opcoId
+  if (directe && !(s as any).client?.id) {
+    return { success: false, error: "Aucun client rattaché à la session : impossible de savoir à qui adresser la facture." }
   }
 
   const montantHt = Number(
@@ -92,15 +95,15 @@ export async function genererFactureOpcoAction(
       date_emission: today,
       date_echeance: echeance.toISOString().slice(0, 10),
       taux_tva: 0,
-      financeur_type: 'opco',
-      numero_prise_en_charge: (s as any).numero_dossier_opco || null,
-      subrogation: true,
+      financeur_type: directe ? null : 'opco',
+      numero_prise_en_charge: directe ? null : ((s as any).numero_dossier_opco || null),
+      subrogation: !directe,
       conditions_paiement: CONDITIONS_PAIEMENT_DEFAUT,
       montant_ht: montantHt,
       montant_tva: 0,
       montant_ttc: montantHt,
       montant_restant: montantHt,
-      notes_internes: `Facture OPCO de la session ${(s as any).reference || ''}. ${marqueur(sessionId)}`,
+      notes_internes: `${directe ? 'Facture directe' : 'Facture OPCO'} de la session ${(s as any).reference || ''}. ${marqueur(sessionId)}`,
       created_by: session.user.id,
       // Réglée à l'organisme : le PDF ne porte ni cession ni IBAN du factor
       ...(options?.sansAffacturage ? { sans_affacturage: true } : {}),
@@ -132,7 +135,7 @@ export async function genererFactureOpcoAction(
     position: 0,
   })
 
-  await logAudit({ action: 'create', entity_type: 'facture', entity_id: facture.id, details: { session: sessionId, opco: opcoId, sans_affacturage: !!options?.sansAffacturage } })
+  await logAudit({ action: 'create', entity_type: 'facture', entity_id: facture.id, details: { session: sessionId, opco: opcoId, directe, sans_affacturage: !!options?.sansAffacturage } })
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   revalidatePath('/dashboard/factures')
   return { success: true, data: facture }

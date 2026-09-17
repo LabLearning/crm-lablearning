@@ -261,14 +261,14 @@ export function FacturationOpco({
           <div className="min-w-0">
             <h2 className="text-sm font-heading font-semibold text-surface-900 flex items-center gap-2">
               <ReceiptEuro className="h-4 w-4 text-brand-500" />
-              Facture OPCO
+              {opcoId ? 'Facture OPCO' : 'Facture'}
             </h2>
             <p className="text-xs text-surface-500 mt-0.5">
               {facture
                 ? `${facture.numero || 'Brouillon'} · ${facture.montant_ttc != null ? euro(Number(facture.montant_ttc)) : '—'}`
                 : opcoChoisi
                   ? `Adressée à ${opcoChoisi.nom}, pour le compte de l'entreprise.`
-                  : "Renseignez l'OPCO financeur ci-dessus pour pouvoir facturer."}
+                  : "Aucun OPCO renseigné : la facture est adressée directement à l'entreprise, qui règle l'organisme."}
             </p>
             {facture && (
               <p className="text-xs mt-1.5 inline-flex items-center gap-1.5">
@@ -304,14 +304,14 @@ export function FacturationOpco({
                   <ExternalLink className="h-3.5 w-3.5" /> Ouvrir
                 </a>
               </>
-            ) : (
+            ) : opcoId ? (
               <>
                 <Button
                   size="sm"
                   variant="secondary"
                   onClick={() => genererFacture(false, true)}
                   isLoading={generation === 'organisme'}
-                  disabled={generation !== null || !terminee || !opcoId || !(montantAFacturer > 0)}
+                  disabled={generation !== null || !terminee || !(montantAFacturer > 0)}
                   icon={<Landmark className="h-4 w-4" />}
                   title="Facture réglée à l'organisme : ni cession de créance ni IBAN du factor"
                 >
@@ -321,12 +321,23 @@ export function FacturationOpco({
                   size="sm"
                   onClick={() => genererFacture(false)}
                   isLoading={generation === 'factor'}
-                  disabled={generation !== null || !terminee || !opcoId || !(montantAFacturer > 0)}
+                  disabled={generation !== null || !terminee || !(montantAFacturer > 0)}
                   icon={<ReceiptEuro className="h-4 w-4" />}
                 >
                   Générer la facture
                 </Button>
               </>
+            ) : (
+              // Pas d'OPCO : l'entreprise paie elle-même, jamais le factor
+              <Button
+                size="sm"
+                onClick={() => genererFacture(false, true)}
+                isLoading={generation === 'organisme'}
+                disabled={generation !== null || !terminee || !(montantAFacturer > 0)}
+                icon={<ReceiptEuro className="h-4 w-4" />}
+              >
+                Facturer l&apos;entreprise
+              </Button>
             )}
           </div>
         </div>
@@ -334,10 +345,16 @@ export function FacturationOpco({
         {!facture && (
           <ul className="mt-4 space-y-1.5">
             <Condition ok={terminee} texte="Session terminée" />
-            <Condition ok={!!opcoId} texte="OPCO financeur renseigné" />
             <Condition ok={montantAFacturer > 0} texte={`Montant à facturer connu${montantAFacturer > 0 ? ` (${euro(montantAFacturer)})` : ''}`} />
-            <Condition ok={!!numeroDossier} texte="Numéro de dossier OPCO" facultatif />
-            <Condition ok={!!accord} texte="Accord de prise en charge au dossier" facultatif />
+            {opcoId ? (
+              <>
+                <Condition ok texte={`Adressée à ${opcoChoisi?.nom || "l'OPCO"}, pour le compte de l'entreprise`} />
+                <Condition ok={!!numeroDossier} texte="Numéro de dossier OPCO" facultatif />
+                <Condition ok={!!accord} texte="Accord de prise en charge au dossier" facultatif />
+              </>
+            ) : (
+              <Condition ok texte="Adressée directement à l'entreprise, sans OPCO ni affacturage" />
+            )}
           </ul>
         )}
 
