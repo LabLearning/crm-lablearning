@@ -22,7 +22,7 @@ const marqueur = (sessionId: string) => `[SESSION-FACT:${sessionId}]`
  */
 export async function genererFactureOpcoAction(
   sessionId: string,
-  options?: { montantHt?: number; forcer?: boolean },
+  options?: { montantHt?: number; forcer?: boolean; sansAffacturage?: boolean },
 ): Promise<ActionResult> {
   const session = await getSession()
   if (!ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
@@ -102,14 +102,21 @@ export async function genererFactureOpcoAction(
       montant_restant: montantHt,
       notes_internes: `Facture OPCO de la session ${(s as any).reference || ''}. ${marqueur(sessionId)}`,
       created_by: session.user.id,
+      // Réglée à l'organisme : le PDF ne porte ni cession ni IBAN du factor
+      ...(options?.sansAffacturage ? { sans_affacturage: true } : {}),
     })
     .select('id, numero')
     .single()
 
   if (error || !facture) {
     console.error('[facture opco]', error)
-    if ((error as any)?.code === '42703') {
-      return { success: false, error: 'Colonnes absentes : appliquer la migration 122_facturation_opco.sql' }
+    if ((error as any)?.code === '42703' || (error as any)?.code === 'PGRST204') {
+      return {
+        success: false,
+        error: options?.sansAffacturage
+          ? 'Colonne absente : appliquer la migration 153_facture_sans_affacturage.sql'
+          : 'Colonnes absentes : appliquer la migration 122_facturation_opco.sql',
+      }
     }
     return { success: false, error: 'Création de la facture impossible' }
   }
@@ -125,10 +132,54 @@ export async function genererFactureOpcoAction(
     position: 0,
   })
 
-  await logAudit({ action: 'create', entity_type: 'facture', entity_id: facture.id, details: { session: sessionId, opco: opcoId } })
+  await logAudit({ action: 'create', entity_type: 'facture', entity_id: facture.id, details: { session: sessionId, opco: opcoId, sans_affacturage: !!options?.sansAffacturage } })
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   revalidatePath('/dashboard/factures')
   return { success: true, data: facture }
+}
+
+/**
+ * Sort une facture de l'affacturage, ou l'y remet : le PDF change de bloc de
+ * règlement (IBAN de l'organisme ou cession au factor). Impossible dès que
+ * la créance a été cédée, le factor attend alors le paiement.
+ */
+export async function basculerAffacturageFactureAction(
+  factureId: string,
+  sansAffacturage: boolean,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+
+  const { data: f } = await supabase
+    .from('factures')
+    .select('id, numero, session_id, affacturage_status')
+    .eq('id', factureId)
+    .eq('organization_id', orgId)
+    .maybeSingle()
+  if (!f) return { success: false, error: 'Facture introuvable' }
+  if ((f as any).affacturage_status) {
+    return { success: false, error: `La facture ${(f as any).numero} a déjà été cédée au factor : elle ne peut plus en sortir.` }
+  }
+
+  const { error } = await supabase
+    .from('factures')
+    .update({ sans_affacturage: sansAffacturage, updated_at: new Date().toISOString() })
+    .eq('id', factureId)
+    .eq('organization_id', orgId)
+  if (error) {
+    console.error('[facture affacturage]', error)
+    if ((error as any)?.code === '42703' || (error as any)?.code === 'PGRST204') {
+      return { success: false, error: 'Colonne absente : appliquer la migration 153_facture_sans_affacturage.sql' }
+    }
+    return { success: false, error: 'Modification impossible' }
+  }
+
+  await logAudit({ action: 'update', entity_type: 'facture', entity_id: factureId, details: { sans_affacturage: sansAffacturage } })
+  if ((f as any).session_id) revalidatePath(`/dashboard/sessions/${(f as any).session_id}`)
+  revalidatePath('/dashboard/factures')
+  return { success: true }
 }
 
 /**

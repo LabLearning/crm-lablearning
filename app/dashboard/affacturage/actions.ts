@@ -132,6 +132,15 @@ export async function cederFactureAction(factureId: string, formData: FormData):
   if (facture.status === 'brouillon') return { success: false, error: 'Émettez la facture avant de la céder' }
   if (facture.status === 'annulee') return { success: false, error: 'Facture annulée' }
 
+  // Facture marquée « sans affacturage » : réglée à l'organisme, elle ne se
+  // cède pas. Lecture séparée : la colonne n'existe qu'à partir de la
+  // migration 153, et son absence ne doit pas bloquer une cession.
+  const { data: horsFactor } = await supabase
+    .from('factures').select('sans_affacturage').eq('id', factureId).maybeSingle()
+  if ((horsFactor as any)?.sans_affacturage) {
+    return { success: false, error: `La facture ${facture.numero} est réglée à l'organisme, sans affacturage. Remettez-la à l'affacturage depuis la session avant de la céder.` }
+  }
+
   const { data: existing } = await supabase
     .from('cessions_creances')
     .select('id, status')

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import {
   Plus, Search, Send, Trash2, Eye,
   Receipt, Building2, Euro, Calendar, AlertTriangle,
-  CreditCard, ArrowRight, FileX, Clock, Download, Banknote, Loader2,
+  CreditCard, ArrowRight, FileX, Clock, Download, Banknote, Loader2, Landmark,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import {
@@ -198,6 +198,13 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
                            f.affacturage_status === 'soldee' ? 'Factor soldé' : 'Factor impayé'}
                         </span>
                       )}
+                      {f.sans_affacturage && !f.affacturage_status && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-info-50 text-info-600"
+                          title="Réglée à l'organisme : ni cession de créance ni IBAN du factor">
+                          <Landmark className="h-2.5 w-2.5" />
+                          Sans affacturage
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-3.5 text-right text-sm font-medium text-surface-800">
@@ -239,7 +246,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
                             }
                             setCessionFacture(f)
                           },
-                          hidden: !(['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && !f.affacturage_status && f.type !== 'avoir'),
+                          hidden: !(['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && !f.affacturage_status && !f.sans_affacturage && f.type !== 'avoir'),
                         },
                         {
                           label: 'Créer un avoir',

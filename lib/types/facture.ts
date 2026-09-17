@@ -42,6 +42,8 @@ export interface Facture {
   subrogation: boolean
   relance_count: number
   affacturage_status: 'cedee' | 'avancee' | 'soldee' | 'impayee' | null
+  /** Réglée à l'organisme : aucune mention de cession ni IBAN du factor sur le PDF. */
+  sans_affacturage?: boolean
   created_at: string
   updated_at: string
   // Joined

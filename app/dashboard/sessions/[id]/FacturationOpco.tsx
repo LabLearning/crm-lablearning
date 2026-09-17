@@ -4,19 +4,28 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ReceiptEuro, Upload, Download, Trash2, Loader2, FileCheck2, AlertCircle,
-  CheckCircle2, ExternalLink, RefreshCw,
+  CheckCircle2, ExternalLink, RefreshCw, Landmark,
 } from '@/components/ui/icons'
 import { Button, Input, Select, Modal, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import {
   enregistrerFinancementOpcoAction, deposerAccordPecAction, genererFactureOpcoAction,
-  recupererFinancementDendreoAction,
+  recupererFinancementDendreoAction, basculerAffacturageFactureAction,
 } from './facture-opco-actions'
 import { lienPieceAction, retirerPieceAction } from './pieces-actions'
 
 interface Opco { id: string; code: string; nom: string }
 interface Accord { id: string; file_name: string | null; date_piece: string | null; created_at: string }
-interface Facture { id: string; numero: string | null; status: string | null; montant_ttc: number | null }
+interface Facture {
+  id: string
+  numero: string | null
+  status: string | null
+  montant_ttc: number | null
+  /** Réglée à l'organisme : pas de cession ni d'IBAN du factor sur le PDF. */
+  sans_affacturage?: boolean | null
+  /** Renseigné dès que la créance est cédée : le choix n'est plus modifiable. */
+  affacturage_status?: string | null
+}
 
 const euro = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 
@@ -57,9 +66,11 @@ export function FacturationOpco({
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const [depotOuvert, setDepotOuvert] = useState(false)
+  const [bascule, setBascule] = useState(false)
   const [depotEnCours, setDepotEnCours] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
-  const [generation, setGeneration] = useState(false)
+  // Quel bouton a lancé la génération : seul lui montre l'attente
+  const [generation, setGeneration] = useState<'factor' | 'organisme' | null>(null)
   const [recup, setRecup] = useState(false)
 
   const montantAFacturer = montantFinance ?? prixHt ?? 0
@@ -123,11 +134,24 @@ export function FacturationOpco({
     router.refresh()
   }
 
-  async function genererFacture(forcer = false) {
-    setGeneration(true)
-    const r = await genererFactureOpcoAction(sessionId, forcer ? { forcer: true } : undefined)
-    setGeneration(false)
-    if (r.success) { toast('success', `Facture ${(r.data as any)?.numero || ''} créée`); router.refresh() }
+  async function genererFacture(forcer = false, sansAffacturage = false) {
+    setGeneration(sansAffacturage ? 'organisme' : 'factor')
+    const r = await genererFactureOpcoAction(sessionId, { forcer: forcer || undefined, sansAffacturage: sansAffacturage || undefined })
+    setGeneration(null)
+    if (r.success) {
+      toast('success', `Facture ${(r.data as any)?.numero || ''} créée${sansAffacturage ? ', réglée à l\u2019organisme' : ''}`)
+      router.refresh()
+    } else toast('error', r.error || 'Erreur')
+  }
+
+  // Sortir la facture de l'affacturage, ou l'y remettre, tant qu'elle n'est pas cédée
+  async function basculerAffacturage() {
+    if (!facture) return
+    const sans = !facture.sans_affacturage
+    setBascule(true)
+    const r = await basculerAffacturageFactureAction(facture.id, sans)
+    setBascule(false)
+    if (r.success) { toast('success', sans ? 'Facture réglée à l\u2019organisme, sans affacturage' : 'Facture remise à l\u2019affacturage'); router.refresh() }
     else toast('error', r.error || 'Erreur')
   }
 
@@ -246,6 +270,26 @@ export function FacturationOpco({
                   ? `Adressée à ${opcoChoisi.nom}, pour le compte de l'entreprise.`
                   : "Renseignez l'OPCO financeur ci-dessus pour pouvoir facturer."}
             </p>
+            {facture && (
+              <p className="text-xs mt-1.5 inline-flex items-center gap-1.5">
+                {facture.sans_affacturage ? (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-info-50 text-info-600 px-2 py-0.5 font-semibold">
+                    <Landmark className="h-3 w-3" /> Réglée à l&apos;organisme, sans affacturage
+                  </span>
+                ) : facture.affacturage_status ? (
+                  <span className="rounded-md bg-surface-100 text-surface-600 px-2 py-0.5 font-semibold">Cédée au factor</span>
+                ) : (
+                  <span className="text-surface-400">Règlement au factor si l&apos;affacturage est actif</span>
+                )}
+                {!facture.affacturage_status && (
+                  <button type="button" onClick={basculerAffacturage} disabled={bascule} aria-busy={bascule}
+                    className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 font-medium hover:underline disabled:opacity-50">
+                    {bascule && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
+                    {facture.sans_affacturage ? "Remettre à l'affacturage" : 'Passer sans affacturage'}
+                  </button>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -261,15 +305,28 @@ export function FacturationOpco({
                 </a>
               </>
             ) : (
-              <Button
-                size="sm"
-                onClick={() => genererFacture(false)}
-                isLoading={generation}
-                disabled={!terminee || !opcoId || !(montantAFacturer > 0)}
-                icon={<ReceiptEuro className="h-4 w-4" />}
-              >
-                Générer la facture
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => genererFacture(false, true)}
+                  isLoading={generation === 'organisme'}
+                  disabled={generation !== null || !terminee || !opcoId || !(montantAFacturer > 0)}
+                  icon={<Landmark className="h-4 w-4" />}
+                  title="Facture réglée à l'organisme : ni cession de créance ni IBAN du factor"
+                >
+                  Sans affacturage
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => genererFacture(false)}
+                  isLoading={generation === 'factor'}
+                  disabled={generation !== null || !terminee || !opcoId || !(montantAFacturer > 0)}
+                  icon={<ReceiptEuro className="h-4 w-4" />}
+                >
+                  Générer la facture
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -290,7 +347,7 @@ export function FacturationOpco({
               Cette session a déjà été facturée <strong>{euro(dejaAilleurs)}</strong> depuis Dendreo.
               Générer une facture ici ferait double emploi.
             </p>
-            <button onClick={() => genererFacture(true)} disabled={generation}
+            <button onClick={() => genererFacture(true)} disabled={generation !== null}
               className="mt-2 text-xs font-semibold text-danger-700 hover:underline disabled:opacity-50">
               Facturer quand même
             </button>

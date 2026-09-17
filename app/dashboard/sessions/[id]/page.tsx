@@ -274,7 +274,9 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
   const [{ data: opcos }, { data: factureSession }, { data: accordPec }] = await Promise.all([
     supabase.from('opco').select('id, code, nom').eq('is_active', true).order('nom'),
     supabase.from('factures')
-      .select('id, numero, status, montant_ttc, financeur_type')
+      // « * » : la colonne sans_affacturage n'existe qu'à partir de la
+      // migration 153, une liste explicite ferait disparaître la facture avant.
+      .select('*')
       .eq('organization_id', session.organization.id)
       .eq('session_id', params.id)
       // Tous financeurs : la facture AGEFICE ou directe doit apparaître
