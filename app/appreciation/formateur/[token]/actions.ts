@@ -26,6 +26,12 @@ export async function deposerEvaluationFormateurAction(token: string, formData: 
   }
   if (!note('note_globale')) return { success: false, error: 'Merci d’indiquer au moins l’appréciation globale.' }
 
+  // Les remarques sont obligatoires : une note seule ne dit pas quoi améliorer
+  const commentaire = String(formData.get('commentaire') || '').trim().slice(0, 3000)
+  if (commentaire.length < 20) {
+    return { success: false, error: 'Merci d’écrire quelques phrases dans « Vos remarques » : elles comptent autant que les notes.' }
+  }
+
   const notes: Record<string, number | null> = {}
   for (const q of QUESTIONS_FORMATEUR) notes[q.cle] = note(q.cle)
 
@@ -35,7 +41,7 @@ export async function deposerEvaluationFormateurAction(token: string, formData: 
     // Les colonnes historiques restent renseignées pour les tableaux de bord
     note_intervenant: note('note_globale'),
     recommande: formData.get('recommande') === 'oui' ? true : formData.get('recommande') === 'non' ? false : null,
-    commentaire: String(formData.get('commentaire') || '').trim().slice(0, 3000) || null,
+    commentaire,
     repondant_nom: String(formData.get('nom') || '').trim().slice(0, 120) || null,
     repondant_fonction: String(formData.get('fonction') || '').trim().slice(0, 120) || null,
     repondant_email: String(formData.get('email') || '').trim().slice(0, 200) || null,

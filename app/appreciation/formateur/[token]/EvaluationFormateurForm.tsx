@@ -80,8 +80,11 @@ export function EvaluationFormateurForm({
       </div>
 
       <label className="block text-sm font-medium text-surface-800">
-        Vos remarques
-        <textarea name="commentaire" rows={4} className="input-base mt-1.5 font-normal"
+        Vos remarques <span className="text-danger-600" aria-hidden="true">*</span>
+        <span className="block text-xs font-normal text-surface-500 mt-0.5">
+          Quelques phrases suffisent : ce qui vous a satisfait, ce que le formateur aurait pu faire autrement, une situation marquante.
+        </span>
+        <textarea name="commentaire" rows={4} required minLength={20} className="input-base mt-1.5 font-normal"
           placeholder="Points forts, points à améliorer, situations marquantes…" />
       </label>
 
