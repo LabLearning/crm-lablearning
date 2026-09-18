@@ -3,7 +3,8 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { X } from '@/components/ui/icons'
+import { X, History,
+} from '@/components/ui/icons'
 import {
   LayoutDashboard, UserPlus, Building2, Users, Handshake, FileText,
   GraduationCap, Calendar, UserCheck, UserX, Presentation, FileSignature, FilePen,
@@ -19,6 +20,7 @@ import { navigation } from '@/lib/navigation'
 
 // Même table que la Sidebar : une entrée sans icône serait décalée dans la liste
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  History,
   LayoutDashboard, UserPlus, Building2, Users, Handshake, FileText,
   GraduationCap, Calendar, UserCheck, UserX, Presentation, FileSignature, FilePen,
   FolderOpen, PenTool, Receipt, CreditCard, ClipboardCheck, ListChecks,

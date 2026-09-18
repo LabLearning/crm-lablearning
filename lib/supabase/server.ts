@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { entetesActeur } from '@/lib/acteur'
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies()
@@ -37,6 +38,9 @@ export async function createServiceRoleClient() {
       // réponses Supabase (il persiste entre déploiements et servait des
       // données figées sur les pages sans cookies, ex. portails par token)
       global: {
+        // L'utilisateur à l'origine de la requête, pour le journal d'activité
+        // (déclencheur journal_activite, migration 155)
+        headers: entetesActeur(),
         fetch: (url: any, options: any = {}) => fetch(url, { ...options, cache: 'no-store' }),
       },
     }

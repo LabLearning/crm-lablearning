@@ -109,6 +109,7 @@ export const navigation: NavSection[] = [
     title: 'Système',
     items: [
       { label: 'Utilisateurs', href: '/dashboard/users', icon: 'Shield', module: 'users' },
+      { label: "Journal d'activité", href: '/dashboard/activite', icon: 'History', module: 'users' },
       { label: 'Paramètres', href: '/dashboard/settings', icon: 'Settings', module: 'settings' },
     ],
   },

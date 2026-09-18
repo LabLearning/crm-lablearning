@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
+import { definirActeur } from '@/lib/acteur'
 import { cache } from 'react'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { User, Organization, Permission } from '@/lib/types'
@@ -21,6 +22,9 @@ export const getSession = cache(async function getSession(): Promise<SessionCont
   if (!authUser) {
     redirect('/login')
   }
+
+  // Dès maintenant, toute écriture de cette requête lui est attribuée
+  definirActeur(authUser.id)
 
   // Service role client for data (bypasses RLS)
   const supabase = await createServiceRoleClient()
@@ -66,6 +70,8 @@ export const getSession = cache(async function getSession(): Promise<SessionCont
       .single()
 
     if (impersonatedUser) {
+      // Les écritures restent signées par la vraie personne, avec mention du compte emprunté
+      definirActeur(user.id, impersonatedUser.id)
       const { data: impersonatedPermissions } = await supabase
         .from('permissions')
         .select('*')
