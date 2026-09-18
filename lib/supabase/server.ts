@@ -38,10 +38,14 @@ export async function createServiceRoleClient() {
       // réponses Supabase (il persiste entre déploiements et servait des
       // données figées sur les pages sans cookies, ex. portails par token)
       global: {
-        // L'utilisateur à l'origine de la requête, pour le journal d'activité
-        // (déclencheur journal_activite, migration 155)
-        headers: entetesActeur(),
-        fetch: (url: any, options: any = {}) => fetch(url, { ...options, cache: 'no-store' }),
+        // L'utilisateur à l'origine de la requête (journal d'activité, migration
+        // 155) est résolu à CHAQUE appel HTTP, pas à la création du client : un
+        // client créé avant getSession() signe quand même ses écritures.
+        fetch: (url: any, options: any = {}) => {
+          const h = new Headers(options.headers)
+          for (const [k, v] of Object.entries(entetesActeur())) h.set(k, v)
+          return fetch(url, { ...options, headers: h, cache: 'no-store' })
+        },
       },
     }
   )

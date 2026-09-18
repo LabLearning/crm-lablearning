@@ -70,8 +70,8 @@ export const getSession = cache(async function getSession(): Promise<SessionCont
       .single()
 
     if (impersonatedUser) {
-      // Les écritures restent signées par la vraie personne, avec mention du compte emprunté
-      definirActeur(user.id, impersonatedUser.id)
+      // Le compte emprunté est l'acteur ; le super administrateur est mentionné en « par »
+      definirActeur(impersonatedUser.id, user.id)
       const { data: impersonatedPermissions } = await supabase
         .from('permissions')
         .select('*')
@@ -99,6 +99,9 @@ export const getOptionalSession = cache(async function getOptionalSession() {
   const { data: { user: authUser } } = await anonClient.auth.getUser()
 
   if (!authUser) return null
+
+  // Les routes API qui passent par ici signent aussi leurs écritures
+  definirActeur(authUser.id)
 
   const supabase = await createServiceRoleClient()
   const { data: user } = await supabase

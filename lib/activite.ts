@@ -8,7 +8,10 @@ export type OperationActivite = 'insert' | 'update' | 'delete'
 export interface Activite {
   id: string
   acteur_id: string | null
+  acteur_nom?: string | null
+  acteur_email?: string | null
   impersone_par: string | null
+  transaction_id?: number | string | null
   table_name: string
   record_id: string | null
   operation: OperationActivite
@@ -123,12 +126,33 @@ export function lienActivite(a: Pick<Activite, 'table_name' | 'record_id' | 'ava
   }
 }
 
-/** Nom affiché d'un utilisateur du journal. */
+/** Nom affiché d'un utilisateur du journal : le compte s'il existe encore, sinon le nom figé à l'écriture. */
 export function nomActeur(a: Activite): string {
-  if (!a.acteur_id) return 'Système'
   const u = a.acteur
   const nom = u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : ''
-  return nom || u?.email || 'Utilisateur supprimé'
+  if (nom) return nom
+  if (a.acteur_nom) return a.acteur_nom
+  if (a.acteur_email) return a.acteur_email
+  if (a.acteur_id) return u?.email || 'Utilisateur supprimé'
+  return 'Système'
+}
+
+/** audit_logs nomme l'entité au singulier ('session', 'client'), le journal par table ('sessions'). */
+const ENTITE_VERS_TABLE: Record<string, string> = {
+  client: 'clients', contact: 'contacts', lead: 'leads', apporteur: 'apporteurs_affaires', apprenant: 'apprenants',
+  formateur: 'formateurs', formation: 'formations', session: 'sessions', inscription: 'inscriptions',
+  contrat_formateur: 'contrats_formateur', rapport_session: 'rapports_session', convention: 'conventions',
+  dossier_formation: 'dossiers_formation', dossier: 'dossiers_formation', facture: 'factures', paiement: 'paiements',
+  poei_candidat: 'poei_candidats', poei_intervention: 'poei_interventions', poei_planning: 'poei_plannings',
+  document: 'documents', user: 'users', franchise: 'franchises', commission_session: 'commissions_sessions',
+  evaluation_apprenant: 'evaluations_apprenant', devis: 'devis', poei: 'poei',
+}
+export function tableDepuisEntite(entityType: string): string {
+  return ENTITE_VERS_TABLE[entityType] || entityType
+}
+/** Toutes les valeurs d'entity_type d'audit_logs qui correspondent à une table du journal. */
+export function entitesPourTable(table: string): string[] {
+  return [table, ...Object.entries(ENTITE_VERS_TABLE).filter(([, t]) => t === table).map(([e]) => e)]
 }
 
 /** « a modifié la facture FA-2026-0245 » */

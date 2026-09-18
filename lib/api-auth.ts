@@ -1,3 +1,4 @@
+import { definirActeur } from '@/lib/acteur'
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 
@@ -28,6 +29,8 @@ export async function requireApiUser(): Promise<
   if (!authUser) {
     return { error: NextResponse.json({ error: 'Non autorisé' }, { status: 401 }) }
   }
+  // Journal d'activité : les écritures de cette requête lui sont attribuées
+  definirActeur(authUser.id)
 
   const supabase = await createServiceRoleClient()
   const { data: u } = await supabase

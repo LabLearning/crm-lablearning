@@ -37,6 +37,7 @@ interface Props {
   filtres: Filtres
   peutAnnuler: boolean
   journalAbsent: boolean
+  erreur?: string | null
 }
 
 /** Libellés des événements applicatifs (audit_logs), pour lecture humaine. */
@@ -49,14 +50,17 @@ const EVENEMENTS: Record<string, string> = {
   impersonate: "s'est connecté en tant que", invite: 'a invité',
 }
 
-const heure = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-const jourCle = (d: string) => new Date(d).toISOString().slice(0, 10)
-const jourLibelle = (d: string) => {
-  const date = new Date(d)
-  const aujourdhui = new Date(); const hier = new Date(); hier.setDate(hier.getDate() - 1)
-  if (date.toDateString() === aujourdhui.toDateString()) return "Aujourd'hui"
-  if (date.toDateString() === hier.toDateString()) return 'Hier'
-  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+/** Fuseau métier : le journal s'affiche en heure de Paris, côté serveur (UTC) comme dans le navigateur. */
+const FUSEAU = 'Europe/Paris'
+const heure = (d: string) => new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: FUSEAU })
+/** Jour civil parisien AAAA-MM-JJ (le format en-CA donne nativement cet ordre). */
+const jourCle = (d: string | Date) => new Intl.DateTimeFormat('en-CA', { timeZone: FUSEAU, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d))
+const jourLibelle = (cle: string) => {
+  const aujourdhui = jourCle(new Date())
+  const hier = jourCle(new Date(Date.now() - 86_400_000))
+  if (cle === aujourdhui) return "Aujourd'hui"
+  if (cle === hier) return 'Hier'
+  return new Date(`${cle}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: FUSEAU })
 }
 
 function Initiales({ nom, url }: { nom: string; url?: string | null }) {
@@ -69,7 +73,7 @@ function Initiales({ nom, url }: { nom: string; url?: string | null }) {
   )
 }
 
-export function ActiviteClient({ vue, activites, evenements, total, page, parPage, utilisateurs, filtres, peutAnnuler, journalAbsent }: Props) {
+export function ActiviteClient({ vue, activites, evenements, total, page, parPage, utilisateurs, filtres, peutAnnuler, journalAbsent, erreur = null }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -112,7 +116,7 @@ export function ActiviteClient({ vue, activites, evenements, total, page, parPag
     const j = jourCle(l.date)
     const g = groupes[groupes.length - 1]
     if (g && g.jour === j) g.lignes.push(l)
-    else groupes.push({ jour: j, libelle: jourLibelle(l.date), lignes: [l] })
+    else groupes.push({ jour: j, libelle: jourLibelle(j), lignes: [l] })
   }
 
   return (
@@ -129,18 +133,19 @@ export function ActiviteClient({ vue, activites, evenements, total, page, parPag
             ))}
           </div>
           <div className="w-full sm:w-64">
-            <Select id="acteur" value={f.acteur} onChange={(e) => appliquer({ acteur: e.target.value })}
+            <Select id="acteur" aria-label="Utilisateur" value={f.acteur} onChange={(e) => appliquer({ acteur: e.target.value })}
               options={[{ value: '', label: 'Tous les utilisateurs' }, { value: 'systeme', label: 'Système (synchronisations, scripts)' },
                 ...utilisateurs.map((u) => ({ value: u.id, label: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.id }))]} />
           </div>
           <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
-            <input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })}
-              onKeyDown={(e) => { if (e.key === 'Enter') appliquer({ q: f.q }) }}
+            <label htmlFor="recherche-activite" className="sr-only">{vue === 'modifications' ? 'Rechercher une fiche' : 'Rechercher une action'}</label>
+            <Search aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
+            <input id="recherche-activite" type="search" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') appliquer({ q: f.q.trim() }) }}
               placeholder={vue === 'modifications' ? 'Rechercher une fiche (numéro, nom, intitulé)' : 'Rechercher une action'}
               className="input-base pl-9" />
           </div>
-          <button type="button" onClick={() => setFiltresOuverts(!filtresOuverts)}
+          <button type="button" onClick={() => setFiltresOuverts(!filtresOuverts)} aria-expanded={filtresOuverts}
             className="btn-secondary inline-flex items-center gap-1.5 !py-2 !px-3 text-sm">
             <Filter className="h-4 w-4" /> Filtres{nbFiltres ? ` (${nbFiltres})` : ''}
           </button>
@@ -170,6 +175,8 @@ export function ActiviteClient({ vue, activites, evenements, total, page, parPag
           Le journal n&apos;est pas encore activé sur cette base : appliquez la migration <span className="font-mono">155_journal_activite.sql</span>.
           Les événements applicatifs restent consultables dans l&apos;onglet Événements.
         </div>
+      ) : erreur ? (
+        <div className="card p-6 text-sm text-danger-700 bg-danger-50 border-danger-100">{erreur}</div>
       ) : lignes.length === 0 ? (
         <div className="card p-10 text-center text-sm text-surface-500">Aucune activité pour ces critères.</div>
       ) : (
@@ -191,7 +198,7 @@ export function ActiviteClient({ vue, activites, evenements, total, page, parPag
         description={aAnnuler ? (
           aAnnuler.operation === 'update' ? `Les champs modifiés (${aAnnuler.champs.map(libelleChamp).join(', ')}) reprendront leur valeur précédente.`
             : aAnnuler.operation === 'insert' ? 'La fiche créée sera supprimée.'
-              : 'La fiche supprimée sera recréée telle qu’elle était.'
+              : 'La fiche supprimée sera recréée telle qu’elle était, avec les lignes liées parties avec elle. Les secrets et signatures ne sont pas restaurés.'
         ) : undefined}>
         {aAnnuler && (
           <div className="space-y-4">
@@ -228,7 +235,7 @@ function LigneActivite({ a, ouvert, basculer, peutAnnuler, demanderAnnulation }:
         <div className="flex-1 min-w-0">
           <div className="text-sm text-surface-800 leading-snug">
             <span className="font-semibold text-surface-900">{nom}</span>
-            {impersonateur && <span className="text-surface-400"> (en tant que {impersonateur})</span>}
+            {impersonateur && <span className="text-surface-400"> (par {impersonateur})</span>}
             {' '}{ph.verbe} {ph.objet}{' '}
             {lien ? (
               <Link href={lien} className="font-semibold text-brand-600 hover:underline break-words">{ph.libelle || 'sans nom'}</Link>
@@ -244,7 +251,7 @@ function LigneActivite({ a, ouvert, basculer, peutAnnuler, demanderAnnulation }:
             <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-semibold ${op.classe}`}>{op.libelle}</span>
             {a.annulee_le && <span className="inline-flex items-center rounded-md border border-surface-200 bg-surface-100 px-1.5 py-0.5 font-semibold text-surface-600">Annulée le {formatDate(a.annulee_le)}</span>}
             {detaillable && (
-              <button type="button" onClick={basculer} className="inline-flex items-center gap-1 text-brand-600 hover:underline min-h-[28px]">
+              <button type="button" onClick={basculer} aria-expanded={ouvert} aria-controls={`detail-${a.id}`} className="inline-flex items-center gap-1 text-brand-600 hover:underline min-h-[28px]">
                 {ouvert ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} Détail
               </button>
             )}
@@ -255,7 +262,7 @@ function LigneActivite({ a, ouvert, basculer, peutAnnuler, demanderAnnulation }:
             )}
           </div>
           {ouvert && (
-            <div className="mt-2 rounded-xl border border-surface-200 overflow-hidden text-xs">
+            <div id={`detail-${a.id}`} className="mt-2 rounded-xl border border-surface-200 overflow-hidden text-xs">
               {champsVisibles.map((c) => {
                 const av = a.avant?.[c]; const ap = a.apres?.[c]
                 return (
