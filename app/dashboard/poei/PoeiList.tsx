@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Plus, Search, Briefcase, Building2, GraduationCap, Trash2,
-  ChevronRight, CheckCircle2, Clock, Users, CalendarClock, FolderTree,
+  ChevronRight, CheckCircle2, Clock, Users, CalendarClock, FolderTree, Calendar,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast } from '@/components/ui'
 import { createPoeiAction, updatePoeiStatutAction, deletePoeiAction } from './actions'
@@ -33,10 +33,10 @@ function PaiementBadge({ p }: { p: any }) {
   const paye = Number(p.montant_paye) || 0
   const accorde = !!p.date_accord_ft || ["accorde", "en_formation", "embauche", "termine", "cloture"].includes(p.statut)
   if (p.date_paiement || (total > 0 && paye >= total)) {
-    return <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold mt-1">Payé</span>
+    return <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-semibold mt-1">Payé</span>
   }
   if (accorde) {
-    return <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold mt-1">Paiement en attente</span>
+    return <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold mt-1">Paiement en attente</span>
   }
   return null
 }
@@ -46,12 +46,32 @@ const statusOptions = Object.entries(POEI_STATUS_LABELS).map(([v, l]) => ({ valu
 export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog, vivierCandidats = [], agences = [] }: Props) {
   const { toast } = useToast()
   const router = useRouter()
-  const [tab, setTab] = useState<'projets' | 'vivier' | 'planifier' | 'documentation'>('projets')
+  const searchParams = useSearchParams()
+  const ongletUrl = searchParams?.get('onglet')
+  const [tab, setTabState] = useState<'projets' | 'vivier' | 'planifier' | 'documentation'>(
+    ongletUrl === 'vivier' || ongletUrl === 'planifier' || ongletUrl === 'documentation' ? ongletUrl : 'projets',
+  )
+  // L'onglet se retrouve dans l'URL : un lien partagé rouvre la page au bon endroit.
+  function setTab(t: 'projets' | 'vivier' | 'planifier' | 'documentation') {
+    setTabState(t)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (t === 'projets') url.searchParams.delete('onglet')
+      else url.searchParams.set('onglet', t)
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
+  }
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [createOpen, setCreateOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
+  const barreOnglets = useRef<HTMLDivElement>(null)
+
+  // L'onglet actif reste visible quand la barre défile sur téléphone.
+  useEffect(() => {
+    barreOnglets.current?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [tab])
 
   const clientOptions = [{ value: '', label: 'Sélectionner…' }, ...clients.map((c) => ({ value: c.id, label: companyLabel(c) || c.id }))]
   const formationOptions = [{ value: '', label: 'Sélectionner…' }, ...formations.map((f) => ({ value: f.id, label: f.intitule }))]
@@ -107,23 +127,24 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="h-11 w-11 rounded-xl bg-sky-100 flex items-center justify-center shrink-0">
             <Briefcase className="h-5 w-5 text-sky-600" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">POEI</h1>
-            <p className="text-sm text-surface-500 mt-0.5">Préparation Opérationnelle à l'Emploi — projets collectifs France Travail</p>
+            <p className="text-sm text-surface-500 mt-0.5">Préparation Opérationnelle à l'Emploi, projets collectifs France Travail</p>
           </div>
         </div>
         {tab === 'projets' && (
-          <Button onClick={() => { setErrors({}); setCreateOpen(true) }} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">Nouveau projet</Button>
+          <Button onClick={() => { setErrors({}); setCreateOpen(true) }} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600 w-full sm:w-auto shrink-0">Nouveau projet</Button>
         )}
       </div>
 
       {/* Onglets Projets / À planifier */}
-      <div className="flex items-center gap-1 border-b border-surface-200">
+      <div className="relative -mx-5 sm:mx-0">
+        <div ref={barreOnglets} className="tabs-scroll shadow-[inset_0_-1px_0_0_theme(colors.surface.200)] px-5 sm:px-0">
         {([
           { id: 'projets' as const, label: 'Projets', icon: Briefcase, count: poei.length },
           { id: 'vivier' as const, label: 'Vivier candidats', icon: Users, count: vivierCandidats.filter((c: any) => c.statut !== 'valide').length },
@@ -133,21 +154,24 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
           const Icon = t.icon
           const active = tab === t.id
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button key={t.id} type="button" onClick={() => setTab(t.id)}
+              aria-current={active ? 'page' : undefined}
               className={cn(
-                'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all relative -mb-px border-b-2',
+                'inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] text-sm font-medium transition-all relative border-b-2',
                 active ? 'text-surface-900 border-surface-900' : 'text-surface-500 border-transparent hover:text-surface-700',
               )}>
-              <Icon className="h-4 w-4" />
+              <Icon className="h-4 w-4 shrink-0" />
               {t.label}
               {t.count > 0 && (
-                <span className={cn('text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md', active ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-500')}>
+                <span className={cn('text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded-md', active ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-500')}>
                   {t.count}
                 </span>
               )}
             </button>
           )
         })}
+        </div>
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface-50 to-transparent sm:hidden" />
       </div>
 
       {tab === 'vivier' && (
@@ -198,8 +222,62 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
         </select>
       </div>
 
-      {/* Tableau */}
-      <div className="card overflow-hidden">
+      {/* Sous 768 px : une carte par projet, lisible d'un coup d'œil */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.map((p) => (
+          <div key={p.id} className="card p-4 flex items-start gap-3">
+            <Link href={`/dashboard/poei/${p.id}`} className="flex-1 min-w-0 block">
+              <div className="text-sm font-semibold text-surface-900 flex items-center gap-1.5 min-w-0">
+                <Building2 className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                <span className="truncate">{companyLabel(p.client) || <span className="text-surface-500 italic font-normal">Sans entreprise</span>}</span>
+              </div>
+              <div className="text-xs text-surface-500 font-mono mt-0.5">{p.numero}</div>
+              {p.formation?.intitule && (
+                <div className="text-[13px] text-surface-600 mt-1.5 line-clamp-2">{p.formation.intitule}</div>
+              )}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-surface-500">
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5 text-surface-400" />
+                  {p.date_debut ? `${formatDate(p.date_debut, { day: '2-digit', month: 'short' })}${p.date_fin ? ' → ' + formatDate(p.date_fin, { day: '2-digit', month: 'short', year: 'numeric' }) : ''}` : 'Dates à définir'}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5 text-surface-400" />
+                  {p.candidats_count || 0} candidat{(p.candidats_count || 0) > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-100 text-surface-800 text-xs font-medium">
+                  {POEI_STATUS_LABELS[p.statut] || p.statut}
+                </span>
+                {(p as any).nb_blocages > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger-700 bg-danger-50 border border-danger-100 rounded-full px-1.5 py-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-danger-500" />
+                    {(p as any).nb_blocages} à compléter
+                  </span>
+                )}
+                <PaiementBadge p={p} />
+              </div>
+            </Link>
+            <div className="flex flex-col items-center gap-1 shrink-0 -mr-1.5 -mt-1.5">
+              <Link href={`/dashboard/poei/${p.id}`} aria-label="Ouvrir le projet" className="h-10 w-10 inline-flex items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700">
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+              <button type="button" onClick={() => handleDelete(p.id)} aria-label="Supprimer le projet" className="h-10 w-10 inline-flex items-center justify-center rounded-lg text-surface-400 hover:bg-danger-50 hover:text-danger-600">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <div className="card text-center py-14">
+            <Briefcase className="h-8 w-8 text-surface-300 mx-auto mb-2" />
+            <p className="text-sm text-surface-500">Aucun projet POEI</p>
+          </div>
+        )}
+      </div>
+
+      {/* Tableau (768 px et plus) */}
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -219,7 +297,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
                     <Link href={`/dashboard/poei/${p.id}`} className="block">
                       <div className="text-sm font-medium text-surface-900 inline-flex items-center gap-1.5">
                         <Building2 className="h-3.5 w-3.5 text-surface-400" />
-                        {companyLabel(p.client) || '—'}
+                        {companyLabel(p.client) || <span className="text-surface-500 italic font-normal">Sans entreprise</span>}
                       </div>
                       <div className="text-xs text-surface-500">{p.numero}</div>
                     </Link>
@@ -238,7 +316,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
                       <span className="text-xs font-medium text-surface-800">{POEI_STATUS_LABELS[p.statut] || p.statut}</span>
                       {(p as any).nb_blocages > 0 && (
                         <span
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-danger-700 bg-danger-50 border border-danger-100 rounded-full px-1.5 py-0.5"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger-700 bg-danger-50 border border-danger-100 rounded-full px-1.5 py-0.5"
                           title="Points à compléter sur le dossier"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-danger-500" />
@@ -281,7 +359,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Input id="date_debut" name="date_debut" type="date" label="Date de début" />
               <Input id="date_fin" name="date_fin" type="date" label="Date de fin" />
-              <Input id="duree_heures" name="duree_heures" type="number" label="Durée (h) — max 400" />
+              <Input id="duree_heures" name="duree_heures" type="number" label="Durée (h), 400 au plus" />
             </div>
           </div>
 
@@ -295,7 +373,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
                 id="agence_ft_id"
                 name="agence_ft_id"
                 label="Agence France Travail"
-                options={[{ value: '', label: '— À préciser —' }, ...agences.map((a: any) => ({ value: a.id, label: a.ville ? `${a.nom} (${a.ville})` : a.nom }))]}
+                options={[{ value: '', label: 'À préciser' }, ...agences.map((a: any) => ({ value: a.id, label: a.ville ? `${a.nom} (${a.ville})` : a.nom }))]}
                 defaultValue={agences.length === 1 ? agences[0].id : ''}
               />
             </div>

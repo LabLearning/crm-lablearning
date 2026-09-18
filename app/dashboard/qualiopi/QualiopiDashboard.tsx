@@ -125,13 +125,13 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
         {/* Le document qui explique le changement de système à l'auditeur.
             Ses chiffres sont recalculés à chaque édition. */}
         <a href="/api/pdf/note-tracabilite" target="_blank" rel="noreferrer"
-          className="btn-secondary inline-flex items-center gap-2 text-sm shrink-0">
+          className="btn-secondary inline-flex items-center justify-center gap-2 text-sm shrink-0 w-full sm:w-auto">
           <Download className="h-4 w-4" /> Note de traçabilité de la migration
         </a>
       </div>
 
       {/* Global progress */}
-      <div className="card p-6 mb-6">
+      <div className="card p-4 sm:p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Vue d'ensemble</h2>
           <div className="text-2xl font-heading font-bold text-brand-600">{stats.pct}%</div>
@@ -139,7 +139,7 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
         <div className="h-2.5 rounded-full bg-surface-100 overflow-hidden mb-4">
           <div className="h-full rounded-full bg-surface-900 transition-all duration-700 ease-out" style={{ width: `${stats.pct}%` }} />
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <div className="text-center p-3 rounded-xl bg-success-50/60">
             <div className="text-xl font-heading font-bold text-success-600">{stats.conforme}</div>
             <div className="text-[11px] text-success-700">Conformes</div>
@@ -170,7 +170,7 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
           <div className="grid gap-2 sm:grid-cols-2">
             {gaps.map((g) => (
               <a key={g.indicateur + g.label} href={g.href}
-                className="flex items-start gap-2 p-2.5 rounded-lg bg-white border border-warning-100 hover:border-warning-300 transition-colors">
+                className="flex items-start gap-2 p-2.5 min-h-10 rounded-lg bg-white border border-warning-100 hover:border-warning-300 transition-colors">
                 <span className="shrink-0 text-2xs font-mono text-warning-700 bg-warning-100 rounded px-1.5 py-0.5 mt-0.5">Ind. {g.indicateur}</span>
                 <span className="text-xs text-surface-700 leading-snug">{g.label}</span>
               </a>
@@ -191,7 +191,7 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
               {/* Critère header */}
               <button
                 onClick={() => setExpandedCritere(isExpanded ? null : critere)}
-                className="flex items-center gap-4 w-full p-5 text-left hover:bg-surface-50/30 transition-colors"
+                className="flex items-center gap-3 sm:gap-4 w-full p-4 sm:p-5 text-left hover:bg-surface-50/30 transition-colors"
               >
                 <div className={`shrink-0 h-10 w-10 rounded-xl flex items-center justify-center font-heading font-bold text-sm ${
                   cs.hasIssues ? 'bg-danger-50 text-danger-600' : cs.pct === 100 ? 'bg-success-50 text-success-600' : 'bg-surface-100 text-surface-700'
@@ -206,11 +206,11 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
                     {cs.conforme}/{cs.total} indicateurs conformes
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="w-20 h-1.5 rounded-full bg-surface-100 overflow-hidden">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                  <div className="hidden sm:block w-20 h-1.5 rounded-full bg-surface-100 overflow-hidden">
                     <div className={`h-full rounded-full transition-all ${cs.pct === 100 ? 'bg-success-500' : cs.hasIssues ? 'bg-danger-500' : 'bg-surface-900'}`} style={{ width: `${cs.pct}%` }} />
                   </div>
-                  <span className="text-sm font-medium text-surface-700 w-10 text-right">{cs.pct}%</span>
+                  <span className="text-sm font-medium text-surface-700 w-10 text-right tabular-nums">{cs.pct}%</span>
                   {isExpanded ? <ChevronDown className="h-5 w-5 text-surface-400" /> : <ChevronRight className="h-5 w-5 text-surface-400" />}
                 </div>
               </button>
@@ -219,7 +219,7 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
               {isExpanded && (
                 <div className="border-t border-surface-100">
                   {inds.sort((a, b) => a.indicateur - b.indicateur).map((ind) => (
-                    <div key={ind.id} className="flex items-start gap-3 px-5 py-3.5 border-b border-surface-100 last:border-0 hover:bg-surface-50/30">
+                    <div key={ind.id} className="flex items-start gap-2.5 sm:gap-3 px-4 sm:px-5 py-3.5 border-b border-surface-100 last:border-0 hover:bg-surface-50/30">
                       <div className="shrink-0 mt-0.5">{niveauIcons[ind.niveau]}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -247,7 +247,7 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
                         {/* Preuves vivantes produites par le CRM (bleu = OK, ambre = trou à combler) */}
                         {(crmEvidence?.[ind.indicateur] || []).map((ev) => (
                           <a key={ev.href + ev.label} href={ev.href}
-                            className={`inline-flex items-center gap-1.5 mt-1.5 mr-2 px-2 py-1 rounded-lg text-2xs font-medium transition-colors ${
+                            className={`inline-flex items-center gap-1.5 mt-1.5 mr-2 px-2 py-1 min-h-10 sm:min-h-0 rounded-lg text-2xs font-medium transition-colors ${
                               ev.warn
                                 ? 'bg-warning-50 text-warning-700 hover:bg-warning-100'
                                 : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
@@ -257,17 +257,17 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
                           </a>
                         ))}
                       </div>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex flex-col sm:flex-row gap-1 shrink-0 -mr-2 -mt-1.5 sm:mr-0 sm:mt-0">
                         <button
                           onClick={() => setPreuveIndicateur(ind)}
-                          className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          className="h-10 w-10 sm:h-auto sm:w-auto sm:p-1.5 flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                           title="Gérer les preuves"
                         >
                           <FileText className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setEditIndicateur(ind)}
-                          className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          className="h-10 w-10 sm:h-auto sm:w-auto sm:p-1.5 flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
                           title="Évaluer"
                         >
                           <ShieldCheck className="h-4 w-4" />
@@ -422,9 +422,9 @@ function PreuvesManager({ indicateur, crmEvidence }: { indicateur: QualiopiIndic
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-surface-700">{preuves.length} preuve{preuves.length > 1 ? 's' : ''}</span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()} isLoading={uploading}
             icon={<Upload className="h-3.5 w-3.5" />}>Uploader un fichier</Button>
           <Button size="sm" onClick={() => setAddingPreuve(true)} icon={<LinkIcon className="h-3.5 w-3.5" />}>Lien / note</Button>
@@ -436,7 +436,7 @@ function PreuvesManager({ indicateur, crmEvidence }: { indicateur: QualiopiIndic
       {addingPreuve && (
         <form onSubmit={handleAdd} className="card p-4 space-y-3 border-brand-200 border">
           <Input name="titre" label="Titre de la preuve *" placeholder="Convention de formation signée" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select name="type" label="Type" options={preuveTypeOptions} defaultValue="lien" />
             <Input name="lien_externe" label="Lien (optionnel)" placeholder="https://..." />
           </div>
@@ -464,13 +464,13 @@ function PreuvesManager({ indicateur, crmEvidence }: { indicateur: QualiopiIndic
               </div>
               {url && (
                 <a href={url} target="_blank" rel="noopener noreferrer"
-                  className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 shrink-0" title="Ouvrir / télécharger">
-                  <Download className="h-4 w-4" />
+                  className="h-10 w-10 -my-2 flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 shrink-0" title="Ouvrir / télécharger" aria-label="Ouvrir / télécharger">
+                  <Download className="h-4 w-4" aria-hidden="true" />
                 </a>
               )}
               {p.est_valide && <CheckCircle2 className="h-4 w-4 text-success-500 shrink-0" />}
-              <button onClick={() => handleRemove(p.id)} className="p-1 text-surface-400 hover:text-danger-500 shrink-0">
-                <Trash2 className="h-3.5 w-3.5" />
+              <button type="button" onClick={() => handleRemove(p.id)} aria-label={`Supprimer la preuve ${p.titre}`} title="Supprimer la preuve" className="h-10 w-10 -my-2 -mr-2 flex items-center justify-center rounded-lg text-surface-400 hover:text-danger-500 hover:bg-danger-50 shrink-0">
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
           )})}

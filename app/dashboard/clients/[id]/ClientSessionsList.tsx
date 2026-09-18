@@ -41,8 +41,8 @@ export function ClientSessionsList({ sessions, canManage }: { sessions: any[]; c
             const formateurNom = s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null
             return (
               <div key={s.id} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                <Calendar className="h-4 w-4 text-surface-400 shrink-0" />
-                <Link href={`/dashboard/sessions/${s.id}`} className="flex-1 min-w-0">
+                <Calendar className="h-4 w-4 text-surface-400 shrink-0 hidden sm:block" />
+                <Link href={`/dashboard/sessions/${s.id}`} className="flex-1 min-w-0 min-h-10 flex flex-col justify-center">
                   <div className="text-sm font-medium text-surface-900 truncate hover:text-brand-600 transition-colors">
                     {s.formation?.intitule || s.intitule || s.reference || 'Session'}
                   </div>
@@ -52,17 +52,22 @@ export function ClientSessionsList({ sessions, canManage }: { sessions: any[]; c
                       <span>{formatDate(s.date_debut, { day: 'numeric', month: 'short' })}{s.date_fin && s.date_fin !== s.date_debut ? ` → ${formatDate(s.date_fin, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}</span>
                     )}
                     {formateurNom && <span className="flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{formateurNom}</span>}
+                    {s.status && (
+                      <Badge variant={SESSION_STATUS_COLORS[s.status as keyof typeof SESSION_STATUS_COLORS] || 'default'} dot className="sm:hidden">
+                        {SESSION_STATUS_LABELS[s.status as keyof typeof SESSION_STATUS_LABELS] || s.status}
+                      </Badge>
+                    )}
                   </div>
                 </Link>
                 {s.status && (
-                  <Badge variant={SESSION_STATUS_COLORS[s.status as keyof typeof SESSION_STATUS_COLORS] || 'default'} dot>
+                  <Badge variant={SESSION_STATUS_COLORS[s.status as keyof typeof SESSION_STATUS_COLORS] || 'default'} dot className="hidden sm:inline-flex">
                     {SESSION_STATUS_LABELS[s.status as keyof typeof SESSION_STATUS_LABELS] || s.status}
                   </Badge>
                 )}
                 {busyId === s.id ? (
                   <Loader2 className="h-4 w-4 text-surface-400 animate-spin shrink-0" />
                 ) : (
-                  <RowMenu items={[
+                  <RowMenu triggerClassName="h-10 w-10 flex items-center justify-center -my-2" items={[
                     { label: 'Ouvrir la session', icon: <ExternalLink className="h-4 w-4 text-surface-400" />, href: `/dashboard/sessions/${s.id}` } as any,
                     ...(canManage ? [{ label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => remove(s), danger: true }] : []),
                   ]} />

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from '@/components/ui/icons'
+import { cn } from '@/lib/utils'
 
 /**
  * Retour à la page PRÉCÉDENTE (et non vers une liste figée) : depuis une fiche
@@ -29,9 +30,10 @@ export function BackLink({
   }
 
   if (iconOnly) {
+    // Cible tactile 40 px sous sm (36 px au-delà, inchangé)
     return (
-      <button type="button" onClick={goBack} title="Retour"
-        className={className || 'mt-1 p-2 rounded-xl hover:bg-surface-100 transition-colors shrink-0'}>
+      <button type="button" onClick={goBack} title="Retour" aria-label="Retour"
+        className={cn('min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center', className || 'mt-1 p-2 rounded-xl hover:bg-surface-100 transition-colors shrink-0')}>
         <ArrowLeft className="h-5 w-5 text-surface-500" />
       </button>
     )

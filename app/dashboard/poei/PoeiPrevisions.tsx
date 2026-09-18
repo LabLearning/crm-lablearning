@@ -59,7 +59,7 @@ function StatutSelect({
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        'appearance-none text-xs font-semibold rounded-full px-2.5 py-1 pr-6 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-surface-300 disabled:cursor-default',
+        'appearance-none text-xs font-semibold rounded-full px-2.5 py-2.5 sm:py-1 pr-6 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-surface-300 disabled:cursor-default',
         colors[value] || 'bg-surface-100 text-surface-700',
       )}
       style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%2710%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2378716C%27 stroke-width=%273%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
@@ -149,7 +149,7 @@ export function PoeiPrevisions({ previsions, clients }: Props) {
     if (!confirm(`Transformer « ${p.entreprise} » en projet POEI ?${p.client_id ? '' : '\nUn client sera créé automatiquement.'}`)) return
     const result = await transformerPrevisionAction(p.id)
     if (result.success && (result.data as any)?.poeiId) {
-      toast('success', 'Projet POEI créé — complétez la formation et les candidats')
+      toast('success', 'Projet POEI créé, complétez la formation et les candidats')
       router.push(`/dashboard/poei/${(result.data as any).poeiId}`)
     } else {
       toast('error', result.error || 'Erreur')
@@ -158,16 +158,16 @@ export function PoeiPrevisions({ previsions, clients }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="text-sm text-surface-500">
           {actives.length} à suivre
           {closed.length > 0 && (
-            <button onClick={() => setShowClosed(!showClosed)} className="ml-2 text-xs text-surface-400 hover:text-surface-600 underline underline-offset-2">
+            <button onClick={() => setShowClosed(!showClosed)} className="ml-2 text-xs text-surface-400 hover:text-surface-600 underline underline-offset-2 min-h-[40px] sm:min-h-0 inline-flex items-center">
               {showClosed ? 'masquer' : 'afficher'} les {closed.length} transformé{closed.length > 1 ? 's' : ''}/abandonné{closed.length > 1 ? 's' : ''}
             </button>
           )}
         </div>
-        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">
+        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600 w-full sm:w-auto shrink-0">
           POEI à planifier
         </Button>
       </div>
@@ -178,8 +178,60 @@ export function PoeiPrevisions({ previsions, clients }: Props) {
           <div className="text-sm text-surface-500">Aucun POEI à planifier.</div>
           <div className="text-xs text-surface-400 mt-1">Ajoutez les ouvertures à venir pour suivre le recrutement et la création des comptes France Travail.</div>
         </div>
-      ) : (
-        <div className="card overflow-hidden">
+      ) : (<>
+        {/* Sous 768 px : une carte par prévision, les statuts empilés */}
+        <div className="md:hidden space-y-2.5">
+          {rows.map((p) => {
+            const done = ['transforme', 'abandonne'].includes(p.statut)
+            return (
+              <div key={p.id} className={cn('card p-4', done && 'opacity-60')}>
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-sky-50 flex items-center justify-center shrink-0">
+                    <Building2 className="h-4 w-4 text-sky-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-surface-900 truncate">{p.entreprise}</div>
+                    <div className="text-xs text-surface-500 mt-0.5">
+                      {p.nb_candidats_prevus ? `${p.nb_candidats_prevus} candidat${p.nb_candidats_prevus > 1 ? 's' : ''} prévu${p.nb_candidats_prevus > 1 ? 's' : ''}` : 'Effectif à préciser'}
+                    </div>
+                    {p.statut === 'transforme' && p.poei_id && (
+                      <Link href={`/dashboard/poei/${p.poei_id}`} className="inline-flex items-center gap-1 text-xs text-sky-600 hover:underline mt-1 min-h-[40px]">
+                        Voir le projet <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    )}
+                  </div>
+                  <div className="shrink-0 -mr-1.5 -mt-1.5">
+                    <RowMenu width={220} triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center" items={[
+                      { label: 'Transformer en projet POEI', icon: <Rocket className="h-4 w-4 text-sky-600" />, onClick: () => handleTransformer(p), hidden: done },
+                      { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditPrevision(p) },
+                      { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(p.id) },
+                    ]} />
+                  </div>
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 mt-3 text-xs">
+                  <dt className="text-surface-400">Ouverture prévue</dt>
+                  <dd className="text-surface-700 text-right">{p.date_ouverture_prevue ? formatDate(p.date_ouverture_prevue) : <span className="text-surface-400 italic">à définir</span>}</dd>
+                  <dt className="text-surface-400">Début formation</dt>
+                  <dd className="text-surface-700 text-right">{p.date_debut_formation_prevue ? formatDate(p.date_debut_formation_prevue) : <span className="text-surface-400 italic">à définir</span>}</dd>
+                </dl>
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  {[
+                    { label: 'Recrutement', el: <StatutSelect value={p.recrutement_statut} labels={RECRUTEMENT_STATUT_LABELS} colors={RECRUT_CLS} disabled={done} onChange={(v) => handleStatut(p.id, 'recrutement_statut', v)} /> },
+                    { label: 'Compte FT', el: <StatutSelect value={p.compte_ft_statut} labels={COMPTE_FT_STATUT_LABELS} colors={FT_CLS} disabled={done} onChange={(v) => handleStatut(p.id, 'compte_ft_statut', v)} /> },
+                    { label: 'État', el: <StatutSelect value={p.statut} labels={PREVISION_STATUT_LABELS} colors={STATUT_CLS} disabled={p.statut === 'transforme'} onChange={(v) => handleStatut(p.id, 'statut', v)} /> },
+                  ].map((l) => (
+                    <div key={l.label} className="flex items-center justify-between gap-3 min-h-[40px]">
+                      <span className="text-xs text-surface-500">{l.label}</span>
+                      {l.el}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="card overflow-hidden hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -236,7 +288,7 @@ export function PoeiPrevisions({ previsions, clients }: Props) {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="inline-block">
-                          <RowMenu width={220} items={[
+                          <RowMenu width={220} triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center" items={[
                             { label: 'Transformer en projet POEI', icon: <Rocket className="h-4 w-4 text-sky-600" />, onClick: () => handleTransformer(p), hidden: done },
                             { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditPrevision(p) },
                             { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(p.id) },
@@ -250,7 +302,7 @@ export function PoeiPrevisions({ previsions, clients }: Props) {
             </table>
           </div>
         </div>
-      )}
+      </>)}
 
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="POEI à planifier">
         <PrevisionForm clients={clients} onDone={() => setCreateOpen(false)} />

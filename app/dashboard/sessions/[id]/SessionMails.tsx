@@ -55,7 +55,7 @@ const TYPES_APPRENANT: {
   },
   {
     key: 'supports', label: 'Supports pédagogiques',
-    aide: 'Mise à disposition tracée — lien vers le portail du stagiaire (ind. 19)',
+    aide: 'Mise à disposition tracée · lien vers le portail du stagiaire (ind. 19)',
     match: (s) => s.startsWith('Vos supports de formation'),
     supportsSeulement: true,
   },
@@ -92,7 +92,7 @@ const TYPES_REFERENT: {
   },
   {
     key: 'appreciation', label: "Demande d'appréciation",
-    aide: "L'entreprise note la prestation — quatre questions, deux minutes (ind. 30)",
+    aide: "L'entreprise note la prestation : quatre questions, deux minutes (ind. 30)",
     match: (s) => s.startsWith('Votre appréciation —'),
   },
 ]
@@ -200,7 +200,7 @@ export function SessionMails({
       setEnvoiReferent(null)
       setEnvoiTous(null)
       setEnvoiApprenant({ apprenantId: p.id, type })
-      setPreview({ html: r.data.html, subject: r.data.subject, to: r.data.email || p.email || '—' })
+      setPreview({ html: r.data.html, subject: r.data.subject, to: r.data.email || p.email || 'adresse inconnue' })
     } else {
       toast('error', r.error || "Impossible de générer l'aperçu")
     }
@@ -218,7 +218,7 @@ export function SessionMails({
     if (r.success && r.data?.html) {
       setEnvoiApprenant(null); setEnvoiReferent(null); setEnvoiTous(null)
       setEnvoiAppreciation(true)
-      setPreview({ html: r.data.html, subject: r.data.subject, to: r.data.email || '—' })
+      setPreview({ html: r.data.html, subject: r.data.subject, to: r.data.email || 'adresse inconnue' })
     } else toast('error', r.error || "Impossible de générer l'aperçu")
   }
 
@@ -230,7 +230,7 @@ export function SessionMails({
       setEnvoiApprenant(null)
       setEnvoiTous(null)
       setEnvoiReferent({ type })
-      setPreview({ html: r.data.html, subject: r.data.subject, to: r.data.email || '—' })
+      setPreview({ html: r.data.html, subject: r.data.subject, to: r.data.email || 'adresse inconnue' })
     } else {
       toast('error', r.error || "Impossible de générer l'aperçu")
     }
@@ -252,7 +252,7 @@ export function SessionMails({
       setPreview({
         html: r.data.html,
         subject: r.data.subject,
-        to: `Tous les apprenants (${avecEmail} avec adresse sur ${apprenants.length}) — exemple : ${exemple.email}`,
+        to: `Tous les apprenants (${avecEmail} avec adresse sur ${apprenants.length}) · exemple : ${exemple.email}`,
       })
     } else {
       toast('error', r.error || "Impossible de générer l'aperçu")
@@ -343,15 +343,15 @@ export function SessionMails({
       </div>
 
       {/* Onglets */}
-      <div className="flex items-center gap-1 px-3 pt-2 border-b border-surface-100">
+      <div className="flex items-center gap-1 px-3 pt-2 shadow-[inset_0_-1px_0_0_theme(colors.surface.100)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => {
           const Icon = t.icon
           const active = tab === t.id
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${active ? 'border-surface-900 text-surface-900' : 'border-transparent text-surface-500 hover:text-surface-700'}`}>
+              className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] shrink-0 whitespace-nowrap text-sm font-medium border-b-2 transition-colors ${active ? 'border-surface-900 text-surface-900' : 'border-transparent text-surface-500 hover:text-surface-700'}`}>
               <Icon className="h-4 w-4" /> {t.label}
-              {t.count > 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${active ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-500'}`}>{t.count}</span>}
+              {t.count > 0 && <span className={`text-2xs font-bold px-1.5 py-0.5 rounded ${active ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-500'}`}>{t.count}</span>}
             </button>
           )
         })}
@@ -370,7 +370,7 @@ export function SessionMails({
                   !selectionne ? 'bg-surface-900 text-white' : 'text-surface-700 hover:bg-surface-50')}
               >
                 Tous les apprenants
-                <span className={cn('ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded', !selectionne ? 'bg-white/20' : 'bg-surface-100 text-surface-500')}>
+                <span className={cn('ml-2 text-2xs font-bold px-1.5 py-0.5 rounded', !selectionne ? 'bg-white/20' : 'bg-surface-100 text-surface-500')}>
                   {apprenants.length}
                 </span>
               </button>
@@ -402,7 +402,7 @@ export function SessionMails({
                   const envoi = selectionne ? dernierEnvoi(selectionne, t.match) : null
                   return (
                     <div key={t.key} className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                         <div className="text-sm text-surface-900">{t.label}</div>
                         <div className="text-[11px] text-surface-400 mt-0.5">{t.aide}</div>
                       </div>
@@ -414,7 +414,7 @@ export function SessionMails({
                             {compteurs[t.key]} / {apprenants.length}
                           </span>
                           <button onClick={() => apercuTous(t.key)} disabled={previewLoading === `tous-${t.key}`}
-                            className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs disabled:opacity-60">
+                            className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-60">
                             {previewLoading === `tous-${t.key}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                             À tous
                           </button>
@@ -427,7 +427,7 @@ export function SessionMails({
                             <button onClick={() => apercuReferent(t.key as 'attestation' | 'certificat' | 'hygiene')}
                               disabled={previewLoading === `ref-${t.key}`}
                               title="Envoyer les documents de tous les stagiaires au référent de l'établissement"
-                              className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs disabled:opacity-60">
+                              className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-60">
                               {previewLoading === `ref-${t.key}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
                               Au référent
                             </button>
@@ -447,7 +447,7 @@ export function SessionMails({
                             onClick={() => apercuApprenant(selectionne, t.key)}
                             disabled={!selectionne.email || previewLoading === `${selectionne.id}-${t.key}`}
                             title={selectionne.email ? 'Voir le mail avant envoi' : "Cet apprenant n'a pas d'adresse email"}
-                            className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs disabled:opacity-40">
+                            className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-40">
                             {previewLoading === `${selectionne.id}-${t.key}`
                               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               : <Eye className="h-3.5 w-3.5" />}
@@ -520,7 +520,7 @@ export function SessionMails({
                   const cle = t.key === 'convocation_ref' ? 'convocation' : `ref-${t.key}`
                   return (
                     <div key={t.key} className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                         <div className="text-sm text-surface-900">{t.label}</div>
                         <div className="text-[11px] text-surface-400 mt-0.5">{t.aide}</div>
                       </div>
@@ -539,7 +539,7 @@ export function SessionMails({
                             ? apercuAppreciation()
                             : apercuReferent(t.key as 'attestation' | 'certificat' | 'hygiene')}
                         disabled={previewLoading === cle}
-                        className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs disabled:opacity-40">
+                        className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-40">
                         {previewLoading === cle ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                         Aperçu & envoi
                       </button>
@@ -597,7 +597,7 @@ export function SessionMails({
                   const envoi = dernierEnvoi(formateurPerson, t.match)
                   return (
                     <div key={t.key} className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                         <div className="text-sm text-surface-900">{t.label}</div>
                         <div className="text-[11px] text-surface-400 mt-0.5">{t.aide}</div>
                       </div>
@@ -612,13 +612,13 @@ export function SessionMails({
                       {t.key === 'fiche' ? (
                         <button onClick={() => openPreview('formateur')}
                           disabled={!formateurPerson.email || previewLoading === 'formateur'}
-                          className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs disabled:opacity-40">
+                          className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-40">
                           {previewLoading === 'formateur' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                           Aperçu & envoi
                         </button>
                       ) : (
                         <button onClick={() => onGoTab?.('conventions')}
-                          className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs">
+                          className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs">
                           <FileSignature className="h-3.5 w-3.5" />
                           Gérer dans Contractualisation
                         </button>

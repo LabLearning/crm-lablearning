@@ -5,7 +5,7 @@ import {
   Plus, Search, Pencil, Trash2, Send, Check,
   X, FileText, ArrowRight, Euro, Calendar, Building2, Eye, Download,
 } from '@/components/ui/icons'
-import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast, RowMenu, EuroTile } from '@/components/ui'
 import {
   createDevisAction, updateDevisStatusAction, deleteDevisAction,
   convertDevisToConventionAction, addDevisLigneAction, removeDevisLigneAction,
@@ -78,6 +78,19 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
     else toast('error', result.error || 'Erreur')
   }
 
+  // Actions d'un devis : mêmes entrées dans le tableau (desktop) et la carte (mobile)
+  function menuItems(d: Devis) {
+    return [
+      { label: 'Voir / Modifier', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailDevis(d) },
+      { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/devis/${d.id}`, target: '_blank' },
+      { label: 'Marquer comme envoyé', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatusChange(d.id, 'envoye'), hidden: d.status !== 'brouillon' },
+      { label: 'Accepté', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatusChange(d.id, 'accepte'), hidden: d.status !== 'envoye' },
+      { label: 'Refusé', icon: <X className="h-4 w-4" />, onClick: () => handleStatusChange(d.id, 'refuse'), danger: true, hidden: d.status !== 'envoye' },
+      { label: 'Créer convention', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(d.id), hidden: d.status !== 'accepte' },
+      { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(d.id), danger: true, hidden: d.status !== 'brouillon' },
+    ]
+  }
+
   // Create form
   const [isCreating, setIsCreating] = useState(false)
   const [createErrors, setCreateErrors] = useState<Record<string, string[]>>({})
@@ -103,41 +116,82 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Devis</h1>
           <p className="text-surface-500 mt-1 text-sm">{devisList.length} devis</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Nouveau devis</Button>
+        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="w-full sm:w-auto">Nouveau devis</Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      {/* Stats : sur mobile, une carte à trois lignes (libellé à gauche, montant à droite) pour que le montant ne casse jamais */}
+      <div className="card sm:bg-transparent sm:border-0 sm:shadow-none sm:rounded-none sm:grid sm:grid-cols-3 sm:gap-3 mb-5">
         {[
           { label: 'Brouillons', value: totals.brouillon, color: 'text-surface-600' },
           { label: 'Envoyés', value: totals.envoye, color: 'text-brand-600' },
           { label: 'Acceptés', value: totals.accepte, color: 'text-success-600' },
         ].map((s) => (
-          <div key={s.label} className="card p-4 text-center">
+          <div key={s.label} className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-surface-100 first:border-t-0 sm:block sm:bg-white sm:rounded-2xl sm:border sm:first:border-t sm:border-surface-200/80 sm:shadow-xs sm:p-4 sm:text-center">
             <div className="text-xs text-surface-500">{s.label}</div>
-            <div className={`text-lg font-heading font-bold ${s.color}`}>{s.value.toLocaleString('fr-FR')} €</div>
+            <div className={`text-base sm:text-lg font-heading font-bold tabular-nums whitespace-nowrap ${s.color}`}><EuroTile value={s.value} /></div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 max-w-md">
-          <Search className="h-4 w-4 text-surface-400" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-sm placeholder:text-surface-400 focus:outline-none flex-1" />
+        <div className="flex items-center gap-2 bg-white rounded-xl px-3 sm:py-2 border border-surface-200/60 flex-1 max-w-md">
+          <Search className="h-4 w-4 text-surface-400 shrink-0" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="h-10 sm:h-auto bg-transparent text-sm placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
         </div>
-        <div className="flex gap-1.5 overflow-x-auto">
+        {/* Pastilles : défilement horizontal bord à bord sur mobile, barre masquée */}
+        <div className="flex gap-1.5 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {['all', ...Object.keys(DEVIS_STATUS_LABELS)].map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === s ? 'bg-surface-900 text-white shadow-xs' : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}`}>
+              className={`min-h-10 sm:min-h-0 px-3.5 sm:px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${statusFilter === s ? 'bg-surface-900 text-white shadow-xs' : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}`}>
               {s === 'all' ? 'Tous' : DEVIS_STATUS_LABELS[s as DevisStatus]}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Liste mobile : une carte par devis, actions dans le menu */}
+      <div className="card overflow-hidden md:hidden">
+        <div className="divide-y divide-surface-100">
+          {filtered.map((d) => {
+            const expire = new Date(d.date_validite) < new Date() && d.status === 'envoye'
+            return (
+              <div key={d.id} className="px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <button onClick={() => setDetailDevis(d)} className="flex-1 min-w-0 text-left min-h-10 py-1">
+                    <div className="text-sm font-mono font-medium text-brand-600">{d.numero}</div>
+                    <div className="flex items-center gap-1.5 text-sm text-surface-700 min-w-0">
+                      <Building2 className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                      <span className="truncate">{getClientName(d)}</span>
+                    </div>
+                    {d.objet && <div className="text-xs text-surface-500 truncate">{d.objet}</div>}
+                  </button>
+                  <div className="shrink-0 -mr-2">
+                    <RowMenu width={208} triggerClassName="h-10 w-10 flex items-center justify-center" items={menuItems(d)} />
+                  </div>
+                </div>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <Badge variant={DEVIS_STATUS_COLORS[d.status]} dot>{DEVIS_STATUS_LABELS[d.status]}</Badge>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-semibold text-surface-900 tabular-nums whitespace-nowrap">
+                      {Number(d.montant_ttc).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                    </div>
+                    <div className={`text-xs ${expire ? 'text-danger-500' : 'text-surface-400'}`}>
+                      {expire ? 'expiré le ' : 'valable jusqu\'au '}{formatDate(d.date_validite, { day: 'numeric', month: 'short' })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-sm text-surface-500">Aucun devis trouvé</div>
+        )}
+      </div>
+
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -180,15 +234,7 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
                   </td>
                   <td className="px-6 py-3.5 text-right">
                     <div className="inline-block">
-                      <RowMenu width={208} items={[
-                        { label: 'Voir / Modifier', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailDevis(d) },
-                        { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/devis/${d.id}`, target: '_blank' },
-                        { label: 'Marquer comme envoyé', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatusChange(d.id, 'envoye'), hidden: d.status !== 'brouillon' },
-                        { label: 'Accepté', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatusChange(d.id, 'accepte'), hidden: d.status !== 'envoye' },
-                        { label: 'Refusé', icon: <X className="h-4 w-4" />, onClick: () => handleStatusChange(d.id, 'refuse'), danger: true, hidden: d.status !== 'envoye' },
-                        { label: 'Créer convention', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(d.id), hidden: d.status !== 'accepte' },
-                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(d.id), danger: true, hidden: d.status !== 'brouillon' },
-                      ]} />
+                      <RowMenu width={208} items={menuItems(d)} />
                     </div>
                   </td>
                 </tr>
@@ -207,14 +253,14 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
           <SearchSelectField name="client_id" label="Client *" options={clientOptions} placeholder="Rechercher un client…" error={createErrors.client_id?.[0]} />
           <Select id="formation_id" name="formation_id" label="Formation liée" options={formationOptions} />
           <Input id="objet" name="objet" label="Objet *" placeholder="Formation Management — 3 jours" error={createErrors.objet?.[0]} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input id="date_validite" name="date_validite" type="date" label="Date de validité *"
               defaultValue={new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]}
               error={createErrors.date_validite?.[0]} />
             <Input id="remise_pourcent" name="remise_pourcent" type="number" label="Remise (%)" defaultValue="0" />
           </div>
           <textarea id="conditions_particulieres" name="conditions_particulieres" rows={2} className="input-base resize-none" placeholder="Conditions particulières..." />
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Annuler</Button>
             <Button type="submit" isLoading={isCreating} icon={<FileText className="h-4 w-4" />}>Créer le devis</Button>
           </div>
@@ -291,7 +337,7 @@ function DevisDetail({ devis, onClose }: { devis: Devis; onClose: () => void }) 
           <form onSubmit={handleAddLine} className="card p-3 mb-3 space-y-2">
             <Input name="designation" label="Désignation *" placeholder="Formation Management — 3 jours" />
             <div className="grid grid-cols-3 gap-2">
-              <Input name="quantite" type="number" label="Quantité" defaultValue="1" />
+              <Input name="quantite" type="number" label="Qté" defaultValue="1" />
               <Select name="unite" label="Unité" options={[
                 { value: 'forfait', label: 'Forfait' }, { value: 'heure', label: 'Heure' },
                 { value: 'jour', label: 'Jour' }, { value: 'personne', label: 'Personne' },

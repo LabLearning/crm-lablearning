@@ -98,9 +98,9 @@ export function FacturationOpco({
     if (!res.success) { toast('error', res.error || 'Erreur'); return }
     const d = res.data as any
     toast('success',
-      d?.numero_ecrit ? `Accord déposé — dossier ${d.numero_ecrit} repris du document`
-      : d?.numero_lu ? `Accord déposé — dossier ${d.numero_lu} lu, mais un numéro était déjà saisi`
-      : 'Accord déposé — aucun numéro de dossier lisible dans le document')
+      d?.numero_ecrit ? `Accord déposé, dossier ${d.numero_ecrit} repris du document`
+      : d?.numero_lu ? `Accord déposé, dossier ${d.numero_lu} lu, mais un numéro était déjà saisi`
+      : 'Accord déposé, aucun numéro de dossier lisible dans le document')
     setDepotOuvert(false)
     router.refresh()
   }
@@ -203,7 +203,7 @@ export function FacturationOpco({
           {dendreoId && (
             <button type="button" onClick={recupererDepuisDendreo} disabled={recup}
               title="Reprendre l'OPCO, le numéro de dossier et le montant depuis Dendreo"
-              className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-xs disabled:opacity-50 shrink-0">
+              className="btn-secondary inline-flex items-center justify-center gap-1.5 !py-2 sm:!py-1.5 !px-3 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-50 shrink-0 w-full sm:w-auto">
               {recup ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               Récupérer depuis Dendreo
             </button>
@@ -213,7 +213,7 @@ export function FacturationOpco({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select
             id="opco_id" name="opco_id" label="OPCO financeur" defaultValue={opcoId || ''}
-            options={[{ value: '', label: '— Aucun —' }, ...opcos.map((o) => ({ value: o.id, label: o.nom }))]}
+            options={[{ value: '', label: 'Aucun' }, ...opcos.map((o) => ({ value: o.id, label: o.nom }))]}
           />
           <Input
             id="numero_dossier_opco" name="numero_dossier_opco" label="Numéro de dossier OPCO"
@@ -231,7 +231,7 @@ export function FacturationOpco({
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit" isLoading={saving}>Enregistrer</Button>
+          <Button type="submit" isLoading={saving} className="w-full sm:w-auto justify-center">Enregistrer</Button>
         </div>
       </form>
 
@@ -248,26 +248,27 @@ export function FacturationOpco({
             <p className="text-xs text-surface-500 mt-0.5">
               {accord
                 ? `${accord.file_name || 'Document'} · déposé le ${formatDate(accord.date_piece || accord.created_at)}`
-                : "Le document reçu de l'OPCO — portail ou pièce jointe de mail."}
+                : "Le document reçu de l'OPCO : portail ou pièce jointe de mail."}
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
             {accord ? (
               <>
                 <button onClick={ouvrirAccord} disabled={busy === 'accord'}
-                  className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-xs disabled:opacity-50">
+                  className="btn-secondary inline-flex items-center justify-center gap-1.5 !py-2 sm:!py-1.5 !px-3 min-h-[40px] sm:min-h-0 text-xs disabled:opacity-50 flex-1 sm:flex-none">
                   {busy === 'accord' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                   Ouvrir
                 </button>
                 <button onClick={retirerAccord} disabled={busy === 'accord'}
-                  className="p-2 rounded-lg text-surface-400 hover:text-danger-600 hover:bg-danger-50 transition-colors"
+                  className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-surface-400 hover:text-danger-600 hover:bg-danger-50 transition-colors"
                   aria-label="Retirer l'accord">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </>
             ) : (
-              <Button size="sm" onClick={() => setDepotOuvert(true)} icon={<Upload className="h-4 w-4" />}>Déposer</Button>
+              <Button size="sm" onClick={() => setDepotOuvert(true)} icon={<Upload className="h-4 w-4" />}
+                className="w-full sm:w-auto justify-center min-h-[40px] sm:min-h-0">Déposer</Button>
             )}
           </div>
         </div>
@@ -283,7 +284,7 @@ export function FacturationOpco({
             </h2>
             <p className="text-xs text-surface-500 mt-0.5">
               {facture
-                ? `${facture.numero || 'Brouillon'} · ${facture.montant_ttc != null ? euro(Number(facture.montant_ttc)) : '—'}`
+                ? `${facture.numero || 'Brouillon'} · ${facture.montant_ttc != null ? euro(Number(facture.montant_ttc)) : 'montant à définir'}`
                 : opcoChoisi
                   ? `Adressée à ${opcoChoisi.nom}, pour le compte de l'entreprise.`
                   : "Aucun OPCO renseigné : la facture est adressée directement à l'entreprise, qui règle l'organisme."}
@@ -301,7 +302,7 @@ export function FacturationOpco({
                 )}
                 {!facture.affacturage_status && (
                   <button type="button" onClick={basculerAffacturage} disabled={bascule} aria-busy={bascule}
-                    className="inline-flex items-center gap-1 text-brand-600 hover:text-brand-700 font-medium hover:underline disabled:opacity-50">
+                    className="inline-flex items-center gap-1 min-h-[40px] sm:min-h-0 text-brand-600 hover:text-brand-700 font-medium hover:underline disabled:opacity-50">
                     {bascule && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
                     {facture.sans_affacturage ? "Remettre à l'affacturage" : 'Passer sans affacturage'}
                   </button>
@@ -310,15 +311,15 @@ export function FacturationOpco({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-1.5 shrink-0 w-full sm:w-auto">
             {facture ? (
               <>
                 <a href={`/api/pdf/facture/${facture.id}`} target="_blank" rel="noreferrer"
-                  className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-xs">
+                  className="btn-secondary inline-flex items-center justify-center gap-1.5 !py-2 sm:!py-1.5 !px-3 min-h-[40px] sm:min-h-0 text-xs">
                   <Download className="h-3.5 w-3.5" /> Télécharger
                 </a>
                 <a href={`/dashboard/factures/${facture.id}`}
-                  className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-xs">
+                  className="btn-secondary inline-flex items-center justify-center gap-1.5 !py-2 sm:!py-1.5 !px-3 min-h-[40px] sm:min-h-0 text-xs">
                   <ExternalLink className="h-3.5 w-3.5" /> Ouvrir
                 </a>
               </>
@@ -332,6 +333,7 @@ export function FacturationOpco({
                   disabled={generation !== null || !terminee || !(montantAFacturer > 0)}
                   icon={<Landmark className="h-4 w-4" />}
                   title="Facture réglée à l'organisme : ni cession de créance ni IBAN du factor"
+                  className="justify-center min-h-[40px] sm:min-h-0"
                 >
                   Sans affacturage
                 </Button>
@@ -341,6 +343,7 @@ export function FacturationOpco({
                   isLoading={generation === 'factor'}
                   disabled={generation !== null || !terminee || !(montantAFacturer > 0)}
                   icon={<ReceiptEuro className="h-4 w-4" />}
+                  className="justify-center min-h-[40px] sm:min-h-0"
                 >
                   Générer la facture
                 </Button>
@@ -353,6 +356,7 @@ export function FacturationOpco({
                 isLoading={generation === 'organisme'}
                 disabled={generation !== null || !terminee || !(montantAFacturer > 0)}
                 icon={<ReceiptEuro className="h-4 w-4" />}
+                className="justify-center min-h-[40px] sm:min-h-0"
               >
                 Facturer l&apos;entreprise
               </Button>
@@ -383,7 +387,7 @@ export function FacturationOpco({
               Générer une facture ici ferait double emploi.
             </p>
             <button onClick={() => genererFacture(true)} disabled={generation !== null}
-              className="mt-2 text-xs font-semibold text-danger-700 hover:underline disabled:opacity-50">
+              className="mt-2 min-h-[40px] sm:min-h-0 text-xs font-semibold text-danger-700 hover:underline disabled:opacity-50">
               Facturer quand même
             </button>
           </div>
@@ -395,7 +399,7 @@ export function FacturationOpco({
         <form onSubmit={deposer} className="space-y-4">
           <p className="text-sm text-surface-600">
             Le document tel que l&apos;OPCO l&apos;a émis. Le numéro de dossier y est lu automatiquement
-            s&apos;il est lisible — un accord scanné n&apos;a pas de texte à lire.
+            s&apos;il est lisible ; un accord scanné n&apos;a pas de texte à lire.
           </p>
 
           <div>
@@ -411,9 +415,9 @@ export function FacturationOpco({
             <Input id="date_piece" name="date_piece" type="date" label="Date de l'accord" defaultValue={accordDate || ''} />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setDepotOuvert(false)}>Annuler</Button>
-            <Button type="submit" isLoading={depotEnCours} icon={<Upload className="h-4 w-4" />}>Enregistrer</Button>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setDepotOuvert(false)} className="w-full sm:w-auto justify-center">Annuler</Button>
+            <Button type="submit" isLoading={depotEnCours} icon={<Upload className="h-4 w-4" />} className="w-full sm:w-auto justify-center">Enregistrer</Button>
           </div>
         </form>
       </Modal>
@@ -430,7 +434,7 @@ function Condition({ ok, texte, facultatif }: { ok: boolean; texte: string; facu
         : <AlertCircle className={cn('h-3.5 w-3.5 shrink-0', facultatif ? 'text-amber-400' : 'text-danger-400')} />}
       <span className={ok ? 'text-surface-500' : 'text-surface-700'}>
         {texte}
-        {!ok && facultatif && <span className="text-surface-400"> — conseillé, pas bloquant</span>}
+        {!ok && facultatif && <span className="text-surface-400"> (conseillé, pas bloquant)</span>}
       </span>
     </li>
   )

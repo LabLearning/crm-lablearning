@@ -6,7 +6,7 @@ import {
   Receipt, Building2, Euro, Calendar, AlertTriangle,
   CreditCard, ArrowRight, FileX, Clock, Download, Banknote, Loader2, Landmark,
 } from '@/components/ui/icons'
-import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, useToast, RowMenu, EuroTile } from '@/components/ui'
 import {
   createFactureAction, updateFactureStatusAction, deleteFactureAction,
   addFactureLigneAction, removeFactureLigneAction,
@@ -23,6 +23,35 @@ interface FacturesListProps {
   factures: Facture[]
   clients: Pick<Client, 'id' | 'raison_sociale' | 'nom' | 'prenom' | 'type'>[]
   affactureurs?: { id: string; raison_sociale: string; taux_commission_default: number; taux_retenue_default: number }[]
+}
+
+/** Marqueur d'affacturage (cédée, avancée, soldée, impayée) ou « sans affacturage ». */
+function AffacturageTag({ f }: { f: Facture }) {
+  if (f.affacturage_status) {
+    return (
+      <span className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+        f.affacturage_status === 'soldee' ? 'bg-emerald-50 text-emerald-700' :
+        f.affacturage_status === 'avancee' ? 'bg-blue-50 text-blue-700' :
+        f.affacturage_status === 'impayee' ? 'bg-rose-50 text-rose-700' :
+        'bg-amber-50 text-amber-700'
+      }`}>
+        <Banknote className="h-2.5 w-2.5" />
+        {f.affacturage_status === 'cedee' ? 'Cédée' :
+         f.affacturage_status === 'avancee' ? 'Avancée' :
+         f.affacturage_status === 'soldee' ? 'Factor soldé' : 'Factor impayé'}
+      </span>
+    )
+  }
+  if (f.sans_affacturage) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-info-50 text-info-600"
+        title="Réglée à l'organisme : ni cession de créance ni IBAN du factor">
+        <Landmark className="h-2.5 w-2.5" />
+        Sans affacturage
+      </span>
+    )
+  }
+  return null
 }
 
 export function FacturesList({ factures, clients, affactureurs = [] }: FacturesListProps) {
@@ -107,6 +136,41 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
     else toast('error', result.error || 'Erreur')
   }
 
+  // Actions d'une facture : mêmes entrées dans le tableau (desktop) et la carte (mobile)
+  function menuItems(f: Facture) {
+    return [
+      { label: 'Voir le détail', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailFacture(f) },
+      { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/facture/${f.id}`, target: '_blank' },
+      { label: 'Émettre', icon: <Receipt className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(f.id, 'emise'), hidden: f.status !== 'brouillon' },
+      { label: 'Marquer envoyée', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(f.id, 'envoyee'), hidden: f.status !== 'emise' },
+      {
+        label: 'Enregistrer un paiement',
+        icon: <CreditCard className="h-4 w-4 text-success-600" />,
+        onClick: () => setPaiementFacture(f),
+        hidden: !['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status),
+      },
+      {
+        label: "Céder à l'affacturage",
+        icon: <Banknote className="h-4 w-4 text-amber-600" />,
+        onClick: () => {
+          if (affactureurs.length === 0) {
+            toast('error', 'Ajoutez d\'abord un affactureur dans /dashboard/affacturage')
+            return
+          }
+          setCessionFacture(f)
+        },
+        hidden: !(['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && !f.affacturage_status && !f.sans_affacturage && f.type !== 'avoir'),
+      },
+      {
+        label: 'Créer un avoir',
+        icon: <FileX className="h-4 w-4 text-warning-600" />,
+        onClick: () => handleAvoir(f.id),
+        hidden: !(!['brouillon', 'annulee'].includes(f.status) && f.type !== 'avoir'),
+      },
+      { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id), hidden: f.status !== 'brouillon' },
+    ]
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -114,10 +178,10 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Facturation</h1>
           <p className="text-surface-500 mt-1 text-sm">{factures.length} facture{factures.length > 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Nouvelle facture</Button>
+        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="w-full sm:w-auto">Nouvelle facture</Button>
       </div>
 
-      {/* Stats */}
+      {/* Stats : deux colonnes sur mobile, montants arrondis à l'euro et insécables */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
           { label: 'CA Facturé', value: stats.ca_total, icon: Euro, color: 'text-surface-800', bg: 'bg-surface-50' },
@@ -125,12 +189,12 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
           { label: 'En attente', value: stats.en_attente, icon: Clock, color: 'text-brand-600', bg: 'bg-brand-50' },
           { label: 'En retard', value: stats.en_retard, icon: AlertTriangle, color: 'text-danger-600', bg: 'bg-danger-50' },
         ].map((s) => (
-          <div key={s.label} className="card p-4">
+          <div key={s.label} className="card p-3.5 sm:p-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${s.bg}`}><s.icon className={`h-4 w-4 ${s.color}`} /></div>
-              <div>
+              <div className={`hidden sm:block p-2 rounded-xl ${s.bg}`}><s.icon className={`h-4 w-4 ${s.color}`} /></div>
+              <div className="min-w-0">
                 <div className="text-xs text-surface-500">{s.label}</div>
-                <div className={`text-lg font-heading font-bold ${s.color}`}>{s.value.toLocaleString('fr-FR')} €</div>
+                <div className={`text-base sm:text-lg font-heading font-bold tabular-nums whitespace-nowrap ${s.color}`}><EuroTile value={s.value} /></div>
               </div>
             </div>
           </div>
@@ -139,22 +203,66 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 max-w-md">
-          <Search className="h-4 w-4 text-surface-400" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-sm placeholder:text-surface-400 focus:outline-none flex-1" />
+        <div className="flex items-center gap-2 bg-white rounded-xl px-3 sm:py-2 border border-surface-200/60 flex-1 max-w-md">
+          <Search className="h-4 w-4 text-surface-400 shrink-0" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="h-10 sm:h-auto bg-transparent text-sm placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
         </div>
-        <div className="flex gap-1.5 overflow-x-auto">
+        {/* Pastilles : défilement horizontal bord à bord sur mobile, barre masquée */}
+        <div className="flex gap-1.5 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {['all', 'brouillon', 'envoyee', 'payee_partiellement', 'payee', 'en_retard'].map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === s ? 'bg-surface-900 text-white shadow-xs' : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}`}>
+              className={`min-h-10 sm:min-h-0 px-3.5 sm:px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${statusFilter === s ? 'bg-surface-900 text-white shadow-xs' : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}`}>
               {s === 'all' ? 'Toutes' : FACTURE_STATUS_LABELS[s as FactureStatus]}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Liste mobile : une carte par facture, actions dans le menu */}
+      <div className="card overflow-hidden md:hidden">
+        <div className="divide-y divide-surface-100">
+          {filtered.map((f) => (
+            <div key={f.id} className={`px-4 py-3 ${isOverdue(f) ? 'bg-danger-50/30' : ''}`}>
+              <div className="flex items-start gap-2">
+                <button onClick={() => setDetailFacture(f)} className="flex-1 min-w-0 text-left min-h-10 py-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-mono font-medium text-brand-600">{f.numero}</span>
+                    {f.type !== 'facture' && <Badge variant={f.type === 'avoir' ? 'danger' : 'warning'}>{FACTURE_TYPE_LABELS[f.type]}</Badge>}
+                  </div>
+                  <div className="text-sm text-surface-700 truncate">{getClientName(f)}</div>
+                  {f.objet && <div className="text-xs text-surface-500 truncate">{f.objet}</div>}
+                </button>
+                <div className="shrink-0 -mr-2">
+                  <RowMenu width={208} triggerClassName="h-10 w-10 flex items-center justify-center" items={menuItems(f)} />
+                </div>
+              </div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  <Badge variant={isOverdue(f) ? 'danger' : FACTURE_STATUS_COLORS[f.status]} dot>
+                    {isOverdue(f) ? 'En retard' : FACTURE_STATUS_LABELS[f.status]}
+                  </Badge>
+                  <AffacturageTag f={f} />
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-semibold text-surface-900 tabular-nums whitespace-nowrap">
+                    {Number(f.montant_ttc).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
+                  </div>
+                  {Number(f.montant_restant) > 0 && f.status !== 'payee' && (
+                    <div className="text-xs text-danger-600 tabular-nums whitespace-nowrap">reste {Number(f.montant_restant).toLocaleString('fr-FR')} €</div>
+                  )}
+                  <div className={`text-xs ${isOverdue(f) ? 'text-danger-600 font-medium' : 'text-surface-400'}`}>
+                    échéance {formatDate(f.date_echeance, { day: 'numeric', month: 'short' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {filtered.length === 0 && <div className="text-center py-12 text-sm text-surface-500">Aucune facture trouvée</div>}
+      </div>
+
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -185,26 +293,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
                       <Badge variant={isOverdue(f) ? 'danger' : FACTURE_STATUS_COLORS[f.status]} dot>
                         {isOverdue(f) ? 'En retard' : FACTURE_STATUS_LABELS[f.status]}
                       </Badge>
-                      {f.affacturage_status && (
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                          f.affacturage_status === 'soldee' ? 'bg-emerald-50 text-emerald-700' :
-                          f.affacturage_status === 'avancee' ? 'bg-blue-50 text-blue-700' :
-                          f.affacturage_status === 'impayee' ? 'bg-rose-50 text-rose-700' :
-                          'bg-amber-50 text-amber-700'
-                        }`}>
-                          <Banknote className="h-2.5 w-2.5" />
-                          {f.affacturage_status === 'cedee' ? 'Cédée' :
-                           f.affacturage_status === 'avancee' ? 'Avancée' :
-                           f.affacturage_status === 'soldee' ? 'Factor soldé' : 'Factor impayé'}
-                        </span>
-                      )}
-                      {f.sans_affacturage && !f.affacturage_status && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-info-50 text-info-600"
-                          title="Réglée à l'organisme : ni cession de créance ni IBAN du factor">
-                          <Landmark className="h-2.5 w-2.5" />
-                          Sans affacturage
-                        </span>
-                      )}
+                      <AffacturageTag f={f} />
                     </div>
                   </td>
                   <td className="px-6 py-3.5 text-right text-sm font-medium text-surface-800">
@@ -223,40 +312,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
                     </span>
                   </td>
                   <td className="px-6 py-3.5 text-right">
-                    <RowMenu
-                      width={208}
-                      items={[
-                        { label: 'Voir le détail', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailFacture(f) },
-                        { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/facture/${f.id}`, target: '_blank' },
-                        { label: 'Émettre', icon: <Receipt className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(f.id, 'emise'), hidden: f.status !== 'brouillon' },
-                        { label: 'Marquer envoyée', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(f.id, 'envoyee'), hidden: f.status !== 'emise' },
-                        {
-                          label: 'Enregistrer un paiement',
-                          icon: <CreditCard className="h-4 w-4 text-success-600" />,
-                          onClick: () => setPaiementFacture(f),
-                          hidden: !['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status),
-                        },
-                        {
-                          label: "Céder à l'affacturage",
-                          icon: <Banknote className="h-4 w-4 text-amber-600" />,
-                          onClick: () => {
-                            if (affactureurs.length === 0) {
-                              toast('error', 'Ajoutez d\'abord un affactureur dans /dashboard/affacturage')
-                              return
-                            }
-                            setCessionFacture(f)
-                          },
-                          hidden: !(['emise', 'envoyee', 'payee_partiellement', 'en_retard'].includes(f.status) && !f.affacturage_status && !f.sans_affacturage && f.type !== 'avoir'),
-                        },
-                        {
-                          label: 'Créer un avoir',
-                          icon: <FileX className="h-4 w-4 text-warning-600" />,
-                          onClick: () => handleAvoir(f.id),
-                          hidden: !(!['brouillon', 'annulee'].includes(f.status) && f.type !== 'avoir'),
-                        },
-                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id), hidden: f.status !== 'brouillon' },
-                      ]}
-                    />
+                    <RowMenu width={208} items={menuItems(f)} />
                   </td>
                 </tr>
               ))}
@@ -269,7 +325,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
       {/* Create Modal */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouvelle facture" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select id="type" name="type" label="Type" options={Object.entries(FACTURE_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))} defaultValue="facture" />
             <Select id="client_id" name="client_id" label="Client *" options={clientOptions} placeholder="Sélectionner" error={errors.client_id?.[0]} />
           </div>
@@ -285,7 +341,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
             <div className="text-xs font-semibold text-surface-700">Prestation facturée</div>
             <Input id="ligne_designation" name="ligne_designation" label="Désignation"
               placeholder="Formation hygiène alimentaire — 2 jours" />
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <Input id="ligne_quantite" name="ligne_quantite" type="number" step="0.01" min="0.01" label="Quantité" defaultValue="1" />
               <Input id="ligne_unite" name="ligne_unite" label="Unité" defaultValue="forfait" />
               <Input id="ligne_prix" name="ligne_prix" type="number" step="0.01" min="0" label="Prix unitaire HT" placeholder="0,00" />
@@ -320,7 +376,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
               Cette facture est prise en charge par un financeur
             </button>
           )}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Annuler</Button>
             <Button type="submit" isLoading={isCreating} icon={<Receipt className="h-4 w-4" />}>Créer</Button>
           </div>
@@ -641,15 +697,15 @@ function CessionForm({
       {/* Récap */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-surface-50 rounded-lg p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">Commission</div>
+          <div className="text-[11px] uppercase tracking-wider text-surface-400 font-semibold">Commission</div>
           <div className="text-sm font-bold text-rose-600 mt-0.5 tabular-nums">- {fmt(com)}</div>
         </div>
         <div className="bg-surface-50 rounded-lg p-3 text-center">
-          <div className="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">Retenue</div>
+          <div className="text-[11px] uppercase tracking-wider text-surface-400 font-semibold">Retenue</div>
           <div className="text-sm font-bold text-surface-600 mt-0.5 tabular-nums">- {fmt(ret)}</div>
         </div>
         <div className="bg-emerald-50 rounded-lg p-3 text-center border border-emerald-200">
-          <div className="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">Avance</div>
+          <div className="text-[11px] uppercase tracking-wider text-emerald-600 font-semibold">Avance</div>
           <div className="text-sm font-bold text-emerald-700 mt-0.5 tabular-nums">{fmt(avance)}</div>
         </div>
       </div>

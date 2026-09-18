@@ -159,24 +159,24 @@ export function PoeiDocuments({
       <div className="space-y-3">
       <div className="card p-4 flex items-center gap-3 flex-wrap">
         <Download className="h-4 w-4 text-brand-600 shrink-0" />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[calc(100%-2rem)] sm:basis-auto">
           <div className="text-sm font-heading font-semibold text-surface-900">Dossier complet</div>
           <div className="text-xs text-surface-500">Toutes les familles de documents dans une seule archive, un répertoire par type</div>
         </div>
         <a href={`/api/pdf/poei-dossier/${poeiId}`}
-          className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+          className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm w-full sm:w-auto">
           <Download className="h-4 w-4" /> Tout le dossier (ZIP)
         </a>
       </div>
 
       {devisPrevisionnel && (
-        <div className="card p-4 flex items-center gap-3">
+        <div className="card p-4 flex items-center gap-3 flex-wrap">
           <Euro className="h-4 w-4 text-surface-500 shrink-0" />
-          <span className="text-sm text-surface-700 flex-1">
-            Devis prévisionnel {devisPrevisionnel.numero || ''} — établi avant l&apos;identification des candidats
+          <span className="text-sm text-surface-700 flex-1 basis-[calc(100%-2rem)] sm:basis-auto">
+            Devis prévisionnel {devisPrevisionnel.numero || ''}, établi avant l&apos;identification des candidats
           </span>
           <a href={`/api/pdf/devis/${devisPrevisionnel.id}`} target="_blank" rel="noreferrer"
-            className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+            className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm w-full sm:w-auto">
             <Download className="h-4 w-4" /> Télécharger
           </a>
         </div>
@@ -198,31 +198,36 @@ export function PoeiDocuments({
               )}>
                 {f.compte}
               </span>
-              {f.action && (
-                <button onClick={f.action.onClick} disabled={busy === f.cle}
-                  className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-50">
-                  {busy === f.cle ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                  {f.action.label}
-                </button>
-              )}
-              {f.zip && (
-                <a href={f.zip} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
-                  <Download className="h-4 w-4" /> Tout (ZIP)
-                </a>
+              {(f.action || f.zip) && (
+                /* Sur téléphone les boutons se partagent une rangée pleine largeur */
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {f.action && (
+                    <button onClick={f.action.onClick} disabled={busy === f.cle}
+                      className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-50 flex-1 sm:flex-none">
+                      {busy === f.cle ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      {f.action.label}
+                    </button>
+                  )}
+                  {f.zip && (
+                    <a href={f.zip} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm flex-1 sm:flex-none">
+                      <Download className="h-4 w-4" /> Tout (ZIP)
+                    </a>
+                  )}
+                </div>
               )}
             </div>
 
             {candidats.length > 0 && (
-              <div className="px-4 py-2.5 flex flex-wrap gap-x-4 gap-y-1.5">
+              <div className="px-4 py-2.5 flex flex-wrap gap-x-4 gap-y-0 sm:gap-y-1.5">
                 {candidats.map((c) => {
                   const l = f.lien(c)
                   return l ? (
                     <a key={c.id} href={l.href} target="_blank" rel="noreferrer"
-                      className="text-xs text-brand-600 hover:underline whitespace-nowrap">
+                      className="inline-flex items-center min-h-[40px] sm:min-h-0 text-xs text-brand-600 hover:underline whitespace-nowrap">
                       {c.nom}
                     </a>
                   ) : (
-                    <span key={c.id} className="text-xs text-surface-300 whitespace-nowrap">{c.nom}</span>
+                    <span key={c.id} className="inline-flex items-center min-h-[40px] sm:min-h-0 text-xs text-surface-300 whitespace-nowrap">{c.nom}</span>
                   )
                 })}
               </div>

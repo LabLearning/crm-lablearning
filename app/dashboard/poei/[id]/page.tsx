@@ -58,7 +58,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       .from('clients').select('id, raison_sociale, nom_commercial, sigle').eq('organization_id', session.organization.id).order('raison_sociale'),
     supabase
       .from('formations').select('id, intitule').eq('organization_id', session.organization.id).eq('is_active', true).order('intitule'),
-    // Apprenants de l'établissement du projet (client) — pas tout le monde.
+    // Apprenants de l'établissement du projet (client), pas tout le monde.
     // Repli sur toute l'org si le projet n'a pas encore de client lié.
     (p.client_id
       ? supabase.from('apprenants').select('id, nom, prenom, email').eq('organization_id', session.organization.id).eq('client_id', p.client_id).order('nom')
@@ -106,7 +106,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   ])
 
   // Formateurs intervenus (uniques) et état des évaluations demandées au
-  // référent pour chacun d'eux — résilient avant la migration 146.
+  // référent pour chacun d'eux, résilient avant la migration 146.
   const formateursPoei = Array.from(
     new Map(((interventions || []) as any[])
       .filter((iv) => iv.formateur_id)
@@ -365,13 +365,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   return (
     <div className="space-y-5 animate-fade-in max-w-5xl">
       <div>
-        <BackLink fallbackHref="/dashboard/poei" label="Retour aux POEI" className="inline-flex items-center gap-1.5 text-sm text-surface-500 hover:text-surface-800 mb-3" />
+        <BackLink fallbackHref="/dashboard/poei" label="Retour aux POEI" className="inline-flex items-center gap-1.5 min-h-[40px] sm:min-h-0 text-sm text-surface-500 hover:text-surface-800 mb-1 sm:mb-3" />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-2xl font-heading font-bold text-surface-900 inline-flex items-center gap-2">
               <Building2 className="h-5 w-5 text-sky-500" />
               {p.client_id ? (
-                <Link href={`/dashboard/clients/${p.client_id}`} className="hover:text-brand-600 hover:underline transition-colors">
+                <Link href={`/dashboard/clients/${p.client_id}`} className="inline-flex items-center min-h-[40px] hover:text-brand-600 hover:underline transition-colors">
                   {companyLabel(p.client) || 'Projet POEI'}
                 </Link>
               ) : (companyLabel(p.client) || 'Projet POEI')}
@@ -424,16 +424,16 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-heading font-semibold text-surface-900">Feuilles d&apos;émargement</div>
                   <p className="text-xs text-surface-500 mt-0.5">
-                    Session {(p as any).session.reference || ''} — feuille à faire signer et feuille d&apos;état des présences.
+                    Session {(p as any).session.reference || ''}, feuille à faire signer et feuille d&apos;état des présences.
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                   <a href={`/api/pdf/emargement/${(p as any).session.id}`} target="_blank" rel="noopener noreferrer"
-                    className="btn-secondary !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5">
+                    className="btn-secondary !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5 flex-1 sm:flex-none">
                     <FileText className="h-3.5 w-3.5" /> Feuille vierge
                   </a>
                   <a href={`/api/pdf/emargement-signe/${(p as any).session.id}`} target="_blank" rel="noopener noreferrer"
-                    className="btn-secondary !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5">
+                    className="btn-secondary !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5 flex-1 sm:flex-none">
                     <CheckSquare className="h-3.5 w-3.5" /> Feuille des présences
                   </a>
                 </div>

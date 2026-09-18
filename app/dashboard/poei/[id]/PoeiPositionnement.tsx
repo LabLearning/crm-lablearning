@@ -88,7 +88,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
       titre="Positionnement à l'entrée"
       sous={`${repondus.length}/${candidats.length} candidats ont répondu aux ${QUESTIONS.length} questions du référentiel`}
       actions={
-        <div className="flex items-center gap-2">
+        <>
           {repondus.length > 0 && (
             <a href={`/api/pdf/poei-positionnement/${poeiId}`} target="_blank" rel="noreferrer"
               className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
@@ -99,7 +99,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
             icon={<Send className="h-4 w-4" />}>
             Envoyer le questionnaire
           </Button>
-        </div>
+        </>
       }
     >
       {synthese && (
@@ -132,10 +132,11 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
       ) : (
         <div className="divide-y divide-surface-100">
           {candidats.map((c) => (
-            <div key={c.candidatId} className="flex items-center gap-2.5 py-2.5">
+            <div key={c.candidatId} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5 py-2.5">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-surface-900 truncate">{c.nom}</div>
-                <div className="text-xs text-surface-500 truncate">
+                {/* Sur téléphone le résultat se replie : la date de réponse reste lisible */}
+                <div className="text-xs text-surface-500 break-words sm:truncate">
                   {c.statut === 'complete'
                     ? `${c.note}/20 · ${c.maitrise} % de bonnes réponses · ${(c.maitrise ?? 0) < SEUIL_REUSSITE ? `parcours complet, ${c.heures} h` : `${c.heures} h justifiées`}${fr(c.completeLe) ? ` · le ${fr(c.completeLe)}` : ''}`
                     : c.statut === 'envoye'
@@ -151,6 +152,8 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
                   </div>
                 </div>
               )}
+              {/* Sur téléphone, badge et actions forment une rangée sous le nom */}
+              <div className="flex items-center gap-1.5 shrink-0">
               <span className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-md ${
                 c.statut === 'complete' ? 'bg-emerald-50 text-emerald-700'
                   : c.statut === 'envoye' ? 'bg-amber-50 text-amber-700' : 'bg-surface-100 text-surface-500'}`}>
@@ -159,23 +162,24 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
               </span>
               {c.statut === 'envoye' && c.lien && (
                 <button onClick={() => copier(c.lien!)} title="Copier le lien du candidat"
-                  className="p-2 rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0">
+                  className="h-10 w-10 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0">
                   <Copy className="h-4 w-4" />
                 </button>
               )}
               {c.statut === 'complete' && (
                 <>
-                  <Button size="sm" variant="secondary" onClick={() => setDetail(c)}>Voir</Button>
+                  <Button size="sm" variant="secondary" onClick={() => setDetail(c)} className="ml-auto sm:ml-0">Voir</Button>
                   <a href={`/api/pdf/poei-positionnement/${poeiId}?candidat=${c.candidatId}`} target="_blank" rel="noreferrer"
-                    title="Fiche de positionnement" className="p-2 rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0">
+                    title="Fiche de positionnement" className="h-10 w-10 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0">
                     <Download className="h-4 w-4" />
                   </a>
                   <button onClick={() => reinitialiser(c)} title="Effacer et renvoyer"
-                    className="p-2 rounded-lg text-surface-400 hover:text-danger-600 hover:bg-surface-100 shrink-0">
+                    className="h-10 w-10 sm:h-9 sm:w-9 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-danger-600 hover:bg-surface-100 shrink-0">
                     <RefreshCw className="h-4 w-4" />
                   </button>
                 </>
               )}
+              </div>
             </div>
           ))}
         </div>
@@ -197,7 +201,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-surface-900 truncate">{c.nom}</div>
                     <div className="text-xs text-surface-500 truncate">
-                      {deja ? 'A déjà répondu' : c.email || 'Pas d’email en fiche — le lien sera à copier'}
+                      {deja ? 'A déjà répondu' : c.email || 'Pas d’email en fiche, le lien sera à copier'}
                     </div>
                   </div>
                 </label>
@@ -208,7 +212,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
             {selection.length} candidat{selection.length > 1 ? 's' : ''} sélectionné{selection.length > 1 ? 's' : ''}.
             Les candidats sans email apparaîtront dans la liste avec un lien à copier.
           </p>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" onClick={() => setEnvoiOuvert(false)}>Annuler</Button>
             <Button onClick={envoyer} isLoading={envoi} icon={<Send className="h-4 w-4" />}>Envoyer</Button>
           </div>
@@ -217,7 +221,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
 
       {/* Détail des réponses */}
       <Modal isOpen={!!detail} onClose={() => setDetail(null)} size="lg"
-        title={`Réponses — ${detail?.nom || ''}`}
+        title={`Réponses, ${detail?.nom || ''}`}
         description={resultat ? `${resultat.justes}/${resultat.nbQuestions} bonnes réponses · ${resultat.note}/20 · ${resultat.heuresPreconisees} h justifiées sur ${resultat.heuresReferentiel} h` : ''}>
         {resultat && detail?.reponses && (
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
@@ -225,7 +229,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
               const dom = resultat.domaines.find((x) => x.code === d.code)!
               return (
                 <div key={d.code} className="rounded-xl border border-surface-200 overflow-hidden">
-                  <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-surface-50 border-b border-surface-100">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3.5 py-2.5 bg-surface-50 border-b border-surface-100">
                     <div className="text-sm font-semibold text-surface-900">{d.libelle}</div>
                     <div className="text-xs text-surface-600 tabular-nums shrink-0">
                       {dom.justes}/{dom.total} · {dom.heuresPreconisees} h sur {d.heures} h
@@ -239,7 +243,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
                         <div key={q.code} className="px-3.5 py-2.5">
                           <div className="text-sm text-surface-800">{q.intitule}</div>
                           <div className={`text-xs mt-1 ${juste ? 'text-emerald-700' : 'text-danger-600'}`}>
-                            {rep == null ? 'Sans réponse' : `${juste ? 'Juste' : 'Faux'} — a répondu « ${q.choix[Number(rep)]} »`}
+                            {rep == null ? 'Sans réponse' : `${juste ? 'Juste' : 'Faux'}, a répondu « ${q.choix[Number(rep)]} »`}
                           </div>
                           {!juste && <div className="text-xs text-surface-500 mt-0.5">Attendu : « {q.choix[q.correct]} »</div>}
                         </div>

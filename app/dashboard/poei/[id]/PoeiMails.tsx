@@ -166,7 +166,7 @@ export function PoeiMails({
     }
     setEnvoi(false)
     if (r?.success) {
-      toast('success', `Envoi effectué${r.data?.sent ? ` — ${r.data.sent} destinataire(s)` : ''}`)
+      toast('success', `Envoi effectué${r.data?.sent ? `, ${r.data.sent} destinataire(s)` : ''}`)
       fermer()
       router.refresh()
     } else toast('error', r?.error || "L'envoi a échoué")
@@ -245,7 +245,7 @@ export function PoeiMails({
       <Modal
         isOpen={!!type}
         onClose={fermer}
-        title={apercus ? `Aperçu avant envoi — ${TYPES.find((t) => t.cle === type)?.titre || ''}` : (TYPES.find((t) => t.cle === type)?.titre || 'Envoi')}
+        title={apercus ? `Aperçu avant envoi, ${TYPES.find((t) => t.cle === type)?.titre || ''}` : (TYPES.find((t) => t.cle === type)?.titre || 'Envoi')}
         size="lg"
       >
         {apercus && courant ? (
@@ -257,7 +257,7 @@ export function PoeiMails({
                   type="button"
                   onClick={() => setIndex((i) => Math.max(0, i - 1))}
                   disabled={index === 0}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-surface-200 text-surface-600 hover:bg-surface-50 disabled:opacity-40"
+                  className="h-10 w-10 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded-full border border-surface-200 text-surface-600 hover:bg-surface-50 disabled:opacity-40"
                   aria-label="Email précédent"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -269,7 +269,7 @@ export function PoeiMails({
                   type="button"
                   onClick={() => setIndex((i) => Math.min(apercus.length - 1, i + 1))}
                   disabled={index >= apercus.length - 1}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-surface-200 text-surface-600 hover:bg-surface-50 disabled:opacity-40"
+                  className="h-10 w-10 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded-full border border-surface-200 text-surface-600 hover:bg-surface-50 disabled:opacity-40"
                   aria-label="Email suivant"
                 >
                   <ArrowRight className="h-4 w-4" />
@@ -282,7 +282,7 @@ export function PoeiMails({
                     type="button"
                     onClick={() => setIndex(i)}
                     className={cn(
-                      'text-xs px-2.5 py-1 rounded-full border transition-colors',
+                      'text-xs px-2.5 py-2 sm:py-1 rounded-full border transition-colors',
                       i === index ? 'bg-surface-900 text-white border-surface-900' : 'border-surface-200 text-surface-600 hover:border-surface-400',
                       a.avertissement && i !== index && 'border-warning-300 text-warning-700',
                     )}
@@ -318,7 +318,7 @@ export function PoeiMails({
                   title={`Aperçu de l'email pour ${courant.nom}`}
                   srcDoc={courant.html}
                   sandbox=""
-                  className="w-full h-[480px] bg-white"
+                  className="w-full h-[60vh] sm:h-[480px] bg-white"
                 />
               ) : (
                 <div className="p-6 text-sm text-surface-500">Aucun email ne sera envoyé à ce candidat.</div>
@@ -329,7 +329,7 @@ export function PoeiMails({
               <Button variant="secondary" onClick={() => setApercus(null)} icon={<ArrowLeft className="h-4 w-4" />}>
                 Modifier
               </Button>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2 ml-auto">
                 <Button variant="secondary" onClick={fermer}>Annuler</Button>
                 <Button onClick={envoyer} isLoading={envoi} icon={<Send className="h-4 w-4" />} disabled={nbEnvoyables === 0}>
                   Confirmer l&apos;envoi à {nbEnvoyables} candidat{nbEnvoyables > 1 ? 's' : ''}
@@ -349,7 +349,7 @@ export function PoeiMails({
                         key={t.slug}
                         type="button"
                         onClick={() => { setSujet(t.sujet); setMessage(t.corps_texte) }}
-                        className="text-xs px-2.5 py-1 rounded-full border border-surface-200 text-surface-600 hover:border-brand-300 hover:text-brand-700"
+                        className="text-xs px-2.5 py-2 sm:py-1 rounded-full border border-surface-200 text-surface-600 hover:border-brand-300 hover:text-brand-700"
                       >
                         {t.nom}
                       </button>
@@ -388,14 +388,14 @@ export function PoeiMails({
                     <button
                       type="button"
                       onClick={() => setSelectionHygiene(selectionHygiene.length === candidats.length ? [] : candidats.map((c) => c.id))}
-                      className="text-xs text-brand-600 hover:underline"
+                      className="text-xs text-brand-600 hover:underline min-h-[40px] sm:min-h-0 inline-flex items-center"
                     >
                       {selectionHygiene.length === candidats.length ? 'Tout décocher' : 'Tout sélectionner'}
                     </button>
                   </div>
                   <div className="rounded-xl border border-surface-200 divide-y divide-surface-100 max-h-64 overflow-y-auto">
                     {candidats.map((c) => (
-                      <label key={c.id} className="flex items-center gap-3 px-3 py-2">
+                      <label key={c.id} className="flex items-center gap-3 px-3 py-2 min-h-[44px]">
                         <input
                           type="checkbox"
                           checked={selectionHygiene.includes(c.id)}
@@ -425,7 +425,7 @@ export function PoeiMails({
                     <button
                       type="button"
                       onClick={() => setSelectionFormateurs(selectionFormateurs.length === formateurs.length ? [] : formateurs.map((f) => f.id))}
-                      className="text-xs text-brand-600 hover:underline"
+                      className="text-xs text-brand-600 hover:underline min-h-[40px] sm:min-h-0 inline-flex items-center"
                     >
                       {selectionFormateurs.length === formateurs.length ? 'Tout décocher' : 'Tout sélectionner'}
                     </button>
@@ -434,7 +434,7 @@ export function PoeiMails({
                     {formateurs.map((f) => {
                       const etat = etatEvaluations[f.id]
                       return (
-                        <label key={f.id} className="flex items-center gap-3 px-3 py-2">
+                        <label key={f.id} className="flex items-center gap-3 px-3 py-2 min-h-[44px] flex-wrap">
                           <input
                             type="checkbox"
                             checked={selectionFormateurs.includes(f.id)}
@@ -468,7 +468,7 @@ export function PoeiMails({
                 <button
                   type="button"
                   onClick={() => setSelection(selection.length === avecEmail.length ? [] : avecEmail.map((c) => c.id))}
-                  className="text-xs text-brand-600 hover:underline"
+                  className="text-xs text-brand-600 hover:underline min-h-[40px] sm:min-h-0 inline-flex items-center"
                 >
                   {selection.length === avecEmail.length ? 'Tout décocher' : 'Tout sélectionner'}
                 </button>
@@ -479,7 +479,7 @@ export function PoeiMails({
                   return (
                     <label
                       key={c.id}
-                      className={cn('flex items-center gap-3 px-3 py-2', !c.email && 'opacity-50 cursor-not-allowed')}
+                      className={cn('flex items-center gap-3 px-3 py-2 min-h-[44px]', !c.email && 'opacity-50 cursor-not-allowed')}
                     >
                       <input
                         type="checkbox"
@@ -504,7 +504,7 @@ export function PoeiMails({
             </div>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="secondary" onClick={fermer}>Annuler</Button>
               <Button onClick={previsualiser} isLoading={chargementApercu} icon={<Eye className="h-4 w-4" />}>
                 {type === 'evaluation_formateur'

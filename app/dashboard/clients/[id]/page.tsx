@@ -179,12 +179,13 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
   return (
     <div className="max-w-5xl mx-auto space-y-5 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <BackLink fallbackHref="/dashboard/clients" label="Clients" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700" />
-        <div className="flex items-center gap-2">
+      {/* Mobile : retour sur une ligne, puis les deux actions côte à côte en pleine largeur */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <BackLink fallbackHref="/dashboard/clients" label="Clients" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700 min-h-10 sm:min-h-0" />
+        <div className={`grid gap-2 sm:flex sm:items-center ${isEntreprise ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {isEntreprise && (
             <Link href={`/dashboard/sessions?client=${c.id}`}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-surface-900 text-white hover:bg-surface-800 transition-colors">
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2 min-h-10 rounded-xl text-sm font-medium bg-surface-900 text-white hover:bg-surface-800 transition-colors">
               <Calendar className="h-4 w-4" /> Créer une session
             </Link>
           )}
@@ -193,37 +194,38 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       </div>
 
       {/* En-tête */}
-      <div className="card p-6 flex flex-col sm:flex-row sm:items-center gap-5">
-        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 ${isEntreprise ? 'bg-brand-50' : 'bg-purple-50'}`}>
+      <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+        <div className={`h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center shrink-0 ${isEntreprise ? 'bg-brand-50' : 'bg-purple-50'}`}>
           {isEntreprise ? <Building2 className="h-7 w-7 text-brand-600" /> : <User className="h-7 w-7 text-purple-600" />}
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-heading font-bold text-surface-900 truncate">{displayName}</h1>
+          <h1 className="text-xl font-heading font-bold text-surface-900 break-words sm:truncate">{displayName}</h1>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <Badge variant={isEntreprise ? 'info' : 'default'}>{CLIENT_TYPE_LABELS[c.type]}</Badge>
             {c.financeur_type && <Badge variant="warning">{FINANCEUR_LABELS[c.financeur_type]}</Badge>}
             {canAssign && assignedName && <Badge variant="default">Assigné à {assignedName}</Badge>}
             {(c.tags || []).map((t) => <Badge key={t} variant="default">{t}</Badge>)}
           </div>
-          <div className="flex items-center gap-4 mt-2.5 text-sm text-surface-500 flex-wrap">
-            {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-1 hover:text-surface-700"><Mail className="h-3.5 w-3.5" />{c.email}</a>}
-            {c.telephone && <a href={`tel:${c.telephone}`} className="flex items-center gap-1 hover:text-surface-700"><Phone className="h-3.5 w-3.5" />{c.telephone}</a>}
-            {c.site_web && <a href={c.site_web.startsWith('http') ? c.site_web : `https://${c.site_web}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-surface-700"><Globe className="h-3.5 w-3.5" />{c.site_web}</a>}
+          <div className="flex items-center gap-x-4 gap-y-1 mt-2 sm:mt-2.5 text-sm text-surface-500 flex-wrap">
+            {c.email && <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700 min-w-0"><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{c.email}</span></a>}
+            {c.telephone && <a href={`tel:${c.telephone}`} className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700"><Phone className="h-3.5 w-3.5 shrink-0" />{c.telephone}</a>}
+            {c.site_web && <a href={c.site_web.startsWith('http') ? c.site_web : `https://${c.site_web}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700 min-w-0"><Globe className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{c.site_web}</span></a>}
           </div>
           {c.siret && <div className="text-xs text-surface-400 mt-1 font-mono">SIRET {c.siret}</div>}
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats : deux colonnes sur mobile, icône masquée et montant insécable pour ne jamais casser */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((s) => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-icon bg-surface-100">
+          <div key={s.label} className="card p-4 sm:p-5 flex items-start gap-4">
+            <div className="stat-icon bg-surface-100 hidden sm:flex">
               <s.icon className="h-5 w-5 text-surface-600" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="stat-label">{s.label}</p>
-              <p className="stat-value text-surface-900 mt-0.5">{s.value}</p>
+              <p className="text-xl sm:text-2xl font-heading font-bold tracking-tight tabular-nums whitespace-nowrap text-surface-900 mt-0.5">{s.value}</p>
             </div>
           </div>
         ))}
@@ -329,7 +331,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
                 <Receipt className="h-4 w-4 text-brand-500" />
                 <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Factures ({facturesList.length})</span>
               </div>
-              {totalPaye > 0 && <span className="text-xs text-surface-500">{fmtMontant(totalPaye)} encaissé</span>}
+              {totalPaye > 0 && <span className="text-xs text-surface-500 whitespace-nowrap tabular-nums">{fmtMontant(totalPaye)} encaissé</span>}
             </div>
             {facturesList.length === 0 ? (
               <div className="text-center py-8 text-sm text-surface-400">Aucune facture</div>

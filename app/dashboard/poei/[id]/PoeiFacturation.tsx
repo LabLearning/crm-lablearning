@@ -50,7 +50,7 @@ function EngagementCandidat({ candidatId, valeur, verrouille }: { candidatId: st
       disabled={verrouille || busy}
       placeholder="N° engagement"
       title={verrouille ? 'Facture déjà émise : numéro figé' : 'N° d’engagement France Travail de ce candidat'}
-      className={`input-base !py-1 !px-2 text-xs font-mono w-36 ${!v ? 'border-amber-300 bg-warning-50/40' : ''} disabled:opacity-60`}
+      className={`input-base !py-2 sm:!py-1 !px-2 text-xs font-mono w-full sm:w-36 ${!v ? 'border-amber-300 bg-warning-50/40' : ''} disabled:opacity-60`}
     />
   )
 }
@@ -88,7 +88,7 @@ export function PoeiFacturation({
       if (skipped) parts.push(`${skipped} déjà émise${skipped > 1 ? 's' : ''}`)
       if (supprimees) parts.push(`${supprimees} supprimée${supprimees > 1 ? 's' : ''} (candidat retiré)`)
       if (orphelinesEmises) {
-        toast('error', `${orphelinesEmises} facture(s) émise(s) concernent un candidat retiré du dossier — à annuler manuellement`)
+        toast('error', `${orphelinesEmises} facture(s) émise(s) concernent un candidat retiré du dossier, à annuler manuellement`)
       }
       toast('success', parts.length ? `Factures : ${parts.join(', ')}` : 'Aucune facture modifiée')
       router.refresh()
@@ -121,7 +121,7 @@ export function PoeiFacturation({
       {!sessionTerminee ? (
         <div className="flex items-center gap-2 rounded-xl bg-surface-50 border border-surface-200/70 px-4 py-3 text-sm text-surface-500">
           <Clock className="h-4 w-4 shrink-0" />
-          Les factures pourront être générées une fois la <strong className="mx-1 text-surface-700">session terminée</strong>.
+          <span>Les factures pourront être générées une fois la <strong className="text-surface-700">session terminée</strong>.</span>
         </div>
       ) : candidats.length === 0 ? (
         <div className="text-sm text-surface-500">Aucun candidat.</div>
@@ -132,18 +132,18 @@ export function PoeiFacturation({
             const fac = facturesByCandidat[c.id]
             const st = fac ? (FACT_STATUS[fac.status] || FACT_STATUS.brouillon) : null
             return (
-              <div key={c.id} className="flex items-center gap-3 px-3 py-2.5">
+              <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-surface-900 truncate">{nom}</div>
                   {fac && (
                     <div className="text-xs text-surface-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${st!.cls}`}>{st!.label}</span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${st!.cls}`}>{st!.label}</span>
                       {fac.numero && <span>{fac.numero}</span>}
                       {fac.montant_ttc != null && <span className="tabular-nums">{Number(fac.montant_ttc).toLocaleString('fr-FR')} €</span>}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
                   <EngagementCandidat
                     candidatId={c.id}
                     valeur={c.numero_engagement || ''}
@@ -151,11 +151,11 @@ export function PoeiFacturation({
                   />
                   {fac ? (
                     <a href={`/api/pdf/facture/${fac.id}`} target="_blank" rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 px-2.5 py-1.5 text-xs font-medium text-surface-700 hover:bg-surface-50">
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 text-xs font-medium text-surface-700 hover:bg-surface-50 shrink-0 whitespace-nowrap">
                       <FileText className="h-3.5 w-3.5" /> Facture
                     </a>
                   ) : (
-                    <span className="text-xs text-surface-300 px-2.5">Pas de facture</span>
+                    <span className="text-xs text-surface-300 px-2.5 shrink-0 whitespace-nowrap">Pas de facture</span>
                   )}
                 </div>
               </div>

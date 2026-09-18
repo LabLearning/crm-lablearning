@@ -6,7 +6,7 @@ import {
   Clock, FileText, Receipt, UserPlus, Building2,
   CheckCircle2, BarChart3, Target,
 } from '@/components/ui/icons'
-import { Badge } from '@/components/ui'
+import { Badge, EuroTile } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
 import type { DashboardData } from './data'
 
@@ -47,34 +47,39 @@ const ENTITY_LABELS: Record<string, string> = {
   organization: 'Organisation',
 }
 
+/** Tuile : deux par ligne sur mobile (icône masquée, valeur en text-xl insécable), identique au stat-card au-delà. */
 function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   icon: React.ComponentType<{ className?: string }>
-  label: string; value: string | number; sub?: string; color: string; bg: string
+  label: string; value: React.ReactNode; sub?: React.ReactNode; color: string; bg: string
 }) {
   return (
-    <div className="stat-card">
-      <div className={`stat-icon ${bg}`}><Icon className={`h-5 w-5 ${color}`} /></div>
+    <div className="card p-4 sm:p-5 flex items-start gap-4">
+      <div className={`stat-icon hidden sm:flex ${bg}`}><Icon className={`h-5 w-5 ${color}`} /></div>
       <div className="min-w-0">
-        <p className="stat-label">{label}</p>
-        <p className={`stat-value mt-0.5 ${color === 'text-surface-800' ? 'text-surface-900' : color}`}>{value}</p>
+        <p className="text-xs sm:text-sm text-surface-500 leading-none">{label}</p>
+        <p className={`text-xl sm:text-2xl font-heading font-bold tracking-tight tabular-nums whitespace-nowrap mt-1 sm:mt-0.5 ${color === 'text-surface-800' ? 'text-surface-900' : color}`}>{value}</p>
         {sub && <p className="stat-sub">{sub}</p>}
       </div>
     </div>
   )
 }
 
-function MiniBar({ data, maxHeight = 48 }: { data: { label: string; value: number }[]; maxHeight?: number }) {
+function MiniBar({ data, maxHeight = 48, compact = false }: { data: { label: string; value: number }[]; maxHeight?: number; compact?: boolean }) {
   const max = Math.max(...data.map((d) => d.value), 1)
+  // Sur mobile les libellés ne tiennent pas tous : on n'affiche qu'un mois sur deux
+  // (dans une carte compacte de 230 px, six libellés ne tiennent à aucune largeur)
+  const clairsemer = data.length > 6 || compact
+  const masque = compact ? 'invisible' : 'invisible sm:visible'
   return (
-    <div className="flex items-end gap-1.5 h-full">
+    <div className="flex items-end gap-1 sm:gap-1.5 h-full">
       {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+        <div key={i} className="flex-1 min-w-0 flex flex-col items-center gap-1.5">
           <div
             className="w-full bg-surface-900 rounded-sm min-h-[2px] transition-all duration-500 ease-out hover:bg-brand-500"
             style={{ height: `${Math.max((d.value / max) * maxHeight, 2)}px` }}
             title={`${d.label}: ${d.value.toLocaleString('fr-FR')} €`}
           />
-          <span className="text-[10px] text-surface-400 truncate w-full text-center">{d.label}</span>
+          <span className={`text-[11px] text-surface-400 whitespace-nowrap w-full text-center ${clairsemer && i % 2 === 1 ? masque : ''}`}>{d.label}</span>
         </div>
       ))}
     </div>
@@ -94,16 +99,16 @@ export function ReportingDashboard({ data }: ReportingDashboardProps) {
       {/* Financial KPIs */}
       <div>
         <div className="section-label mb-3">Finances</div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Euro} label="CA Réalisé" value={`${data.ca_realise.toLocaleString('fr-FR')} €`} sub={`Dont ${data.ca_mois.toLocaleString('fr-FR')} € ce mois`} color="text-surface-800" bg="bg-surface-100" />
-          <StatCard icon={CreditCard} label="Encaissé" value={`${data.encaisse.toLocaleString('fr-FR')} €`} color="text-success-600" bg="bg-success-50" />
-          <StatCard icon={Clock} label="Impayés" value={`${data.impaye.toLocaleString('fr-FR')} €`} sub={`${data.factures_en_retard} facture${data.factures_en_retard > 1 ? 's' : ''} en retard`} color="text-danger-600" bg="bg-danger-50" />
-          <StatCard icon={TrendingUp} label="Prévisionnel" value={`${data.ca_previsionnel.toLocaleString('fr-FR')} €`} sub="CA + devis en cours" color="text-brand-600" bg="bg-brand-50" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <StatCard icon={Euro} label="CA Réalisé" value={<EuroTile value={data.ca_realise} />} sub={<>Dont <EuroTile value={data.ca_mois} /> ce mois</>} color="text-surface-800" bg="bg-surface-100" />
+          <StatCard icon={CreditCard} label="Encaissé" value={<EuroTile value={data.encaisse} />} color="text-success-600" bg="bg-success-50" />
+          <StatCard icon={Clock} label="Impayés" value={<EuroTile value={data.impaye} />} sub={`${data.factures_en_retard} facture${data.factures_en_retard > 1 ? 's' : ''} en retard`} color="text-danger-600" bg="bg-danger-50" />
+          <StatCard icon={TrendingUp} label="Prévisionnel" value={<EuroTile value={data.ca_previsionnel} />} sub="CA + devis en cours" color="text-brand-600" bg="bg-brand-50" />
         </div>
       </div>
 
       {/* CA Chart */}
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6 max-w-full overflow-hidden">
         <h3 className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-4">Chiffre d'affaires mensuel</h3>
         <div className="h-32">
           <MiniBar
@@ -119,9 +124,9 @@ export function ReportingDashboard({ data }: ReportingDashboardProps) {
         <div>
           <div className="section-label mb-3">Commercial</div>
           <div className="grid grid-cols-2 gap-3">
-            <StatCard icon={UserPlus} label="Leads" value={data.leads_total} sub={`Valeur: ${data.leads_valeur.toLocaleString('fr-FR')} €`} color="text-brand-600" bg="bg-brand-50" />
+            <StatCard icon={UserPlus} label="Leads" value={data.leads_total} sub={<>Valeur : <EuroTile value={data.leads_valeur} /></>} color="text-brand-600" bg="bg-brand-50" />
             <StatCard icon={Target} label="Taux transfo." value={`${data.taux_transformation}%`} color="text-success-600" bg="bg-success-50" />
-            <StatCard icon={FileText} label="Devis en attente" value={data.devis_en_attente} sub={`${data.devis_valeur.toLocaleString('fr-FR')} €`} color="text-warning-600" bg="bg-warning-50" />
+            <StatCard icon={FileText} label="Devis en attente" value={data.devis_en_attente} sub={<EuroTile value={data.devis_valeur} />} color="text-warning-600" bg="bg-warning-50" />
             <div className="card p-4">
               <div className="text-xs text-surface-500 mb-2">Pipeline leads</div>
               <div className="space-y-1.5">
@@ -149,6 +154,7 @@ export function ReportingDashboard({ data }: ReportingDashboardProps) {
                 <MiniBar
                   data={data.inscriptions_mensuelles.slice(-6).map((m) => ({ label: m.mois, value: m.count }))}
                   maxHeight={48}
+                  compact
                 />
               </div>
             </div>
@@ -159,7 +165,7 @@ export function ReportingDashboard({ data }: ReportingDashboardProps) {
       {/* Quality */}
       <div>
         <div className="section-label mb-3">Qualité & Conformité</div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard icon={Star} label="Satisfaction" value={`${data.taux_satisfaction}%`} color="text-warning-600" bg="bg-warning-50" />
           <StatCard icon={BarChart3} label="Taux de réussite" value={`${data.taux_reussite}%`} color="text-success-600" bg="bg-success-50" />
           <StatCard icon={ShieldCheck} label="Conformité Qualiopi" value={`${data.conformite_qualiopi}%`} color="text-brand-600" bg="bg-brand-50" />
@@ -170,7 +176,7 @@ export function ReportingDashboard({ data }: ReportingDashboardProps) {
       {/* Alerts + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Alerts */}
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <h3 className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-4">Alertes</h3>
           <div className="space-y-2">
             {data.factures_en_retard > 0 && (
@@ -201,7 +207,7 @@ export function ReportingDashboard({ data }: ReportingDashboardProps) {
         </div>
 
         {/* Activity feed */}
-        <div className="card p-6">
+        <div className="card p-4 sm:p-6">
           <h3 className="text-sm font-heading font-semibold text-surface-900 tracking-tight mb-4">Activité récente</h3>
           {data.activite_recente.length > 0 ? (
             <div className="space-y-3">

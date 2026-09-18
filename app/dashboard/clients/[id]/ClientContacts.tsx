@@ -65,7 +65,7 @@ export function ClientContacts({ clientId, contacts }: { clientId: string; conta
           <Users className="h-4 w-4 text-brand-500" />
           <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Contacts ({contacts.length})</span>
         </div>
-        <button onClick={openNew} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700">
+        <button onClick={openNew} className="inline-flex items-center gap-1.5 min-h-10 -my-3 px-2 -mr-2 rounded-lg text-xs font-medium text-brand-600 hover:text-brand-700 hover:bg-brand-50">
           <UserPlus className="h-3.5 w-3.5" /> Ajouter
         </button>
       </div>
@@ -80,19 +80,19 @@ export function ClientContacts({ clientId, contacts }: { clientId: string; conta
                 <User className="h-4 w-4 text-surface-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-surface-900 truncate">
-                  {[ct.civilite, ct.prenom, ct.nom].filter(Boolean).join(' ')}
-                  {ct.est_principal && <Badge variant="info" className="ml-2">Principal</Badge>}
-                  {ct.est_signataire && <Badge variant="default" className="ml-1">Signataire</Badge>}
+                <div className="text-sm font-medium text-surface-900 flex items-center gap-x-2 gap-y-1 flex-wrap">
+                  <span className="truncate">{[ct.civilite, ct.prenom, ct.nom].filter(Boolean).join(' ')}</span>
+                  {ct.est_principal && <Badge variant="info">Principal</Badge>}
+                  {ct.est_signataire && <Badge variant="default">Signataire</Badge>}
                 </div>
-                <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap">
+                <div className="text-xs text-surface-500 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
                   {ct.poste && <span>{ct.poste}</span>}
-                  {ct.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{ct.email}</span>}
-                  {(ct.telephone || ct.mobile) && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{ct.telephone || ct.mobile}</span>}
+                  {ct.email && <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{ct.email}</span></span>}
+                  {(ct.telephone || ct.mobile) && <span className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{ct.telephone || ct.mobile}</span>}
                 </div>
               </div>
-              <div className="shrink-0">
-                <RowMenu items={[
+              <div className="shrink-0 -mr-2">
+                <RowMenu triggerClassName="h-10 w-10 flex items-center justify-center" items={[
                   { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => openEdit(ct) },
                   { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(ct) },
                 ]} />
@@ -104,12 +104,12 @@ export function ClientContacts({ clientId, contacts }: { clientId: string; conta
 
       <Modal isOpen={open} onClose={() => { setOpen(false); setEditing(null) }} title={editing ? 'Modifier le contact' : 'Nouveau contact'} size="md">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-[5rem_1fr] sm:grid-cols-3 gap-3">
             <Select id="civilite" name="civilite" label="Civilité" options={civiliteOptions} defaultValue={editing?.civilite || ''} />
             <Input id="prenom" name="prenom" label="Prénom" defaultValue={editing?.prenom || ''} />
-            <Input id="nom" name="nom" label="Nom *" defaultValue={editing?.nom || ''} />
+            <div className="col-span-2 sm:col-span-1"><Input id="nom" name="nom" label="Nom *" defaultValue={editing?.nom || ''} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input id="email" name="email" type="email" label="Email" defaultValue={editing?.email || ''} />
             <Input id="poste" name="poste" label="Poste" defaultValue={editing?.poste || ''} />
           </div>
@@ -131,7 +131,7 @@ export function ClientContacts({ clientId, contacts }: { clientId: string; conta
               Référent formation
             </label>
           </div>
-          <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3 border-t border-surface-100">
             <Button type="button" variant="secondary" onClick={() => { setOpen(false); setEditing(null) }}>Annuler</Button>
             <Button type="submit" isLoading={saving} icon={<Save className="h-4 w-4" />}>{editing ? 'Enregistrer' : 'Ajouter'}</Button>
           </div>

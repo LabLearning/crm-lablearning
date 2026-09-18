@@ -57,12 +57,13 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
   }
 
   return (
-    <header className="h-[60px] bg-white/80 backdrop-blur-xl border-b border-surface-200/60 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20">
+    <header className="h-[60px] bg-white/80 backdrop-blur-xl border-b border-surface-200/60 flex items-center justify-between gap-2 px-4 lg:px-6 sticky top-0 z-20">
       {/* Left */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMobileMenuToggle}
-          className="lg:hidden p-2 rounded-xl text-surface-400 hover:bg-surface-100 transition-colors"
+          aria-label="Ouvrir le menu"
+          className="lg:hidden h-10 w-10 -ml-2 flex items-center justify-center rounded-xl text-surface-500 hover:bg-surface-100 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -72,7 +73,9 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5 sm:gap-1.5">
+        {/* Recherche (téléphone) : la barre desktop est masquée sous md */}
+        <GlobalSearch mobileTrigger />
         {/* Notifications — wrapped in error boundary */}
         <SafeNotifications userId={user.id} />
 
@@ -83,7 +86,8 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
         <div ref={menuRef} className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-surface-50 transition-colors"
+            aria-label="Menu du compte"
+            className="flex items-center gap-2.5 p-1.5 min-h-[40px] min-w-[40px] justify-center rounded-xl hover:bg-surface-50 transition-colors"
           >
             <Avatar firstName={user.first_name} lastName={user.last_name} src={user.avatar_url} size="sm" />
             <div className="hidden sm:block text-left">
@@ -105,14 +109,14 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
               <div className="py-1">
                 <button
                   onClick={() => { router.push('/dashboard/settings'); setMenuOpen(false) }}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 min-h-[40px] text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"
                 >
                   <Settings className="h-4 w-4" />
                   Paramètres
                 </button>
                 <button
                   onClick={() => { router.push('/dashboard/profile'); setMenuOpen(false) }}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 min-h-[40px] text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"
                 >
                   <UserIcon className="h-4 w-4" />
                   Mon profil
@@ -122,7 +126,7 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
               <div className="border-t border-surface-100 pt-1">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-sm text-danger-600 hover:bg-danger-50 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 min-h-[40px] text-sm text-danger-600 hover:bg-danger-50 transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
                   Déconnexion

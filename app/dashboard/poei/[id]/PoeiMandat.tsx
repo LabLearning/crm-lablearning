@@ -8,10 +8,10 @@ import { formatDate } from '@/lib/utils'
 import { envoyerMandatAction } from '../mandat-actions'
 
 /**
- * Mandat POEI — l'entreprise mandate l'OF pour la demande d'aide France
+ * Mandat POEI, l'entreprise mandate l'OF pour la demande d'aide France
  * Travail. La carte suit l'état (à faire signer / envoyé / signé), ouvre le
  * PDF, et envoie le lien de signature au gérant avec aperçu du mail avant
- * envoi — même construction que la signature employeur de l'attestation.
+ * envoi, même construction que la signature employeur de l'attestation.
  */
 export function PoeiMandat({ poeiId, mandat }: {
   poeiId: string
@@ -48,7 +48,7 @@ export function PoeiMandat({ poeiId, mandat }: {
       <div className="min-w-0 flex-1">
         <div className="text-sm font-heading font-semibold text-surface-900">Mandat POEI</div>
         <div className="text-xs text-surface-500">
-          L&apos;entreprise mandate l&apos;organisme pour la demande d&apos;aide France Travail — signé par le gérant
+          L&apos;entreprise mandate l&apos;organisme pour la demande d&apos;aide France Travail, signé par le gérant
         </div>
       </div>
 
@@ -60,23 +60,25 @@ export function PoeiMandat({ poeiId, mandat }: {
         </span>
       ) : mandat?.sent_at ? (
         <span className="text-xs font-medium text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
-          Envoyé le {formatDate(mandat.sent_at, { day: 'numeric', month: 'short', year: 'numeric' })} — en attente de signature
+          Envoyé le {formatDate(mandat.sent_at, { day: 'numeric', month: 'short', year: 'numeric' })}, en attente de signature
         </span>
       ) : null}
 
-      {!mandat?.signed_at && (
-        <button onClick={ouvrirApercu} disabled={envoi}
-          className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-60">
-          {envoi && !apercu ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-          {mandat?.sent_at ? 'Relancer le gérant' : 'Faire signer le gérant'}
-        </button>
-      )}
-      <a href={`/api/pdf/mandat-poei/${poeiId}`} target="_blank" rel="noreferrer"
-        className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
-        <Download className="h-4 w-4" /> PDF
-      </a>
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        {!mandat?.signed_at && (
+          <button onClick={ouvrirApercu} disabled={envoi}
+            className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-60 flex-1 sm:flex-none">
+            {envoi && !apercu ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+            {mandat?.sent_at ? 'Relancer le gérant' : 'Faire signer le gérant'}
+          </button>
+        )}
+        <a href={`/api/pdf/mandat-poei/${poeiId}`} target="_blank" rel="noreferrer"
+          className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm flex-1 sm:flex-none">
+          <Download className="h-4 w-4" /> PDF
+        </a>
+      </div>
 
-      <Modal isOpen={!!apercu} onClose={() => setApercu(null)} size="lg" title="Aperçu avant envoi — Mandat POEI">
+      <Modal isOpen={!!apercu} onClose={() => setApercu(null)} size="lg" title="Aperçu avant envoi, Mandat POEI">
         {apercu && (
           <div className="space-y-3">
             <div className="text-xs text-surface-500">
@@ -84,9 +86,9 @@ export function PoeiMandat({ poeiId, mandat }: {
               <div><span className="font-semibold text-surface-700">Objet :</span> {apercu.subject}</div>
             </div>
             <div className="rounded-xl border border-surface-200 overflow-hidden bg-white">
-              <iframe title="Aperçu email" srcDoc={apercu.html} className="w-full" style={{ height: 460, border: 0 }} />
+              <iframe title="Aperçu email" srcDoc={apercu.html} className="w-full h-[60vh] sm:h-[460px]" style={{ border: 0 }} />
             </div>
-            <div className="flex justify-end gap-3 pt-1">
+            <div className="flex flex-wrap justify-end gap-3 pt-1">
               <Button variant="secondary" onClick={() => setApercu(null)}>Annuler</Button>
               <Button onClick={confirmerEnvoi} isLoading={envoi} icon={<Send className="h-4 w-4" />}>
                 Confirmer l&apos;envoi

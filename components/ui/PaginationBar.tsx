@@ -45,20 +45,20 @@ export function PaginationBar({ total, page, perPage }: PaginationBarProps) {
         <button
           onClick={() => go(page - 1)}
           disabled={page <= 1}
-          className="p-1.5 rounded-lg text-surface-500 hover:bg-surface-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1.5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center rounded-lg text-surface-500 hover:bg-surface-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           aria-label="Page précédente"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         {pages.map((p, idx) =>
           p === '…' ? (
-            <span key={`e${idx}`} className="px-1.5 text-xs text-surface-400">…</span>
+            <span key={`e${idx}`} className="px-1.5 text-xs text-surface-400" aria-hidden="true">…</span>
           ) : (
             <button
               key={p}
               onClick={() => go(p)}
               className={cn(
-                'min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-medium transition-colors',
+                'min-w-10 min-h-10 sm:min-w-[28px] sm:min-h-0 h-7 px-1.5 rounded-lg text-xs font-medium transition-colors',
                 p === page
                   ? 'bg-surface-900 text-white'
                   : 'text-surface-600 hover:bg-surface-100'
@@ -71,7 +71,7 @@ export function PaginationBar({ total, page, perPage }: PaginationBarProps) {
         <button
           onClick={() => go(page + 1)}
           disabled={page >= totalPages}
-          className="p-1.5 rounded-lg text-surface-500 hover:bg-surface-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+          className="p-1.5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center rounded-lg text-surface-500 hover:bg-surface-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
           aria-label="Page suivante"
         >
           <ChevronRight className="h-4 w-4" />

@@ -71,7 +71,13 @@ export function RowMenu({ items, align = 'right', trigger, triggerClassName, wid
       <button
         ref={btnRef}
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
-        className={cn('p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors', triggerClassName)}
+        className={cn(
+          'p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 transition-colors',
+          // Déclencheur par défaut : cible tactile 40 x 40 sous sm, 28 px inchangés au-delà.
+          // Uniquement quand le module ne fournit ni contenu ni classes (il gère alors lui-même sa taille).
+          !trigger && !triggerClassName && 'h-10 w-10 sm:h-auto sm:w-auto sm:p-1.5 inline-flex items-center justify-center',
+          triggerClassName,
+        )}
       >
         {trigger || <MoreHorizontal className="h-4 w-4" />}
       </button>

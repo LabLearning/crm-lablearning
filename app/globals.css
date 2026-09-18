@@ -1,3 +1,34 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Lab Learning CRM : feuille de style globale
+
+   UTILITAIRES MOBILE (réutilisables dans tous les modules)
+   ─────────────────────────────────────────────────────────
+   .page-header    En-tête de page : titre à gauche, actions à droite sur
+                   desktop ; sous 640 px le titre puis les actions s'empilent
+                   et le bouton principal prend toute la largeur.
+                   <div class="page-header"><div>…titre…</div><div class="page-header-actions">…boutons…</div></div>
+   .stack-mobile   Ligne flex qui devient une colonne sous 640 px (gap 0.75rem).
+                   Ajoutez `sm:items-center` etc. pour le rendu desktop.
+   .tabs-scroll    Barre d'onglets défilante horizontalement : scrollbar
+                   masquée, pas de retour à la ligne, sans scroll-snap (le
+                   snap « start » ignore le padding et colle le premier
+                   onglet au bord de l'écran).
+                   Les enfants doivent être `shrink-0` (ou non `flex-1`).
+                   Utilisez `scrollIntoView` sur l'onglet actif si besoin.
+   .table-scroll   Conteneur d'un tableau large : overflow-x-auto, coins
+                   arrondis, et ombre d'affordance à droite quand il reste
+                   du contenu à faire défiler. Mettre `min-w-[…]` sur le
+                   tableau lui-même, jamais sur la page.
+   .safe-bottom    Padding bas = zone sûre iOS (barre d'accueil).
+   .touch-target   Force 40 px de hauteur minimale (cibles tactiles) sous 640 px.
+
+   RÈGLES APPLIQUÉES AUTOMATIQUEMENT SOUS 640 px
+   ─────────────────────────────────────────────
+   .btn-base       min-height 40 px (tous les boutons du design system).
+   .input-base     font-size 16 px (empêche le zoom automatique d'iOS au
+                   focus), min-height 44 px.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -166,6 +197,70 @@
 
   .table-row {
     @apply hover:bg-surface-50/60 transition-colors duration-150;
+  }
+
+
+  /* ─── Utilitaires mobile (voir documentation en tête de fichier) ─── */
+
+  /* En-tête de page : titre puis actions, empilés sous 640 px */
+  .page-header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-6;
+  }
+  .page-header-actions {
+    @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2;
+  }
+  .page-header-actions > .btn-primary,
+  .page-header-actions > .btn-brand,
+  .page-header-actions > .btn-secondary,
+  .page-header-actions > .btn-ia,
+  .page-header-actions > a,
+  .page-header-actions > button {
+    @apply w-full sm:w-auto;
+  }
+
+  /* Ligne qui devient une colonne sur téléphone */
+  .stack-mobile {
+    @apply flex flex-col gap-3 sm:flex-row;
+  }
+
+  /* Barre d'onglets défilante : scrollbar masquée, défilement libre */
+  .tabs-scroll {
+    @apply flex flex-nowrap gap-1 overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Les onglets ne se coupent pas au bord : on déborde du padding du parent */
+    padding-inline: 2px;
+  }
+  .tabs-scroll::-webkit-scrollbar { display: none; }
+  .tabs-scroll > * {
+    @apply shrink-0 whitespace-nowrap;
+  }
+
+  /* Conteneur de tableau large : défilement horizontal + ombre d'affordance */
+  .table-scroll {
+    @apply relative w-full max-w-full overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+    /* Ombres « il reste du contenu » à gauche et à droite, attachées au scroll */
+    background:
+      linear-gradient(to right, #fff 30%, rgba(255,255,255,0)) left / 40px 100% no-repeat,
+      linear-gradient(to left, #fff 30%, rgba(255,255,255,0)) right / 40px 100% no-repeat,
+      linear-gradient(to right, rgba(15,23,42,0.10), rgba(15,23,42,0)) left / 14px 100% no-repeat,
+      linear-gradient(to left, rgba(15,23,42,0.10), rgba(15,23,42,0)) right / 14px 100% no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+  .table-scroll > table { @apply min-w-full; }
+
+  /* Zone sûre iOS (barre d'accueil) */
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* Cible tactile minimale sous 640 px */
+  .touch-target { @apply inline-flex items-center; }
+  @media (max-width: 639.98px) {
+    .touch-target { min-height: 40px; }
+    .btn-base { min-height: 40px; }
+    /* 16 px : iOS ne zoome pas sur un champ dont la police fait au moins 16 px */
+    .input-base { font-size: 16px; }
   }
 
   /* ─── Portal mobile utilities ─── */

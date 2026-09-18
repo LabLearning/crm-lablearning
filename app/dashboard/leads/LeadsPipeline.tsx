@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import {
   UserPlus, Phone, Mail, Building2,
   ArrowRight, Trash2, Eye, Edit3, Euro, List, LayoutGrid, Columns3,
-  Search, Upload, Download, Filter, X, Star,
+  Search, Upload, Download, Filter, X, Star, MoreHorizontal, CalendarClock, ChevronRight,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, useToast, RowMenu } from '@/components/ui'
 import { LeadForm } from './LeadForm'
@@ -72,6 +72,31 @@ type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score'
 export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], formateurs = [], franchises = [], interactions = [], isApporteur }: LeadsPipelineProps) {
   const { toast } = useToast()
   const [view, setView] = useState<ViewMode>('kanban')
+  // Sous 768 px la liste (cartes) est la vue par défaut : sept colonnes de
+  // kanban ne tiennent pas sur un téléphone. L'utilisateur peut toujours
+  // basculer vers le kanban (défilement horizontal colonne par colonne).
+  const viewChosenRef = useRef(false)
+  useEffect(() => {
+    if (!viewChosenRef.current && window.matchMedia('(max-width: 767px)').matches) setView('list')
+  }, [])
+  function chooseView(v: ViewMode) { viewChosenRef.current = true; setView(v) }
+  // Kanban mobile : conteneur défilant + étape visible pour la barre d'étapes
+  const kanbanRef = useRef<HTMLDivElement>(null)
+  const stepsRef = useRef<HTMLDivElement>(null)
+  const [kanbanIndex, setKanbanIndex] = useState(0)
+  const KANBAN_COL_W = 280 + 12 // largeur de colonne + gap-3
+  function scrollKanbanTo(i: number) {
+    kanbanRef.current?.scrollTo({ left: i * KANBAN_COL_W, behavior: 'smooth' })
+  }
+  // La puce de l'étape courante reste visible dans la barre d'étapes (qui
+  // défile elle aussi horizontalement) : on centre la puce active.
+  useEffect(() => {
+    const bar = stepsRef.current
+    const chip = bar?.children[kanbanIndex] as HTMLElement | undefined
+    if (!bar || !chip) return
+    const target = chip.offsetLeft - (bar.clientWidth - chip.offsetWidth) / 2
+    bar.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
+  }, [kanbanIndex, view])
   const [createOpen, setCreateOpen] = useState(false)
   const [editLead, setEditLead] = useState<Lead | null>(null)
   const [detailLead, setDetailLead] = useState<Lead | null>(null)
@@ -243,7 +268,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
             <div onClick={e => e.stopPropagation()}>
               <RowMenu
                 width={192}
-                triggerClassName="opacity-0 group-hover:opacity-100"
+                triggerClassName="p-3 -m-2 lg:p-1.5 lg:m-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 items={[
                   { label: 'Voir le detail', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailLead(lead) },
                   { label: 'Modifier', icon: <Edit3 className="h-4 w-4 text-surface-400" />, onClick: () => setEditLead(lead) },
@@ -265,7 +290,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
             {lead.contact_email && <Mail className="h-3.5 w-3.5 text-surface-400" />}
             {lead.contact_telephone && <Phone className="h-3.5 w-3.5 text-surface-400" />}
           </div>
-          <span className="text-[10px] text-surface-400">{formatDate(lead.created_at, { day: 'numeric', month: 'short' })}</span>
+          <span className="text-2xs text-surface-400">{formatDate(lead.created_at, { day: 'numeric', month: 'short' })}</span>
         </div>
       </div>
     )
@@ -277,24 +302,53 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Pipeline commercial</h1>
-          <p className="text-surface-500 mt-1 text-sm">{leads.length} lead{leads.length > 1 ? 's' : ''} -- Valeur : {totalValue.toLocaleString('fr-FR')} EUR</p>
+          <p className="text-surface-500 mt-1 text-sm">{leads.length} lead{leads.length > 1 ? 's' : ''} · Valeur : {totalValue.toLocaleString('fr-FR')} EUR</p>
         </div>
-        <div className="flex items-center gap-2">
-          <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+        {/* Actions (tablette et plus) */}
+        <div className="hidden sm:flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()} icon={<Upload className="h-3.5 w-3.5" />}>Import</Button>
           <Button variant="secondary" size="sm" onClick={exportCSV} icon={<Download className="h-3.5 w-3.5" />}>Export</Button>
           <div className="flex bg-surface-100 rounded-lg p-0.5">
             {([
-              { id: 'kanban' as const, icon: <Columns3 className="h-4 w-4" /> },
-              { id: 'list' as const, icon: <List className="h-4 w-4" /> },
+              { id: 'kanban' as const, icon: <Columns3 className="h-4 w-4" />, label: 'Vue kanban' },
+              { id: 'list' as const, icon: <List className="h-4 w-4" />, label: 'Vue liste' },
             ]).map(v => (
-              <button key={v.id} onClick={() => setView(v.id)}
-                className={cn('p-2 rounded-md transition-colors', view === v.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-400 hover:text-surface-600')}>
+              <button key={v.id} type="button" onClick={() => chooseView(v.id)}
+                aria-label={v.label} title={v.label} aria-pressed={view === v.id}
+                className={cn('p-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-400/40', view === v.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-400 hover:text-surface-600')}>
                 {v.icon}
               </button>
             ))}
           </div>
           <Button onClick={() => setCreateOpen(true)} icon={<UserPlus className="h-4 w-4" />}>Nouveau lead</Button>
+        </div>
+        {/* Actions (téléphone) : bascule de vue + menu import/export, puis bouton principal pleine largeur */}
+        <div className="sm:hidden flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex bg-surface-100 rounded-lg p-0.5">
+              {([
+                { id: 'list' as const, icon: <List className="h-4 w-4" />, label: 'Liste' },
+                { id: 'kanban' as const, icon: <Columns3 className="h-4 w-4" />, label: 'Kanban' },
+              ]).map(v => (
+                <button key={v.id} type="button" onClick={() => chooseView(v.id)} aria-pressed={view === v.id}
+                  className={cn('h-10 px-3 inline-flex items-center gap-1.5 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-400/40', view === v.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-500')}>
+                  {v.icon}{v.label}
+                </button>
+              ))}
+            </div>
+            <RowMenu
+              width={200}
+              align="right"
+              trigger={<span className="inline-flex items-center gap-1.5 text-sm font-medium text-surface-700"><MoreHorizontal className="h-4 w-4" />Plus</span>}
+              triggerClassName="h-10 px-3 rounded-lg border border-surface-200 bg-white text-surface-700 hover:bg-surface-50"
+              items={[
+                { label: 'Importer un fichier CSV', icon: <Upload className="h-4 w-4 text-surface-400" />, onClick: () => fileRef.current?.click() },
+                { label: 'Exporter la sélection (CSV)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: exportCSV },
+              ]}
+            />
+          </div>
+          <Button className="w-full justify-center min-h-[44px]" onClick={() => setCreateOpen(true)} icon={<UserPlus className="h-4 w-4" />}>Nouveau lead</Button>
         </div>
       </div>
 
@@ -302,19 +356,19 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-surface-400" />
-          <input className="input-base pl-10" placeholder="Rechercher un lead..." value={search} onChange={e => setSearch(e.target.value)} />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"><X className="h-4 w-4" /></button>}
+          <input className="input-base pl-10 min-h-[44px] sm:min-h-0" placeholder="Rechercher un lead..." value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-surface-400 hover:text-surface-600"><X className="h-4 w-4" /></button>}
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto sm:overflow-visible sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {([
             { id: 'all' as const, label: 'Tous', count: stats.total },
             { id: 'high_score' as const, label: 'Prioritaires', count: stats.highScore },
-            { id: 'gagne' as const, label: 'Gagnes', count: stats.gagnes },
+            { id: 'gagne' as const, label: 'Gagnés', count: stats.gagnes },
             { id: 'perdu' as const, label: 'Perdus', count: stats.perdus },
             { id: 'today' as const, label: "Aujourd'hui", count: stats.today },
           ]).map(f => (
-            <button key={f.id} onClick={() => setFilterChip(f.id)}
-              className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+            <button key={f.id} type="button" onClick={() => setFilterChip(f.id)} aria-pressed={filterChip === f.id}
+              className={cn('shrink-0 h-10 sm:h-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-400/40',
                 filterChip === f.id ? 'bg-surface-900 text-white shadow-xs' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
               {f.label} {f.count}
             </button>
@@ -322,29 +376,108 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
         </div>
       </div>
 
-      {/* ─── VUE CARTES ─── */}
       {/* ─── VUE KANBAN ─── */}
+      {/* Sous lg : une colonne de 280 px à la fois, défilement horizontal avec
+          accroche (scroll-snap) et barre d'étapes cliquable. À partir de lg :
+          grille de sept colonnes inchangée. */}
       {view === 'kanban' && (
-        <div className="grid grid-cols-7 gap-3 pb-4">
-          {PIPELINE_COLUMNS.map(status => (
-            <div key={status} onDragOver={handleDragOver} onDrop={e => handleDrop(e, status)}
-              className="rounded-2xl bg-surface-50 min-w-0">
-              <div className="px-3.5 py-3 flex items-center gap-2">
-                <span className="text-sm font-semibold text-surface-700 truncate">{LEAD_STATUS_LABELS[status]}</span>
-                <span className="text-xs text-surface-400 bg-surface-200 rounded-full px-2 py-0.5 shrink-0">{leadsByStatus[status].length}</span>
-              </div>
-              <div className="px-2.5 pb-3 space-y-2 min-h-[100px]">
-                {leadsByStatus[status].map(lead => renderLeadCard(lead, true))}
-                {leadsByStatus[status].length === 0 && <div className="text-center py-8 text-xs text-surface-400">Aucun lead</div>}
-              </div>
+        <div>
+          <div className="lg:hidden mb-3">
+            <div ref={stepsRef} className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {PIPELINE_COLUMNS.map((status, i) => (
+                <button key={status} type="button" onClick={() => scrollKanbanTo(i)} aria-pressed={kanbanIndex === i}
+                  className={cn('shrink-0 h-10 px-3 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-400/40',
+                    kanbanIndex === i ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-600')}>
+                  {LEAD_STATUS_LABELS[status]}
+                  <span aria-label={`${leadsByStatus[status].length} leads`} className={cn('text-2xs rounded-full px-1.5 py-px', kanbanIndex === i ? 'bg-white/20' : 'bg-white text-surface-500')}>{leadsByStatus[status].length}</span>
+                </button>
+              ))}
             </div>
-          ))}
+            <p className="mt-2 text-xs text-surface-500 inline-flex items-center gap-1">
+              Faites défiler vers la droite pour passer à l'étape suivante <ChevronRight className="h-3.5 w-3.5" />
+            </p>
+          </div>
+          <div
+            ref={kanbanRef}
+            onScroll={e => { const el = e.currentTarget; setKanbanIndex(Math.min(PIPELINE_COLUMNS.length - 1, Math.round(el.scrollLeft / KANBAN_COL_W))) }}
+            className="flex gap-3 pb-4 overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-7 lg:overflow-visible lg:snap-none"
+          >
+            {PIPELINE_COLUMNS.map(status => (
+              <div key={status} onDragOver={handleDragOver} onDrop={e => handleDrop(e, status)}
+                className="rounded-2xl bg-surface-50 w-[280px] shrink-0 snap-start lg:w-auto lg:shrink lg:min-w-0">
+                <div className="px-3.5 py-3 flex items-center gap-2">
+                  <span className="text-sm font-semibold text-surface-700 truncate">{LEAD_STATUS_LABELS[status]}</span>
+                  <span className="text-xs text-surface-400 bg-surface-200 rounded-full px-2 py-0.5 shrink-0">{leadsByStatus[status].length}</span>
+                </div>
+                <div className="px-2.5 pb-3 space-y-2 min-h-[100px]">
+                  {leadsByStatus[status].map(lead => renderLeadCard(lead, true))}
+                  {leadsByStatus[status].length === 0 && <div className="text-center py-8 text-xs text-surface-400">Aucun lead</div>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* ─── VUE LISTE ─── */}
+      {/* Sous md : cartes (nom, entreprise, valeur, étape, prochaine action) ;
+          à partir de md : le tableau d'origine. */}
       {view === 'list' && (
-        <div className="card overflow-hidden">
+        <div className="md:hidden space-y-2">
+          {filtered.map(lead => {
+            const score = calcScore(lead)
+            return (
+              <div key={lead.id} className="bg-white rounded-xl border border-surface-200/80 p-4">
+                <button type="button" onClick={() => setDetailLead(lead)} className="w-full text-left">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-surface-900 truncate">{lead.contact_prenom} {lead.contact_nom}</div>
+                      {lead.entreprise && <div className="flex items-center gap-1 text-xs text-surface-500 mt-0.5"><Building2 className="h-3 w-3 shrink-0" /><span className="truncate">{lead.entreprise}</span></div>}
+                    </div>
+                    <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded shrink-0', scoreBg(score), scoreColor(score))}>{score}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                    <Badge variant={LEAD_STATUS_COLORS[lead.status]} dot>{LEAD_STATUS_LABELS[lead.status]}</Badge>
+                    {lead.montant_estime && lead.montant_estime > 0 ? (
+                      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-success-700 bg-success-50 rounded-md px-1.5 py-0.5"><Euro className="h-3 w-3" />{Number(lead.montant_estime).toLocaleString('fr-FR')}</span>
+                    ) : null}
+                    <span className="text-2xs text-surface-400">{formatDate(lead.created_at, { day: 'numeric', month: 'short' })}</span>
+                  </div>
+                  {(lead.next_action || lead.next_action_date) && (
+                    <div className="mt-2.5 flex items-start gap-1.5 text-xs text-surface-600">
+                      <CalendarClock className="h-3.5 w-3.5 shrink-0 mt-px text-surface-400" />
+                      <span>
+                        <span className="text-surface-400">Prochaine action : </span>
+                        {lead.next_action || 'à planifier'}
+                        {lead.next_action_date && <span className="text-surface-400"> · {formatDate(lead.next_action_date, { day: 'numeric', month: 'short' })}</span>}
+                      </span>
+                    </div>
+                  )}
+                </button>
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-surface-100">
+                  <button onClick={() => setDetailLead(lead)} className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-lg bg-surface-100 text-xs font-medium text-surface-700">
+                    <Eye className="h-4 w-4" />Voir
+                  </button>
+                  <button onClick={() => setEditLead(lead)} className="flex-1 h-10 inline-flex items-center justify-center gap-1.5 rounded-lg bg-surface-100 text-xs font-medium text-surface-700">
+                    <Edit3 className="h-4 w-4" />Modifier
+                  </button>
+                  <RowMenu
+                    width={200}
+                    triggerClassName="h-10 w-10 p-0 inline-flex items-center justify-center rounded-lg bg-surface-100 text-surface-600"
+                    items={[
+                      { label: 'Convertir en client', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(lead.id), hidden: ['gagne', 'perdu'].includes(lead.status) },
+                      { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(lead.id), danger: true },
+                    ]}
+                  />
+                </div>
+              </div>
+            )
+          })}
+          {filtered.length === 0 && <div className="card text-center py-12 text-sm text-surface-500">Aucun lead</div>}
+        </div>
+      )}
+      {view === 'list' && (
+        <div className="hidden md:block card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

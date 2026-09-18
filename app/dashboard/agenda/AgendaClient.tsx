@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import {
   CalendarDays, ChevronLeft, ChevronRight, List, LayoutGrid,
   Calendar as CalIcon, Clock, MapPin, Phone, Mail,
   FileText, Bell, Clipboard, GraduationCap, CheckSquare,
-  AlertCircle, User,
+  AlertCircle, User, CalendarCheck,
 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { PoeiBadge } from '@/components/ui'
@@ -28,7 +28,7 @@ function SessionTooltipCard({ s, date, className }: { s: Session; date: string; 
         <span className={cn('inline-block px-2 py-0.5 rounded-full text-2xs font-medium', s.isPrevisionnel ? 'bg-amber-50 text-amber-700' : 'bg-surface-100 text-surface-600')}>{SESSION_STATUS_FR[s.status] || s.status}</span>
         {s.isPoei && <PoeiBadge />}
       </div>
-      {s.isPrevisionnel && <div className="mt-1.5 text-2xs text-surface-400">Date non confirmée — cliquez pour ouvrir le lead</div>}
+      {s.isPrevisionnel && <div className="mt-1.5 text-2xs text-surface-400">Date non confirmée : cliquez pour ouvrir le lead</div>}
     </div>
   )
 }
@@ -40,10 +40,10 @@ function SessionChip({ s, date, color }: { s: Session; date: string; color?: str
     <div className="relative group/chip">
       <Link href={sessionHref(s)} title={sessionTooltip(s, date)}
         className={cn('block px-1.5 py-1 rounded-md text-[11px] mb-1 border hover:brightness-95', s.isPrevisionnel ? PREV_COLOR : (color || colorFor(s.id)))}>
-        <span className="flex items-center gap-1 text-[9px] leading-none opacity-75">
+        <span className="flex items-center gap-1 text-2xs leading-none opacity-75">
           {c && <span className="font-mono">{c.debut}</span>}
-          {s.isPrevisionnel && <span className="px-1 rounded bg-surface-400 text-white text-[8px] font-bold">PRÉV.</span>}
-          {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold">POEI</span>}
+          {s.isPrevisionnel && <span className="px-1 rounded bg-surface-400 text-white text-2xs font-bold">PRÉV.</span>}
+          {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-2xs font-bold">POEI</span>}
         </span>
         <span className="block font-semibold leading-snug line-clamp-2 mt-0.5">{s.titre}</span>
       </Link>
@@ -52,21 +52,22 @@ function SessionChip({ s, date, color }: { s: Session; date: string; color?: str
   )
 }
 
-// Bloc positionné (vue semaine) : s'étend sur toute la plage horaire
-function SessionBlock({ p, date }: { p: Positioned; date: string }) {
+// Bloc positionné (vue semaine) : s'étend sur toute la plage horaire.
+// `flip` ouvre l'infobulle vers la gauche (deux dernières colonnes, sinon elle sortirait de l'écran)
+function SessionBlock({ p, date, flip }: { p: Positioned; date: string; flip?: boolean }) {
   const s = p.s
   return (
     <div className="absolute group/chip px-0.5" style={{ top: p.top, height: p.height, left: `${p.leftPct}%`, width: `${p.widthPct}%` }}>
       <Link href={sessionHref(s)} title={sessionTooltip(s, date)}
         className={cn('flex flex-col h-full rounded-md border px-1.5 py-1 overflow-hidden hover:brightness-95 transition', s.isPrevisionnel ? 'border-dashed' : '', p.color)}>
-        <span className="text-[10px] font-mono leading-none opacity-80 flex items-center gap-1">
+        <span className="text-2xs font-mono leading-none opacity-80 flex items-center gap-1">
           {p.debut}–{p.fin}
-          {s.isPrevisionnel && <span className="px-1 rounded bg-surface-400 text-white text-[8px] font-bold leading-tight">PRÉV.</span>}
-          {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-[8px] font-bold leading-tight">POEI</span>}
+          {s.isPrevisionnel && <span className="px-1 rounded bg-surface-400 text-white text-2xs font-bold leading-tight">PRÉV.</span>}
+          {s.isPoei && <span className="px-1 rounded bg-sky-500 text-white text-2xs font-bold leading-tight">POEI</span>}
         </span>
         <span className="text-xs font-bold leading-snug mt-0.5 line-clamp-3">{s.titre}</span>
       </Link>
-      <SessionTooltipCard s={s} date={date} className="left-full top-0 ml-1" />
+      <SessionTooltipCard s={s} date={date} className={flip ? 'right-full top-0 mr-1' : 'left-full top-0 ml-1'} />
     </div>
   )
 }
@@ -241,7 +242,8 @@ const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 const HEURES = Array.from({ length: 13 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
 
-function toDateStr(d: Date) { return d.toISOString().split('T')[0] }
+// Date locale → 'YYYY-MM-DD' (jamais toISOString : à Paris entre 0 h et 2 h, l'UTC est encore la veille)
+function toDateStr(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 function getWeekDates(ref: Date): string[] {
   const d = new Date(ref); const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
@@ -263,10 +265,32 @@ interface AgendaClientProps {
 }
 
 type Tab = 'formations' | 'taches'
+type View = 'jour' | 'semaine' | 'mois' | 'liste'
+
+// Libellé long d'une date (« vendredi 18 septembre 2026 »)
+function frLong(d: Date): string {
+  const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+// Rappel sous lg : les grilles semaine et mois sont plus larges que l'écran
+function ScrollHint({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="lg:hidden mb-2 text-xs text-surface-500 inline-flex items-center gap-1">
+      {children} <ChevronRight className="h-3.5 w-3.5" />
+    </p>
+  )
+}
 
 export function AgendaClient({ interactions, sessions, taches, users, currentUserId }: AgendaClientProps) {
   const [tab, setTab] = useState<Tab>('formations')
-  const [view, setView] = useState<'semaine' | 'mois' | 'liste'>('semaine')
+  const [view, setView] = useState<View>('semaine')
+  // Sous 768 px la journée devient la vue par défaut : la semaine complète
+  // (7 colonnes, 28 blocs) est illisible sur un téléphone.
+  const viewChosenRef = useRef(false)
+  useEffect(() => {
+    if (!viewChosenRef.current && window.matchMedia('(max-width: 767px)').matches) setView('jour')
+  }, [])
+  function chooseView(v: View) { viewChosenRef.current = true; setView(v) }
   const [refDate, setRefDate] = useState(new Date())
   // 'all' = tout · 'me' = moi · userId = un membre
   const [tacheFilter, setTacheFilter] = useState<string>('all')
@@ -285,10 +309,12 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
 
   function navigate(dir: number) {
     const d = new Date(refDate)
-    if (view === 'semaine') d.setDate(d.getDate() + dir * 7)
+    if (view === 'jour') d.setDate(d.getDate() + dir)
+    else if (view === 'semaine') d.setDate(d.getDate() + dir * 7)
     else d.setMonth(d.getMonth() + dir)
     setRefDate(d)
   }
+  const navLabel = view === 'jour' ? 'jour' : view === 'semaine' ? 'semaine' : 'mois'
 
   // ────── DATA HELPERS ──────
   function getSessionsForDate(date: string) {
@@ -312,7 +338,9 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
   const tachesActives = taches.filter(t => t.status !== 'terminee').length
   const tachesEnRetard = taches.filter(t => t.status !== 'terminee' && t.dueDate < today).length
 
-  const periodLabel = view === 'semaine' && weekDates.length > 0
+  const periodLabel = view === 'jour'
+    ? frLong(refDate)
+    : view === 'semaine' && weekDates.length > 0
     ? <>Semaine du {new Date(weekDates[0]).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} au {new Date(weekDates[6]).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</>
     : view === 'mois'
     ? `${MOIS[refDate.getMonth()]} ${refDate.getFullYear()}`
@@ -340,16 +368,17 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View toggle */}
           <div className="flex bg-surface-100 rounded-lg p-0.5">
             {([
+              { id: 'jour', icon: <CalendarCheck className="h-4 w-4" />, label: 'Jour' },
               { id: 'semaine', icon: <LayoutGrid className="h-4 w-4" />, label: 'Semaine' },
               { id: 'mois', icon: <CalIcon className="h-4 w-4" />, label: 'Mois' },
               { id: 'liste', icon: <List className="h-4 w-4" />, label: 'Liste' },
             ] as const).map(v => (
-              <button key={v.id} onClick={() => setView(v.id)} title={v.label}
-                className={cn('p-2 rounded-md transition-colors', view === v.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-400 hover:text-surface-600')}>
+              <button key={v.id} onClick={() => chooseView(v.id)} title={v.label} aria-label={v.label}
+                className={cn('p-3 sm:p-2 rounded-md transition-colors', view === v.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-400 hover:text-surface-600')}>
                 {v.icon}
               </button>
             ))}
@@ -357,16 +386,25 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
 
           {/* Nav */}
           <div className="flex items-center gap-1">
-            <button onClick={() => navigate(-1)} className="p-2 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 transition-colors">
+            <button onClick={() => navigate(-1)} aria-label={`${navLabel} précédent`} className="p-3 sm:p-2 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 transition-colors">
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <button onClick={() => setRefDate(new Date())} className="px-3 py-1.5 rounded-lg text-xs font-medium text-surface-600 hover:bg-surface-100 transition-colors">
+            <button onClick={() => setRefDate(new Date())} className="h-10 sm:h-auto px-3 py-1.5 rounded-lg text-xs font-medium text-surface-600 hover:bg-surface-100 transition-colors">
               Aujourd'hui
             </button>
-            <button onClick={() => navigate(1)} className="p-2 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 transition-colors">
+            <button onClick={() => navigate(1)} aria-label={`${navLabel} suivant`} className="p-3 sm:p-2 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-600 transition-colors">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+
+          {/* Sélecteur de date (aller directement à un jour) */}
+          <input
+            type="date"
+            aria-label="Aller à une date"
+            value={toDateStr(refDate)}
+            onChange={e => { if (e.target.value) setRefDate(new Date(`${e.target.value}T12:00:00`)) }}
+            className="h-10 sm:h-8 rounded-lg border border-surface-200 bg-white px-2 text-xs text-surface-600 focus:outline-none focus:ring-2 focus:ring-accent-400/40"
+          />
         </div>
       </div>
 
@@ -393,7 +431,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
               {t.label}
               {t.count > 0 && (
                 <span className={cn(
-                  'text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md',
+                  'text-2xs font-bold tabular-nums px-1.5 py-0.5 rounded-md',
                   active ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-500',
                 )}>
                   {t.count}
@@ -414,7 +452,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
           <button
             onClick={() => setShowPrev(!showPrev)}
             className={cn(
-              'shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-semibold transition-all border',
+              'shrink-0 self-start sm:self-auto inline-flex items-center gap-1.5 h-10 sm:h-7 px-3 sm:px-2.5 rounded-full text-xs font-semibold transition-all border',
               showPrev
                 ? 'bg-surface-100 text-surface-700 border-dashed border-surface-400'
                 : 'bg-white text-surface-400 border-surface-200 hover:text-surface-600',
@@ -426,11 +464,11 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
         )}
 
         {tab === 'taches' && users.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setTacheFilter('all')}
               className={cn(
-                'shrink-0 h-7 px-2.5 rounded-full text-xs font-semibold transition-all',
+                'shrink-0 h-10 sm:h-7 px-3 sm:px-2.5 rounded-full text-xs font-semibold transition-all',
                 tacheFilter === 'all' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200',
               )}
             >
@@ -439,7 +477,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
             <button
               onClick={() => setTacheFilter('me')}
               className={cn(
-                'shrink-0 h-7 px-2.5 rounded-full text-xs font-semibold transition-all',
+                'shrink-0 h-10 sm:h-7 px-3 sm:px-2.5 rounded-full text-xs font-semibold transition-all',
                 tacheFilter === 'me' ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100',
               )}
             >
@@ -458,7 +496,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
                     onClick={() => setTacheFilter(u.id)}
                     title={[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}
                     className={cn(
-                      'shrink-0 h-7 w-7 rounded-full text-[10px] font-bold flex items-center justify-center transition-all',
+                      'shrink-0 h-10 w-10 sm:h-7 sm:w-7 rounded-full text-2xs font-bold flex items-center justify-center transition-all',
                       active
                         ? 'bg-surface-900 text-white ring-2 ring-surface-900 ring-offset-1'
                         : 'bg-surface-100 text-surface-600 hover:bg-surface-200',
@@ -504,7 +542,7 @@ export function AgendaClient({ interactions, sessions, taches, users, currentUse
 function FormationsView({
   view, weekDates, monthGrid, refDate, today, sessions, getSessionsForDate,
 }: {
-  view: 'semaine' | 'mois' | 'liste'
+  view: View
   weekDates: string[]
   monthGrid: string[]
   refDate: Date
@@ -514,13 +552,69 @@ function FormationsView({
 }) {
   // Couleur stable par session (calculée une fois sur l'ensemble visible)
   const colorMap = useMemo(() => assignSessionColors(sessions), [sessions])
+  const dayStr = toDateStr(refDate)
+  const dayList = useMemo(
+    () => layoutDay(getSessionsForDate(dayStr), dayStr, colorMap).sort((a, b) => a.top - b.top || a.s.titre.localeCompare(b.s.titre)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessions, dayStr, colorMap],
+  )
+  // Sous lg, la grille semaine défile : on amène la colonne du jour à l'écran
+  const weekRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = weekRef.current
+    if (!el || view !== 'semaine') return
+    const idx = weekDates.indexOf(today)
+    if (idx < 0 || el.scrollWidth <= el.clientWidth) return
+    const colW = el.scrollWidth / 8
+    el.scrollLeft = Math.max(0, (idx + 1) * colW - (el.clientWidth - colW) / 2 - colW / 2)
+  }, [view, weekDates, today])
   return (
     <>
+      {/* JOUR : liste chronologique des sessions du jour */}
+      {view === 'jour' && (
+        <div className="space-y-2">
+          {dayList.length === 0 ? (
+            <div className="card flex flex-col items-center justify-center text-center py-14 px-8">
+              <GraduationCap className="h-6 w-6 text-surface-400 mb-3" />
+              <p className="text-sm text-surface-500">Aucune session ce jour</p>
+            </div>
+          ) : (
+            dayList.map(p => (
+              <Link key={p.s.id} href={sessionHref(p.s)}
+                className="flex items-stretch gap-3 p-3 rounded-xl border border-surface-200/80 bg-white hover:border-brand-300 transition-colors">
+                <div className="w-12 shrink-0 text-xs font-mono text-surface-600 leading-tight pt-0.5">
+                  <div>{p.debut}</div>
+                  <div className="text-surface-400">{p.fin}</div>
+                </div>
+                <div className={cn('w-1.5 shrink-0 rounded-full border', p.color)} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-surface-900 leading-snug">{p.s.titre}</div>
+                  <div className="text-xs text-surface-500 mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap">
+                    {p.s.lieu && <span className="inline-flex items-center gap-1 min-w-0"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{p.s.lieu}</span></span>}
+                    {p.s.formateurNom && <span className="inline-flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{p.s.formateurNom}</span>}
+                    {p.s.entreprise && <span className="inline-flex items-center gap-1"><User className="h-3 w-3 shrink-0" />{p.s.entreprise}</span>}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                    <span className={cn('inline-block px-2 py-0.5 rounded-full text-2xs font-medium', p.s.isPrevisionnel ? 'bg-amber-50 text-amber-700' : 'bg-surface-100 text-surface-600')}>{SESSION_STATUS_FR[p.s.status] || p.s.status}</span>
+                    {p.s.isPoei && <PoeiBadge />}
+                    {p.s.dateFin !== p.s.dateDebut && <span className="text-2xs text-surface-400">{frShort(p.s.dateDebut)} au {frShort(p.s.dateFin)}</span>}
+                  </div>
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
+      )}
+
       {/* SEMAINE */}
       {view === 'semaine' && (
-        <div className="card overflow-visible">
+        <ScrollHint>Faites défiler horizontalement pour parcourir la semaine</ScrollHint>
+      )}
+      {view === 'semaine' && (
+        <div ref={weekRef} className="card overflow-x-auto lg:overflow-visible">
+          <div className="min-w-[960px] lg:min-w-0">
           <div className="grid grid-cols-8 border-b border-surface-100">
-            <div className="p-3 text-xs text-surface-400" />
+            <div className="p-3 text-xs text-surface-400 sticky left-0 z-10 bg-white lg:static" />
             {weekDates.map((d, i) => {
               const isToday = d === today
               const date = new Date(d)
@@ -536,13 +630,13 @@ function FormationsView({
           </div>
           <div className="grid grid-cols-8">
             {/* Colonne des heures */}
-            <div className="relative" style={{ height: HEURES.length * ROW_H }}>
+            <div className="sticky left-0 z-10 bg-white lg:relative" style={{ height: HEURES.length * ROW_H }}>
               {HEURES.map((h, i) => (
                 <div key={h} className="absolute right-3 text-[11px] text-surface-400 font-mono" style={{ top: i * ROW_H - 6 }}>{h}</div>
               ))}
             </div>
             {/* Colonnes des jours */}
-            {weekDates.map(d => {
+            {weekDates.map((d, i) => {
               const isToday = d === today
               const positioned = layoutDay(getSessionsForDate(d), d, colorMap)
               return (
@@ -550,18 +644,22 @@ function FormationsView({
                   {HEURES.map((h, i) => (
                     <div key={h} className="absolute left-0 right-0 border-b border-surface-100/70" style={{ top: i * ROW_H, height: ROW_H }} />
                   ))}
-                  {positioned.map(p => <SessionBlock key={p.s.id} p={p} date={d} />)}
+                  {positioned.map(p => <SessionBlock key={p.s.id} p={p} date={d} flip={i >= 5} />)}
                 </div>
               )
             })}
+          </div>
           </div>
         </div>
       )}
 
       {/* MOIS */}
       {view === 'mois' && (
-        <div className="card overflow-visible">
-          <div className="grid grid-cols-7">
+        <ScrollHint>Faites défiler horizontalement pour voir toute la semaine</ScrollHint>
+      )}
+      {view === 'mois' && (
+        <div className="card overflow-x-auto lg:overflow-visible">
+          <div className="grid grid-cols-7 min-w-[720px] lg:min-w-0">
             {JOURS.map(j => (
               <div key={j} className="p-2 text-center text-[11px] font-semibold text-surface-400 border-b border-surface-100">{j}</div>
             ))}
@@ -585,7 +683,7 @@ function FormationsView({
                   {sess.slice(0, 3).map(s => (
                     <SessionChip key={s.id} s={s} date={d} color={colorMap.get(s.id)} />
                   ))}
-                  {sess.length > 3 && <div className="text-[9px] text-surface-400 px-1">+{sess.length - 3}</div>}
+                  {sess.length > 3 && <div className="text-2xs text-surface-400 px-1">+{sess.length - 3}</div>}
                 </div>
               )
             })}
@@ -613,9 +711,9 @@ function FormationsView({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-surface-900 truncate">{s.titre}</div>
-                    <div className="text-xs text-surface-500 mt-0.5 flex items-center gap-3">
-                      {s.horaires && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />{s.horaires}</span>}
-                      {s.lieu && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{s.lieu}</span>}
+                    <div className="text-xs text-surface-500 mt-0.5 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
+                      {s.horaires && <span className="inline-flex items-center gap-1 shrink-0"><Clock className="h-3 w-3" />{s.horaires}</span>}
+                      {s.lieu && <span className="inline-flex items-center gap-1 min-w-0 max-w-full"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{s.lieu}</span></span>}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -625,7 +723,7 @@ function FormationsView({
                         <> → {new Date(s.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</>
                       )}
                     </div>
-                    <div className="text-[11px] text-surface-400 capitalize">{s.status}</div>
+                    <div className="text-[11px] text-surface-400">{SESSION_STATUS_FR[s.status] || s.status}</div>
                   </div>
                 </Link>
               ))
@@ -644,11 +742,11 @@ function TacheChip({ t }: { t: Tache }) {
   return (
     <Link href="/dashboard/taches"
       className={cn(
-        'block px-1.5 py-1 rounded text-[10px] mb-0.5 border truncate hover:opacity-80 transition-opacity',
+        'flex items-center min-h-[40px] lg:min-h-0 px-1.5 py-1 rounded text-2xs mb-0.5 border hover:opacity-80 transition-opacity',
         st.bg, st.text, st.border,
       )}
     >
-      <div className="flex items-center gap-1 font-medium">
+      <div className="flex items-center gap-1 font-medium min-w-0 w-full">
         <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', PRIORITE_DOT[t.priorite])} />
         <span className="truncate">{t.titre}</span>
       </div>
@@ -659,7 +757,7 @@ function TacheChip({ t }: { t: Tache }) {
 function TachesView({
   view, weekDates, monthGrid, refDate, today, taches, getTachesForDate,
 }: {
-  view: 'semaine' | 'mois' | 'liste'
+  view: View
   weekDates: string[]
   monthGrid: string[]
   refDate: Date
@@ -670,12 +768,32 @@ function TachesView({
   const overdue = taches.filter(t => t.status !== 'terminee' && t.dueDate < today)
   const todayList = taches.filter(t => t.dueDate === today)
   const upcoming = taches.filter(t => t.dueDate > today).sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  const dayStr = toDateStr(refDate)
+  const dayTaches = getTachesForDate(dayStr)
 
   return (
     <>
+      {/* JOUR : tâches échues ce jour */}
+      {view === 'jour' && (
+        <div className="space-y-1.5">
+          {dayTaches.length === 0 ? (
+            <div className="card flex flex-col items-center justify-center text-center py-14 px-8">
+              <CheckSquare className="h-6 w-6 text-surface-400 mb-3" />
+              <p className="text-sm text-surface-500">Aucune tâche prévue ce jour</p>
+            </div>
+          ) : (
+            dayTaches.map(t => <TacheRow key={t.id} t={t} overdue={t.status !== 'terminee' && t.dueDate < today} />)
+          )}
+        </div>
+      )}
+
       {/* SEMAINE — vue par jour, tâches positionnées sur leur due_date */}
       {view === 'semaine' && (
-        <div className="card overflow-hidden">
+        <ScrollHint>Faites défiler horizontalement pour parcourir la semaine</ScrollHint>
+      )}
+      {view === 'semaine' && (
+        <div className="card overflow-x-auto lg:overflow-hidden">
+          <div className="min-w-[700px] lg:min-w-0">
           <div className="grid grid-cols-7 border-b border-surface-100">
             {weekDates.map((d, i) => {
               const isToday = d === today
@@ -697,7 +815,7 @@ function TachesView({
               return (
                 <div key={d} className={cn('border-l first:border-l-0 border-surface-100 p-2 space-y-1', isToday && 'bg-brand-50/10')}>
                   {dayTaches.length === 0 ? (
-                    <div className="text-[10px] text-surface-300 text-center py-4">—</div>
+                    <div className="text-2xs text-surface-300 text-center py-4">Aucune</div>
                   ) : (
                     dayTaches.map(t => <TacheChip key={t.id} t={t} />)
                   )}
@@ -705,13 +823,17 @@ function TachesView({
               )
             })}
           </div>
+          </div>
         </div>
       )}
 
       {/* MOIS */}
       {view === 'mois' && (
-        <div className="card overflow-hidden">
-          <div className="grid grid-cols-7">
+        <ScrollHint>Faites défiler horizontalement pour voir toute la semaine</ScrollHint>
+      )}
+      {view === 'mois' && (
+        <div className="card overflow-x-auto lg:overflow-hidden">
+          <div className="grid grid-cols-7 min-w-[720px] lg:min-w-0">
             {JOURS.map(j => (
               <div key={j} className="p-2 text-center text-[11px] font-semibold text-surface-400 border-b border-surface-100">{j}</div>
             ))}
@@ -733,7 +855,7 @@ function TachesView({
                     {date.getDate()}
                   </div>
                   {dayTaches.slice(0, 4).map(t => <TacheChip key={t.id} t={t} />)}
-                  {dayTaches.length > 4 && <div className="text-[9px] text-surface-400 px-1">+{dayTaches.length - 4}</div>}
+                  {dayTaches.length > 4 && <div className="text-2xs text-surface-400 px-1">+{dayTaches.length - 4}</div>}
                 </div>
               )
             })}
@@ -794,7 +916,7 @@ function TacheRow({ t, overdue }: { t: Tache; overdue?: boolean }) {
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-surface-900 truncate">{t.titre}</div>
         <div className="text-xs text-surface-500 mt-0.5 flex items-center gap-2 flex-wrap">
-          <span className={cn('inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border', st.bg, st.text, st.border)}>
+          <span className={cn('inline-block px-1.5 py-0.5 rounded text-2xs font-semibold border', st.bg, st.text, st.border)}>
             {st.label}
           </span>
           {t.assigneeName && (

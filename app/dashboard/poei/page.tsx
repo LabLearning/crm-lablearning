@@ -33,7 +33,7 @@ export default async function PoeiPage() {
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('intitule'),
-    // Pipeline "à planifier" (pré-projets) — les plus proches en premier
+    // Pipeline "à planifier" (pré-projets), les plus proches en premier
     supabase
       .from('poei_previsions')
       .select('*, client:clients(raison_sociale, nom_commercial, sigle)')

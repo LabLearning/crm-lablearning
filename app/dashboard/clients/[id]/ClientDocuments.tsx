@@ -152,7 +152,7 @@ export function ClientDocuments({ clientId, documents }: { clientId: string; doc
             Documents ({documents.length})
           </span>
         </div>
-        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700">
+        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 min-h-10 -my-3 px-2 -mr-2 rounded-lg text-xs font-medium text-brand-600 hover:text-brand-700 hover:bg-brand-50 shrink-0">
           <Upload className="h-3.5 w-3.5" /> Ajouter
         </button>
       </div>
@@ -176,26 +176,26 @@ export function ClientDocuments({ clientId, documents }: { clientId: string; doc
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-surface-900 truncate">{d.nom}</div>
                 <div className="flex flex-wrap items-center gap-x-2 text-xs text-surface-500">
-                  <span>{DOCUMENT_TYPE_LABELS[d.type as keyof typeof DOCUMENT_TYPE_LABELS] || d.type}</span>
-                  {d.file_name && (
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <Paperclip className="h-3 w-3 shrink-0" />
-                      <span className="truncate max-w-[160px]">{d.file_name}</span>
-                      {d.file_size ? <span className="text-surface-400">· {fmtSize(d.file_size)}</span> : null}
-                    </span>
-                  )}
-                  <span className="text-surface-400">{formatDate(d.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <span className="shrink-0">{DOCUMENT_TYPE_LABELS[d.type as keyof typeof DOCUMENT_TYPE_LABELS] || d.type}</span>
+                  <span className="text-surface-400 shrink-0">{formatDate(d.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                 </div>
+                {d.file_name && (
+                  <div className="flex items-center gap-1 min-w-0 text-xs text-surface-500">
+                    <Paperclip className="h-3 w-3 shrink-0" />
+                    <span className="truncate min-w-0">{d.file_name}</span>
+                    {d.file_size ? <span className="text-surface-400 whitespace-nowrap shrink-0">· {fmtSize(d.file_size)}</span> : null}
+                  </div>
+                )}
               </div>
               {d.storage_path && (
                 <a href={`/api/documents/${d.id}/download`} target="_blank" rel="noreferrer"
                   title="Télécharger"
-                  className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0">
+                  className="h-10 w-10 -my-2 flex items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0">
                   <Download className="h-4 w-4" />
                 </a>
               )}
-              <div className="shrink-0">
-                <RowMenu items={[
+              <div className="shrink-0 -mr-2">
+                <RowMenu triggerClassName="h-10 w-10 flex items-center justify-center -my-2" items={[
                   { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(d.id, d.nom) },
                 ]} />
               </div>

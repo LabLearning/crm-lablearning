@@ -40,7 +40,7 @@ export function ClientAuditsHygiene({
             Audits hygiène &amp; DUERP
           </span>
         </div>
-        <Link href="/dashboard/audits-hygiene" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+        <Link href="/dashboard/audits-hygiene" className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1 min-h-10 -my-3 px-2 -mr-2 shrink-0">
           Tout voir <ExternalLink className="h-3 w-3" />
         </Link>
       </div>

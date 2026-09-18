@@ -30,8 +30,9 @@ export function ImpersonationBanner({ user }: { user: { first_name?: string | nu
     <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <UserCog className="h-4 w-4 shrink-0" />
-        <span className="text-sm font-medium truncate">
-          Mode aperçu — Vous naviguez en tant que{' '}
+        <span className="text-xs sm:text-sm font-medium truncate">
+          <span className="hidden sm:inline">Mode aperçu : vous naviguez en tant que </span>
+          <span className="sm:hidden">Aperçu : </span>
           <strong>{user.first_name} {user.last_name}</strong>{' '}
           ({(ROLE_LABELS as any)[user.role] || user.role})
         </span>
@@ -39,10 +40,11 @@ export function ImpersonationBanner({ user }: { user: { first_name?: string | nu
       <button
         onClick={sortir}
         disabled={loading}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 shrink-0"
+        className="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] sm:min-h-[36px] bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 shrink-0"
       >
         <X className="h-3.5 w-3.5" />
-        {loading ? 'Retour…' : 'Retour à mon compte'}
+        <span className="hidden sm:inline">{loading ? 'Retour…' : 'Retour à mon compte'}</span>
+        <span className="sm:hidden">{loading ? 'Retour…' : 'Retour'}</span>
       </button>
     </div>
   )

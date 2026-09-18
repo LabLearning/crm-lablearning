@@ -187,7 +187,7 @@ export function AssistantWidget() {
     const faites = actions.filter((a) => a.etat === 'faite').length
     if (actions.length < 2) return null
     return (
-      <div className="mt-2 flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
         <ListChecks className="h-4 w-4 text-brand-600 shrink-0" />
         <div className="flex-1 text-xs font-semibold text-surface-800">
           Plan en {actions.length} étapes{faites ? ` · ${faites} faite${faites > 1 ? 's' : ''}` : ''}
@@ -195,12 +195,12 @@ export function AssistantWidget() {
         {attente.length > 0 && (
           <>
             <button onClick={() => confirmerPlan(idxMessage, actions)} disabled={planEnCours !== null}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 min-h-[40px] md:min-h-0 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50">
               {planEnCours === idxMessage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
               Tout confirmer ({attente.length})
             </button>
             <button onClick={() => attente.forEach((a) => majAction(idxMessage, a.id, { etat: 'ignoree' }))} disabled={planEnCours !== null}
-              className="rounded-lg border border-surface-200 bg-white px-2.5 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50">
+              className="rounded-lg border border-surface-200 bg-white px-2.5 py-1.5 min-h-[40px] md:min-h-0 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50">
               Ignorer
             </button>
           </>
@@ -234,14 +234,14 @@ export function AssistantWidget() {
             <button
               onClick={() => confirmerAction(idxMessage, action)}
               disabled={action.etat === 'en_cours'}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 min-h-[40px] md:min-h-0 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50">
               {action.etat === 'en_cours' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
               Confirmer et envoyer
             </button>
             <button
               onClick={() => majAction(idxMessage, action.id, { etat: 'ignoree' })}
               disabled={action.etat === 'en_cours'}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 bg-white px-3 py-1.5 min-h-[40px] md:min-h-0 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50">
               <XCircle className="h-3.5 w-3.5" /> Ignorer
             </button>
           </div>
@@ -257,23 +257,26 @@ export function AssistantWidget() {
           onClick={() => setOpen(true)}
           aria-label="Ouvrir Starkk, l’assistant CRM"
           className={cn(
-            'fixed z-40 right-4 bottom-24 md:right-6 md:bottom-6',
-            'flex items-center gap-2 rounded-full pl-1.5 pr-4 py-1.5 text-sm font-semibold text-white',
+            // Téléphone : pastille 48 px, coin bas droit, au-dessus de la zone sûre iOS.
+            // Desktop : pilule avec le prénom.
+            'fixed z-40 right-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] md:right-6 md:bottom-6',
+            'flex items-center justify-center rounded-full h-12 w-12 p-0 md:h-auto md:w-auto md:gap-2 md:pl-1.5 md:pr-4 md:py-1.5',
+            'text-sm font-semibold text-white',
             'bg-gradient-to-r from-[#205040] to-[#38C588] shadow-lg shadow-[#205040]/30',
             'hover:opacity-95 hover:scale-[1.03] active:scale-100 transition-all',
           )}
         >
           {/* Fine ligne verte lumineuse en rotation autour de l'avatar */}
-          <span className="relative h-9 w-9 shrink-0">
+          <span className="relative h-10 w-10 md:h-9 md:w-9 shrink-0">
             <span className="ll-ligne-verte absolute inset-0 rounded-full" />
-            <AvatarStarkk taille="h-[34px] w-[34px]" className="absolute inset-0 m-auto" />
+            <AvatarStarkk taille="h-[38px] w-[38px] md:h-[34px] md:w-[34px]" className="absolute inset-0 m-auto" />
           </span>
-          Starkk
+          <span className="hidden md:inline">Starkk</span>
         </button>
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 md:inset-auto md:right-6 md:bottom-6 md:h-[640px] md:max-h-[calc(100vh-3rem)] md:w-[440px] flex flex-col bg-white md:rounded-3xl shadow-2xl shadow-black/25 ring-1 ring-black/5 overflow-hidden">
+        <div className="fixed inset-0 z-50 h-[100dvh] md:h-[640px] md:inset-auto md:right-6 md:bottom-6 md:max-h-[calc(100vh-3rem)] md:w-[440px] flex flex-col bg-white md:rounded-3xl shadow-2xl shadow-black/25 ring-1 ring-black/5 overflow-hidden">
           {/* En-tête */}
           <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#205040] to-[#2c6e55] text-white shrink-0">
             <AvatarStarkk taille="h-9 w-9" className="ring-2 ring-white/25" />
@@ -289,11 +292,11 @@ export function AssistantWidget() {
             </div>
             {messages.length > 0 && (
               <button onClick={() => setMessages([])} title="Nouvelle conversation" aria-label="Nouvelle conversation"
-                className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center">
+                className="h-10 w-10 md:h-8 md:w-8 rounded-lg hover:bg-white/10 flex items-center justify-center">
                 <RotateCcw className="h-4 w-4" />
               </button>
             )}
-            <button onClick={() => setOpen(false)} aria-label="Fermer" className="h-8 w-8 rounded-lg hover:bg-white/10 flex items-center justify-center">
+            <button onClick={() => setOpen(false)} aria-label="Fermer" className="h-10 w-10 md:h-8 md:w-8 rounded-lg hover:bg-white/10 flex items-center justify-center">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -311,7 +314,7 @@ export function AssistantWidget() {
                 <div className="flex flex-col items-center gap-2">
                   {SUGGESTIONS.map((s) => (
                     <button key={s} onClick={() => envoyer(s)}
-                      className="text-xs font-medium text-brand-600 rounded-full border border-brand-200 bg-white px-3.5 py-1.5 hover:bg-brand-50 transition-colors">
+                      className="text-xs font-medium text-brand-600 rounded-full border border-brand-200 bg-white px-4 py-2 min-h-[40px] md:min-h-0 md:py-1.5 hover:bg-brand-50 transition-colors">
                       {s}
                     </button>
                   ))}
@@ -344,7 +347,7 @@ export function AssistantWidget() {
           </div>
 
           {/* Saisie */}
-          <div className="p-3 border-t border-surface-100 bg-white shrink-0">
+          <div className="p-3 border-t border-surface-100 bg-white shrink-0 safe-bottom">
             <div className="flex items-end gap-2">
               <textarea
                 value={saisie}
@@ -352,13 +355,13 @@ export function AssistantWidget() {
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyer() } }}
                 placeholder="Demandez à Starkk…"
                 rows={1}
-                className="flex-1 resize-none rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-400/40 focus:border-brand-300 max-h-28"
+                className="flex-1 resize-none rounded-xl border border-surface-200 px-3.5 py-2.5 min-h-[44px] text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-accent-400/40 focus:border-brand-300 max-h-28"
               />
               <button
                 onClick={() => envoyer()}
                 disabled={!saisie.trim() || busy}
                 aria-label="Envoyer"
-                className="h-10 w-10 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 transition-colors">
+                className="h-11 w-11 md:h-10 md:w-10 shrink-0 rounded-xl bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600 disabled:opacity-40 transition-colors">
                 <Send className="h-4 w-4" />
               </button>
             </div>

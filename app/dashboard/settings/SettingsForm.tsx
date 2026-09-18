@@ -161,21 +161,46 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
   }
 
   const SectionHeader = ({ icon: Icon, title, subtitle }: any) => (
-    <div className="flex items-center gap-3 mb-5">
-      <div className="h-9 w-9 rounded-xl bg-surface-100 flex items-center justify-center">
+    <div className="flex items-start sm:items-center gap-3 mb-5">
+      <div className="h-9 w-9 rounded-xl bg-surface-100 flex items-center justify-center shrink-0">
         <Icon className="h-4 w-4 text-surface-600" />
       </div>
-      <div>
+      <div className="min-w-0">
         <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">{title}</h2>
-        {subtitle && <p className="text-xs text-surface-500">{subtitle}</p>}
+        {subtitle && <p className="text-[13px] sm:text-xs text-surface-500">{subtitle}</p>}
       </div>
     </div>
   )
 
+  /** Sommaire des sections : onglets défilants (utile sur téléphone, le formulaire est long) */
+  const SECTIONS = [
+    { id: 'identite', label: 'Identité' },
+    { id: 'representant', label: 'Représentant' },
+    { id: 'logo', label: 'Logo' },
+    { id: 'tampon', label: 'Tampon' },
+    { id: 'livret', label: "Livret d'accueil" },
+    { id: 'handicap', label: 'Accessibilité' },
+    { id: 'qualifications', label: 'Qualifications' },
+    { id: 'banque', label: 'Banque' },
+    { id: 'affacturage', label: 'Affacturage' },
+  ]
+
+  /** Actions d'un fichier déjà déposé (voir, remplacer, supprimer) : cibles de 40 px sur téléphone */
+  const lienFichier = 'inline-flex items-center gap-1 text-[13px] sm:text-xs min-h-[40px] sm:min-h-0 px-1 -mx-1 rounded-lg'
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <nav aria-label="Sections des paramètres" className="tabs-scroll -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
+        {SECTIONS.map((sec) => (
+          <a key={sec.id} href={`#${sec.id}`}
+            className="inline-flex items-center min-h-[40px] sm:min-h-[36px] px-3.5 rounded-full border border-surface-200 bg-white text-[13px] sm:text-xs font-semibold text-surface-600 hover:border-brand-300 hover:text-brand-700 active:bg-brand-50 transition-colors">
+            {sec.label}
+          </a>
+        ))}
+      </nav>
+
       {/* Identité légale */}
-      <section className="card p-6">
+      <section id="identite" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={Building2} title="Identité de l'organisme" subtitle="Informations légales et coordonnées" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input id="name" name="name" label="Nom commercial *" defaultValue={organization.name} error={errors.name?.[0]} disabled={!canEdit} />
@@ -199,7 +224,7 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Représentant légal */}
-      <section className="card p-6">
+      <section id="representant" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={UserCircle} title="Représentant légal" subtitle="Personne qui signe officiellement les documents" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Input id="representant_legal_civilite" name="representant_legal_civilite" label="Civilité" placeholder="M. / Mme" defaultValue={organization.representant_legal_civilite || ''} disabled={!canEdit} />
@@ -210,29 +235,29 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Logo de l'organisme */}
-      <section className="card p-6">
+      <section id="logo" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={Building2} title="Logo de l'organisme" subtitle="Affiché dans le header des emails (invitations, accès portails, signatures) et sur les documents." />
 
         {logoUrl ? (
-          <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+          <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
             <div className="bg-[#205040] p-3 rounded-lg shrink-0">
-              <img src={logoUrl} alt="Logo" className="h-12 w-auto max-w-40 object-contain" />
+              <img src={logoUrl} alt="Logo" className="h-12 w-auto max-w-[160px] object-contain" />
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-surface-900">Logo enregistré</div>
-              <div className="text-xs text-surface-500 mt-1">
-                Apparaît sur fond vert dans le header des emails — privilégier un PNG blanc/clair sur fond transparent.
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-surface-900 break-words">Logo enregistré</div>
+              <div className="text-[13px] sm:text-xs text-surface-500 mt-1">
+                Apparaît sur fond vert dans l'en-tête des emails : privilégiez un PNG blanc ou clair sur fond transparent.
               </div>
-              <div className="flex gap-3 mt-3">
-                <a href={logoUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 sm:mt-3">
+                <a href={logoUrl} target="_blank" rel="noreferrer" className={`${lienFichier} text-brand-600 hover:underline`}>
                   <ExternalLink className="h-3 w-3" /> Voir en plein
                 </a>
                 {canEdit && (
                   <>
-                    <button type="button" onClick={() => logoRef.current?.click()} className="text-xs text-surface-500 hover:text-surface-800 flex items-center gap-1">
+                    <button type="button" onClick={() => logoRef.current?.click()} className={`${lienFichier} text-surface-500 hover:text-surface-800`}>
                       <Upload className="h-3 w-3" /> Remplacer
                     </button>
-                    <button type="button" onClick={removeLogo} className="text-xs text-danger-500 hover:text-danger-700 flex items-center gap-1">
+                    <button type="button" onClick={removeLogo} className={`${lienFichier} text-danger-500 hover:text-danger-700`}>
                       <X className="h-3 w-3" /> Supprimer
                     </button>
                   </>
@@ -245,13 +270,13 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
             type="button"
             onClick={() => logoRef.current?.click()}
             disabled={uploadingLogo}
-            className="w-full p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+            className="w-full p-5 sm:p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center text-center gap-2 disabled:opacity-50"
           >
             <Building2 className="h-6 w-6 text-surface-400" />
             <div className="text-sm font-medium text-surface-700">
               {uploadingLogo ? 'Upload en cours…' : 'Uploader le logo (PNG / SVG)'}
             </div>
-            <div className="text-xs text-surface-500">PNG transparent recommandé · hauteur ~128 px · 5 Mo max</div>
+            <div className="text-[13px] sm:text-xs text-surface-500">PNG transparent recommandé · hauteur ~128 px · 5 Mo max</div>
           </button>
         ) : (
           <div className="text-sm text-surface-500">Aucun logo configuré</div>
@@ -267,29 +292,29 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Tampon + Signature */}
-      <section className="card p-6">
+      <section id="tampon" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={Stamp} title="Tampon et signature" subtitle="Image apposée automatiquement comme signature de l'OF sur conventions, contrats, factures..." />
 
         {tamponUrl ? (
-          <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+          <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
             <div className="bg-white p-3 rounded-lg border border-surface-200 shrink-0">
-              <img src={tamponUrl} alt="Tampon" className="h-24 w-auto max-w-48 object-contain" />
+              <img src={tamponUrl} alt="Tampon" className="h-24 w-auto max-w-[192px] object-contain" />
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-surface-900">{tamponFilename || 'tampon.png'}</div>
-              <div className="text-xs text-surface-500 mt-1">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-surface-900 break-words">{tamponFilename || 'tampon.png'}</div>
+              <div className="text-[13px] sm:text-xs text-surface-500 mt-1">
                 Sera appliqué automatiquement sur tous les documents officiels Lab Learning.
               </div>
-              <div className="flex gap-3 mt-3">
-                <a href={tamponUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 sm:mt-3">
+                <a href={tamponUrl} target="_blank" rel="noreferrer" className={`${lienFichier} text-brand-600 hover:underline`}>
                   <ExternalLink className="h-3 w-3" /> Voir en plein
                 </a>
                 {canEdit && (
                   <>
-                    <button type="button" onClick={() => tamponRef.current?.click()} className="text-xs text-surface-500 hover:text-surface-800 flex items-center gap-1">
+                    <button type="button" onClick={() => tamponRef.current?.click()} className={`${lienFichier} text-surface-500 hover:text-surface-800`}>
                       <Upload className="h-3 w-3" /> Remplacer
                     </button>
-                    <button type="button" onClick={removeTampon} className="text-xs text-danger-500 hover:text-danger-700 flex items-center gap-1">
+                    <button type="button" onClick={removeTampon} className={`${lienFichier} text-danger-500 hover:text-danger-700`}>
                       <X className="h-3 w-3" /> Supprimer
                     </button>
                   </>
@@ -302,13 +327,13 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
             type="button"
             onClick={() => tamponRef.current?.click()}
             disabled={uploadingTampon}
-            className="w-full p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+            className="w-full p-5 sm:p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center text-center gap-2 disabled:opacity-50"
           >
             <Stamp className="h-6 w-6 text-surface-400" />
             <div className="text-sm font-medium text-surface-700">
               {uploadingTampon ? 'Upload en cours…' : 'Uploader le tampon + signature (PNG)'}
             </div>
-            <div className="text-xs text-surface-500">PNG sur fond transparent recommandé · 5 Mo max</div>
+            <div className="text-[13px] sm:text-xs text-surface-500">PNG sur fond transparent recommandé · 5 Mo max</div>
           </button>
         ) : (
           <div className="text-sm text-surface-500">Aucun tampon configuré</div>
@@ -324,29 +349,29 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Livret d'accueil */}
-      <section className="card p-6">
+      <section id="livret" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={BookOpen} title="Livret d'accueil" subtitle="PDF envoyé automatiquement aux apprenants la veille de leur formation (J-1), par WhatsApp et notification." />
 
         {livretUrl ? (
-          <div className="flex items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
+          <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-xl bg-surface-50 border border-surface-200">
             <div className="bg-white p-3 rounded-lg border border-surface-200 shrink-0">
               <FileText className="h-10 w-10 text-rose-500" />
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-surface-900">{livretFilename || 'livret-accueil.pdf'}</div>
-              <div className="text-xs text-surface-500 mt-1">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-surface-900 break-words">{livretFilename || 'livret-accueil.pdf'}</div>
+              <div className="text-[13px] sm:text-xs text-surface-500 mt-1">
                 Joint au message WhatsApp et accessible dans la notification de l'apprenant, J-1 avant la session.
               </div>
-              <div className="flex gap-3 mt-3">
-                <a href={livretUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 sm:mt-3">
+                <a href={livretUrl} target="_blank" rel="noreferrer" className={`${lienFichier} text-brand-600 hover:underline`}>
                   <ExternalLink className="h-3 w-3" /> Ouvrir le PDF
                 </a>
                 {canEdit && (
                   <>
-                    <button type="button" onClick={() => livretRef.current?.click()} className="text-xs text-surface-500 hover:text-surface-800 flex items-center gap-1">
+                    <button type="button" onClick={() => livretRef.current?.click()} className={`${lienFichier} text-surface-500 hover:text-surface-800`}>
                       <Upload className="h-3 w-3" /> Remplacer
                     </button>
-                    <button type="button" onClick={removeLivret} className="text-xs text-danger-500 hover:text-danger-700 flex items-center gap-1">
+                    <button type="button" onClick={removeLivret} className={`${lienFichier} text-danger-500 hover:text-danger-700`}>
                       <X className="h-3 w-3" /> Supprimer
                     </button>
                   </>
@@ -359,13 +384,13 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
             type="button"
             onClick={() => livretRef.current?.click()}
             disabled={uploadingLivret}
-            className="w-full p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center gap-2 disabled:opacity-50"
+            className="w-full p-5 sm:p-6 rounded-xl border-2 border-dashed border-surface-300 hover:border-brand-300 hover:bg-brand-50/40 transition-colors flex flex-col items-center text-center gap-2 disabled:opacity-50"
           >
             <BookOpen className="h-6 w-6 text-surface-400" />
             <div className="text-sm font-medium text-surface-700">
               {uploadingLivret ? 'Upload en cours…' : "Uploader le livret d'accueil (PDF)"}
             </div>
-            <div className="text-xs text-surface-500">Document unique pour toutes les formations · 10 Mo max</div>
+            <div className="text-[13px] sm:text-xs text-surface-500">Document unique pour toutes les formations · 10 Mo max</div>
           </button>
         ) : (
           <div className="text-sm text-surface-500">Aucun livret configuré</div>
@@ -381,8 +406,8 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Accessibilité handicap (Qualiopi) */}
-      <section className="card p-6">
-        <SectionHeader icon={ShieldCheck} title="Accessibilité — référent handicap" subtitle="Exigence Qualiopi : coordonnées affichées sur le programme, la convocation et la convention" />
+      <section id="handicap" className="card p-4 sm:p-6 scroll-mt-20">
+        <SectionHeader icon={ShieldCheck} title="Accessibilité et référent handicap" subtitle="Exigence Qualiopi : coordonnées affichées sur le programme, la convocation et la convention" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Input id="referent_handicap_nom" name="referent_handicap_nom" label="Référent handicap (nom)" defaultValue={organization.referent_handicap_nom || ''} disabled={!canEdit} />
           <Input id="referent_handicap_email" name="referent_handicap_email" type="email" label="Email du référent" defaultValue={organization.referent_handicap_email || ''} disabled={!canEdit} />
@@ -394,10 +419,10 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Qualifications */}
-      <section className="card p-6">
+      <section id="qualifications" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={ShieldCheck} title="Qualifications" subtitle="Certifications et numéros officiels de l'OF" />
 
-        <label className="flex items-center gap-3 cursor-pointer group mb-4">
+        <label className="flex items-center gap-3 cursor-pointer group mb-4 min-h-[40px]">
           <div className="relative">
             <input type="checkbox" checked={isQualiopi} onChange={(e) => setIsQualiopi(e.target.checked)} disabled={!canEdit} className="sr-only peer" />
             <div className="w-10 h-[22px] bg-surface-200 rounded-full peer-checked:bg-surface-900 transition-colors" />
@@ -421,7 +446,7 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Coordonnées bancaires */}
-      <section className="card p-6">
+      <section id="banque" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader icon={Landmark} title="Coordonnées bancaires" subtitle="Apparaîtront sur les factures émises" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input id="banque_nom" name="banque_nom" label="Banque" placeholder="BNP Paribas, Crédit Agricole..." defaultValue={organization.banque_nom || ''} disabled={!canEdit} />
@@ -432,19 +457,19 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {/* Affacturage */}
-      <section className="card p-6">
+      <section id="affacturage" className="card p-4 sm:p-6 scroll-mt-20">
         <SectionHeader
           icon={Landmark}
           title="Affacturage"
-          subtitle="Quand les créances sont cédées à un factor, c'est SON compte qui doit figurer sur les factures — pas celui de l'organisme"
+          subtitle="Quand les créances sont cédées à un factor, c'est son compte qui doit figurer sur les factures, pas celui de l'organisme"
         />
-        <label className="flex items-center gap-2 mb-4 cursor-pointer">
+        <label className="flex items-start gap-3 mb-4 cursor-pointer min-h-[40px]">
           <input
             type="checkbox"
             name="affacturage_actif"
             defaultChecked={!!organization.affacturage_actif}
             disabled={!canEdit}
-            className="h-4 w-4 rounded border-surface-300 text-brand-600"
+            className="h-5 w-5 mt-0.5 shrink-0 rounded border-surface-300 accent-[#205040]"
           />
           <span className="text-sm text-surface-700">
             Les factures sont cédées à un factor : imprimer ses coordonnées et la clause de subrogation
@@ -473,8 +498,8 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
       </section>
 
       {canEdit && (
-        <div className="flex justify-end sticky bottom-4 z-10">
-          <Button type="submit" isLoading={isLoading} icon={<Save className="h-4 w-4" />} className="shadow-lg">
+        <div className="flex justify-end sticky bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:bottom-4 z-10 mr-14 sm:mr-0">
+          <Button type="submit" isLoading={isLoading} icon={<Save className="h-4 w-4" />} className="shadow-lg w-full sm:w-auto">
             Enregistrer les modifications
           </Button>
         </div>

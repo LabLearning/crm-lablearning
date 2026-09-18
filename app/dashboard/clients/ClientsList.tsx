@@ -87,10 +87,10 @@ export function ClientsList({ clients, users = [], franchises = [], apporteurs =
             {new Intl.NumberFormat('fr-FR').format(total)} client{total > 1 ? 's' : ''} enregistré{total > 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
           {/* Le circuit standard : le dossier complet crée client + apprenants + session */}
           <Link href="/dashboard/dossiers/nouveau"
-            className="btn-primary inline-flex items-center gap-1.5 !py-2 !px-4 text-sm">
+            className="btn-primary inline-flex items-center justify-center gap-1.5 !py-2 !px-4 text-sm min-h-10">
             <FolderPlus className="h-4 w-4" /> Nouveau dossier
           </Link>
           <Button variant="secondary" onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>
@@ -101,22 +101,22 @@ export function ClientsList({ clients, users = [], franchises = [], apporteurs =
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 max-w-md">
-          <Search className="h-4 w-4 text-surface-400" />
+        <div className="flex items-center gap-2 bg-white rounded-xl px-3 sm:py-2 border border-surface-200/60 flex-1 max-w-md">
+          <Search className="h-4 w-4 text-surface-400 shrink-0" />
           <input
             type="text"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Rechercher un client..."
-            className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1"
+            className="h-10 sm:h-auto bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1 min-w-0"
           />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {['all', 'entreprise', 'particulier'].map((t) => (
             <button
               key={t}
               onClick={() => handleTypeFilter(t)}
-              className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+              className={`min-h-10 sm:min-h-0 px-3.5 sm:px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
                 typeFilter === t
                   ? 'bg-surface-900 text-white shadow-xs'
                   : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'
@@ -128,8 +128,47 @@ export function ClientsList({ clients, users = [], franchises = [], apporteurs =
         </div>
       </div>
 
+      {/* Liste mobile : une carte par client, ouverture au toucher, actions dans le menu */}
+      <div className="card overflow-hidden md:hidden">
+        <div className="divide-y divide-surface-100">
+          {filtered.map((client) => (
+            <div key={client.id} className="flex items-center gap-3 px-4 py-2.5">
+              <Link href={`/dashboard/clients/${client.id}`} className="flex items-center gap-3 flex-1 min-w-0 min-h-10">
+                <div className={`p-2 rounded-lg shrink-0 ${client.type === 'entreprise' ? 'bg-brand-50' : 'bg-purple-50'}`}>
+                  {client.type === 'entreprise' ? (
+                    <Building2 className="h-4 w-4 text-brand-600" />
+                  ) : (
+                    <User className="h-4 w-4 text-purple-600" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-surface-900 truncate">{getDisplayName(client)}</div>
+                  <div className="text-xs text-surface-500 flex items-center gap-x-2 flex-wrap">
+                    {client.ville && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-surface-400" />{client.code_postal} {client.ville}</span>}
+                    {client.financeur_type && <span className="text-warning-700">{FINANCEUR_LABELS[client.financeur_type]}</span>}
+                    {!client.ville && !client.financeur_type && client.siret && <span className="font-mono text-surface-400">SIRET {client.siret}</span>}
+                  </div>
+                </div>
+              </Link>
+              <div className="shrink-0 -mr-2">
+                <RowMenu triggerClassName="h-10 w-10 flex items-center justify-center" items={[
+                  { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditClient(client) },
+                  { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(client.id) },
+                ]} />
+              </div>
+            </div>
+          ))}
+        </div>
+        {filtered.length === 0 && (
+          <div className="text-center py-12 text-sm text-surface-500">
+            {search ? 'Aucun client trouvé pour cette recherche' : 'Aucun client. Créez votre premier client !'}
+          </div>
+        )}
+        <PaginationBar total={total} page={page} perPage={perPage} />
+      </div>
+
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

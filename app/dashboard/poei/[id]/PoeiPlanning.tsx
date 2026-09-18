@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarClock, Download, Loader2, Sparkles, Trash2, X } from '@/components/ui/icons'
 import { useToast } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import { PoeiSection } from './PoeiSection'
+import { PoeiSection, PoeiDefilable } from './PoeiSection'
 import { genererPlanningPoeiAction, majJourPlanningAction, effacerPlanningCandidatAction } from '../planning-actions'
 
 export interface JourPlanningUI {
@@ -124,12 +124,12 @@ export function PoeiPlanning({
     >
       <div className="space-y-4">
         {/* Barre d'outils */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setGenerateur((v) => !v)} className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap">
+          <button onClick={() => setGenerateur((v) => !v)} className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm w-full sm:w-auto">
             <Sparkles className="h-4 w-4" /> Générer un planning
           </button>
           {jours.length > 0 && (
-            <a href={`/api/pdf/poei-plannings/${poeiId}`} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+            <a href={`/api/pdf/poei-plannings/${poeiId}`} className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm w-full sm:w-auto">
               <Download className="h-4 w-4" /> Tous les PDF
             </a>
           )}
@@ -166,8 +166,8 @@ export function PoeiPlanning({
               {candidats.map((c) => {
                 const coche = selection.includes(c.id)
                 return (
-                  <div key={c.id} className="flex items-center gap-3 flex-wrap rounded-xl border border-surface-100 px-3 py-2">
-                    <label className="inline-flex items-center gap-2 text-sm text-surface-900 min-w-[180px]">
+                  <div key={c.id} className="flex items-center gap-x-3 gap-y-1.5 flex-wrap rounded-xl border border-surface-100 px-3 py-2">
+                    <label className="inline-flex items-center gap-2 text-sm text-surface-900 min-h-[40px] sm:min-h-0 min-w-0 sm:min-w-[180px] w-full sm:w-auto">
                       <input type="checkbox" checked={coche}
                         onChange={() => setSelection((s) => (coche ? s.filter((x) => x !== c.id) : [...s, c.id]))} />
                       {c.nom}
@@ -178,7 +178,7 @@ export function PoeiPlanning({
                         return (
                           <button key={j.n} type="button" onClick={() => toggleRepos(c.id, j.n)} disabled={!coche}
                             className={cn(
-                              'px-2 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-40',
+                              'h-10 min-w-[2.5rem] sm:h-auto sm:min-w-0 px-2 sm:py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-40',
                               repos ? 'bg-brand-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200',
                             )}>
                             {j.court}
@@ -192,8 +192,8 @@ export function PoeiPlanning({
               })}
             </div>
 
-            <div className="flex items-center gap-3">
-              <button onClick={generer} disabled={busy} className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <button onClick={generer} disabled={busy} className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-50 w-full sm:w-auto">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Générer
               </button>
               <span className="text-xs text-surface-500">La période choisie remplace l&apos;existant pour les candidats cochés.</span>
@@ -207,7 +207,7 @@ export function PoeiPlanning({
             {candidats.map((c) => (
               <button key={c.id} onClick={() => setActif(c.id)}
                 className={cn(
-                  'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
+                  'px-3 py-2.5 sm:py-1.5 rounded-full text-sm font-medium transition-colors',
                   actif === c.id ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200',
                 )}>
                 {c.nom}{aDesJours.has(c.id) ? '' : ' ·  à générer'}
@@ -223,16 +223,16 @@ export function PoeiPlanning({
                 {joursActif.length} jours planifiés, {heures(totalMin)} au total
               </span>
               <a href={`/api/pdf/poei-plannings/${poeiId}?candidat=${actif}`}
-                className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs">
+                className="btn-secondary inline-flex items-center gap-1.5 !py-1 !px-2.5 text-xs !min-h-[40px] sm:!min-h-0">
                 <Download className="h-3.5 w-3.5" /> PDF
               </a>
               <button onClick={() => effacer(actif)} disabled={busy}
-                className="inline-flex items-center gap-1 text-xs text-danger-600 hover:underline disabled:opacity-50">
+                className="inline-flex items-center gap-1 text-xs text-danger-600 hover:underline disabled:opacity-50 min-h-[40px] sm:min-h-0 px-1">
                 <Trash2 className="h-3.5 w-3.5" /> Effacer
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <PoeiDefilable className="rounded-xl">
               <div className="min-w-[720px] space-y-2">
                 {semaines.map((sem, i) => {
                   const totalSem = sem.reduce((s, j) => s + dureeJour(j), 0)
@@ -255,7 +255,7 @@ export function PoeiPlanning({
                             )}>
                             {j && (
                               <>
-                                <div className="text-[10px] text-surface-400">
+                                <div className="text-[11px] text-surface-400">
                                   {JOURS[k].court} {new Date(j.date + 'T12:00:00Z').getUTCDate()}
                                 </div>
                                 {j.repos ? (
@@ -266,7 +266,7 @@ export function PoeiPlanning({
                                     {j.creneau2_debut && <div className="text-[11px] text-surface-700 tabular-nums">{hm(j.creneau2_debut)}-{hm(j.creneau2_fin)}</div>}
                                   </div>
                                 )}
-                                {j.note && <div className="text-[10px] text-surface-400 truncate">{j.note}</div>}
+                                {j.note && <div className="text-[11px] text-surface-400 truncate">{j.note}</div>}
                               </>
                             )}
                           </button>
@@ -276,7 +276,7 @@ export function PoeiPlanning({
                   )
                 })}
               </div>
-            </div>
+            </PoeiDefilable>
           </div>
         ) : (
           <p className="text-sm text-surface-500">
@@ -289,13 +289,13 @@ export function PoeiPlanning({
 
       {/* Éditeur d'un jour */}
       {edition && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEdition(null)}>
-          <div className="card w-full max-w-sm p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => setEdition(null)}>
+          <div className="card w-full max-w-none sm:max-w-sm rounded-b-none sm:rounded-b-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div className="font-heading font-semibold text-surface-900">
                 {new Date(edition.date + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </div>
-              <button onClick={() => setEdition(null)} className="text-surface-400 hover:text-surface-700"><X className="h-4 w-4" /></button>
+              <button onClick={() => setEdition(null)} aria-label="Fermer" className="h-10 w-10 -mr-2 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100"><X className="h-4 w-4" /></button>
             </div>
             <label className="flex items-center gap-2 text-sm text-surface-900">
               <input type="checkbox" checked={edition.repos}
@@ -320,7 +320,7 @@ export function PoeiPlanning({
             )}
             <input type="text" placeholder="Note (optionnelle)" value={edition.note || ''}
               onChange={(e) => setEdition({ ...edition, note: e.target.value || null })} className="input-base w-full" />
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <button onClick={() => setEdition(null)} className="btn-secondary !py-1.5 !px-3 text-sm">Annuler</button>
               <button disabled={busy}
                 onClick={() => sauverJour({

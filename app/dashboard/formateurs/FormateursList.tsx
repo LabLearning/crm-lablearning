@@ -25,6 +25,7 @@ interface FormateursListProps {
 const contratLabels: Record<string, string> = {
   salarie: 'Salarié',
   prestataire: 'Prestataire',
+  sous_traitance: 'Sous-traitance',
   benevole: 'Bénévole',
 }
 
@@ -92,16 +93,16 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
       </div>
       <input ref={photoRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handlePhoto} />
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-[5rem_1fr] sm:grid-cols-3 gap-3">
         <Select id="civilite" name="civilite" label="Civilité" options={[{ value: '', label: '—' }, { value: 'M.', label: 'M.' }, { value: 'Mme', label: 'Mme' }]} defaultValue={formateur?.civilite || ''} />
         <Input id="prenom" name="prenom" label="Prénom *" defaultValue={formateur?.prenom || ''} error={errors.prenom?.[0]} />
-        <Input id="nom" name="nom" label="Nom *" defaultValue={formateur?.nom || ''} error={errors.nom?.[0]} />
+        <div className="col-span-2 sm:col-span-1"><Input id="nom" name="nom" label="Nom *" defaultValue={formateur?.nom || ''} error={errors.nom?.[0]} /></div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input id="email" name="email" type="email" label="Email" defaultValue={formateur?.email || ''} error={errors.email?.[0]} />
         <Input id="telephone" name="telephone" label="Téléphone" defaultValue={formateur?.telephone || ''} />
       </div>
-      <div className="grid grid-cols-2 gap-3 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
         <Input id="whatsapp" name="whatsapp" label="WhatsApp" placeholder="06 12 34 56 78" defaultValue={(formateur as any)?.whatsapp || ''} />
         <label className="flex items-center gap-2 text-sm text-surface-700 pb-2.5 cursor-pointer">
           <input type="checkbox" name="whatsapp_opt_in" value="true" defaultChecked={(formateur as any)?.whatsapp_opt_in || false}
@@ -132,7 +133,7 @@ function FormateurForm({ formateur, onDone }: { formateur?: Formateur; onDone: (
       <Input id="certifications" name="certifications" label="Certifications" placeholder="PMP, ITIL, PSM (séparés par des virgules)" defaultValue={formateur?.certifications?.join(', ') || ''} />
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Contrat</div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Select id="type_contrat" name="type_contrat" label="Type de contrat" options={contratOptions} defaultValue={formateur?.type_contrat || 'prestataire'} />
         <Input id="siret" name="siret" label="SIRET (si prestataire)" defaultValue={formateur?.siret || ''} />
       </div>
@@ -318,6 +319,22 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
     else toast('error', result.error || 'Erreur')
   }
 
+  // Actions d'un formateur : mêmes entrées dans le tableau (desktop) et la carte (mobile)
+  function menuItems(f: Formateur) {
+    return [
+      { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormateur(f) },
+      { label: "Envoyer l'accès à son espace", icon: <KeyRound className="h-4 w-4 text-brand-600" />, onClick: () => handleSendAccess(f.id, `${f.prenom} ${f.nom}`), hidden: !f.email },
+      { label: "Envoyer l'accès à l'outil d'audit", icon: <ShieldCheck className="h-4 w-4 text-sky-600" />, onClick: () => handleSendAudit(f.id, `${f.prenom} ${f.nom}`), hidden: !f.email },
+      { label: 'Habilitations', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, onClick: () => setHabilitationFormateur(f) },
+      {
+        label: f.is_active ? 'Désactiver' : 'Activer',
+        icon: f.is_active ? <XCircle className="h-4 w-4 text-warning-600" /> : <CheckCircle2 className="h-4 w-4 text-success-600" />,
+        onClick: () => handleToggle(f.id, f.is_active),
+      },
+      { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id) },
+    ]
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -325,20 +342,64 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Formateurs</h1>
           <p className="text-surface-500 mt-1 text-sm">{formateurs.length} formateur{formateurs.length > 1 ? 's' : ''}</p>
         </div>
-        {/* Trame de l'audit blanc (ind. 21) : pour les entretiens de recrutement à venir. */}
-        <a href="/api/pdf/grille-entretien" target="_blank" rel="noreferrer"
-          className="btn-secondary inline-flex items-center gap-1.5 !py-2 !px-3 text-sm">
-          Grille d&apos;entretien (PDF)
-        </a>
-        <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Nouveau formateur</Button>
+        {/* Mobile : bouton principal d'abord, pleine largeur ; la grille PDF en dessous */}
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2">
+          {/* Trame de l'audit blanc (ind. 21) : pour les entretiens de recrutement à venir. */}
+          <a href="/api/pdf/grille-entretien" target="_blank" rel="noreferrer"
+            className="btn-secondary inline-flex items-center justify-center gap-1.5 !py-2 !px-3 text-sm min-h-10 sm:min-h-0">
+            Grille d&apos;entretien (PDF)
+          </a>
+          <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="w-full sm:w-auto">Nouveau formateur</Button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 max-w-md mb-5">
-        <Search className="h-4 w-4 text-surface-400" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher par nom, expertise..." className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1" />
+      <div className="flex items-center gap-2 bg-white rounded-xl px-3 sm:py-2 border border-surface-200/60 max-w-md mb-5">
+        <Search className="h-4 w-4 text-surface-400 shrink-0" />
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher par nom, expertise..." className="h-10 sm:h-auto bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
       </div>
 
-      <div className="card overflow-hidden">
+      {/* Liste mobile : une carte par formateur (tri conservé), actions dans le menu */}
+      <div className="card overflow-hidden md:hidden">
+        <div className="divide-y divide-surface-100">
+          {sorted.map((f) => (
+            <div key={f.id} className={`flex items-start gap-3 px-4 py-3 ${!f.is_active ? 'opacity-55' : ''}`}>
+              <button type="button" onClick={() => router.push(`/dashboard/formateurs/${f.id}`)} className="flex items-start gap-3 flex-1 min-w-0 text-left min-h-10">
+                <Avatar firstName={f.prenom} lastName={f.nom} src={(f as any).photo_url} size="sm" className="mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-surface-900 truncate">{f.civilite} {f.prenom} {f.nom}</div>
+                  {f.email && <div className="text-xs text-surface-500 truncate">{f.email}</div>}
+                  <div className="mt-1 flex items-center gap-x-2 gap-y-1 flex-wrap text-xs text-surface-500">
+                    {f.is_active ? <Badge variant="success">Actif</Badge> : <Badge variant="default">Inactif</Badge>}
+                    <span>{contratLabels[f.type_contrat] || f.type_contrat}</span>
+                    <span className="tabular-nums">{sessionCounts[f.id] || 0} session{(sessionCounts[f.id] || 0) > 1 ? 's' : ''}</span>
+                    {f.tarif_journalier && <span className="tabular-nums whitespace-nowrap">{Number(f.tarif_journalier).toLocaleString('fr-FR')} € / j</span>}
+                    {f.note_moyenne && <span className="inline-flex items-center gap-0.5 font-medium text-surface-700"><Star className="h-3 w-3 text-warning-500 fill-warning-500" />{f.note_moyenne}</span>}
+                    {(f as any).zone_intervention && <span className="inline-flex items-center gap-0.5 text-brand-600"><MapPin className="h-3 w-3" />{(f as any).zone_intervention}</span>}
+                    {needsRenewal(f) && <span className="inline-flex items-center gap-1 text-warning-700"><AlertTriangle className="h-3 w-3" /> Habilitation à renouveler</span>}
+                  </div>
+                  {(f.domaines_expertise || []).length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(f.domaines_expertise || []).slice(0, 3).map((d) => <Badge key={d} variant="info">{d}</Badge>)}
+                      {(f.domaines_expertise || []).length > 3 && <span className="text-2xs text-surface-400 self-center">+{(f.domaines_expertise || []).length - 3}</span>}
+                    </div>
+                  )}
+                </div>
+              </button>
+              <div className="shrink-0 -mr-2 -mt-1">
+                <RowMenu width={208} triggerClassName="h-10 w-10 flex items-center justify-center" items={menuItems(f)} />
+              </div>
+            </div>
+          ))}
+        </div>
+        {filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center text-center py-14 px-8">
+            <Presentation className="h-6 w-6 text-surface-400 mb-2" />
+            <p className="text-sm text-surface-500">Aucun formateur trouvé</p>
+          </div>
+        )}
+      </div>
+
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-sm">
             <thead>
@@ -393,21 +454,7 @@ export function FormateursList({ formateurs, sessionCounts }: FormateursListProp
                     </div>
                   </td>
                   <td className="py-2.5 px-2" onClick={(e) => e.stopPropagation()}>
-                    <RowMenu
-                      width={208}
-                      items={[
-                        { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditFormateur(f) },
-                        { label: "Envoyer l'accès à son espace", icon: <KeyRound className="h-4 w-4 text-brand-600" />, onClick: () => handleSendAccess(f.id, `${f.prenom} ${f.nom}`), hidden: !f.email },
-                        { label: "Envoyer l'accès à l'outil d'audit", icon: <ShieldCheck className="h-4 w-4 text-sky-600" />, onClick: () => handleSendAudit(f.id, `${f.prenom} ${f.nom}`), hidden: !f.email },
-                        { label: 'Habilitations', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, onClick: () => setHabilitationFormateur(f) },
-                        {
-                          label: f.is_active ? 'Désactiver' : 'Activer',
-                          icon: f.is_active ? <XCircle className="h-4 w-4 text-warning-600" /> : <CheckCircle2 className="h-4 w-4 text-success-600" />,
-                          onClick: () => handleToggle(f.id, f.is_active),
-                        },
-                        { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(f.id) },
-                      ]}
-                    />
+                    <RowMenu width={208} items={menuItems(f)} />
                   </td>
                 </tr>
               ))}

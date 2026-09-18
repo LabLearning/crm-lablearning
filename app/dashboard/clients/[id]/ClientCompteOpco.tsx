@@ -96,10 +96,10 @@ export function ClientCompteOpco({ clientId, opcoNom, status, date, identifiant,
 
   return (
     <div className="card p-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Compte {opcoNom || 'OPCO'}</div>
         {peutModifier && !edition && (
-          <button type="button" onClick={ouvrirEdition} className="text-surface-400 hover:text-surface-700" title="Modifier le compte">
+          <button type="button" onClick={ouvrirEdition} className="h-10 w-10 -my-3 -mr-3 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100" title="Modifier le compte">
             <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
@@ -120,26 +120,26 @@ export function ClientCompteOpco({ clientId, opcoNom, status, date, identifiant,
           {(identifiant || aMotDePasse) && (
             <div className="rounded-xl border border-surface-200 divide-y divide-surface-100 text-sm">
               <div className="flex items-center gap-2 px-3 py-2">
-                <span className="text-xs text-surface-500 w-24 shrink-0">Identifiant</span>
+                <span className="text-xs text-surface-500 w-20 sm:w-24 shrink-0">Identifiant</span>
                 <span className="font-mono text-surface-900 flex-1 min-w-0 truncate">{identifiant || <span className="text-surface-400 font-sans">non renseigné</span>}</span>
                 {identifiant && (
-                  <button type="button" onClick={() => copier(identifiant)} className="text-surface-400 hover:text-surface-700" title="Copier">
+                  <button type="button" onClick={() => copier(identifiant)} className="h-10 w-10 -my-2 -mr-2 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0" title="Copier">
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
               <div className="flex items-center gap-2 px-3 py-2">
-                <span className="text-xs text-surface-500 w-24 shrink-0">Mot de passe</span>
+                <span className="text-xs text-surface-500 w-20 sm:w-24 shrink-0">Mot de passe</span>
                 <span className="font-mono text-surface-900 flex-1 min-w-0 truncate">
                   {!aMotDePasse ? <span className="text-surface-400 font-sans">non renseigné</span> : mdpRevele ?? '••••••••••'}
                 </span>
                 {aMotDePasse && peutModifier && (
                   <>
-                    <button type="button" onClick={revelerMdp} disabled={revelation} className="text-surface-400 hover:text-surface-700" title={mdpRevele ? 'Masquer' : 'Afficher'}>
+                    <button type="button" onClick={revelerMdp} disabled={revelation} className="h-10 w-10 -my-2 -mr-2 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0" title={mdpRevele ? 'Masquer' : 'Afficher'}>
                       {revelation ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : mdpRevele ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     </button>
                     {mdpRevele && (
-                      <button type="button" onClick={() => copier(mdpRevele)} className="text-surface-400 hover:text-surface-700" title="Copier">
+                      <button type="button" onClick={() => copier(mdpRevele)} className="h-10 w-10 -my-2 -mr-2 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 shrink-0" title="Copier">
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -176,7 +176,7 @@ export function ClientCompteOpco({ clientId, opcoNom, status, date, identifiant,
                 value={form.mot_de_passe} disabled={form.effacerMdp}
                 onChange={(e) => setForm({ ...form, mot_de_passe: e.target.value })}
               />
-              <button type="button" onClick={() => setVoirSaisie(!voirSaisie)} className="absolute right-3 bottom-2.5 text-surface-400 hover:text-surface-700" title={voirSaisie ? 'Masquer' : 'Voir'}>
+              <button type="button" onClick={() => setVoirSaisie(!voirSaisie)} className="absolute right-0.5 bottom-0.5 h-10 w-10 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-700" title={voirSaisie ? 'Masquer' : 'Voir'}>
                 {voirSaisie ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>

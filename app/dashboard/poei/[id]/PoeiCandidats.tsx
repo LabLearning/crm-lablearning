@@ -55,7 +55,7 @@ function IconAction({ label, onClick, href, disabled, className, children }: {
       ) : (
         <button onClick={onClick} disabled={disabled} className={base}>{children}</button>
       )}
-      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/tip:block whitespace-nowrap rounded-lg bg-surface-900 text-white text-[10px] font-medium px-2 py-1 z-30 shadow-elevated">
+      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/tip:block whitespace-nowrap rounded-lg bg-surface-900 text-white text-[11px] font-medium px-2 py-1 z-30 shadow-elevated">
         {label}
       </span>
     </div>
@@ -153,7 +153,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
     const r = await generateDevisPrevisionnelPoeiAction(poeiId)
     setGenPrev(false)
     if (r.success) {
-      toast('success', r.warning || 'Devis prévisionnel à jour — disponible dans le module Devis')
+      toast('success', r.warning || 'Devis prévisionnel à jour, disponible dans le module Devis')
       router.refresh()
     } else {
       toast('error', r.error || 'Erreur')
@@ -242,7 +242,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
 
   async function handleStatut(id: string, statut: string) {
     // L'abandon n'est pas un simple statut : il porte date, heures et prorata
-    // de facturation — il passe par sa propre modal.
+    // de facturation, il passe par sa propre modal.
     if (statut === 'abandonne') { setAbandonCand(candidats.find((x) => x.id === id) || null); return }
     const r = await updateCandidatStatutAction(id, poeiId, statut)
     if (r.success) router.refresh(); else toast('error', r.error || 'Erreur')
@@ -255,7 +255,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
     const r = await declarerAbandonCandidatAction(abandonCand.id, poeiId, new FormData(e.currentTarget))
     setSaving(false)
     if (r.success) {
-      toast('success', 'Abandon déclaré — facture recalculée au prorata')
+      toast('success', 'Abandon déclaré, facture recalculée au prorata')
       if ((r as any).warning) toast('error', (r as any).warning)
       setAbandonCand(null)
       router.refresh()
@@ -298,17 +298,18 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
             const entreApres = c.statut !== 'abandonne'
               && !!(c as any).date_debut && !!projet.date_debut && (c as any).date_debut > projet.date_debut
             return (
-              <div key={c.id} className={cn('flex items-center gap-2.5 py-2.5', entreApres && 'border-l-2 border-amber-400 -ml-3 pl-3 bg-amber-50/30')}>
+              <div key={c.id} className={cn('flex flex-wrap sm:flex-nowrap items-center gap-x-2.5 gap-y-2 py-2.5', entreApres && 'border-l-2 border-amber-400 -ml-3 pl-3 bg-amber-50/30')}>
                 <button onClick={() => setEditCand(c)} className="flex-1 min-w-0 text-left group">
                   <div className="text-sm font-medium text-surface-900 truncate group-hover:text-brand-600 transition-colors flex items-center gap-2">
                     <span className="truncate">{nom(c)}</span>
                     {entreApres && (
-                      <span className="shrink-0 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                      <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
                         <CalendarClock className="h-3 w-3" /> Entré en cours
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-surface-500 truncate">
+                  {/* Sur téléphone la ligne se replie : le numéro FT ou de convention reste lisible */}
+                  <div className="text-xs text-surface-500 break-words sm:truncate">
                     {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null, (c as any).numero_convention ? `Conv. ${(c as any).numero_convention}` : null, (c as any).entretien ? `Entretien${(c as any).entretien_date ? ` du ${new Date((c as any).entretien_date).toLocaleDateString('fr-FR')}` : ' mené'}` : null].filter(Boolean).join(' · ') || '—'}
                   </div>
                   {c.statut !== 'abandonne' && ((c as any).date_debut || (c as any).date_fin || (c as any).duree_heures != null) && (
@@ -329,15 +330,18 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                   )}
                 </button>
 
-                <select value={c.statut} onChange={(e) => handleStatut(c.id, e.target.value)} className="text-xs rounded-lg border border-surface-200 px-2 py-1 bg-white shrink-0" title="Statut du candidat">
+                {/* Sur téléphone le statut passe sous le nom, pleine largeur : le nom garde sa place. */}
+                <select value={c.statut} onChange={(e) => handleStatut(c.id, e.target.value)} className="order-3 sm:order-2 w-full sm:w-auto text-xs rounded-lg border border-surface-200 px-2 py-2.5 sm:py-1 min-h-[40px] sm:min-h-0 bg-white shrink-0" title="Statut du candidat">
                   {statutOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
 
                 {/* Six icônes par ligne × neuf candidats saturaient l'écran :
                     les documents et envois passent dans un menu, l'état de
                     chacun se lit dans l'onglet Pilotage. */}
+                <div className="order-2 sm:order-3 shrink-0">
                 <RowMenu
                   width={260}
+                  triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center"
                   items={[
                     { label: 'Modifier les informations', icon: <Pencil className="h-4 w-4" />, onClick: () => setEditCand(c) },
                     { label: 'Déclarer un abandon', icon: <XCircle className="h-4 w-4" />, onClick: () => setAbandonCand(c) },
@@ -349,6 +353,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                     { label: 'Retirer du projet', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleRemove(c.id), danger: true },
                   ]}
                 />
+                </div>
               </div>
             )
           })}
@@ -465,7 +470,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                       </button>
                     </div>
                   ))}
-                  <p className="text-2xs text-surface-400">Ces fichiers sont envoyés à tous les destinataires (20 Mo max au total).</p>
+                  <p className="text-[11px] text-surface-400">Ces fichiers sont envoyés à tous les destinataires (20 Mo max au total).</p>
                 </div>
               )}
             </div>
@@ -488,13 +493,13 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
             </div>
           )}
 
-          <div className="flex justify-between items-center gap-3 pt-3 border-t border-surface-100">
+          <div className="flex flex-wrap justify-between items-center gap-3 pt-3 border-t border-surface-100">
             <button type="button" onClick={handleSaveTemplate}
               disabled={!mailSubject.trim() || !mailMessage.trim()}
-              className="text-xs font-medium text-surface-500 hover:text-surface-700 disabled:opacity-40">
+              className="text-xs font-medium text-surface-500 hover:text-surface-700 disabled:opacity-40 min-h-[40px] sm:min-h-0">
               Enregistrer comme modèle
             </button>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3 ml-auto">
             <Button variant="secondary" onClick={() => setMailOpen(false)}>Annuler</Button>
             <Button onClick={handleSendGroupMail} isLoading={mailSending}
               disabled={!mailSubject.trim() || !mailMessage.trim()}
@@ -529,7 +534,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
       </Modal>
 
       {/* Aperçu de l'email avant envoi */}
-      <Modal isOpen={!!previewTargets} onClose={() => setPreviewTargets(null)} title="Aperçu de l'email — attestation d'entrée" size="lg">
+      <Modal isOpen={!!previewTargets} onClose={() => setPreviewTargets(null)} title="Aperçu de l'email, attestation d'entrée" size="lg">
         {previewTargets && (
           <div className="space-y-4">
             {/* Destinataires */}
@@ -543,8 +548,8 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                     {nom(c)} <span className="text-success-500">({c.apprenant.email})</span>
                   </span>
                 ) : (
-                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-danger-50 text-danger-600 text-xs border border-danger-100" title="Sans email — ne recevra pas l'attestation">
-                    <XCircle className="h-3 w-3 shrink-0" /> {nom(c)} — sans email
+                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-danger-50 text-danger-600 text-xs border border-danger-100" title="Sans email, ne recevra pas l'attestation">
+                    <XCircle className="h-3 w-3 shrink-0" /> {nom(c)}, sans email
                   </span>
                 ))}
               </div>
@@ -572,13 +577,13 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                     <span className="text-xs font-medium text-success-700">
                       attestation-entree-{previewTargets.length === 1 ? (previewTargets[0].apprenant?.nom || 'NOM') : 'NOM'}.pdf
                     </span>
-                    <span className="text-2xs text-surface-400">— personnalisée pour chaque candidat</span>
+                    <span className="text-[11px] text-surface-400">personnalisée pour chaque candidat</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-1">
+            <div className="flex flex-wrap justify-end gap-3 pt-1">
               <Button variant="secondary" onClick={() => setPreviewTargets(null)}>Annuler</Button>
               <Button onClick={confirmSend} isLoading={sending} icon={<Send className="h-4 w-4" />}>
                 Envoyer {previewTargets.filter((c) => c.apprenant?.email).length > 1 ? `aux ${previewTargets.filter((c) => c.apprenant?.email).length} candidats` : ''}
@@ -660,7 +665,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
       {/* Édition */}
       {/* Déclaration d'abandon : date + heures réelles → facture au prorata */}
       <Modal isOpen={!!abandonCand} onClose={() => setAbandonCand(null)}
-        title={`Déclarer l'abandon — ${abandonCand ? nom(abandonCand) : ''}`}
+        title={`Déclarer l'abandon, ${abandonCand ? nom(abandonCand) : ''}`}
         description="Les heures réellement effectuées servent à la facturation au prorata (modèle France Travail)."
         size="md">
         {abandonCand && (
@@ -674,7 +679,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
             <div>
               <label className="block text-sm font-medium text-surface-800 mb-1.5">Motif</label>
               <textarea name="motif_abandon" rows={3} className="input-base resize-none"
-                placeholder="Ce que le candidat ou l'employeur a indiqué — alimente l'analyse des causes d'abandon (PROC-12)" />
+                placeholder="Ce que le candidat ou l'employeur a indiqué, alimente l'analyse des causes d'abandon (PROC-12)" />
             </div>
             <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
               La facture du candidat sera recalculée : heures effectuées × taux horaire du projet.
@@ -711,7 +716,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                 <Input id="e_date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue" defaultValue={editCand.date_embauche_prevue || ''} />
               </div>
               <Input id="e_numero_convention" name="numero_convention" label="N° de convention" defaultValue={(editCand as any).numero_convention || ''} />
-              {/* Entretien de recrutement/positionnement — trace d'individualisation (ind. 4/10) */}
+              {/* Entretien de recrutement/positionnement, trace d'individualisation (ind. 4/10) */}
               <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
                 <div className="col-span-2">
                   <label htmlFor="e_entretien" className="block text-sm font-medium text-surface-700 mb-1.5">Entretien (compte rendu)</label>
@@ -788,7 +793,7 @@ function PeriodeCandidatChamps({
       <div className="border-t border-surface-100 pt-3">
         <button
           type="button" onClick={() => setOuvert(true)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
+          className="inline-flex items-center gap-1.5 min-h-[40px] text-sm font-medium text-brand-600 hover:text-brand-700"
         >
           <CalendarClock className="h-4 w-4" /> Ce candidat entre en cours de parcours
         </button>
@@ -833,7 +838,7 @@ function PeriodeCandidatChamps({
           type="button" onClick={() => setHeures(String(suggestion))}
           className="text-xs font-medium text-brand-600 hover:text-brand-700"
         >
-          Le planning compte {suggestion!.toLocaleString('fr-FR')} h sur cette période — reprendre cette durée
+          Le planning compte {suggestion!.toLocaleString('fr-FR')} h sur cette période, reprendre cette durée
         </button>
       ) : (
         <p className="text-xs text-surface-400">

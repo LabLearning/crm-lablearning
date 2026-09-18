@@ -39,18 +39,18 @@ export function PoeiEditor({ poei, clients, formations, nbCandidats = 0, finance
 
   return (
     <form onSubmit={handleSave} className="space-y-5">
-      <div className="card p-5">
+      <div className="card p-4 sm:p-5">
         <div className="section-label mb-3">Projet</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select id="client_id" name="client_id" label="Entreprise" defaultValue={d(poei.client_id)} options={clientOptions} />
           <Select id="formation_id" name="formation_id" label="Programme" defaultValue={d(poei.formation_id)} options={formationOptions} />
           <Input id="date_debut" name="date_debut" type="date" label="Début" defaultValue={d(poei.date_debut)} />
           <Input id="date_fin" name="date_fin" type="date" label="Fin" defaultValue={d(poei.date_fin)} />
-          <Input id="duree_heures" name="duree_heures" type="number" label="Durée (h) — max 400" defaultValue={poei.duree_heures != null ? String(poei.duree_heures) : ''} />
+          <Input id="duree_heures" name="duree_heures" type="number" label="Durée (h), 400 au plus" defaultValue={poei.duree_heures != null ? String(poei.duree_heures) : ''} />
         </div>
       </div>
 
-      <div className="card p-5">
+      <div className="card p-4 sm:p-5">
         <div className="section-label mb-3">Financement France Travail</div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -60,7 +60,7 @@ export function PoeiEditor({ poei, clients, formations, nbCandidats = 0, finance
             name="agence_ft_id"
             label="Agence France Travail facturée"
             defaultValue={(poei as any).agence_ft_id || ''}
-            options={[{ value: '', label: '— À préciser —' }, ...agences.map((a) => ({ value: a.id, label: a.ville ? `${a.nom} (${a.ville})` : a.nom }))]}
+            options={[{ value: '', label: 'À préciser' }, ...agences.map((a) => ({ value: a.id, label: a.ville ? `${a.nom} (${a.ville})` : a.nom }))]}
           />
           <Input id="montant_horaire" name="montant_horaire" type="number" label="Taux horaire (€)" defaultValue={poei.montant_horaire != null ? String(poei.montant_horaire) : ''} />
           {/* Le montant et l'encaissement viennent des FACTURES du dossier :
@@ -91,21 +91,21 @@ export function PoeiEditor({ poei, clients, formations, nbCandidats = 0, finance
 
       </div>
 
-      <div className="card p-5">
+      <div className="card p-4 sm:p-5">
         {/*
           Le représentant de l'employeur est le contact référent de
-          l'entreprise : une seule source, la fiche client — pas de copie qui
+          l'entreprise : une seule source, la fiche client, pas de copie qui
           divergerait. C'est lui qui signe l'attestation de développement de
           compétences et reçoit le lien de signature.
         */}
-        <div className="section-label mb-3">Employeur — représentant</div>
+        <div className="section-label mb-3">Employeur, représentant</div>
         <div className="rounded-xl border border-surface-200 px-4 py-3 mb-5 text-sm">
           {referent ? (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
               <span className="font-medium text-surface-900">{[referent.prenom, referent.nom].filter(Boolean).join(' ')}</span>
               {referent.email && <span className="text-surface-600">{referent.email}</span>}
               {referent.telephone && <span className="text-surface-600">{referent.telephone}</span>}
-              <span className="text-xs text-surface-400 w-full sm:w-auto">Contact référent de l'entreprise — modifiable sur la fiche client</span>
+              <span className="text-xs text-surface-400 w-full sm:w-auto">Contact référent de l'entreprise, modifiable sur la fiche client</span>
             </div>
           ) : (
             <span className="text-surface-500">
@@ -119,7 +119,7 @@ export function PoeiEditor({ poei, clients, formations, nbCandidats = 0, finance
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" isLoading={saving} icon={<Save className="h-4 w-4" />} >Enregistrer</Button>
+        <Button type="submit" isLoading={saving} icon={<Save className="h-4 w-4" />} className="w-full sm:w-auto">Enregistrer</Button>
       </div>
     </form>
   )

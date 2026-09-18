@@ -57,7 +57,7 @@ export default function FranchisesClient({
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Franchises</h1>
           <p className="text-surface-500 text-sm mt-1">Réseaux franchisés, établissements formés et commissions.</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary inline-flex items-center gap-2">
+        <button onClick={() => setShowCreate(true)} className="btn-primary inline-flex items-center gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Nouvelle franchise
         </button>
       </div>
@@ -106,12 +106,12 @@ export default function FranchisesClient({
                   <Mini label="Sessions" value={String(st.sessions)} />
                   <Mini label="Prise en charge" value={fmtEuro(st.ca)} />
                 </div>
-                <div className="mt-3 pt-3 border-t border-surface-100 flex items-center justify-between">
-                  <span className="text-xs text-surface-500 inline-flex items-center gap-1">
-                    <Banknote className="h-3.5 w-3.5" /> {f.taux_commission}% · {commissionTypeLabel(f.commission_type)}
+                <div className="mt-3 pt-3 border-t border-surface-100 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <span className="text-xs text-surface-500 inline-flex items-center gap-1 min-w-0">
+                    <Banknote className="h-3.5 w-3.5 shrink-0" /> {f.taux_commission}% · {commissionTypeLabel(f.commission_type)}
                   </span>
-                  <span className="text-sm font-bold text-amber-600 tabular-nums">
-                    {fmtEuro(st.commAVenir)} <span className="text-[10px] font-normal text-surface-400">à verser</span>
+                  <span className="text-sm font-bold text-amber-600 tabular-nums whitespace-nowrap">
+                    {fmtEuro(st.commAVenir)} <span className="text-[11px] font-normal text-surface-400">à verser</span>
                   </span>
                 </div>
               </Link>
@@ -145,8 +145,9 @@ function Kpi({ icon: Icon, tint, label, value }: { icon: any; tint: string; labe
 
 function Mini({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-surface-50 rounded-lg p-2">
-      <div className="text-[10px] uppercase tracking-wider text-surface-400 font-semibold">{label}</div>
+    <div className="bg-surface-50 rounded-lg p-2 min-w-0">
+      {/* Sur mobile les trois cases sont étroites : libellé en minuscules sans espacement pour qu'il tienne */}
+      <div className="text-[11px] text-surface-400 font-semibold truncate sm:uppercase sm:tracking-wider">{label}</div>
       <div className="text-sm font-bold text-surface-900 mt-0.5 tabular-nums truncate">{value}</div>
     </div>
   )
@@ -224,8 +225,8 @@ function CreateFranchiseModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="px-5 py-3 border-t border-surface-200 flex items-center justify-end gap-2 bg-surface-50/60">
-            <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border border-surface-200 text-sm font-medium text-surface-600 hover:bg-white">Annuler</button>
-            <button type="submit" disabled={isPending} className="btn-primary inline-flex items-center gap-2 px-4 py-2">
+            <button type="button" onClick={onClose} className="px-3 py-2 min-h-10 rounded-lg border border-surface-200 text-sm font-medium text-surface-600 hover:bg-white">Annuler</button>
+            <button type="submit" disabled={isPending} className="btn-primary inline-flex items-center gap-2 px-4 py-2 min-h-10">
               {isPending && <Loader2 className="h-4 w-4 animate-spin" />} Créer la franchise
             </button>
           </div>

@@ -10,7 +10,7 @@ import { Eye, Loader2, FileQuestion } from '@/components/ui/icons'
  * Le popover s'ouvre au-dessus ou en dessous du bouton (jamais sur le côté)
  * selon la place disponible, et se rend dans un portail pour échapper aux
  * conteneurs à overflow masqué. Le clic conserve le comportement normal
- * (ouverture dans un onglet) — utile sur tablette où le survol n'existe pas.
+ * (ouverture dans un onglet), utile sur tablette où le survol n'existe pas.
  */
 export function DocHoverPreview({
   docId,

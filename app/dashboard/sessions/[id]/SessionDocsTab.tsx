@@ -29,7 +29,7 @@ function BoutonDoc({ href, icon: Icon, titre, sous, teinte = 'brand' }: {
   const fonds = { brand: 'bg-brand-50 text-brand-600', blue: 'bg-blue-50 text-blue-600', amber: 'bg-amber-50 text-amber-600', emerald: 'bg-emerald-50 text-emerald-600' }[teinte]
   return (
     <a href={href} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-xl border border-surface-200 px-4 py-3 hover:border-brand-300 hover:bg-brand-50/40 transition-colors">
+      className="flex items-center gap-3 rounded-xl border border-surface-200 px-4 py-3 min-h-[56px] hover:border-brand-300 hover:bg-brand-50/40 transition-colors">
       <span className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${fonds}`}>
         <Icon className="h-4 w-4" />
       </span>
@@ -58,7 +58,7 @@ export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, fa
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <BoutonDoc href={`/api/pdf/convocation-session/${sessionId}`} icon={MailIcon}
-            titre="Convocation" sous={nbConvoques > 0 ? `Envoyée à ${nbConvoques} participant${nbConvoques > 1 ? 's' : ''}` : 'Jamais envoyée — dates et horaires'} />
+            titre="Convocation" sous={nbConvoques > 0 ? `Envoyée à ${nbConvoques} participant${nbConvoques > 1 ? 's' : ''}` : 'Jamais envoyée : dates et horaires'} />
           <BoutonDoc href={`/api/pdf/emargement/${sessionId}`} icon={ClipboardCheck} teinte="blue"
             titre="Feuille d'émargement" sous="Par demi-journée, à faire signer" />
           {formationId && (
@@ -73,7 +73,7 @@ export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, fa
           )}
           {estHygiene && aClient && (
             <BoutonDoc href={`/api/pdf/diplome-etablissement/${sessionId}`} icon={Award} teinte="emerald"
-              titre="Diplôme d'établissement" sous="À encadrer en salle — personnel formé à l'hygiène" />
+              titre="Diplôme d'établissement" sous="À encadrer en salle, personnel formé à l'hygiène" />
           )}
           {facture?.id && (
             <BoutonDoc href={`/api/pdf/facture/${facture.id}`} icon={Receipt}
@@ -94,7 +94,7 @@ export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, fa
         ) : (
           <div className="divide-y divide-surface-100">
             {participants.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 px-4 py-2.5 flex-wrap">
+              <div key={a.id} className="flex items-center gap-3 px-4 py-3 sm:py-2.5 flex-wrap">
                 <span className="flex-1 min-w-[140px]">
                   <span className="block text-sm font-medium text-surface-900">{a.prenom} {a.nom}</span>
                   {(() => {
@@ -102,23 +102,26 @@ export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, fa
                     const cert = etatEnvoi('certificat', a.email)
                     const hyg = estHygiene ? etatEnvoi('hygiene', a.email) : null
                     const morceaux = [att && `attestation ${att}`, cert && `certificat ${cert}`, hyg && `hygiène ${hyg}`].filter(Boolean)
-                    return morceaux.length ? <span className="block text-[10px] text-emerald-600">{morceaux.join(' · ')}</span> : <span className="block text-[10px] text-surface-400">rien d'envoyé</span>
+                    return morceaux.length ? <span className="block text-2xs text-emerald-600">{morceaux.join(' · ')}</span> : <span className="block text-2xs text-surface-400">rien d'envoyé</span>
                   })()}
                 </span>
-                <a href={`/api/pdf/attestation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer"
-                  className="text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors">
-                  Attestation de fin
-                </a>
-                <a href={`/api/pdf/certificat-realisation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer"
-                  className="text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors">
-                  Certificat
-                </a>
-                {estHygiene && (
-                  <a href={`/api/pdf/attestation-hygiene?session=${sessionId}&apprenant=${a.id}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors">
-                    Attestation hygiène
+                {/* Sur mobile, les trois PDF forment une rangée pleine largeur sous le nom */}
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <a href={`/api/pdf/attestation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap">
+                    Attestation de fin
                   </a>
-                )}
+                  <a href={`/api/pdf/certificat-realisation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap">
+                    Certificat
+                  </a>
+                  {estHygiene && (
+                    <a href={`/api/pdf/attestation-hygiene?session=${sessionId}&apprenant=${a.id}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap">
+                      Attestation hygiène
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ApprenantHoverCard } from '@/components/apprenants/ApprenantHoverCard'
@@ -164,15 +164,24 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
     } else toast('error', (r as any).error || 'Erreur')
   }
   const estAgefice = dossiersAgefice.length > 0 || (session as any).client?.financeur_type === 'agefice'
-  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>(() => {
-    // Arrivée ciblée (ex. ?tab=facturation depuis la vue AGEFICE)
-    if (typeof window !== 'undefined') {
-      const t = new URLSearchParams(window.location.search).get('tab')
-      const ALIAS: Record<string, string> = { pointages: 'session', evaluations: 'qcm', contenu: 'docs', deroule: 'dossier' }
-      if (t) return (ALIAS[t] || t) as any
-    }
-    return 'session'
-  })
+  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>('session')
+  // Arrivée ciblée (ex. ?tab=facturation depuis la vue AGEFICE) : lue après montage,
+  // jamais dans l'état initial, pour que le rendu serveur et le premier rendu client
+  // soient identiques (sinon erreur d'hydratation sur la fiche session).
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab')
+    if (!t) return
+    const ALIAS: Record<string, string> = { pointages: 'session', evaluations: 'qcm', contenu: 'docs', deroule: 'dossier' }
+    setTab((ALIAS[t] || t) as any)
+  }, [])
+  // Barre d'onglets défilante : on centre l'onglet actif (mobile)
+  const tabsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const bar = tabsRef.current
+    const actif = bar?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    if (!bar || !actif || bar.scrollWidth <= bar.clientWidth) return
+    bar.scrollTo({ left: actif.offsetLeft - (bar.clientWidth - actif.offsetWidth) / 2, behavior: 'smooth' })
+  }, [tab])
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [showMontantModal, setShowMontantModal] = useState(false)
   const [montantValue, setMontantValue] = useState('')
@@ -343,28 +352,64 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <BackLink fallbackHref="/dashboard/sessions" iconOnly />
+      {/* Header : retour + titre sur deux lignes, actions sur leur propre rangée sous 640 px */}
+      <div className="flex items-start gap-2 sm:gap-4">
+        <BackLink fallbackHref="/dashboard/sessions" iconOnly className="mt-0.5 sm:mt-1 -ml-2 sm:ml-0 p-2 rounded-xl hover:bg-surface-100 transition-colors shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading truncate">
-              {formation?.intitule || session.reference}
-            </h1>
-            {isPoei && <PoeiBadge />}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+            <div className="flex items-start gap-2 flex-wrap min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl leading-tight font-heading font-bold text-surface-900 tracking-heading [overflow-wrap:anywhere] line-clamp-2 sm:line-clamp-none">
+                {formation?.intitule || session.reference}
+              </h1>
+              {isPoei && <span className="mt-1"><PoeiBadge /></span>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0 -ml-10 sm:ml-0">
+              {/* Modifier la session */}
+              {!isFormateur && (
+                <button
+                  onClick={() => setEditSessionOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-xl border border-surface-200 text-[13px] sm:text-xs font-medium text-surface-700 hover:border-brand-300 hover:bg-brand-50/50 transition-colors shrink-0"
+                >
+                  <PenTool className="h-3.5 w-3.5" /> Modifier
+                </button>
+              )}
+              {/* Statut */}
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => canChangeStatus && nextStatuses.length > 0 && setShowStatusMenu(!showStatusMenu)}
+                  className={cn('flex items-center gap-1.5 min-h-[40px] sm:min-h-0', canChangeStatus && nextStatuses.length > 0 && 'cursor-pointer')}
+                >
+                  <Badge variant={SESSION_STATUS[session.status]?.variant || 'default'}>
+                    {SESSION_STATUS[session.status]?.label || session.status}
+                  </Badge>
+                  {canChangeStatus && nextStatuses.length > 0 && <ChevronDown className="h-3.5 w-3.5 text-surface-400" />}
+                </button>
+                {showStatusMenu && (
+                  <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1 w-44 bg-white rounded-xl border shadow-elevated py-1 z-20">
+                    {nextStatuses.map(s => (
+                      <button key={s} onClick={() => handleStatusChange(s)}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 sm:py-2 text-sm text-surface-700 hover:bg-surface-50">
+                        <Badge variant={SESSION_STATUS[s]?.variant || 'default'}>{SESSION_STATUS[s]?.label}</Badge>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4 mt-1 text-sm text-surface-500 flex-wrap">
-            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />
-              {formatDate(session.date_debut, { day: 'numeric', month: 'long' })} — {formatDate(session.date_fin, { day: 'numeric', month: 'long', year: 'numeric' })}
+          {/* Méta : dates, établissement, adresse, durée, effectif. Chaque item s'enroule sur toute la largeur. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 sm:mt-1 -ml-10 sm:ml-0 text-[13px] sm:text-sm text-surface-500">
+            <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5 shrink-0" />
+              Du {formatDate(session.date_debut, { day: 'numeric', month: 'long' })} au {formatDate(session.date_fin, { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
             {etablissement && (
               session.client_id ? (
                 <Link href={`/dashboard/clients/${session.client_id}`}
-                  className="flex items-center gap-1 hover:text-brand-600 hover:underline transition-colors">
-                  <Building2 className="h-3.5 w-3.5" />{etablissement}
+                  className="inline-flex items-center gap-1 hover:text-brand-600 hover:underline transition-colors min-w-0">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" /><span className="[overflow-wrap:anywhere]">{etablissement}</span>
                 </Link>
               ) : (
-                <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{etablissement}</span>
+                <span className="inline-flex items-center gap-1 min-w-0"><Building2 className="h-3.5 w-3.5 shrink-0" /><span className="[overflow-wrap:anywhere]">{etablissement}</span></span>
               )
             )}
             {compteOpco && (
@@ -373,64 +418,38 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                 <Landmark className="h-3 w-3" />{libelleCompteOpco(compteOpco.status, compteOpco.opcoNom)}
               </Link>
             )}
-            {adresseComplete && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{adresseComplete}</span>}
-            {formation?.duree_heures && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{formation.duree_heures}h</span>}
-            <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{inscriptions.length} apprenant{inscriptions.length > 1 ? 's' : ''}</span>
+            {adresseComplete && (
+              <span className="inline-flex items-start gap-1 min-w-0 max-w-full">
+                <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" /><span className="[overflow-wrap:anywhere]">{adresseComplete}</span>
+              </span>
+            )}
+            {formation?.duree_heures && <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 shrink-0" />{formation.duree_heures}h</span>}
+            <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5 shrink-0" />{inscriptions.length} apprenant{inscriptions.length > 1 ? 's' : ''}</span>
           </div>
-          <div className="flex flex-wrap gap-2 mt-2">
+          {/* Téléchargements : pleine largeur en colonne sur mobile */}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mt-3 sm:mt-2 -ml-10 sm:ml-0">
             {session.formation_id && (
               <a href={`/api/pdf/programme/${session.formation_id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium hover:bg-brand-100 transition-colors">
-                <Download className="h-3.5 w-3.5" /> Programme (avec dates de session)
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-50 text-brand-500 text-[13px] sm:text-xs font-medium hover:bg-brand-100 transition-colors">
+                <Download className="h-3.5 w-3.5 shrink-0" /> Programme (avec dates de session)
               </a>
             )}
             <a href={`/api/pdf/convocation-session/${session.id}`} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium hover:bg-brand-100 transition-colors">
-              <Download className="h-3.5 w-3.5" /> Convocation
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-50 text-brand-500 text-[13px] sm:text-xs font-medium hover:bg-brand-100 transition-colors">
+              <Download className="h-3.5 w-3.5 shrink-0" /> Convocation
             </a>
           </div>
-        </div>
-        {/* Modifier la session */}
-        {!isFormateur && (
-          <button
-            onClick={() => setEditSessionOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-200 text-xs font-medium text-surface-700 hover:border-brand-300 hover:bg-brand-50/50 transition-colors shrink-0"
-          >
-            <PenTool className="h-3.5 w-3.5" /> Modifier
-          </button>
-        )}
-        {/* Statut */}
-        <div className="relative shrink-0">
-          <button
-            onClick={() => canChangeStatus && nextStatuses.length > 0 && setShowStatusMenu(!showStatusMenu)}
-            className={cn('flex items-center gap-1.5', canChangeStatus && nextStatuses.length > 0 && 'cursor-pointer')}
-          >
-            <Badge variant={SESSION_STATUS[session.status]?.variant || 'default'}>
-              {SESSION_STATUS[session.status]?.label || session.status}
-            </Badge>
-            {canChangeStatus && nextStatuses.length > 0 && <ChevronDown className="h-3.5 w-3.5 text-surface-400" />}
-          </button>
-          {showStatusMenu && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl border shadow-elevated py-1 z-20">
-              {nextStatuses.map(s => (
-                <button key={s} onClick={() => handleStatusChange(s)}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-surface-700 hover:bg-surface-50">
-                  <Badge variant={SESSION_STATUS[s]?.variant || 'default'}>{SESSION_STATUS[s]?.label}</Badge>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
       {/* Validation du montant formateur à la confirmation de la session */}
       {showMontantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/40 p-4">
-          <div className="bg-white rounded-2xl shadow-modal w-full max-w-sm p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-surface-900/40 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-modal w-full max-w-full sm:max-w-sm p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-4">
             <div>
               <h3 className="text-sm font-heading font-bold text-surface-900">Valider la session</h3>
               <p className="text-xs text-surface-500 mt-1">
-                Confirmez le montant de la prestation formateur pour cette session — c&apos;est ce montant qui figurera sur le contrat de prestation.
+                Confirmez le montant de la prestation formateur pour cette session : c&apos;est ce montant qui figurera sur le contrat de prestation.
               </p>
             </div>
             <div>
@@ -441,16 +460,16 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                 <p className="text-2xs text-surface-400 mt-1">Tarif indicatif de la fiche formateur : {formateur.tarif_journalier} €/j</p>
               )}
             </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowMontantModal(false)} className="px-3 py-2 rounded-xl text-sm text-surface-600 bg-surface-100 hover:bg-surface-200 transition-colors">Annuler</button>
-              <button onClick={confirmWithMontant} className="px-3 py-2 rounded-xl text-sm font-medium text-white bg-surface-900 hover:bg-surface-800 transition-colors">Valider la session</button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button onClick={() => setShowMontantModal(false)} className="px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 rounded-xl text-sm text-surface-600 bg-surface-100 hover:bg-surface-200 transition-colors">Annuler</button>
+              <button onClick={confirmWithMontant} className="px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 rounded-xl text-sm font-medium text-white bg-surface-900 hover:bg-surface-800 transition-colors">Valider la session</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Onglets */}
-      <div className="flex gap-1 bg-surface-100 rounded-lg p-0.5 overflow-x-auto">
+      {/* Onglets : barre défilante, scrollbar masquée, onglet actif recentré (cf. tabsRef) */}
+      <div ref={tabsRef} role="tablist" aria-label="Sections de la session" className="relative flex gap-1 bg-surface-100 rounded-lg p-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[
           { id: 'session' as const, label: 'Session', icon: Calendar },
           ...(!isFormateur ? [{ id: 'dossier' as const, label: derouleIncomplet ? `Conformité (${derouleIncomplet} à faire)` : 'Conformité', icon: FolderCheck }] : []),
@@ -465,8 +484,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           ...(!isFormateur ? [{ id: 'facturation' as const, label: estAgefice ? 'AGEFICE' : 'Facturation', icon: ReceiptEuro }] : []),
           ...(!isFormateur ? [{ id: 'mails' as const, label: `Mails (${emailLogs.length})`, icon: Mails }] : []),
         ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={cn('flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0',
+          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+            className={cn('flex items-center justify-center gap-2 px-3 py-2.5 min-h-[40px] rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0',
               tab === t.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-500 hover:text-surface-800')}>
             <t.icon className="h-4 w-4" />
             {t.label}
@@ -482,7 +501,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
         <div className="space-y-4">
           {/* Prix de vente de la session (→ convention) — éditable ici */}
           {!isFormateur && (
-            <div className="card p-4 flex items-center gap-4">
+            <div className="card p-4 flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
                 <Euro className="h-5 w-5 text-brand-600" />
               </div>
@@ -496,14 +515,14 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                 <div className="text-2xs text-surface-500 mt-0.5">Ce montant est repris sur la convention de formation.</div>
               </div>
               {editPrix ? (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="relative">
+                <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-none">
                     <input
                       type="number" step="0.01" autoFocus value={prixValue}
                       onChange={(e) => setPrixValue(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') savePrix(); if (e.key === 'Escape') setEditPrix(false) }}
                       placeholder="0"
-                      className="w-32 pl-3 pr-7 py-2 rounded-xl border border-brand-300 bg-white text-sm font-semibold text-surface-900 text-right focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
+                      className="w-full sm:w-32 pl-3 pr-7 py-2 min-h-[40px] sm:min-h-0 rounded-xl border border-brand-300 bg-white text-sm font-semibold text-surface-900 text-right focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
                     />
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-surface-400 pointer-events-none">€</span>
                   </div>
@@ -520,7 +539,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                 <button
                   onClick={() => { setPrixValue(session.prix_ht != null ? String(session.prix_ht) : ''); setEditPrix(true) }}
                   title="Modifier le prix de la session"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-surface-200 text-surface-600 text-sm font-medium hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-600 transition-colors shrink-0"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] sm:min-h-0 rounded-xl border border-surface-200 text-surface-600 text-sm font-medium hover:border-brand-300 hover:bg-brand-50/40 hover:text-brand-600 transition-colors shrink-0 w-full sm:w-auto"
                 >
                   <PenTool className="h-3.5 w-3.5" /> Modifier
                 </button>
@@ -530,28 +549,28 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
 
           {/* Formateur */}
           {formateur && (
-            <div className="card p-4 flex items-center gap-4">
+            <div className="card p-4 flex flex-wrap items-center gap-3 sm:gap-4">
               <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                 <GraduationCap className="h-5 w-5 text-blue-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-surface-900">{formateur.prenom} {formateur.nom}</div>
-                <div className="text-xs text-surface-500 flex items-center gap-3">
-                  {formateur.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{formateur.email}</span>}
-                  {formateur.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{formateur.telephone}</span>}
+                <div className="text-xs text-surface-500 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  {formateur.email && <span className="inline-flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /><span className="[overflow-wrap:anywhere]">{formateur.email}</span></span>}
+                  {formateur.telephone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{formateur.telephone}</span>}
                 </div>
               </div>
               {/* Rémunération formateur — modifiable directement ici */}
               {!isFormateur && (
                 editCout ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="relative">
+                  <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none">
                       <input
                         type="number" autoFocus value={coutValue}
                         onChange={(e) => setCoutValue(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') saveCout(); if (e.key === 'Escape') setEditCout(false) }}
                         placeholder={formateur.tarif_journalier ? String(formateur.tarif_journalier) : '0'}
-                        className="w-28 pl-3 pr-7 py-2 rounded-xl border border-brand-300 bg-white text-sm font-semibold text-surface-900 text-right focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
+                        className="w-full sm:w-28 pl-3 pr-7 py-2 min-h-[40px] sm:min-h-0 rounded-xl border border-brand-300 bg-white text-sm font-semibold text-surface-900 text-right focus:outline-none focus:ring-2 focus:ring-brand-100 focus:border-brand-400"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-surface-400 pointer-events-none">€</span>
                     </div>
@@ -569,7 +588,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     onClick={() => { setCoutValue(session.cout_formateur != null ? String(session.cout_formateur) : ''); setEditCout(true) }}
                     title="Modifier la rémunération du formateur"
                     className={cn(
-                      'group flex items-center gap-2.5 rounded-xl border px-3 py-2 shrink-0 transition-all',
+                      'group flex items-center gap-2.5 rounded-xl border px-3 py-2 shrink-0 transition-all w-full sm:w-auto',
                       session.cout_formateur != null
                         ? 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-300 hover:bg-emerald-50'
                         : 'border-dashed border-surface-300 bg-surface-50 hover:border-brand-300 hover:bg-brand-50/40',
@@ -581,8 +600,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     )}>
                       <Euro className={cn('h-3.5 w-3.5', session.cout_formateur != null ? 'text-emerald-600' : 'text-surface-400')} />
                     </span>
-                    <span className="text-left">
-                      <span className="block text-[10px] uppercase tracking-wider text-surface-400 leading-none">Rémunération</span>
+                    <span className="text-left flex-1 sm:flex-none">
+                      <span className="block text-2xs uppercase tracking-wider text-surface-400 leading-none">Rémunération</span>
                       <span className={cn(
                         'block text-sm font-semibold leading-tight mt-0.5',
                         session.cout_formateur != null ? 'text-emerald-800' : 'text-surface-400 font-normal',
@@ -598,7 +617,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
               )}
               {!isFormateur && formateur.id && (
                 <a href={`/api/pdf/contrat-formateur/${formateur.id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-500 text-xs font-medium hover:bg-brand-100 transition-colors shrink-0">
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-50 text-brand-500 text-[13px] sm:text-xs font-medium hover:bg-brand-100 transition-colors shrink-0 w-full sm:w-auto">
                   <Download className="h-3.5 w-3.5" /> Contrat prestation
                 </a>
               )}
@@ -609,7 +628,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
           <div className="card overflow-hidden">
             <div className="px-4 py-3 border-b border-surface-100">
               <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">
-                Planning — {sessionDays.length} jour{sessionDays.length > 1 ? 's' : ''}
+                Planning · {sessionDays.length} jour{sessionDays.length > 1 ? 's' : ''}
                 {(() => {
                   const totalH = pointages.reduce((t: number, p: any) => {
                     if (!p.heure_arrivee || !p.heure_depart) return t
@@ -639,9 +658,9 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     <div className="flex-1 min-w-0">
                       <div className={cn('text-sm', isToday ? 'font-semibold text-surface-900' : 'text-surface-700')}>
                         {new Date(day).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                        {isToday && <span className="ml-2 text-[10px] text-brand-600 font-semibold uppercase">Aujourd'hui</span>}
+                        {isToday && <span className="ml-2 text-2xs text-brand-600 font-semibold uppercase">Aujourd'hui</span>}
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-surface-500 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-surface-500 mt-0.5">
                         {dayPointage?.heure_arrivee && (
                           <span className="flex items-center gap-1 text-emerald-600"><LogIn className="h-3 w-3" />{formatHeure(dayPointage.heure_arrivee)}</span>
                         )}
@@ -720,22 +739,22 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
       {tab === 'presences' && (
         <div className="space-y-4">
           {!isFormateur && (
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:justify-end gap-2 [&>button]:justify-center [&>button]:min-h-[40px] sm:[&>button]:min-h-0">
               <LiensSignatureEmargement sessionId={session.id} />
               <a href={`/api/pdf/emargement/${session.id}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-brand-600 text-xs font-medium hover:bg-brand-100 transition-colors">
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-50 text-brand-600 text-[13px] sm:text-xs font-medium hover:bg-brand-100 transition-colors">
                 <Download className="h-3.5 w-3.5" /> Feuille vierge (PDF)
               </a>
               {emargements.some((e: any) => e.signature_data || e.est_present) && (
                 <a href={`/api/pdf/emargement-signe/${session.id}`} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-colors">
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-emerald-600 text-white text-[13px] sm:text-xs font-medium hover:bg-emerald-700 transition-colors">
                   <Download className="h-3.5 w-3.5" /> Feuille signée (PDF)
                 </a>
               )}
               {scanEmargement && (
                 <button onClick={ouvrirScanEmargement} disabled={scanEnCours}
                   title="Feuille papier scannée, déposée au dossier de la session"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-900 text-white text-xs font-medium hover:bg-surface-800 transition-colors disabled:opacity-50">
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-surface-900 text-white text-[13px] sm:text-xs font-medium hover:bg-surface-800 transition-colors disabled:opacity-50">
                   {scanEnCours ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                   Feuille scannée
                 </button>
@@ -743,16 +762,16 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
             </div>
           )}
           {/* Stats émargement */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl p-4 bg-blue-50 text-center">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-2xl p-3 sm:p-4 bg-blue-50 text-center">
               <div className="text-2xl font-heading font-bold text-blue-600">{inscriptions.length}</div>
               <div className="text-xs text-surface-600">Inscrits</div>
             </div>
-            <div className="rounded-2xl p-4 bg-emerald-50 text-center">
+            <div className="rounded-2xl p-3 sm:p-4 bg-emerald-50 text-center">
               <div className="text-2xl font-heading font-bold text-emerald-600">{totalPresents}</div>
               <div className="text-xs text-surface-600">Présences</div>
             </div>
-            <div className="rounded-2xl p-4 bg-amber-50 text-center">
+            <div className="rounded-2xl p-3 sm:p-4 bg-amber-50 text-center">
               <div className="text-2xl font-heading font-bold text-amber-600">
                 {totalEchus > 0 ? Math.round((totalPresents / totalEchus) * 100) : 0}%
               </div>
@@ -806,7 +825,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                       onClick={() => marquerJournee(day)}
                       disabled={jourEnCours === day}
                       title="Le formateur a fait signer sur papier : marquer la journée entière"
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50">
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 w-full sm:w-auto rounded-lg border border-surface-200 text-[13px] sm:text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50">
                       {jourEnCours === day ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
                       Tous présents ce jour
                     </button>
@@ -825,7 +844,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                             <span className="text-xs font-semibold text-surface-600">
                               {CRENEAU_LABELS[creneau] || creneau}
                             </span>
-                            <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                            <span className={cn('text-2xs font-semibold px-2 py-0.5 rounded-full',
                               creneauPresent === creneauEmargements.length ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-200 text-surface-500'
                             )}>
                               {creneauPresent}/{creneauEmargements.length}
@@ -857,12 +876,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-surface-900">{apprenant?.prenom} {apprenant?.nom}</div>
-                            <div className="text-xs text-surface-400 flex items-center gap-2">
+                            <div className="text-xs text-surface-400 flex flex-wrap items-center gap-2">
                               {/* Même sous-titre pour tous : l'établissement (celui du
                                   stagiaire, sinon le client de la session). */}
                               {(apprenant?.entreprise || (session as any).client?.raison_sociale) && (
-                                <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />
-                                  {apprenant?.entreprise || (session as any).client?.nom_commercial || (session as any).client?.raison_sociale}
+                                <span className="inline-flex items-center gap-1 min-w-0"><Building2 className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{apprenant?.entreprise || (session as any).client?.nom_commercial || (session as any).client?.raison_sociale}</span>
                                 </span>
                               )}
                             </div>
@@ -874,7 +893,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                               <button
                                 onClick={() => handleTogglePresence(em.id, em.est_present === true ? null : true)}
                                 disabled={isPending}
-                                className={cn('flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                                className={cn('flex items-center gap-1 px-2.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium transition-colors',
                                   em.est_present === true ? 'bg-emerald-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" /> Présent
@@ -883,7 +902,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                                 onClick={() => em.est_present === false ? handleTogglePresence(em.id, null) : handleMarquerAbsent(em.id)}
                                 disabled={isPending}
                                 title={em.motif_absence || undefined}
-                                className={cn('flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                                className={cn('flex items-center gap-1 px-2.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium transition-colors',
                                   em.est_present === false ? 'bg-red-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}
                               >
                                 <XCircle className="h-3.5 w-3.5" /> Absent
@@ -967,7 +986,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                         })}
                       </div>
                       <div className="text-xs text-surface-500 flex items-center gap-3 flex-wrap mt-0.5">
-                        {a?.email && <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" />{a.email}</span>}
+                        {a?.email && <span className="inline-flex items-center gap-1 min-w-0 max-w-full"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{a.email}</span></span>}
                         {a?.telephone && <span className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{a.telephone}</span>}
                         {a?.entreprise && <span className="flex items-center gap-1"><Building2 className="h-3 w-3 shrink-0" />{a.entreprise}</span>}
                       </div>
@@ -982,7 +1001,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                               return (
                                 <span key={type}
                                   title={envoi ? `Envoyé le ${new Date((envoi.sent_at || envoi.created_at)!).toLocaleDateString('fr-FR')}` : 'Jamais envoyé'}
-                                  className={cn('text-[10px] font-medium rounded-full px-1.5 py-0.5 border',
+                                  className={cn('text-2xs font-medium rounded-full px-1.5 py-0.5 border',
                                     envoi ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-surface-50 text-surface-400 border-surface-200')}>
                                   {label}{envoi ? ' ✓'.replace(' ✓', '') : ''}
                                 </span>
@@ -995,13 +1014,13 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     {assiduity !== null && (
                       <div className="text-right shrink-0">
                         <div className={cn('text-sm font-bold leading-none', assiduity >= 80 ? 'text-emerald-600' : assiduity >= 50 ? 'text-amber-600' : 'text-red-600')}>{assiduity}%</div>
-                        <div className="text-[10px] text-surface-400 mt-0.5">{appPresent}/{appEchus} créneau{appEchus > 1 ? 'x' : ''}{appAVenir > 0 ? ` · ${appAVenir} à venir` : ''}</div>
+                        <div className="text-2xs text-surface-400 mt-0.5 whitespace-nowrap">{appPresent}/{appEchus} créneau{appEchus > 1 ? 'x' : ''}{appAVenir > 0 ? ` · ${appAVenir} à venir` : ''}</div>
                       </div>
                     )}
                     {/* Un seul menu d'actions (modifier, documents, envoi, retrait) */}
                     {!isFormateur && (
-                      <div className="shrink-0">
-                        <RowMenu items={[
+                      <div className="shrink-0 -mr-2 sm:mr-0">
+                        <RowMenu triggerClassName="p-2.5 sm:p-1.5" items={[
                           { label: 'Modifier l\'apprenant', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditApprenant(a) },
                           { label: 'Attestation d\'entrée (PDF)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/attestation-entree/${a?.id}${base}`, '_blank') },
                           { label: 'Convocation (PDF)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/convocation/${a?.id}${base}`, '_blank') },
@@ -1046,16 +1065,16 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
       {tab === 'rapport' && (
         <div className="space-y-4">
           {rapport ? (
-            <div className="card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-surface-500" />
+            <div className="card p-4 sm:p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <FileText className="h-5 w-5 text-surface-500 shrink-0" />
                   <div>
                     <div className="text-sm font-semibold text-surface-900">Rapport de session</div>
                     <div className="text-xs text-surface-500">
                       {rapport.formateur ? `${rapport.formateur.prenom || ''} ${rapport.formateur.nom || ''}`.trim() + ' · ' : ''}
                       {rapport.status === 'valide'
-                        ? `Validé${rapport.submitted_at ? ` — soumis le ${formatDate(rapport.submitted_at, { day: 'numeric', month: 'long' })}` : ''}`
+                        ? `Validé${rapport.submitted_at ? `, soumis le ${formatDate(rapport.submitted_at, { day: 'numeric', month: 'long' })}` : ''}`
                         : rapport.status === 'soumis' ? 'Soumis le ' + formatDate(rapport.submitted_at, { day: 'numeric', month: 'long' }) : 'Brouillon en cours'}
                     </div>
                   </div>
@@ -1140,7 +1159,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                     <div key={q.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
                       <Star className="h-4 w-4 text-amber-400 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-surface-900 truncate">{q.qcm?.titre || 'Questionnaire'}</div>
+                        <div className="text-sm font-medium text-surface-900 [overflow-wrap:anywhere] line-clamp-2 sm:line-clamp-1">{q.qcm?.titre || 'Questionnaire'}</div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-2xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
                             {chaud ? 'Satisfaction à chaud' : 'Satisfaction à froid'}
@@ -1263,7 +1282,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                 href={`/api/sessions/${session.id}/qr-codes`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-900 text-white text-xs font-semibold hover:bg-surface-800 transition-colors shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 min-h-[40px] sm:min-h-0 rounded-xl bg-surface-900 text-white text-xs font-semibold hover:bg-surface-800 transition-colors shrink-0 w-full sm:w-auto"
               >
                 <QrCode className="h-3.5 w-3.5" /> QR codes à projeter
               </a>
@@ -1337,7 +1356,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                         <ListChecks className="h-4 w-4 text-brand-500" />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-surface-900 truncate">{q.qcm?.titre || 'QCM'}</div>
+                        <div className="text-sm font-medium text-surface-900 [overflow-wrap:anywhere] line-clamp-2 sm:line-clamp-1">{q.qcm?.titre || 'QCM'}</div>
                         <div className="text-xs text-surface-500 flex items-center gap-2 flex-wrap">
                           {q.qcm?.type && <Badge variant="info">{QCM_TYPE_LABELS[q.qcm.type] || q.qcm.type}</Badge>}
                           <span>{completed.length}/{reponses.length} répondu{completed.length > 1 ? 's' : ''}</span>
@@ -1353,17 +1372,17 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                       ramassée reste rattachable à son dossier. Le formateur y a
                       accès comme l'administratif : c'est lui qui imprime.
                     */}
-                    <div className="px-4 pb-3 -mt-1">
+                    <div className="px-4 pb-3 -mt-1 flex flex-col sm:flex-row gap-2">
                       <a
                         href={`/api/pdf/questionnaire-papier?session=${session.id}&qcm=${q.qcm_id}`}
                         target="_blank" rel="noopener noreferrer"
-                        className="btn-secondary !py-1 !px-2.5 text-xs inline-flex items-center gap-1.5"
+                        className="btn-secondary !py-2 sm:!py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs inline-flex items-center justify-center gap-1.5"
                       >
                         <Printer className="h-3.5 w-3.5" />
                         Imprimer les exemplaires vierges
                       </a>
                       <button onClick={() => setRapide(true)}
-                        className="btn-secondary !py-1 !px-2.5 text-xs inline-flex items-center gap-1.5 ml-2">
+                        className="btn-secondary !py-2 sm:!py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs inline-flex items-center justify-center gap-1.5">
                         <Pencil className="h-3.5 w-3.5" />
                         Saisie rapide des réponses
                       </button>
@@ -1557,17 +1576,17 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
       {/* Modal signature */}
       {/* Modifier la session */}
       {editSessionOpen && !isFormateur && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/40 backdrop-blur-sm p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-900/40 backdrop-blur-sm p-0 sm:p-4"
           onClick={() => setEditSessionOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-modal w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+          <div className="bg-white rounded-none sm:rounded-2xl shadow-modal w-full max-w-full sm:max-w-3xl h-full sm:h-auto max-h-full sm:max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}>
-            <div className="px-5 py-4 border-b border-surface-100 flex items-center justify-between">
+            <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-surface-100 flex items-center justify-between">
               <h3 className="text-base font-heading font-semibold text-surface-900">Modifier la session</h3>
-              <button onClick={() => setEditSessionOpen(false)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100">
+              <button onClick={() => setEditSessionOpen(false)} aria-label="Fermer" className="p-2 -mr-1 rounded-lg text-surface-400 hover:bg-surface-100 min-h-[40px] min-w-[40px] flex items-center justify-center">
                 <XCircle className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-5 overflow-y-auto">
+            <div className="p-4 sm:p-5 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
               <SessionForm
                 session={{ ...session, _formation_ids: sessionFormationIds } as any}
                 formations={formationsRef}

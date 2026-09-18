@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react'
 import {
   ReceiptEuro, Scale, TrendingUp, AlertCircle, AlertTriangle, Info, Download,
-  ChevronsUpDown, ArrowUp, ArrowDown, PieChart,
+  ChevronsUpDown, ArrowUp, ArrowDown, PieChart, Search,
 } from '@/components/ui/icons'
-import { Badge, FilterPills, SearchBar, StatCard } from '@/components/ui'
+import { Badge } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import type { BadgeVariant } from '@/lib/types'
 import {
@@ -42,6 +42,22 @@ const lienUnite = (r: Rentabilite) =>
     : `/dashboard/sessions/${r.sessionIds[0]}?tab=facturation`
 const couleurMarge = (s: StatutMarge) =>
   s === 'rentable' ? 'text-success-700' : s === 'marge_faible' ? 'text-warning-700' : s === 'deficitaire' ? 'text-danger-600' : 'text-surface-500'
+
+/** Tuile de synthèse : deux par ligne sur mobile (icône masquée, montant insécable), identique à StatCard au-delà. */
+function Tuile({ icon, iconBg, label, value, valueColor, sub }: {
+  icon: React.ReactNode; iconBg: string; label: string; value: string; valueColor: string; sub: string
+}) {
+  return (
+    <div className="card p-3.5 sm:p-5 flex items-start gap-4">
+      <div className={cn('stat-icon hidden sm:flex', iconBg)}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xs sm:text-sm text-surface-500 leading-none">{label}</p>
+        <p className={cn('text-lg sm:text-xl font-heading font-bold tracking-tight tabular-nums whitespace-nowrap mt-1 sm:mt-0.5', valueColor)}>{value}</p>
+        <p className="text-xs text-surface-400 mt-1">{sub}</p>
+      </div>
+    </div>
+  )
+}
 
 function valeurTri(r: Rentabilite, c: Colonne): number | string | null {
   switch (c) {
@@ -177,39 +193,57 @@ export function RentabiliteClient({ lignes, du, au, afficherSansObjet, fraisDisp
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Tuile
           icon={<ReceiptEuro className="h-5 w-5 text-brand-600" />} iconBg="bg-brand-50"
-          label="CA prévu" value={euroRond(totaux.ca)} valueColor="text-surface-900 tabular-nums !text-xl"
+          label="CA prévu" value={euroRond(totaux.ca)} valueColor="text-surface-900"
           sub={`facturé ${euroRond(totaux.facture)} · reste à facturer ${euroRond(totaux.aFacturer)}`}
         />
-        <StatCard
+        <Tuile
           icon={<Scale className="h-5 w-5 text-surface-600" />} iconBg="bg-surface-100"
-          label="Coûts" value={euroRond(totaux.couts)} valueColor="text-surface-900 tabular-nums !text-xl"
+          label="Coûts" value={euroRond(totaux.couts)} valueColor="text-surface-900"
           sub={`formateurs ${euroRond(totaux.formateur)} · frais ${euroRond(totaux.frais)} · commissions ${euroRond(totaux.commissions)}`}
         />
-        <StatCard
+        <Tuile
           icon={<TrendingUp className="h-5 w-5 text-success-600" />} iconBg="bg-success-50"
           label={tauxGlobal == null ? 'Marge' : `Marge · ${pourcent(tauxGlobal)}`}
           value={totaux.nbComplets ? euroRond(totaux.marge) : 'Non calculable'}
-          valueColor={cn(couleurMarge(statutGlobal), 'tabular-nums !text-xl')}
+          valueColor={couleurMarge(statutGlobal)}
           sub={`sur ${totaux.nbComplets} session${totaux.nbComplets > 1 ? 's' : ''} complète${totaux.nbComplets > 1 ? 's' : ''}`}
         />
-        <StatCard
+        <Tuile
           icon={<AlertCircle className="h-5 w-5 text-warning-600" />} iconBg="bg-warning-50"
-          label="À compléter" value={String(totaux.nbIncompletes)} valueColor="text-surface-900 tabular-nums !text-xl"
+          label="À compléter" value={String(totaux.nbIncompletes)} valueColor="text-surface-900"
           sub={`${euroRond(totaux.caSansCout)} de CA sans coût connu`}
         />
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        <FilterPills options={options} value={filtre} onChange={setFiltre} />
+        {/* Pastilles : défilement horizontal bord à bord sur mobile, cibles de 40 px */}
+        <div className="flex gap-1 overflow-x-auto -mx-5 px-5 lg:mx-0 lg:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {options.map((opt) => (
+            <button key={opt.value} type="button" onClick={() => setFiltre(opt.value)}
+              className={cn(
+                'min-h-10 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-150',
+                filtre === opt.value
+                  ? 'bg-surface-900 text-white shadow-xs'
+                  : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700',
+              )}>
+              {opt.label}
+              <span className={cn('ml-1.5', filtre === opt.value ? 'text-white/60' : 'text-surface-400')}>{opt.count}</span>
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2 lg:ml-auto">
-          <SearchBar value={recherche} onChange={setRecherche} placeholder="Référence, client, intitulé" className="lg:w-72" />
+          <div className="flex items-center gap-2.5 bg-white rounded-xl px-3.5 sm:py-2 border border-surface-200/80 hover:border-surface-300 transition-colors flex-1 max-w-md lg:w-72">
+            <Search className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+            <input type="text" value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Référence, client, intitulé"
+              className="h-10 sm:h-auto bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
+          </div>
           <button type="button" onClick={exporter} disabled={!visibles.length}
-            className="btn-secondary !py-2 !px-3 text-xs inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50">
+            className="btn-secondary !py-2 !px-3 text-xs inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50 min-h-10 sm:min-h-0">
             <Download className="h-3.5 w-3.5" />
-            Exporter (CSV)
+            <span className="hidden sm:inline">Exporter (CSV)</span><span className="sm:hidden">CSV</span>
           </button>
         </div>
       </div>
@@ -223,7 +257,72 @@ export function RentabiliteClient({ lignes, du, au, afficherSansObjet, fraisDisp
           <p className="text-sm text-surface-400 max-w-sm">Élargissez la période ou changez de filtre.</p>
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <>
+        {/* Liste mobile : une carte par session, l'essentiel de la marge lisible sans défilement horizontal */}
+        <div className="card overflow-hidden md:hidden">
+          <div className="divide-y divide-surface-100">
+            {visibles.map((r) => {
+              const alertes = r.alertes.filter((a) => !ALERTES_GLOBALES.includes(a.code))
+              const pire = alertes.some((a) => a.niveau === 'critique') ? 'text-danger-600' : alertes.some((a) => a.niveau === 'attention') ? 'text-warning-700' : 'text-surface-400'
+              return (
+                <div key={r.uniteId} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <a href={lienUnite(r)} className="min-w-0 flex-1 min-h-10 flex flex-col justify-center">
+                      <div className="font-medium text-surface-900 text-sm truncate">{r.reference || r.titre}</div>
+                      {r.reference && <p className="text-xs text-surface-500 truncate">{r.titre}</p>}
+                      {r.client && <p className="text-xs text-surface-400 truncate">{r.client}</p>}
+                    </a>
+                    <div className="text-right shrink-0">
+                      <div className={cn('text-sm font-semibold tabular-nums whitespace-nowrap', couleurMarge(r.statut))}>
+                        {r.marge != null ? euro(r.marge) : 'À compléter'}
+                      </div>
+                      <div className={cn('text-xs tabular-nums', couleurMarge(r.statut))}>marge {pourcent(r.taux)}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-x-2 gap-y-1 flex-wrap text-xs text-surface-500">
+                    <Badge variant={STATUT_BADGE[r.statut]}>{STATUT_LABELS[r.statut]}</Badge>
+                    <span className="tabular-nums">{dateFr(r.date)}</span>
+                    {r.badges.map((b) => (
+                      <span key={b} className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', BADGE_UNITE[b].classe)}>{BADGE_UNITE[b].label}</span>
+                    ))}
+                    {alertes.length > 0 && (
+                      <span className={cn('inline-flex items-center gap-1', pire)} title={alertes.map((a) => a.message).join('\n')}>
+                        <AlertTriangle className="h-3 w-3" />
+                        {alertes.length} alerte{alertes.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                    <div className="min-w-0">
+                      <dt className="text-surface-400">CA prévu</dt>
+                      <dd className="tabular-nums font-medium text-surface-800 whitespace-nowrap">{r.recette.prevu == null ? <span className="text-warning-700 font-normal">Non renseigné</span> : euro(r.recette.prevu)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-surface-400">Formateur</dt>
+                      <dd className="tabular-nums text-surface-700 whitespace-nowrap">{r.couts.formateurInconnu ? <span className="text-warning-700">Non renseigné</span> : euro(r.couts.formateur)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-surface-400">Frais + comm.</dt>
+                      <dd className="tabular-nums text-surface-700 whitespace-nowrap">{commissions(r) == null ? <span className="text-warning-700">À compléter</span> : euro(r.couts.frais + (commissions(r) || 0))}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )
+            })}
+          </div>
+          <div className="bg-surface-50/80 border-t border-surface-200 px-4 py-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-surface-900">Total · {visibles.length} ligne{visibles.length > 1 ? 's' : ''}</div>
+              <div className="text-2xs text-surface-400">Marge et taux hors sessions à compléter</div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className={cn('text-sm font-semibold tabular-nums whitespace-nowrap', couleurMarge(statutGlobal))}>{euro(totaux.marge)}</div>
+              <div className={cn('text-xs tabular-nums', couleurMarge(statutGlobal))}>marge {pourcent(tauxGlobal)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-surface-50/80">
@@ -256,7 +355,7 @@ export function RentabiliteClient({ lignes, du, au, afficherSansObjet, fraisDisp
                       <td className="table-cell px-3">
                         <div className="flex flex-wrap gap-1 w-[6.5rem]">
                           {r.badges.map((b) => (
-                            <span key={b} className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-medium', BADGE_UNITE[b].classe)}>{BADGE_UNITE[b].label}</span>
+                            <span key={b} className={cn('rounded-md px-1.5 py-0.5 text-[11px] font-medium', BADGE_UNITE[b].classe)}>{BADGE_UNITE[b].label}</span>
                           ))}
                         </div>
                       </td>
@@ -312,6 +411,7 @@ export function RentabiliteClient({ lignes, du, au, afficherSansObjet, fraisDisp
             </table>
           </div>
         </div>
+        </>
       )}
 
       <p className="text-xs text-surface-500">

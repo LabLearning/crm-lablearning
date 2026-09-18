@@ -47,7 +47,7 @@ export function PoeiEmailHistory({ logs }: { logs: EmailLog[] }) {
     <div className="card overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-surface-50/60 transition-colors"
+        className="w-full flex items-center gap-3 px-4 sm:px-5 py-3.5 text-left hover:bg-surface-50/60 transition-colors"
       >
         {open ? <ChevronDown className="h-4 w-4 text-surface-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-surface-400 shrink-0" />}
         <Mail className="h-4 w-4 text-brand-500 shrink-0" />
@@ -69,26 +69,38 @@ export function PoeiEmailHistory({ logs }: { logs: EmailLog[] }) {
           {logs.map((l) => {
             const ok = l.status === 'sent'
             return (
-              <div key={l.id} className="flex items-start gap-3 px-5 py-3">
+              <div key={l.id} className="flex items-start gap-3 px-4 sm:px-5 py-3">
                 <div className="mt-0.5 shrink-0">
                   {ok
                     ? <CheckCircle2 className="h-4 w-4 text-success-500" />
                     : <XCircle className="h-4 w-4 text-danger-500" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-surface-900 truncate">{l.subject || '(sans objet)'}</div>
-                  <div className="text-xs text-surface-500 truncate">
-                    {l.to_name ? `${l.to_name} — ` : ''}{l.to_email}
+                  <div className="text-sm text-surface-900 break-words sm:truncate">{l.subject || '(sans objet)'}</div>
+                  <div className="text-xs text-surface-500 break-words sm:truncate">
+                    {l.to_name ? `${l.to_name}, ` : ''}{l.to_email}
                   </div>
                   {!ok && l.error && (
                     <div className="text-xs text-danger-600 mt-0.5 truncate" title={l.error}>Erreur : {l.error}</div>
                   )}
+                  {/* Sur téléphone, date et type passent sous le sujet plutôt qu'à droite */}
+                  <div className="flex sm:hidden flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                    <span className="text-xs text-surface-600 tabular-nums">{fmtDateHeure(l.sent_at || l.created_at)}</span>
+                    {l.template && (
+                      <span className={cn(
+                        'inline-block px-1.5 py-0.5 rounded text-[11px] font-medium',
+                        l.template === 'poei_groupe' ? 'bg-brand-50 text-brand-700' : 'bg-surface-100 text-surface-500',
+                      )}>
+                        {TEMPLATE_LABELS[l.template] || l.template}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="hidden sm:block text-right shrink-0">
                   <div className="text-xs text-surface-600 tabular-nums">{fmtDateHeure(l.sent_at || l.created_at)}</div>
                   {l.template && (
                     <span className={cn(
-                      'inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium',
+                      'inline-block mt-1 px-1.5 py-0.5 rounded text-[11px] font-medium',
                       l.template === 'poei_groupe' ? 'bg-brand-50 text-brand-700' : 'bg-surface-100 text-surface-500',
                     )}>
                       {TEMPLATE_LABELS[l.template] || l.template}

@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { CheckCircle2, AlertCircle, MinusCircle, FileText, ExternalLink, LayoutGrid } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
-import { PoeiSection, PoeiVide } from './PoeiSection'
+import { PoeiSection, PoeiVide, PoeiDefilable } from './PoeiSection'
 
 /**
  * Cockpit du dossier POEI : une ligne par candidat, une colonne par jalon de
  * son parcours. Ces informations vivaient dans quatre blocs différents —
- * candidats, évaluations, facturation, mails — ce qui obligeait à recouper à la
+ * candidats, évaluations, facturation, mails, ce qui obligeait à recouper à la
  * main pour répondre à « qui n'a pas encore signé son certificat ? ».
  */
 
@@ -57,7 +57,7 @@ const COULEUR: Record<Etat, string> = {
 
 export function PoeiPilotage({ lignes }: { lignes: LigneCandidat[] }) {
   if (lignes.length === 0) {
-    return <PoeiVide icone={FileText} texte="Aucun candidat sur ce dossier — ajoutez-les depuis l'onglet Candidats." />
+    return <PoeiVide icone={FileText} texte="Aucun candidat sur ce dossier, ajoutez-les depuis l'onglet Candidats." />
   }
 
   // Compteur par jalon : c'est la ligne qui dit où en est le dossier.
@@ -88,7 +88,7 @@ export function PoeiPilotage({ lignes }: { lignes: LigneCandidat[] }) {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        <PoeiDefilable>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-surface-200 bg-surface-50/60">
@@ -111,7 +111,7 @@ export function PoeiPilotage({ lignes }: { lignes: LigneCandidat[] }) {
                       <div className="flex items-center gap-2">
                         {manques > 0 && <span className="h-1.5 w-1.5 rounded-full bg-danger-500 shrink-0" />}
                         {l.apprenantId ? (
-                          <Link href={`/dashboard/apprenants/${l.apprenantId}`} className="font-medium text-surface-900 hover:text-brand-600 hover:underline whitespace-nowrap">
+                          <Link href={`/dashboard/apprenants/${l.apprenantId}`} className="font-medium text-surface-900 hover:text-brand-600 hover:underline whitespace-nowrap inline-flex items-center min-h-[40px] sm:min-h-0">
                             {l.nom}
                           </Link>
                         ) : (
@@ -127,7 +127,7 @@ export function PoeiPilotage({ lignes }: { lignes: LigneCandidat[] }) {
                             {ICONE[cel.etat]}
                             {cel.href ? (
                               <a href={cel.href} target="_blank" rel="noreferrer"
-                                className={cn('text-xs hover:underline inline-flex items-center gap-1', COULEUR[cel.etat])}>
+                                className={cn('text-xs hover:underline inline-flex items-center gap-1 min-h-[40px] sm:min-h-0', COULEUR[cel.etat])}>
                                 {cel.texte}<ExternalLink className="h-3 w-3" />
                               </a>
                             ) : (
@@ -142,7 +142,7 @@ export function PoeiPilotage({ lignes }: { lignes: LigneCandidat[] }) {
               })}
             </tbody>
           </table>
-        </div>
+        </PoeiDefilable>
       </div>
     </PoeiSection>
   )

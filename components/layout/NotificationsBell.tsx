@@ -190,38 +190,40 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
       <div ref={dropdownRef} className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="relative p-2 rounded-xl text-surface-500 hover:bg-surface-50 transition-colors"
+          className="relative h-10 w-10 flex items-center justify-center rounded-xl text-surface-500 hover:bg-surface-50 transition-colors"
           aria-label="Notifications"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 h-4 min-w-4 px-1 bg-danger-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+            <span className="absolute top-1.5 right-1.5 h-[18px] min-w-[18px] px-1 bg-danger-500 rounded-full text-2xs leading-none font-bold text-white flex items-center justify-center">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
         </button>
 
+        {/* Sous sm : le header (backdrop-blur) sert de bloc conteneur au `fixed`,
+            le panneau prend donc toute la largeur du header, 8 px sous lui. */}
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl border border-surface-200 shadow-modal z-50 overflow-hidden">
+          <div className="fixed left-3 right-3 top-[68px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white rounded-2xl border border-surface-200 shadow-modal z-50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-surface-100">
               <h3 className="text-sm font-semibold text-surface-900">Notifications</h3>
               <div className="flex items-center gap-3">
                 {unreadCount > 0 && (
-                  <button onClick={markAllRead} className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
+                  <button onClick={markAllRead} className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0">
                     <Check className="h-3 w-3" /> Tout lire
                   </button>
                 )}
                 <Link
                   href={allHref}
                   onClick={() => setIsOpen(false)}
-                  className="text-xs text-surface-500 hover:text-surface-700"
+                  className="text-xs text-surface-500 hover:text-surface-700 inline-flex items-center min-h-[40px] sm:min-h-0"
                 >
                   Voir tout
                 </Link>
               </div>
             </div>
 
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
               {notifications.length > 0 ? (
                 notifications.map((n) => (
                   <NotifRow key={n.id} n={n} onMarkRead={() => !n.is_read && markAsRead(n.id)} onClose={() => setIsOpen(false)} />
@@ -237,7 +239,7 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
       {/* Toasts slide-in — rendus dans <body> via portal pour un vrai bas-droite viewport.
           Empilés (max 4 visibles) + compteur "+N autres" + bouton Tout fermer. */}
       {mounted && createPortal(
-        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none items-end">
+        <div className="fixed left-4 right-4 bottom-20 sm:left-auto sm:bottom-4 sm:right-4 z-[100] flex flex-col gap-2 pointer-events-none items-end">
           {toasts.length > 1 && (
             <button
               onClick={() => setToasts([])}
@@ -248,7 +250,7 @@ export function NotificationsBell({ userId, allHref = '/dashboard/notifications'
           )}
           {toasts.length > 4 && (
             <div className="pointer-events-none text-2xs font-medium text-surface-400 bg-surface-100/90 rounded-full px-3 py-1">
-              +{toasts.length - 4} autre{toasts.length - 4 > 1 ? 's' : ''} notification{toasts.length - 4 > 1 ? 's' : ''} — voir la cloche
+              +{toasts.length - 4} autre{toasts.length - 4 > 1 ? 's' : ''} notification{toasts.length - 4 > 1 ? 's' : ''}, voir la cloche
             </div>
           )}
           {toasts.slice(-4).map((t) => (
@@ -282,9 +284,9 @@ function NotifRow({
         <div className="text-sm font-medium text-surface-900">{n.titre}</div>
         <div className="text-xs text-surface-500 mt-0.5 line-clamp-2">{n.message}</div>
         <div className="flex items-center gap-3 mt-1">
-          <span className="text-[10px] text-surface-400">{formatDateTime(n.created_at)}</span>
+          <span className="text-2xs text-surface-400">{formatDateTime(n.created_at)}</span>
           {n.lien_url && (
-            <span className="text-[10px] text-brand-600 inline-flex items-center gap-0.5">
+            <span className="text-2xs text-brand-600 inline-flex items-center gap-0.5">
               {n.lien_label || 'Voir'} <ExternalLink className="h-2.5 w-2.5" />
             </span>
           )}
@@ -319,7 +321,7 @@ function NotifRow({
 
 function ToastCard({ toast, onClose, onOpen }: { toast: ToastNotif; onClose: () => void; onOpen?: () => void }) {
   const Inner = (
-    <div className="bg-white border border-surface-200 shadow-modal rounded-2xl w-80 p-4 pointer-events-auto animate-slide-up">
+    <div className="bg-white border border-surface-200 shadow-modal rounded-2xl w-full sm:w-80 p-4 pointer-events-auto animate-slide-up">
       <div className="flex items-start gap-3">
         <div className={cn('shrink-0 h-9 w-9 rounded-xl flex items-center justify-center',
           toast.type === 'success' ? 'bg-emerald-50' :
@@ -342,9 +344,10 @@ function ToastCard({ toast, onClose, onOpen }: { toast: ToastNotif; onClose: () 
         </div>
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose() }}
-          className="shrink-0 p-1 rounded-md text-surface-400 hover:bg-surface-100"
+          aria-label="Fermer"
+          className="shrink-0 h-8 w-8 -mr-1 -mt-1 flex items-center justify-center rounded-md text-surface-400 hover:bg-surface-100"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

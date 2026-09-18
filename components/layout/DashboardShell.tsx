@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { UserCog, X } from '@/components/ui/icons'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { MobileNav } from './MobileNav'
@@ -10,8 +8,6 @@ import { ToastProvider } from '@/components/ui/Toast'
 import { ImpersonationBanner } from './ImpersonationBanner'
 import { AssistantWidget } from '@/components/assistant/AssistantWidget'
 import { cn } from '@/lib/utils'
-import { ROLE_LABELS } from '@/lib/types'
-import { stopImpersonationAction } from '@/app/dashboard/users/actions'
 import type { User, Permission } from '@/lib/types'
 
 interface DashboardShellProps {
@@ -59,7 +55,7 @@ export function DashboardShell({ user, orgName, permissions, children, impersona
           impersonatedBy && 'pt-10'
         )}>
           <Header user={user} onMobileMenuToggle={() => setMobileNavOpen(true)} />
-          <main className="p-5 lg:p-7 xl:p-8 max-w-[1440px]">
+          <main className="p-4 pb-24 sm:p-5 lg:p-7 lg:pb-7 xl:p-8 xl:pb-8 max-w-[1440px] min-w-0 overflow-x-clip lg:overflow-visible">
             {children}
           </main>
         </div>

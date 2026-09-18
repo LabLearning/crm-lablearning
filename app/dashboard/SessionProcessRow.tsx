@@ -57,7 +57,7 @@ export function SessionProgressBar({ session, compact, inline }: { session: Sess
         ))}
       </div>
       <span className={cn(
-        'text-[10px] font-semibold tabular-nums shrink-0',
+        'text-2xs font-semibold tabular-nums shrink-0',
         nb === total ? 'text-emerald-600' : nb === 0 ? 'text-surface-300' : 'text-surface-500',
       )}>
         {nb}/{total}
@@ -94,7 +94,7 @@ export function SessionProcessRow({ session, showDate }: { session: SessionProce
             <div className="text-lg font-heading font-bold text-surface-900 leading-none">
               {new Date(session.dateDebut).getDate()}
             </div>
-            <div className="text-[10px] text-surface-400 uppercase mt-0.5">
+            <div className="text-2xs text-surface-400 uppercase mt-0.5">
               {new Date(session.dateDebut).toLocaleDateString('fr-FR', { month: 'short' })}
             </div>
           </div>
@@ -116,11 +116,11 @@ export function SessionProcessRow({ session, showDate }: { session: SessionProce
               </span>
             ) : session.estParcoursPoei ? (
               // Alerter serait un faux positif : le parcours n'a pas de formateur
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-100 text-surface-500 text-[10px] font-semibold">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-surface-100 text-surface-500 text-2xs font-semibold">
                 <Layers className="h-3 w-3" /> Parcours POEI
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-danger-50 text-danger-700 text-[10px] font-semibold">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-danger-50 text-danger-700 text-2xs font-semibold">
                 <UserX className="h-3 w-3" /> Formateur non calé
               </span>
             )}
@@ -140,7 +140,7 @@ export function SessionProcessRow({ session, showDate }: { session: SessionProce
 
         <div className="shrink-0 text-right">
           <span className={cn(
-            'text-[10px] font-semibold',
+            'text-2xs font-semibold',
             daysUntil <= 3 ? 'text-danger-600' : daysUntil <= 7 ? 'text-amber-600' : 'text-surface-400',
           )}>
             {daysUntil > 0 ? `J-${daysUntil}` : daysUntil === 0 ? "Aujourd'hui" : 'En cours'}

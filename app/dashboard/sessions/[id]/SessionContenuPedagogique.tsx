@@ -211,7 +211,7 @@ export function SessionContenuPedagogique({
               Supports de la session ({supports.length})
             </span>
           </div>
-          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700">
+          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 min-h-[40px] px-2 -mr-2 sm:min-h-0 sm:px-0 sm:mr-0 rounded-lg text-xs font-medium text-brand-600 hover:text-brand-700">
             <Upload className="h-3.5 w-3.5" /> Téléverser
           </button>
         </div>
@@ -228,25 +228,25 @@ export function SessionContenuPedagogique({
         ) : (
           <div className="divide-y divide-surface-100">
             {supports.map((d) => (
-              <div key={d.id} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50/60 transition-colors">
+              <div key={d.id} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-3 hover:bg-surface-50/60 transition-colors">
                 <div className="h-9 w-9 rounded-lg bg-surface-100 flex items-center justify-center shrink-0">
                   <FileText className="h-4 w-4 text-surface-500" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-surface-900 truncate">{d.nom}</div>
+                <div className="flex-1 min-w-0 basis-[calc(100%-3rem)] sm:basis-auto">
+                  <div className="text-sm font-medium text-surface-900 [overflow-wrap:anywhere] sm:truncate">{d.nom}</div>
                   <div className="flex flex-wrap items-center gap-x-2 text-xs text-surface-500">
                     <span>{(DOCUMENT_TYPE_LABELS as any)[d.type] || d.type}</span>
                     {d.file_name && (
                       <span className="inline-flex items-center gap-1 min-w-0">
                         <Paperclip className="h-3 w-3 shrink-0" />
-                        <span className="truncate max-w-[160px]">{d.file_name}</span>
+                        <span className="truncate max-w-[200px] sm:max-w-[160px]">{d.file_name}</span>
                         {d.file_size ? <span className="text-surface-400">· {fmtSize(d.file_size)}</span> : null}
                       </span>
                     )}
                   </div>
                 </div>
-                {/* Visibilité modifiable directement dans la liste */}
-                <div className="shrink-0 flex items-center gap-1.5">
+                {/* Visibilité modifiable directement dans la liste ; sur mobile, la rangée passe sous le titre */}
+                <div className="shrink-0 flex items-center gap-1.5 flex-1 sm:flex-none pl-12 sm:pl-0">
                   <Eye className={cn('h-3.5 w-3.5 shrink-0',
                     d.visibilite === 'tous' ? 'text-emerald-600' : d.visibilite === 'stagiaires' ? 'text-blue-600' : 'text-surface-400')} />
                   <select
@@ -254,7 +254,7 @@ export function SessionContenuPedagogique({
                     disabled={isPending}
                     onChange={(e) => handleVisibilite(d.id, e.target.value as DocumentVisibilite)}
                     title={DOCUMENT_VISIBILITE_LABELS[d.visibilite]}
-                    className={cn('text-xs font-medium rounded-lg px-2 py-1 border-0 focus:outline-none focus:ring-2 focus:ring-brand-200 cursor-pointer',
+                    className={cn('text-xs font-medium rounded-lg px-2 py-2 sm:py-1 min-h-[40px] sm:min-h-0 border-0 focus:outline-none focus:ring-2 focus:ring-brand-200 cursor-pointer',
                       VISIBILITE_STYLES[d.visibilite])}
                   >
                     {(['formateur', 'stagiaires', 'tous'] as DocumentVisibilite[]).map((v) => (
@@ -264,12 +264,12 @@ export function SessionContenuPedagogique({
                 </div>
                 {d.storage_path && (
                   <a href={`/api/documents/${d.id}/download`} target="_blank" rel="noreferrer" title="Télécharger"
-                    className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0">
+                    className="p-2.5 sm:p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 shrink-0">
                     <Download className="h-4 w-4" />
                   </a>
                 )}
                 <div className="shrink-0">
-                  <RowMenu items={[
+                  <RowMenu triggerClassName="p-2.5 sm:p-1.5" items={[
                     { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDeleteSupport(d.id, d.nom) },
                   ]} />
                 </div>
@@ -307,13 +307,13 @@ export function SessionContenuPedagogique({
                 {uploading ? 'Transfert en cours…' : dragging ? 'Déposez le fichier ici' : 'Glissez un fichier ici ou cliquez pour le choisir'}
               </span>
               <span className={cn('text-xs', dragging ? 'text-brand-500' : 'text-surface-400')}>
-                PDF, diaporama, image — 20 Mo max
+                PDF, diaporama, image · 20 Mo max
               </span>
             </button>
           )}
 
           <Input id="nom" label="Titre du support *" value={nom} onChange={(e) => setNom(e.target.value)}
-            placeholder="Support de cours — module 1, Diaporama HACCP…" />
+            placeholder="Support de cours module 1, Diaporama HACCP…" />
           <Select id="type" label="Type" options={typeOptions} value={type} onChange={(e) => setType(e.target.value)} />
           <Select id="visibilite" label="Visibilité" options={visibiliteOptions} value={visibilite}
             onChange={(e) => setVisibilite(e.target.value)} />

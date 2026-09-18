@@ -43,7 +43,7 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start sm:items-center gap-3">
         <div className="h-10 w-10 rounded-xl bg-brand-50 flex items-center justify-center shrink-0">
           <PieChart className="h-5 w-5 text-brand-600" />
         </div>
@@ -53,31 +53,34 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
         </div>
       </div>
 
+      {/* Mobile : les deux dates côte à côte, la case à cocher puis le bouton en pleine largeur ; raccourcis défilants */}
       <form method="get" className="card p-4 flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <label htmlFor="du" className="block text-xs font-medium text-surface-600">Du</label>
-          <input id="du" name="du" type="date" defaultValue={du} className="input-base !min-h-0 !py-2 w-40" />
+        <div className="grid grid-cols-2 gap-3 w-full sm:w-auto sm:flex sm:items-end">
+          <div className="space-y-1.5 min-w-0">
+            <label htmlFor="du" className="block text-xs font-medium text-surface-600">Du</label>
+            <input id="du" name="du" type="date" defaultValue={du} className="input-base !min-h-10 !py-2 w-full sm:w-40" />
+          </div>
+          <div className="space-y-1.5 min-w-0">
+            <label htmlFor="au" className="block text-xs font-medium text-surface-600">Au</label>
+            <input id="au" name="au" type="date" defaultValue={au} className="input-base !min-h-10 !py-2 w-full sm:w-40" />
+          </div>
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="au" className="block text-xs font-medium text-surface-600">Au</label>
-          <input id="au" name="au" type="date" defaultValue={au} className="input-base !min-h-0 !py-2 w-40" />
-        </div>
-        <label className="flex items-center gap-2 text-sm text-surface-600 cursor-pointer pb-2">
+        <label className="flex items-center gap-2 text-sm text-surface-600 cursor-pointer min-h-10 sm:min-h-0 sm:pb-2">
           <input type="checkbox" name="sans_objet" value="1" defaultChecked={afficherSansObjet} className="h-4 w-4 rounded border-surface-300" />
           Afficher les sessions sans inscrit ni montant
         </label>
-        <button type="submit" className="btn-primary !py-2 text-sm inline-flex items-center gap-1.5">
+        <button type="submit" className="btn-primary !py-2 text-sm inline-flex items-center gap-1.5 w-full sm:w-auto min-h-10">
           <RefreshCw className="h-4 w-4" />
           Actualiser
         </button>
-        <div className="w-full flex flex-wrap gap-1.5 pt-1">
+        <div className="w-full flex sm:flex-wrap gap-1.5 pt-1 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {liens.map((r) => {
             const actif = r.du === du && r.au === au
             return (
               <a key={r.label} href={`?du=${r.du}&au=${r.au}${suffixe}`}
                 className={actif
-                  ? 'px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-900 text-white'
-                  : 'px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}>
+                  ? 'inline-flex items-center min-h-10 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 bg-surface-900 text-white'
+                  : 'inline-flex items-center min-h-10 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}>
                 {r.label}
               </a>
             )

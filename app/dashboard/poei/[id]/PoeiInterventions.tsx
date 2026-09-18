@@ -24,6 +24,11 @@ interface Intervention {
   mission_responded_at: string | null
   mission_response_comment: string | null
   notes: string | null
+  lieu?: string | null
+  horaires?: string | null
+  adresse?: string | null
+  code_postal?: string | null
+  ville?: string | null
   formateur?: { prenom: string | null; nom: string | null } | null
   contrat?: { id: string; numero: string | null; status: string | null; signature_formateur_date: string | null } | null
 }
@@ -78,7 +83,7 @@ function InterventionForm({
       ? await updatePoeiInterventionAction(intervention.id, poeiId, fd)
       : await addPoeiInterventionAction(poeiId, fd)
     if (r.success) {
-      toast('success', intervention ? 'Intervention mise à jour' : 'Intervention ajoutée — le formateur est notifié')
+      toast('success', intervention ? 'Intervention mise à jour' : 'Intervention ajoutée, le formateur est notifié')
       onDone()
     } else if (r.errors) setErrors(r.errors)
     else toast('error', r.error || 'Erreur')
@@ -88,7 +93,7 @@ function InterventionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input id="libelle" name="libelle" label="Intitulé de l'intervention *"
-        placeholder="Semaine 1 — Hygiène & HACCP"
+        placeholder="Semaine 1 : Hygiène et HACCP"
         defaultValue={intervention?.libelle || ''} error={errors.libelle?.[0]} />
 
       <SearchSelect
@@ -102,14 +107,14 @@ function InterventionForm({
         <Input id="date_fin" name="date_fin" type="date" label="Au" defaultValue={intervention?.date_fin || ''} />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Input id="nb_heures" name="nb_heures" type="number" label="Heures" defaultValue={intervention?.nb_heures?.toString() || ''} />
         <Input id="tarif_journalier" name="tarif_journalier" type="number" label="Tarif / jour (€)" defaultValue={intervention?.tarif_journalier?.toString() || ''} />
         <Input id="montant_ht" name="montant_ht" type="number" label="Rémunération (€)" defaultValue={intervention?.montant_ht?.toString() || ''} />
       </div>
 
       {/* Lieu et horaires : repris sur la convocation des stagiaires et la
-          feuille d'émargement — une intervention peut changer de site */}
+          feuille d'émargement, une intervention peut changer de site */}
       <div className="grid grid-cols-2 gap-3">
         <Input id="lieu" name="lieu" label="Lieu" placeholder="Salle de formation, restaurant…"
           defaultValue={intervention?.lieu || ''} />
@@ -128,7 +133,7 @@ function InterventionForm({
       <textarea id="notes" name="notes" rows={2} className="input-base resize-none w-full"
         placeholder="Notes (contenu couvert, contraintes…)" defaultValue={intervention?.notes || ''} />
 
-      <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
+      <div className="flex flex-wrap justify-end gap-3 pt-3 border-t border-surface-100">
         <Button type="button" variant="secondary" onClick={onDone}>Annuler</Button>
         <Button type="submit" isLoading={loading} icon={<Save className="h-4 w-4" />} className="!bg-sky-500 hover:!bg-sky-600">
           {intervention ? 'Mettre à jour' : "Ajouter l'intervention"}
@@ -163,7 +168,7 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
         <>
           {dureeTotale != null && (
             <span className={cn(
-              'text-xs font-medium px-2 py-1 rounded-lg',
+              'text-xs font-medium px-2 py-1 rounded-lg self-start sm:self-auto',
               reste === 0 ? 'bg-success-50 text-success-700'
                 : reste! < 0 ? 'bg-danger-50 text-danger-700'
                 : 'bg-warning-50 text-warning-700',
@@ -181,7 +186,7 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
       {interventions.length === 0 ? (
         <div className="px-4 py-8 text-center text-sm text-surface-400">
           Aucune intervention. Découpez le parcours en périodes et affectez un formateur à chacune
-          (ex. « Semaine 1 — Hygiène », « Semaines 2 à 4 — Pratique »).
+          (ex. « Semaine 1 : Hygiène », « Semaines 2 à 4 : Pratique »).
         </div>
       ) : (
         <div className="divide-y divide-surface-100">
@@ -192,8 +197,8 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
             const contrat = Array.isArray(iv.contrat) ? iv.contrat[0] : iv.contrat
             const signe = Boolean(contrat?.signature_formateur_date)
             return (
-              <div key={iv.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                <div className="flex-1 min-w-[200px]">
+              <div key={iv.id} className="flex items-start gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-surface-900">{iv.libelle}</div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-surface-500 mt-0.5">
                     <span>{iv.formateur ? `${iv.formateur.prenom || ''} ${iv.formateur.nom || ''}`.trim() : 'Formateur non affecté'}</span>
@@ -210,23 +215,24 @@ export function PoeiInterventions({ poeiId, interventions, formateurs, dureeTota
                   {iv.mission_status === 'refused' && iv.mission_response_comment && (
                     <div className="text-xs text-rose-600 mt-1">Motif : {iv.mission_response_comment}</div>
                   )}
+                  {/* Les badges passent sous le texte : le menu reste à droite, jamais hors écran */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold', meta.cls)}>
+                      <Icon className="h-3 w-3" /> {meta.label}
+                    </span>
+                    {contrat && (
+                      <span className={cn(
+                        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold',
+                        signe ? 'bg-success-50 text-success-700' : 'bg-blue-50 text-blue-700',
+                      )}>
+                        <CheckCircle2 className="h-3 w-3" /> Contrat {signe ? 'signé' : 'envoyé'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0', meta.cls)}>
-                  <Icon className="h-3 w-3" /> {meta.label}
-                </span>
-
-                {contrat && (
-                  <span className={cn(
-                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0',
-                    signe ? 'bg-success-50 text-success-700' : 'bg-blue-50 text-blue-700',
-                  )}>
-                    <CheckCircle2 className="h-3 w-3" /> Contrat {signe ? 'signé' : 'envoyé'}
-                  </span>
-                )}
-
-                <div className="shrink-0">
-                  <RowMenu items={[
+                <div className="shrink-0 -mr-1.5">
+                  <RowMenu triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center" items={[
                     ...(contrat && iv.formateur_id ? [{
                       label: signe ? 'Télécharger le contrat signé' : 'Voir le contrat',
                       icon: <Download className="h-4 w-4 text-surface-400" />,

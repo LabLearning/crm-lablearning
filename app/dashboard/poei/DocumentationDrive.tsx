@@ -212,7 +212,7 @@ export function DocumentationDrive({ clients }: Props) {
                   onClick={() => goTo(i)}
                   disabled={last}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors max-w-[180px]',
+                    'inline-flex items-center gap-1.5 px-2 py-1 min-h-[40px] sm:min-h-0 rounded-lg transition-colors max-w-[180px]',
                     last ? 'text-surface-900 font-medium' : 'text-surface-500 hover:text-surface-800 hover:bg-surface-100',
                   )}
                 >
@@ -224,7 +224,7 @@ export function DocumentationDrive({ clients }: Props) {
           })}
         </nav>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 [&>button]:flex-1 sm:[&>button]:flex-none">
           <Button variant="secondary" onClick={() => { setNewNom(''); setNewClient(''); setNewOpen(true) }} icon={<FolderPlus className="h-4 w-4" />}>
             Nouveau dossier
           </Button>
@@ -304,7 +304,7 @@ export function DocumentationDrive({ clients }: Props) {
                         </div>
                       </button>
                       <div className="shrink-0">
-                        <RowMenu items={[
+                        <RowMenu triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center" items={[
                           { label: 'Renommer', icon: <Pencil className="h-4 w-4" />, onClick: () => openRename(d) },
                           { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDeleteDossier(d) },
                         ]} />
@@ -351,7 +351,7 @@ export function DocumentationDrive({ clients }: Props) {
                         </>
                       )}
                       <div className="shrink-0">
-                        <RowMenu items={[
+                        <RowMenu triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center" items={[
                           { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDeleteDoc(d) },
                         ]} />
                       </div>
@@ -380,7 +380,7 @@ export function DocumentationDrive({ clients }: Props) {
                 options={clientOptions} value={newClient} onChange={setNewClient}
                 placeholder="Rattacher à une société du CRM…"
               />
-              <p className="mt-1 text-xs text-surface-400">Facultatif — permet de relier ce dossier à une fiche client.</p>
+              <p className="mt-1 text-xs text-surface-400">Facultatif, permet de relier ce dossier à une fiche client.</p>
             </div>
           )}
           <div className="flex justify-end gap-3 pt-2 border-t border-surface-100">
@@ -407,7 +407,7 @@ export function DocumentationDrive({ clients }: Props) {
       </Modal>
 
       {/* Modal : ajouter un document */}
-      <Modal isOpen={docOpen} onClose={() => { setDocOpen(false); setUploaded(null) }} title={`Ajouter un document — ${current.nom}`} size="md">
+      <Modal isOpen={docOpen} onClose={() => { setDocOpen(false); setUploaded(null) }} title={`Ajouter un document, ${current.nom}`} size="md">
         <div className="space-y-4">
           <input
             ref={fileRef} type="file" className="hidden"
@@ -436,7 +436,7 @@ export function DocumentationDrive({ clients }: Props) {
               <span className="text-sm font-medium">
                 {uploading ? 'Transfert en cours…' : dragging ? 'Déposez le fichier ici' : 'Glissez un fichier ici ou cliquez pour le choisir'}
               </span>
-              <span className={cn('text-xs', dragging ? 'text-sky-500' : 'text-surface-400')}>PDF, Word, Excel, image — 20 Mo max</span>
+              <span className={cn('text-xs', dragging ? 'text-sky-500' : 'text-surface-400')}>PDF, Word, Excel, image, 20 Mo max</span>
             </button>
           )}
 

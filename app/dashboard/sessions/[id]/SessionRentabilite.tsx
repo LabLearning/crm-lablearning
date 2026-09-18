@@ -440,7 +440,7 @@ function LignesRecette({ lignes }: { lignes: LigneRentab[] }) {
 function PuceQualite({ l }: { l: LigneRentab }) {
   const Icone = l.qualite === 'fige' ? Lock : l.qualite === 'a_venir' ? Clock : null
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none', QUALITE_STYLE[l.qualite] || QUALITE_STYLE.saisi)}>
+    <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-2xs font-medium leading-none', QUALITE_STYLE[l.qualite] || QUALITE_STYLE.saisi)}>
       {Icone && <Icone className="h-3 w-3" />}
       {l.qualiteLabel || QUALITE_LABELS[l.qualite]}
     </span>
@@ -468,7 +468,7 @@ function LigneDetail({ l, icone: Icone, sessionCourante }: { l: LigneRentab; ico
               {!l.info && <PuceQualite l={l} />}
               {secondaires.map((x) => (
                 <a key={x.href} href={x.href} target={estExterne(x.href) ? '_blank' : undefined} rel={estExterne(x.href) ? 'noopener noreferrer' : undefined}
-                  className="text-xs font-medium text-brand-600 underline decoration-surface-300 underline-offset-2 hover:decoration-brand-500">
+                  className="inline-flex items-center min-h-[40px] sm:min-h-0 text-xs font-medium text-brand-600 underline decoration-surface-300 underline-offset-2 hover:decoration-brand-500">
                   {x.label}
                 </a>
               ))}
@@ -487,7 +487,7 @@ function LigneDetail({ l, icone: Icone, sessionCourante }: { l: LigneRentab; ico
           <a href={lienPrincipal.href} target={estExterne(lienPrincipal.href) ? '_blank' : undefined}
             rel={estExterne(lienPrincipal.href) ? 'noopener noreferrer' : undefined}
             aria-label={lienPrincipal.label}
-            className="p-1 rounded-md text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+            className="flex items-center justify-center min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 p-1 rounded-md text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-colors">
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
         )}

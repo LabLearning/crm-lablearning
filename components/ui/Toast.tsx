@@ -47,7 +47,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+      <div className="fixed left-4 right-4 bottom-20 sm:left-auto sm:bottom-4 sm:right-4 z-[100] flex flex-col gap-2 sm:max-w-sm">
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -58,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           >
             <span className="shrink-0">{icons[t.type]}</span>
             <p className="text-sm font-medium text-surface-800 flex-1">{t.message}</p>
-            <button onClick={() => removeToast(t.id)} className="shrink-0 p-0.5 text-surface-400 hover:text-surface-600">
+            <button onClick={() => removeToast(t.id)} aria-label="Fermer" className="shrink-0 h-8 w-8 -mr-2 flex items-center justify-center rounded-lg text-surface-400 hover:text-surface-600">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>

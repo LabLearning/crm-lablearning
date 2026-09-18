@@ -137,21 +137,22 @@ export default async function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Welcome */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="page-header mb-0">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-surface-900 tracking-display">
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-surface-900 tracking-display">
             {getGreeting()}, {user.first_name}
           </h1>
           <p className="text-surface-500 mt-1 text-sm">{organization.name}</p>
         </div>
-        <div className="flex gap-2">
+        {/* Accès rapides : grille 2 x 2 avec libellés sur téléphone, ligne sur desktop */}
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           {quickLinks.map((link) => (
             <Link key={link.href} href={link.href}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium text-surface-600 bg-white border border-surface-200/80 hover:border-surface-300 hover:shadow-card hover:text-surface-800 transition-all duration-200 group">
-              <link.icon className="h-4 w-4 text-surface-400 group-hover:text-brand-500 transition-colors" />
-              <span className="hidden sm:inline">{link.label}</span>
+              className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl text-sm font-medium text-surface-600 bg-white border border-surface-200/80 hover:border-surface-300 hover:shadow-card hover:text-surface-800 transition-all duration-200 group">
+              <link.icon className="h-4 w-4 text-surface-400 group-hover:text-brand-500 transition-colors shrink-0" />
+              <span className="truncate">{link.label}</span>
             </Link>
           ))}
         </div>
@@ -185,20 +186,20 @@ export default async function DashboardPage() {
       {data ? (
         <>
           {/* Primary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
               { label: 'CA Réalisé', value: `${data.ca_realise.toLocaleString('fr-FR')} €`, sub: `${data.ca_mois.toLocaleString('fr-FR')} € ce mois`, icon: Euro, iconBg: 'bg-surface-100', iconColor: 'text-surface-600' },
               { label: 'Encaissé', value: `${data.encaisse.toLocaleString('fr-FR')} €`, sub: null, icon: CreditCard, iconBg: 'bg-success-50', iconColor: 'text-success-600' },
               { label: 'Sessions', value: String(data.sessions_en_cours), sub: `en cours · ${data.sessions_a_venir} à venir`, icon: Calendar, iconBg: 'bg-brand-50', iconColor: 'text-brand-600' },
               { label: 'Apprenants', value: String(data.apprenants_formes), sub: `formés · ${data.apprenants_en_cours} en cours`, icon: GraduationCap, iconBg: 'bg-surface-100', iconColor: 'text-surface-600' },
             ].map((kpi) => (
-              <div key={kpi.label} className="stat-card">
+              <div key={kpi.label} className="stat-card p-4 sm:p-5 gap-3 sm:gap-4 flex-col sm:flex-row">
                 <div className={`stat-icon ${kpi.iconBg}`}>
                   <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="stat-label">{kpi.label}</p>
-                  <p className="stat-value text-surface-900 mt-0.5">{kpi.value}</p>
+                  <p className="stat-value text-surface-900 mt-0.5 text-xl sm:text-2xl break-words">{kpi.value}</p>
                   {kpi.sub && <p className="stat-sub">{kpi.sub}</p>}
                 </div>
               </div>
@@ -206,9 +207,9 @@ export default async function DashboardPage() {
           </div>
 
           {/* Two columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Alerts */}
-            <div className="card p-6 space-y-5">
+            <div className="card p-4 sm:p-6 space-y-5">
               <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Alertes</h2>
               <div className="space-y-2.5">
                 {data.factures_en_retard > 0 && (
@@ -256,16 +257,16 @@ export default async function DashboardPage() {
             </div>
 
             {/* Right column */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
               {/* Pipeline */}
-              <div className="card p-6">
+              <div className="card p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Pipeline commercial</h2>
-                  <Link href="/dashboard/leads" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 transition-colors">
+                  <Link href="/dashboard/leads" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 transition-colors">
                     Voir tout <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     { label: 'Leads', value: data.leads_total, color: 'text-surface-800' },
                     { label: 'Devis en attente', value: data.devis_en_attente, color: 'text-brand-600' },
@@ -273,7 +274,7 @@ export default async function DashboardPage() {
                     { label: 'Valeur pipeline', value: `${data.leads_valeur.toLocaleString('fr-FR')} €`, color: 'text-surface-800' },
                   ].map((s) => (
                     <div key={s.label} className="p-3 rounded-xl bg-surface-50">
-                      <div className={`text-xl font-heading font-bold tracking-tight ${s.color}`}>{s.value}</div>
+                      <div className={`text-lg sm:text-xl font-heading font-bold tracking-tight break-words ${s.color}`}>{s.value}</div>
                       <div className="text-[11px] text-surface-400 mt-0.5">{s.label}</div>
                     </div>
                   ))}
@@ -281,10 +282,10 @@ export default async function DashboardPage() {
               </div>
 
               {/* Activity */}
-              <div className="card p-6">
+              <div className="card p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Activité récente</h2>
-                  <Link href="/dashboard/reporting" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 transition-colors">
+                  <Link href="/dashboard/reporting" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 transition-colors">
                     Rapports <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -296,7 +297,7 @@ export default async function DashboardPage() {
                         <div className="min-w-0 flex-1">
                           <div className="text-sm text-surface-600">
                             <span className="font-medium text-surface-800">{event.user_name}</span>
-                            <span className="text-surface-400"> — </span>
+                            <span className="text-surface-400"> · </span>
                             {event.action} {event.entity_type}
                           </div>
                           <div className="text-[11px] text-surface-400 mt-0.5">{formatDateTime(event.created_at)}</div>
@@ -315,13 +316,13 @@ export default async function DashboardPage() {
           </div>
 
           {/* Qualiopi bar */}
-          <div className="card p-6">
+          <div className="card p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="h-4 w-4 text-brand-500" />
                 <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Conformité Qualiopi</h2>
               </div>
-              <Link href="/dashboard/qualiopi" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 transition-colors">
+              <Link href="/dashboard/qualiopi" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 transition-colors">
                 Détail <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -332,7 +333,7 @@ export default async function DashboardPage() {
           </div>
         </>
       ) : (
-        <div className="card p-16 text-center">
+        <div className="card p-8 sm:p-16 text-center">
           <BarChart3 className="h-6 w-6 text-surface-300 mx-auto mb-3" />
           <p className="text-sm text-surface-500">Les données du tableau de bord seront disponibles après la création de vos premières données.</p>
         </div>

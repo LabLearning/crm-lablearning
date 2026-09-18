@@ -41,6 +41,9 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
   useEffect(() => {
     const v = typeof window !== 'undefined' ? localStorage.getItem('ll_onboarding_hidden') : null
     setHidden(v === '1')
+    // Sur téléphone, le guide (huit étapes détaillées) est replié par défaut :
+    // l'agenda des sessions doit rester à portée de pouce.
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches) setCollapsed(true)
   }, [])
 
   function hide() {
@@ -53,41 +56,48 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
   return (
     <div className="card overflow-hidden border-brand-100">
       {/* En-tête */}
-      <div className="flex items-start justify-between gap-4 p-5 bg-gradient-to-r from-brand-50 to-white">
-        <div className="flex items-start gap-3">
+      <div className="flex items-start justify-between gap-2 sm:gap-4 p-4 sm:p-5 bg-gradient-to-r from-brand-50 to-white">
+        <div className="flex items-start gap-3 min-w-0">
           <div className="h-10 w-10 rounded-xl bg-brand-500 flex items-center justify-center shrink-0">
             <Compass className="h-5 w-5 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-base font-heading font-bold text-surface-900">
               {allDone ? 'Votre CRM est prêt' : `Prise en main du CRM${firstName ? `, ${firstName}` : ''}`}
             </h2>
-            <p className="text-sm text-surface-500 mt-0.5">
+            <p className={`text-sm text-surface-500 mt-0.5 ${collapsed ? 'hidden sm:block' : ''}`}>
               {allDone ? 'Toutes les étapes clés sont configurées. Vous pouvez masquer ce guide.' : 'Suivez ces étapes pour utiliser le CRM de A à Z. Tout est lié : chaque étape alimente la suivante.'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 -mr-2 -mt-1 sm:mr-0 sm:mt-0">
           <Link href="/onboarding" className="hidden sm:inline-flex items-center gap-1.5 mr-1 px-3 py-1.5 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
             <Compass className="h-3.5 w-3.5" /> Visite guidée
           </Link>
-          <button onClick={() => setCollapsed((c) => !c)} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100" title={collapsed ? 'Déplier' : 'Replier'}>
+          <button onClick={() => setCollapsed((c) => !c)} aria-label={collapsed ? 'Déplier le guide' : 'Replier le guide'}
+            className="h-10 w-10 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100" title={collapsed ? 'Déplier' : 'Replier'}>
             {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
-          <button onClick={hide} className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100" title="Masquer le guide">
+          <button onClick={hide} aria-label="Masquer le guide"
+            className="h-10 w-10 sm:h-8 sm:w-8 flex items-center justify-center rounded-lg text-surface-400 hover:bg-surface-100" title="Masquer le guide">
             <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
       {/* Progression */}
-      <div className="px-5 pb-3">
+      <div className="px-4 sm:px-5 pb-3">
         <div className="flex items-center gap-3">
           <div className="flex-1 h-2 rounded-full bg-surface-100 overflow-hidden">
             <div className="h-full bg-brand-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
           </div>
           <span className="text-xs font-semibold text-surface-600 tabular-nums">{done}/{total}</span>
         </div>
+        {!collapsed && !allDone && (
+          <Link href="/onboarding" className="sm:hidden mt-3 inline-flex items-center justify-center gap-1.5 w-full min-h-[40px] rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 transition-colors">
+            <Compass className="h-3.5 w-3.5" /> Visite guidée
+          </Link>
+        )}
       </div>
 
       {/* Étapes */}
@@ -97,7 +107,7 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
             const isDone = flags[s.key]
             const Icon = s.icon
             return (
-              <div key={s.key} className="flex items-start gap-3 px-5 py-3.5 hover:bg-surface-50/50 transition-colors">
+              <div key={s.key} className="flex items-start gap-3 px-4 sm:px-5 py-3.5 hover:bg-surface-50/50 transition-colors">
                 <div className={`mt-0.5 h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${isDone ? 'bg-emerald-500' : 'bg-surface-100'}`}>
                   {isDone ? <Check className="h-3.5 w-3.5 text-white" /> : <span className="text-xs font-bold text-surface-400">{i + 1}</span>}
                 </div>
@@ -109,7 +119,7 @@ export function OnboardingGuide({ flags, firstName }: { flags: OnboardingFlags; 
                   <p className="text-xs text-surface-500 mt-1 leading-relaxed">{s.what}</p>
                   <p className="text-xs text-surface-400 mt-0.5 leading-relaxed">{s.how}</p>
                 </div>
-                <Link href={s.href} className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDone ? 'text-surface-500 hover:bg-surface-100' : 'bg-brand-500 text-white hover:bg-brand-600'}`}>
+                <Link href={s.href} className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium transition-colors ${isDone ? 'text-surface-500 hover:bg-surface-100' : 'bg-brand-500 text-white hover:bg-brand-600'}`}>
                   {isDone ? 'Revoir' : s.cta} <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>

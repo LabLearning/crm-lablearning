@@ -279,19 +279,19 @@ export function SessionDocuments(props: Props) {
           <div className="text-xs text-surface-500">{sousTitre}</div>
         </div>
         <StatutBadge etat={etat} date={date} />
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto sm:shrink-0">
           <button
             onClick={() => setHisto(ouvert ? null : busyKey)}
             title="Historique des envois de ce document"
             aria-expanded={ouvert}
             className={cn(
-              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium',
+              'inline-flex items-center gap-1.5 px-2.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border text-xs font-medium',
               ouvert ? 'border-surface-900 bg-surface-900 text-white' : 'border-surface-200 text-surface-700 hover:bg-surface-50',
             )}
           >
             <Mail className="h-3.5 w-3.5" /> Mails
             {envois.length > 0 && (
-              <span className={cn('text-[10px] font-bold px-1 rounded', ouvert ? 'bg-white/20' : 'bg-surface-100 text-surface-500')}>
+              <span className={cn('text-2xs font-bold px-1 rounded', ouvert ? 'bg-white/20' : 'bg-surface-100 text-surface-500')}>
                 {envois.length}
               </span>
             )}
@@ -300,14 +300,14 @@ export function SessionDocuments(props: Props) {
             onClick={onPreview}
             disabled={disabled}
             title={disabled ? disabledReason : 'Visualiser le document et l\'email avant envoi'}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Eye className="h-3.5 w-3.5" /> Aperçu
           </button>
           {downloadUrl && etat !== 'absent' && (
             <a href={downloadUrl} target="_blank" rel="noreferrer"
               title={etat === 'signe' ? 'Télécharger le document signé' : 'Télécharger le document'}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50">
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50">
               <Download className="h-3.5 w-3.5" /> {etat === 'signe' ? 'Signé' : 'PDF'}
             </a>
           )}
@@ -316,7 +316,7 @@ export function SessionDocuments(props: Props) {
               onClick={onCancel}
               disabled={pending}
               title="Annuler la demande de signature (invalide le lien)"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-danger-200 text-danger-600 text-xs font-medium hover:bg-danger-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-danger-200 text-danger-600 text-xs font-medium hover:bg-danger-50 disabled:opacity-40"
             >
               <XCircle className="h-3.5 w-3.5" /> Annuler
             </button>
@@ -326,7 +326,7 @@ export function SessionDocuments(props: Props) {
               onClick={onLink}
               disabled={disabled || pending}
               title={disabled ? disabledReason : 'Générer le lien de signature sans envoyer d\'email'}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Copy className="h-3.5 w-3.5" /> Lien
             </button>
@@ -336,7 +336,7 @@ export function SessionDocuments(props: Props) {
               onClick={onSend}
               disabled={disabled || pending}
               title={disabled ? disabledReason : undefined}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {busy === busyKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
               {etat === 'absent' ? sendLabel : 'Relancer'}
@@ -387,7 +387,7 @@ export function SessionDocuments(props: Props) {
                 const cli = clients.get(cid)
                 const c = convEntreprise(cid)
                 return (
-                  <div key={cid} className="flex items-center gap-3 py-2.5">
+                  <div key={cid} className="flex flex-wrap items-center gap-2 sm:gap-3 py-2.5">
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-surface-900">{cli?.nom_commercial || cli?.raison_sociale}</span>
                       <span className="text-xs px-1.5 py-0.5 rounded bg-surface-100 text-surface-500 ml-2">Convention</span>
@@ -397,7 +397,7 @@ export function SessionDocuments(props: Props) {
                     {c ? (
                       <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noreferrer"
                         title={c.signature_client_date ? 'Télécharger la convention signée' : 'Télécharger la convention'}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                         <Download className="h-3.5 w-3.5" /> {c.signature_client_date ? 'Signée' : 'PDF'}
                       </a>
                     ) : (
@@ -405,12 +405,12 @@ export function SessionDocuments(props: Props) {
                       <>
                         <a href={`/api/pdf/preview/convention/${sessionId}?client=${cid}`} target="_blank" rel="noreferrer"
                           title="Aperçu de la convention telle qu'elle sera envoyée"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                           <Eye className="h-3.5 w-3.5" /> Aperçu
                         </a>
                         <a href={`/api/pdf/preview/convention/${sessionId}?client=${cid}&download=1`}
                           title="Télécharger la convention (non envoyée)"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                           <Download className="h-3.5 w-3.5" /> PDF
                         </a>
                       </>
@@ -419,12 +419,12 @@ export function SessionDocuments(props: Props) {
                       <>
                         <button disabled={envoiContrat === `lien:${cid}`} onClick={() => genererLienEntreprise(cid)}
                           title="Générer le lien de signature sans envoyer d'email"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
                           {envoiContrat === `lien:${cid}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
                           Lien
                         </button>
                         <button disabled={envoiContrat === cid} onClick={() => envoyerConventionEntreprise(cid)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
+                          className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
                           {envoiContrat === cid ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                           {c ? 'Renvoyer' : 'Envoyer la convention'}
                         </button>
@@ -436,7 +436,7 @@ export function SessionDocuments(props: Props) {
               {individuels.map((a) => {
                 const c = convParticulier(a.id)
                 return (
-                  <div key={a.id} className="flex items-center gap-3 py-2.5">
+                  <div key={a.id} className="flex flex-wrap items-center gap-2 sm:gap-3 py-2.5">
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-surface-900">{a.prenom} {a.nom}</span>
                       <span className="text-xs px-1.5 py-0.5 rounded bg-surface-100 text-surface-500 ml-2">Contrat particulier</span>
@@ -446,13 +446,13 @@ export function SessionDocuments(props: Props) {
                     {c && (
                       <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noreferrer"
                         title={c.signature_client_date ? 'Télécharger le contrat signé' : 'Télécharger le contrat'}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                         <Download className="h-3.5 w-3.5" /> {c.signature_client_date ? 'Signé' : 'PDF'}
                       </a>
                     )}
                     {!c?.signature_client_date && (
                       <button disabled={!a.email || envoiContrat === a.id} onClick={() => envoyerContratParticulier(a.id)}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-1.5 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
                         {envoiContrat === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                         {c ? 'Renvoyer' : 'Envoyer le contrat'}
                       </button>

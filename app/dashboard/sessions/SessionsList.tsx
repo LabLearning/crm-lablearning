@@ -6,7 +6,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, Search, Pencil, Trash2, Users, QrCode,
   Calendar, MapPin, Video, Clock, User as UserIcon, Building2,
-  List, LayoutGrid, FolderPlus,
+  List, LayoutGrid, FolderPlus, Filter, ChevronDown, Send, Play, CheckCircle2,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, useToast, RowMenu, PoeiBadge } from '@/components/ui'
 import { SessionForm } from './SessionForm'
@@ -17,6 +17,12 @@ import {
 } from '@/lib/types/formation'
 import { formatDate, companyLabel } from '@/lib/utils'
 import type { Session, SessionStatus, Formation, Formateur } from '@/lib/types/formation'
+
+// Statuts absents du référentiel typé mais présents en base (colonne kanban, badges)
+const STATUS_LABELS_EXTRA: Record<string, string> = { validee: 'Validée', en_attente_signatures: 'En attente de signatures' }
+function statusLabel(status: string): string {
+  return SESSION_STATUS_LABELS[status as SessionStatus] || STATUS_LABELS_EXTRA[status] || status
+}
 
 interface ClientLite {
   id: string
@@ -75,6 +81,43 @@ function timeRange(s: any): string {
 
 const KANBAN_ORDER: string[] = ['planifiee', 'en_attente_signatures', 'validee', 'confirmee', 'en_cours', 'terminee', 'annulee']
 
+// Pilule inscrits (style Dendreo : grise si 0, verte sinon)
+function InscritsPill({ s }: { s: Session }) {
+  const n = s._nb_inscrits ?? 0
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold shrink-0 ${n > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-400'}`}>
+      <Users className="h-3 w-3 shrink-0" /> {n}{s.places_max ? `/${s.places_max}` : ''}
+    </span>
+  )
+}
+
+function TypePill({ s }: { s: Session }) {
+  const t = (s as any).type_session
+  if (!t) return null
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-2xs font-bold shrink-0 ${t === 'intra' ? 'bg-emerald-500 text-white' : 'bg-sky-500 text-white'}`}>
+      {t === 'intra' ? 'INTRA' : 'INTER'}
+    </span>
+  )
+}
+
+type SessionView = 'liste' | 'kanban'
+
+// Switch Liste / Kanban : visible dans la barre sur écran large, dans le panneau replié sur mobile.
+// Déclaré au niveau module (et non dans SessionsList) pour que React ne le remonte pas à chaque rendu.
+function ViewSwitch({ view, onChange, className = '' }: { view: SessionView; onChange: (v: SessionView) => void; className?: string }) {
+  return (
+    <div role="radiogroup" aria-label="Affichage" className={`flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 ${className}`}>
+      {([['liste', List, 'Liste'], ['kanban', LayoutGrid, 'Kanban']] as const).map(([v, Icon, label]) => (
+        <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => onChange(v)}
+          className={`flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg text-[13px] md:text-xs font-medium transition-colors min-h-[36px] md:min-h-0 ${view === v ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
+          <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function SessionsList({ sessions, formations, formateurs, clients = [], apprenants = [], periode = 'actives' }: SessionsListProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -89,7 +132,9 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [formateurFilter, setFormateurFilter] = useState<string>('all')
   const [formationFilter, setFormationFilter] = useState<string>('all')
-  const [view, setView] = useState<'liste' | 'kanban'>('liste')
+  const [view, setView] = useState<SessionView>('liste')
+  // Sous 768 px, les tris se replient derrière un bouton « Filtres »
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [editSession, setEditSession] = useState<Session | null>(null)
   const [prefillFormationId, setPrefillFormationId] = useState<string | undefined>(undefined)
@@ -160,14 +205,14 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
 
   async function handleStatusChange(id: string, status: SessionStatus) {
     const result = await updateSessionStatusAction(id, status)
-    if (result.success) toast('success', `Statut mis à jour : ${SESSION_STATUS_LABELS[status]}`)
+    if (result.success) toast('success', `Statut mis à jour : ${statusLabel(status)}`)
     else toast('error', result.error || 'Erreur')
   }
 
   async function handleConfirmSession(id: string) {
     const { confirmSessionAction } = await import('./confirm-actions')
     const r = await confirmSessionAction(id)
-    if (r.success) toast('success', 'Session confirmée — convention et contrat envoyés pour signature')
+    if (r.success) toast('success', 'Session confirmée : convention et contrat envoyés pour signature')
     else toast('error', r.error || 'Erreur')
   }
 
@@ -182,38 +227,20 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
 
   function sessionMenu(s: Session) {
     return (
-      <RowMenu width={208} items={[
+      <RowMenu width={208} triggerClassName="p-2.5 md:p-1.5" items={[
         { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditSession(s) },
         { label: 'QR codes apprenants', icon: <QrCode className="h-4 w-4 text-surface-400" />, href: `/api/sessions/${s.id}/qr-codes`, target: '_blank' },
-        { label: 'Confirmer & envoyer signatures', onClick: () => handleConfirmSession(s.id), hidden: !(s.status === 'planifiee' && (s as any).mission_status === 'accepted') },
+        { label: 'Confirmer & envoyer signatures', icon: <Send className="h-4 w-4 text-surface-400" />, onClick: () => handleConfirmSession(s.id), hidden: !(s.status === 'planifiee' && (s as any).mission_status === 'accepted') },
         { label: "Formateur doit d'abord accepter la mission", info: true, hidden: !(s.status === 'planifiee' && (s as any).mission_status !== 'accepted') },
-        { label: 'En attente des signatures', info: true, infoColor: 'text-amber-600', hidden: s.status !== 'en_attente_signatures' },
-        { label: 'Démarrer la session', onClick: () => handleStatusChange(s.id, 'en_cours'), hidden: !(s.status === 'validee' || s.status === 'confirmee') },
-        { label: 'Terminer la session', onClick: () => handleStatusChange(s.id, 'terminee'), hidden: s.status !== 'en_cours' },
+        { label: 'En attente des signatures', info: true, infoColor: 'text-amber-600', hidden: (s.status as string) !== 'en_attente_signatures' },
+        { label: 'Démarrer la session', icon: <Play className="h-4 w-4 text-surface-400" />, onClick: () => handleStatusChange(s.id, 'en_cours'), hidden: !((s.status as string) === 'validee' || s.status === 'confirmee') },
+        { label: 'Terminer la session', icon: <CheckCircle2 className="h-4 w-4 text-surface-400" />, onClick: () => handleStatusChange(s.id, 'terminee'), hidden: s.status !== 'en_cours' },
         { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => handleDelete(s.id) },
       ]} />
     )
   }
 
-  // Pilule inscrits (style Dendreo : grise si 0, verte sinon)
-  function InscritsPill({ s }: { s: Session }) {
-    const n = s._nb_inscrits ?? 0
-    return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold shrink-0 ${n > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-400'}`}>
-        <Users className="h-3 w-3 shrink-0" /> {n}{s.places_max ? `/${s.places_max}` : ''}
-      </span>
-    )
-  }
-
-  function TypePill({ s }: { s: Session }) {
-    const t = (s as any).type_session
-    if (!t) return null
-    return (
-      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${t === 'intra' ? 'bg-emerald-500 text-white' : 'bg-sky-500 text-white'}`}>
-        {t === 'intra' ? 'INTRA' : 'INTER'}
-      </span>
-    )
-  }
+  const nbFiltresActifs = [typeFilter, formateurFilter, formationFilter, statusFilter].filter((v) => v !== 'all').length
 
   return (
     <div>
@@ -225,80 +252,93 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
             {periode !== 'toutes' && <span className="text-surface-400"> · {PERIODE_LABELS[periode].toLowerCase()}</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {/* Le circuit commercial : client -> apprenants -> formation -> session */}
           <Link href="/dashboard/dossiers/nouveau"
-            className="btn-primary inline-flex items-center gap-1.5 !py-2 !px-4 text-sm">
+            className="btn-primary inline-flex items-center justify-center gap-1.5 !py-2.5 sm:!py-2 !px-4 text-sm w-full sm:w-auto min-h-[44px] sm:min-h-0">
             <FolderPlus className="h-4 w-4" /> Nouveau dossier
           </Link>
-          <Button variant="secondary" onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>
+          <Button variant="secondary" onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />}
+            className="w-full sm:w-auto justify-center min-h-[44px] sm:min-h-0">
             Session seule
           </Button>
         </div>
       </div>
 
-      {/* Filtres : période (chargement serveur) puis tris combinables */}
+      {/* Filtres : période (chargement serveur) puis tris combinables.
+          Sous 768 px : période + recherche restent visibles, le reste se replie
+          derrière un bouton « Filtres » avec compteur. */}
       <div className="space-y-3 mb-5">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div role="radiogroup" aria-label="Période" className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start w-full md:w-auto">
             {(['actives', 'passees', 'toutes'] as const).map((p) => (
-              <button key={p} onClick={() => handlePeriode(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${periode === p ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
+              <button key={p} type="button" role="radio" aria-checked={periode === p} onClick={() => handlePeriode(p)}
+                className={`flex-1 md:flex-none px-3 py-2 md:py-1.5 rounded-lg text-[13px] md:text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] md:min-h-0 ${periode === p ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
                 {PERIODE_LABELS[p]}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-surface-200/60 flex-1 max-w-md">
-            <Search className="h-4 w-4 text-surface-400 shrink-0" />
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher (formation, client, formateur, lieu...)" className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1" />
+          <div className="flex gap-2 flex-1">
+            <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 md:py-2 border border-surface-200/60 flex-1 md:max-w-md min-h-[44px] md:min-h-0">
+              <Search className="h-4 w-4 text-surface-400 shrink-0" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher (formation, client, formateur, lieu...)" className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
+            </div>
+            <button type="button" onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}
+              className={`md:hidden inline-flex items-center gap-1.5 px-3 rounded-xl border text-[13px] font-medium shrink-0 min-h-[44px] transition-colors ${filtersOpen || nbFiltresActifs > 0 ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-surface-200/80 bg-white text-surface-700'}`}>
+              <Filter className="h-4 w-4" />
+              Filtres
+              {nbFiltresActifs > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-brand-500 text-white text-2xs font-bold">{nbFiltresActifs}</span>
+              )}
+              <ChevronDown className={`h-3.5 w-3.5 text-surface-400 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
           </div>
           {/* Switch Liste / Kanban */}
-          <div className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start sm:ml-auto">
-            {([['liste', List, 'Liste'], ['kanban', LayoutGrid, 'Kanban']] as const).map(([v, Icon, label]) => (
-              <button key={v} onClick={() => setView(v)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${view === v ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
-                <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
-              </button>
-            ))}
-          </div>
+          <ViewSwitch view={view} onChange={setView} className="hidden md:flex self-start md:ml-auto" />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row md:items-center gap-2 md:flex-wrap rounded-xl md:rounded-none border md:border-0 border-surface-200/70 bg-white md:bg-transparent p-3 md:p-0`}>
+          <div className="flex items-center justify-between gap-2 md:hidden">
+            <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Affichage</span>
+            <ViewSwitch view={view} onChange={setView} />
+          </div>
           {/* Type INTER / INTRA */}
-          <div className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0">
+          <div role="radiogroup" aria-label="Type de session" className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 w-full md:w-auto">
             {([['all', 'Tous types'], ['inter', 'INTER'], ['intra', 'INTRA']] as const).map(([v, label]) => (
-              <button key={v} onClick={() => setTypeFilter(v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${typeFilter === v ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
+              <button key={v} type="button" role="radio" aria-checked={typeFilter === v} onClick={() => setTypeFilter(v)}
+                className={`flex-1 md:flex-none px-3 py-2 md:py-1.5 rounded-lg text-[13px] md:text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] md:min-h-0 ${typeFilter === v ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
                 {label}
               </button>
             ))}
           </div>
           <select value={formationFilter} onChange={(e) => setFormationFilter(e.target.value)}
-            className="text-xs font-medium rounded-xl border border-surface-200/80 bg-white px-3 py-2 text-surface-700 max-w-56 truncate">
+            className="w-full md:w-auto md:max-w-56 truncate text-[13px] md:text-xs font-medium rounded-xl border border-surface-200/80 bg-white px-3 py-2.5 md:py-2 text-surface-700 min-h-[44px] md:min-h-0">
             <option value="all">Toutes les formations</option>
             {formations.map((f) => <option key={f.id} value={f.id}>{f.intitule}</option>)}
           </select>
           <select value={formateurFilter} onChange={(e) => setFormateurFilter(e.target.value)}
-            className="text-xs font-medium rounded-xl border border-surface-200/80 bg-white px-3 py-2 text-surface-700">
+            className="w-full md:w-auto text-[13px] md:text-xs font-medium rounded-xl border border-surface-200/80 bg-white px-3 py-2.5 md:py-2 text-surface-700 min-h-[44px] md:min-h-0">
             <option value="all">Tous les formateurs</option>
             {formateurs.map((f) => <option key={f.id} value={f.id}>{f.prenom} {f.nom}</option>)}
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs font-medium rounded-xl border border-surface-200/80 bg-white px-3 py-2 text-surface-700">
+            className="w-full md:w-auto text-[13px] md:text-xs font-medium rounded-xl border border-surface-200/80 bg-white px-3 py-2.5 md:py-2 text-surface-700 min-h-[44px] md:min-h-0">
             <option value="all">Tous les statuts ({statusCounts.all || 0})</option>
             {['planifiee', 'en_attente_signatures', 'validee', 'confirmee', 'en_cours', 'terminee', 'annulee']
               .filter((st) => statusCounts[st])
               .map((st) => (
-                <option key={st} value={st}>{SESSION_STATUS_LABELS[st as SessionStatus]} ({statusCounts[st]})</option>
+                <option key={st} value={st}>{statusLabel(st as SessionStatus)} ({statusCounts[st]})</option>
               ))}
           </select>
-          {(typeFilter !== 'all' || formateurFilter !== 'all' || formationFilter !== 'all' || statusFilter !== 'all') && (
-            <button onClick={() => { setTypeFilter('all'); setFormateurFilter('all'); setFormationFilter('all'); setStatusFilter('all') }}
-              className="text-xs text-surface-400 hover:text-surface-600 underline underline-offset-2">
-              Réinitialiser
-            </button>
-          )}
-          <span className="text-xs text-surface-400 ml-auto">{filtered.length} session{filtered.length > 1 ? 's' : ''}</span>
+          <div className="flex items-center justify-between gap-3 md:contents">
+            {nbFiltresActifs > 0 ? (
+              <button onClick={() => { setTypeFilter('all'); setFormateurFilter('all'); setFormationFilter('all'); setStatusFilter('all') }}
+                className="text-[13px] md:text-xs text-surface-500 md:text-surface-400 hover:text-surface-600 underline underline-offset-2 min-h-[36px] md:min-h-0">
+                Réinitialiser
+              </button>
+            ) : <span className="md:hidden" />}
+            <span className="text-xs text-surface-400 md:ml-auto">{filtered.length} session{filtered.length > 1 ? 's' : ''}</span>
+          </div>
         </div>
       </div>
 
@@ -317,11 +357,52 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                 {items.map((s) => (
                   <div key={s.id}
                     onClick={() => window.location.href = `/dashboard/sessions/${s.id}`}
-                    className={`flex items-center gap-3 px-4 py-2.5 hover:bg-surface-50/70 transition-colors cursor-pointer ${isToday(s) ? 'bg-brand-50/30' : ''}`}>
+                    className={`hover:bg-surface-50/70 transition-colors cursor-pointer ${isToday(s) ? 'bg-brand-50/30' : ''}`}>
+                    {/* ── Carte mobile (< 768 px) : tout ce qu'il faut pour reconnaître la session ── */}
+                    <div className="md:hidden px-4 py-3 flex items-start gap-3">
+                      <span title={dotTitle(s)} className={`h-2.5 w-2.5 mt-1.5 rounded-full shrink-0 ${dotFor(s)}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-surface-900 leading-snug [overflow-wrap:anywhere]">{getSessionTitle(s)}</div>
+                        {(s as any).client?.raison_sociale && (
+                          <div className="flex items-center gap-1 text-[13px] font-medium text-sky-700 mt-0.5 min-w-0">
+                            <Building2 className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{companyLabel((s as any).client)}</span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500 mt-1.5">
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                            {s.date_fin !== s.date_debut
+                              ? `Du ${formatDate(s.date_debut, { day: 'numeric', month: 'short' })} au ${formatDate(s.date_fin, { day: 'numeric', month: 'short' })}`
+                              : formatDate(s.date_debut, { day: 'numeric', month: 'short' })}
+                          </span>
+                          {timeRange(s) && (
+                            <span className="inline-flex items-center gap-1 font-mono"><Clock className="h-3.5 w-3.5 text-surface-400 shrink-0" />{timeRange(s)}</span>
+                          )}
+                          <span className="inline-flex items-center gap-1 min-w-0">
+                            <UserIcon className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                            {s.formateur
+                              ? <span className="truncate">{s.formateur.prenom} {s.formateur.nom}</span>
+                              : (s as any)._poei_role === 'parcours'
+                                ? <span className="text-surface-400">formateur par intervention</span>
+                                : <span className="text-surface-400">formateur à affecter</span>}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <Badge variant={SESSION_STATUS_COLORS[s.status]} dot>{statusLabel(s.status)}</Badge>
+                          <TypePill s={s} />
+                          {(s as any)._is_poei && <PoeiBadge role={(s as any)._poei_role} />}
+                          <InscritsPill s={s} />
+                        </div>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0 -mr-2 -mt-1">{sessionMenu(s)}</div>
+                    </div>
+
+                    {/* ── Ligne desktop (≥ 768 px) ── */}
+                    <div className="hidden md:flex items-center gap-3 px-4 py-2.5">
                     {/* Pastille couleur */}
                     <span title={dotTitle(s)} className={`h-2.5 w-2.5 rounded-full shrink-0 ${dotFor(s)}`} />
                     {/* Horaire */}
-                    <span className="text-xs font-mono text-surface-500 w-24 shrink-0">{timeRange(s) || '—'}</span>
+                    <span className="text-xs font-mono text-surface-500 w-24 shrink-0">{timeRange(s)}</span>
                     {/* Titre */}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-surface-900 truncate">
@@ -334,7 +415,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                     {/* Type + POEI + statut */}
                     <TypePill s={s} />
                     {(s as any)._is_poei && <PoeiBadge role={(s as any)._poei_role} />}
-                    <span className="hidden sm:block shrink-0"><Badge variant={SESSION_STATUS_COLORS[s.status]} dot>{SESSION_STATUS_LABELS[s.status]}</Badge></span>
+                    <span className="shrink-0"><Badge variant={SESSION_STATUS_COLORS[s.status]} dot>{statusLabel(s.status)}</Badge></span>
                     {/* Inscrits */}
                     <InscritsPill s={s} />
                     {/* Formateur */}
@@ -345,15 +426,16 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                         // Un parcours n'a pas de formateur : ils sont affectés par intervention
                         <span className="text-surface-300">par intervention</span>
                       ) : (
-                        <span className="text-surface-300">— formateur</span>
+                        <span className="text-surface-300">à affecter</span>
                       )}
                     </span>
                     {/* Client */}
                     <span className="hidden xl:flex items-center gap-1 text-xs font-medium text-sky-700 w-40 truncate shrink-0">
-                      {(s as any).client?.raison_sociale ? (<><Building2 className="h-3.5 w-3.5 shrink-0" />{companyLabel((s as any).client)}</>) : <span className="text-surface-300 font-normal">—</span>}
+                      {(s as any).client?.raison_sociale ? (<><Building2 className="h-3.5 w-3.5 shrink-0" />{companyLabel((s as any).client)}</>) : <span className="text-surface-300 font-normal">sans client</span>}
                     </span>
                     {/* Menu */}
                     <div onClick={(e) => e.stopPropagation()} className="shrink-0">{sessionMenu(s)}</div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -364,11 +446,13 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
 
       {/* ── VUE KANBAN (monochrome, par statut) ── */}
       {view === 'kanban' && (
-        <div className="flex gap-4 overflow-x-auto pb-4 items-start">
+        <div>
+          <p className="md:hidden text-2xs text-surface-400 mb-2 px-1">Faites défiler horizontalement pour voir les autres statuts.</p>
+          <div className="flex gap-3 md:gap-4 overflow-x-auto pb-4 items-start -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-proximity md:snap-none">
           {kanbanCols.map((col) => (
-            <div key={col.status} className="w-72 shrink-0 rounded-2xl bg-surface-50 border border-surface-200/60">
+            <div key={col.status} className="w-[82vw] max-w-[288px] md:w-72 md:max-w-none shrink-0 snap-start md:snap-align-none rounded-2xl bg-surface-50 border border-surface-200/60">
               <div className="px-3 py-2.5 flex items-center justify-between">
-                <span className="text-xs font-semibold text-surface-700">{SESSION_STATUS_LABELS[col.status as SessionStatus] || col.status}</span>
+                <span className="text-xs font-semibold text-surface-700">{statusLabel(col.status)}</span>
                 <span className="text-2xs font-semibold text-surface-400 bg-white border border-surface-200/70 rounded-full px-2 py-0.5">{col.items.length}</span>
               </div>
               <div className="px-2 pb-2 space-y-2 max-h-[65vh] overflow-y-auto">
@@ -382,7 +466,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span title={dotTitle(s)} className={`h-2 w-2 rounded-full shrink-0 ${dotFor(s)}`} />
-                        <span className="text-xs font-semibold text-surface-900 truncate leading-snug">{getSessionTitle(s)}</span>
+                        <span className="text-xs font-semibold text-surface-900 leading-snug [overflow-wrap:anywhere] line-clamp-2 md:line-clamp-1">{getSessionTitle(s)}</span>
                       </div>
                       <div onClick={(e) => e.stopPropagation()} className="shrink-0 -mt-1 -mr-1">{sessionMenu(s)}</div>
                     </div>
@@ -405,6 +489,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
               </div>
             </div>
           ))}
+          </div>
         </div>
       )}
 
