@@ -175,7 +175,13 @@ BEGIN
   RETURN res;
 END;
 $$;
-REVOKE ALL ON FUNCTION journal_dependances(text, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION journal_dependances(text, uuid) FROM PUBLIC;
+DO $$
+BEGIN
+  -- Rôles PostgREST : présents sur Supabase, absents d'un Postgres local de test
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN REVOKE ALL ON FUNCTION journal_dependances(text, uuid) FROM anon; END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN REVOKE ALL ON FUNCTION journal_dependances(text, uuid) FROM authenticated; END IF;
+END $$;
 
 -- Tables journalisées : le cœur du métier et ses lignes filles, sans les
 -- tables de mesure qui bougent en continu (émargements, pointages, mails).
