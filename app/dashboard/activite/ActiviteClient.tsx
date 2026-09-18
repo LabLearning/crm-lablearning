@@ -7,8 +7,8 @@ import { Button, Input, Select, Modal, useToast, PaginationBar } from '@/compone
 import { RotateCcw, ExternalLink, ChevronDown, ChevronUp, Search, Filter, X, User } from '@/components/ui/icons'
 import { formatDate } from '@/lib/utils'
 import {
-  TABLES_ACTIVITE, OPERATIONS_ACTIVITE, libelleChamp, formatValeur, lienActivite, nomActeur, phraseActivite,
-  type Activite,
+  TABLES_ACTIVITE, OPERATIONS_ACTIVITE, CHAMPS_CLES, libelleChamp, formatValeur, formatValeurLisible, lienActivite, nomActeur,
+  phraseActivite, phraseEvenement, type Activite, type Libelles,
 } from '@/lib/activite'
 import { annulerActiviteAction } from './actions'
 
@@ -38,6 +38,7 @@ interface Props {
   peutAnnuler: boolean
   journalAbsent: boolean
   erreur?: string | null
+  libelles: Libelles
 }
 
 /** Libellés des événements applicatifs (audit_logs), pour lecture humaine. */
@@ -73,7 +74,7 @@ function Initiales({ nom, url }: { nom: string; url?: string | null }) {
   )
 }
 
-export function ActiviteClient({ vue, activites, evenements, total, page, parPage, utilisateurs, filtres, peutAnnuler, journalAbsent, erreur = null }: Props) {
+export function ActiviteClient({ vue, activites, evenements, total, page, parPage, utilisateurs, filtres, peutAnnuler, journalAbsent, erreur = null, libelles }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -107,8 +108,8 @@ export function ActiviteClient({ vue, activites, evenements, total, page, parPag
 
   const nbFiltres = [f.table, f.operation, f.du, f.au].filter(Boolean).length
   const lignes: Array<{ cle: string; date: string; contenu: React.ReactNode }> = vue === 'modifications'
-    ? activites.map((a) => ({ cle: a.id, date: a.created_at, contenu: <LigneActivite a={a} ouvert={ouvert === a.id} basculer={() => setOuvert(ouvert === a.id ? null : a.id)} peutAnnuler={peutAnnuler} demanderAnnulation={() => setAAnnuler(a)} /> }))
-    : evenements.map((e) => ({ cle: e.id, date: e.created_at, contenu: <LigneEvenement e={e} /> }))
+    ? activites.map((a) => ({ cle: a.id, date: a.created_at, contenu: <LigneActivite a={a} libelles={libelles} ouvert={ouvert === a.id} basculer={() => setOuvert(ouvert === a.id ? null : a.id)} peutAnnuler={peutAnnuler} demanderAnnulation={() => setAAnnuler(a)} /> }))
+    : evenements.map((e) => ({ cle: e.id, date: e.created_at, contenu: <LigneEvenement e={e} libelles={libelles} /> }))
 
   // Regroupement par jour
   const groupes: Array<{ jour: string; libelle: string; lignes: typeof lignes }> = []
@@ -218,16 +219,21 @@ export function ActiviteClient({ vue, activites, evenements, total, page, parPag
   )
 }
 
-function LigneActivite({ a, ouvert, basculer, peutAnnuler, demanderAnnulation }: {
-  a: Activite; ouvert: boolean; basculer: () => void; peutAnnuler: boolean; demanderAnnulation: () => void
+function LigneActivite({ a, libelles, ouvert, basculer, peutAnnuler, demanderAnnulation }: {
+  a: Activite; libelles: Libelles; ouvert: boolean; basculer: () => void; peutAnnuler: boolean; demanderAnnulation: () => void
 }) {
   const op = OPERATIONS_ACTIVITE[a.operation]
   const ph = phraseActivite(a)
   const lien = lienActivite(a)
   const nom = nomActeur(a)
   const impersonateur = a.impersonateur ? `${a.impersonateur.first_name || ''} ${a.impersonateur.last_name || ''}`.trim() : null
-  const champsVisibles = a.operation === 'update' ? a.champs : Object.keys((a.apres || a.avant || {}) as object).filter((k) => !['id', 'organization_id', 'created_at', 'updated_at'].includes(k))
-  const detaillable = champsVisibles.length > 0
+  const ref = (a.apres || a.avant || {}) as Record<string, unknown>
+  const technique = ['id', 'organization_id', 'created_at', 'updated_at', 'created_by']
+  // Ce qui est montré tout de suite : les champs modifiés, ou les champs clés d'une fiche créée / supprimée
+  const cles = a.operation === 'update'
+    ? a.champs
+    : (CHAMPS_CLES[a.table_name] || Object.keys(ref).filter((k) => !technique.includes(k)).slice(0, 8)).filter((k) => ref[k] !== null && ref[k] !== undefined && ref[k] !== '')
+  const toutes = Object.keys(ref).filter((k) => !technique.includes(k) && !cles.includes(k))
   return (
     <div className={`px-3 sm:px-4 py-3 ${a.annulee_le ? 'opacity-60' : ''}`}>
       <div className="flex items-start gap-3">
@@ -242,39 +248,50 @@ function LigneActivite({ a, ouvert, basculer, peutAnnuler, demanderAnnulation }:
             ) : (
               <span className="font-semibold text-surface-900 break-words">{ph.libelle || 'sans nom'}</span>
             )}
-            {a.operation === 'update' && a.champs.length > 0 && (
-              <span className="text-surface-500"> : {a.champs.slice(0, 4).map(libelleChamp).join(', ')}{a.champs.length > 4 ? ` et ${a.champs.length - 4} autre${a.champs.length - 4 > 1 ? 's' : ''}` : ''}</span>
-            )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500">
             <span className="tabular-nums">{heure(a.created_at)}</span>
             <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 font-semibold ${op.classe}`}>{op.libelle}</span>
             {a.annulee_le && <span className="inline-flex items-center rounded-md border border-surface-200 bg-surface-100 px-1.5 py-0.5 font-semibold text-surface-600">Annulée le {formatDate(a.annulee_le)}</span>}
-            {detaillable && (
-              <button type="button" onClick={basculer} aria-expanded={ouvert} aria-controls={`detail-${a.id}`} className="inline-flex items-center gap-1 text-brand-600 hover:underline min-h-[28px]">
-                {ouvert ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} Détail
-              </button>
-            )}
             {lien && (
               <Link href={lien} className="inline-flex items-center gap-1 text-surface-500 hover:text-surface-800 min-h-[28px]">
                 <ExternalLink className="h-3.5 w-3.5" /> Ouvrir la fiche
               </Link>
             )}
           </div>
-          {ouvert && (
-            <div id={`detail-${a.id}`} className="mt-2 rounded-xl border border-surface-200 overflow-hidden text-xs">
-              {champsVisibles.map((c) => {
-                const av = a.avant?.[c]; const ap = a.apres?.[c]
-                return (
-                  <div key={c} className="grid grid-cols-1 sm:grid-cols-[minmax(0,10rem)_1fr] gap-x-3 px-3 py-1.5 border-b border-surface-100 last:border-b-0">
-                    <span className="text-surface-500">{libelleChamp(c)}</span>
-                    <span className="text-surface-800 break-words">
-                      {a.operation === 'update' ? (<><span className="line-through text-surface-400">{formatValeur(av)}</span> <span className="mx-1 text-surface-300">→</span> {formatValeur(ap)}</>)
-                        : a.operation === 'insert' ? formatValeur(ap) : formatValeur(av)}
-                    </span>
-                  </div>
-                )
-              })}
+
+          {/* Le détail de l'action, toujours visible */}
+          {cles.length > 0 && (
+            <dl className="mt-2 rounded-xl border border-surface-200 bg-surface-50/60 px-3 py-2 text-xs grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+              {cles.map((c) => (
+                <div key={c} className="flex gap-2 min-w-0">
+                  <dt className="text-surface-500 shrink-0">{libelleChamp(c)}</dt>
+                  <dd className="text-surface-800 break-words min-w-0">
+                    {a.operation === 'update' ? (
+                      <><span className="line-through text-surface-400">{formatValeurLisible(c, a.avant?.[c], libelles)}</span>
+                        <span className="mx-1 text-surface-300">→</span>
+                        <span className="font-medium text-surface-900">{formatValeurLisible(c, a.apres?.[c], libelles)}</span></>
+                    ) : formatValeurLisible(c, ref[c], libelles)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {toutes.length > 0 && (
+            <div className="mt-1.5">
+              <button type="button" onClick={basculer} aria-expanded={ouvert} aria-controls={`detail-${a.id}`} className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline min-h-[28px]">
+                {ouvert ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} {ouvert ? 'Masquer les autres champs' : `Voir les ${toutes.length} autres champs`}
+              </button>
+              {ouvert && (
+                <dl id={`detail-${a.id}`} className="mt-1 rounded-xl border border-surface-200 px-3 py-2 text-xs grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                  {toutes.map((c) => (
+                    <div key={c} className="flex gap-2 min-w-0">
+                      <dt className="text-surface-500 shrink-0">{libelleChamp(c)}</dt>
+                      <dd className="text-surface-800 break-words min-w-0">{formatValeurLisible(c, ref[c], libelles)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </div>
           )}
         </div>
@@ -289,24 +306,26 @@ function LigneActivite({ a, ouvert, basculer, peutAnnuler, demanderAnnulation }:
   )
 }
 
-function LigneEvenement({ e }: { e: Evenement }) {
+function LigneEvenement({ e, libelles }: { e: Evenement; libelles: Libelles }) {
   const nom = e.user_id ? (`${e.acteur?.first_name || ''} ${e.acteur?.last_name || ''}`.trim() || e.acteur?.email || 'Utilisateur supprimé') : 'Système'
-  const verbe = EVENEMENTS[e.action] || `a effectué « ${e.action.replace(/_/g, ' ')} »`
-  const t = TABLES_ACTIVITE[e.entity_type]
-  const lien = lienActivite({ table_name: e.entity_type, record_id: e.entity_id, avant: null, apres: (e.details || null) as any })
-  const detail = e.details ? Object.entries(e.details).filter(([, v]) => v !== null && typeof v !== 'object').slice(0, 4) : []
+  const ph = phraseEvenement(e.action, e.entity_type, e.entity_id, e.details, libelles)
+  const lien = lienActivite({ table_name: e.entity_type === 'session' ? 'sessions' : e.entity_type === 'client' ? 'clients' : e.entity_type === 'poei' ? 'poei' : e.entity_type === 'apprenant' ? 'apprenants' : e.entity_type === 'formateur' ? 'formateurs' : e.entity_type === 'franchise' ? 'franchises' : e.entity_type, record_id: e.entity_id, avant: null, apres: (e.details || null) as any })
   return (
     <div className="px-3 sm:px-4 py-3 flex items-start gap-3">
       <div className="pt-0.5"><Initiales nom={nom} url={e.acteur?.avatar_url} /></div>
       <div className="flex-1 min-w-0">
         <div className="text-sm text-surface-800 leading-snug">
-          <span className="font-semibold text-surface-900">{nom}</span> {verbe}
-          {t ? <> {t.article}{t.article.endsWith("'") ? '' : ' '}{t.nom}</> : <span className="text-surface-500"> ({e.entity_type.replace(/_/g, ' ')})</span>}
-          {lien && e.entity_id && <> <Link href={lien} className="font-semibold text-brand-600 hover:underline">ouvrir</Link></>}
+          <span className="font-semibold text-surface-900">{nom}</span> {ph.verbe}
+          {ph.objet && <> {lien && e.entity_id ? <Link href={lien} className="font-semibold text-brand-600 hover:underline break-words">{ph.objet}</Link> : <span className="font-semibold text-surface-900 break-words">{ph.objet}</span>}</>}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500">
           <span className="tabular-nums">{heure(e.created_at)}</span>
-          {detail.map(([k, v]) => <span key={k}><span className="text-surface-400">{k.replace(/_/g, ' ')} :</span> {formatValeur(v)}</span>)}
+          {ph.precisions.map((p, i) => <span key={i}>{p}</span>)}
+          {lien && e.entity_id && (
+            <Link href={lien} className="inline-flex items-center gap-1 text-surface-500 hover:text-surface-800 min-h-[28px]">
+              <ExternalLink className="h-3.5 w-3.5" /> Ouvrir la fiche
+            </Link>
+          )}
         </div>
       </div>
     </div>

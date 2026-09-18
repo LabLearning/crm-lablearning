@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { History } from '@/components/ui/icons'
-import { TABLES_ACTIVITE, entitesPourTable, type Activite } from '@/lib/activite'
+import { TABLES_ACTIVITE, entitesPourTable, tableDepuisEntite, type Activite, type Libelles } from '@/lib/activite'
 import { ActiviteClient, type Utilisateur, type Evenement } from './ActiviteClient'
 
 export const dynamic = 'force-dynamic'
@@ -51,6 +51,68 @@ function assainir(p: Params) {
     page: Math.max(1, Number(un(p.page)) || 1),
     vue: un(p.vue) === 'evenements' ? 'evenements' as const : 'modifications' as const,
   }
+}
+
+const EST_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** Tables où retrouver le libellé d'un identifiant, par nom de colonne de référence. */
+const TABLE_PAR_COLONNE: Record<string, string> = {
+  client_id: 'clients', clientId: 'clients', session_id: 'sessions', sessionId: 'sessions', session: 'sessions',
+  apprenant_id: 'apprenants', formateur_id: 'formateurs', formation_id: 'formations', poei_id: 'poei', poei: 'poei',
+  facture_id: 'factures', devis_id: 'devis', devisId: 'devis', convention_id: 'conventions', contrat_id: 'contrats_formateur',
+  franchise_id: 'franchises', opco_id: 'opco', opco: 'opco', user_id: 'users', assigned_to: 'users', created_by: 'users',
+  impersonated_by: 'users', annulee_par: 'users', realise_par: 'users', contact_id: 'contacts', candidat_id: 'poei_candidats',
+  lead_id: 'leads', dossier_id: 'dossiers_formation', document_id: 'documents', apporteur_id: 'apporteurs_affaires',
+}
+/** Types d'entité d'audit_logs sans équivalent direct dans le journal. */
+const TABLE_PAR_ENTITE: Record<string, string> = {
+  candidat_vivier: 'candidats_vivier', certificat_signature: 'certificat_signatures', recueil_besoin: 'recueils_besoin',
+  crm_tache: 'crm_taches', pointage: 'pointages_formateur', lead_formation: 'lead_formations', organization: 'organizations',
+}
+
+/** Nom lisible d'une ligne, quelle que soit la table. */
+function libelleLigne(table: string, r: Record<string, any>): string | null {
+  const nom = [r.prenom, r.nom].filter(Boolean).join(' ').trim()
+  const parts = [
+    r.numero || r.reference,
+    r.raison_sociale || r.nom_commercial || (table === 'users' ? [r.first_name, r.last_name].filter(Boolean).join(' ') : null) || nom || r.intitule || r.titre || r.libelle || r.designation || r.file_name || r.name,
+  ].filter(Boolean)
+  if (table === 'sessions' && r.intitule && r.reference) return `${r.reference} · ${r.intitule}`
+  return parts.length ? String(parts[0] === parts[1] ? parts[0] : parts.join(' · ')) : (r.email || null)
+}
+
+/**
+ * Résout en lot les identifiants rencontrés (fiche visée, colonnes de
+ * référence, détails d'événement) vers un libellé lisible.
+ */
+async function resoudreLibelles(supabase: any, orgId: string, activites: Activite[], evenements: Evenement[]): Promise<Libelles> {
+  const parTable = new Map<string, Set<string>>()
+  const ajouter = (table: string | null | undefined, id: unknown) => {
+    if (!table || typeof id !== 'string' || !EST_UUID.test(id)) return
+    if (!parTable.has(table)) parTable.set(table, new Set())
+    parTable.get(table)!.add(id)
+  }
+  for (const a of activites) {
+    ajouter(a.table_name, a.record_id)
+    for (const j of [a.avant, a.apres]) for (const [k, v] of Object.entries(j || {})) ajouter(TABLE_PAR_COLONNE[k], v)
+  }
+  for (const e of evenements) {
+    ajouter(TABLE_PAR_ENTITE[e.entity_type] || tableDepuisEntite(e.entity_type), e.entity_id)
+    for (const [k, v] of Object.entries(e.details || {})) ajouter(TABLE_PAR_COLONNE[k], v)
+  }
+  const libelles: Libelles = {}
+  await Promise.all([...parTable.entries()].map(async ([table, ids]) => {
+    const liste = [...ids]
+    for (let i = 0; i < liste.length; i += 100) {
+      // « * » : les colonnes de libellé varient d'une table à l'autre
+      const { data } = await supabase.from(table).select('*').in('id', liste.slice(i, i + 100))
+      for (const r of (data || []) as Record<string, any>[]) {
+        const l = libelleLigne(table, r)
+        if (l) libelles[r.id] = l
+      }
+    }
+  }))
+  // Les sessions se lisent mieux avec leur établissement
+  return libelles
 }
 
 /**
@@ -116,6 +178,8 @@ export default async function ActivitePage({ searchParams }: { searchParams?: Pa
     total = count || 0
   }
 
+  const libelles = await resoudreLibelles(supabase, orgId, activites, evenements)
+
   return (
     <div className="animate-fade-in space-y-5">
       <div className="page-header">
@@ -141,6 +205,7 @@ export default async function ActivitePage({ searchParams }: { searchParams?: Pa
         peutAnnuler={session.user.role === 'super_admin'}
         journalAbsent={journalAbsent}
         erreur={erreur}
+        libelles={libelles}
       />
     </div>
   )
