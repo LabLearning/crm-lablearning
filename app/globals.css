@@ -9,8 +9,9 @@
                    <div class="page-header"><div>…titre…</div><div class="page-header-actions">…boutons…</div></div>
    .stack-mobile   Ligne flex qui devient une colonne sous 640 px (gap 0.75rem).
                    Ajoutez `sm:items-center` etc. pour le rendu desktop.
-   .tabs-scroll    Barre d'onglets défilante horizontalement : scrollbar
-                   masquée, pas de retour à la ligne, sans scroll-snap (le
+   .tabs-scroll    Barre d'onglets défilante horizontalement : barre fine
+                   visible sur ordinateur, masquée sous 768 px, pas de retour
+                   à la ligne, sans scroll-snap (le
                    snap « start » ignore le padding et colle le premier
                    onglet au bord de l'écran).
                    Les enfants doivent être `shrink-0` (ou non `flex-1`).
@@ -227,12 +228,21 @@
   .tabs-scroll {
     @apply flex flex-nowrap gap-1 overflow-x-auto overscroll-x-contain;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    /* Sur ordinateur, une barre fine reste visible : c'est elle qui dit
+       qu'il y a d'autres onglets à droite et permet de les atteindre à la souris */
+    scrollbar-width: thin;
+    scrollbar-color: #CBD3DB transparent;
     /* Les onglets ne se coupent pas au bord : on déborde du padding du parent */
     padding-inline: 2px;
   }
-  .tabs-scroll::-webkit-scrollbar { display: none; }
+  .tabs-scroll::-webkit-scrollbar { height: 6px; }
+  .tabs-scroll::-webkit-scrollbar-thumb { background: #CBD3DB; border-radius: 9999px; }
+  .tabs-scroll::-webkit-scrollbar-track { background: transparent; }
+  /* Sur téléphone, le doigt fait défiler : la barre disparaît */
+  @media (max-width: 767px) {
+    .tabs-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+    .tabs-scroll::-webkit-scrollbar { display: none; }
+  }
   .tabs-scroll > * {
     @apply shrink-0 whitespace-nowrap;
   }

@@ -73,7 +73,7 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
           <RefreshCw className="h-4 w-4" />
           Actualiser
         </button>
-        <div className="w-full flex sm:flex-wrap gap-1.5 pt-1 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="w-full flex sm:flex-wrap gap-1.5 pt-1 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
           {liens.map((r) => {
             const actif = r.du === du && r.au === au
             return (

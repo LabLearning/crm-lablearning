@@ -359,7 +359,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
           <input className="input-base pl-10 min-h-[44px] sm:min-h-0" placeholder="Rechercher un lead..." value={search} onChange={e => setSearch(e.target.value)} />
           {search && <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 text-surface-400 hover:text-surface-600"><X className="h-4 w-4" /></button>}
         </div>
-        <div className="flex gap-1.5 overflow-x-auto sm:overflow-visible sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-1.5 overflow-x-auto sm:overflow-visible sm:flex-wrap max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
           {([
             { id: 'all' as const, label: 'Tous', count: stats.total },
             { id: 'high_score' as const, label: 'Prioritaires', count: stats.highScore },
@@ -383,7 +383,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
       {view === 'kanban' && (
         <div>
           <div className="lg:hidden mb-3">
-            <div ref={stepsRef} className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div ref={stepsRef} className="flex gap-1.5 overflow-x-auto max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
               {PIPELINE_COLUMNS.map((status, i) => (
                 <button key={status} type="button" onClick={() => scrollKanbanTo(i)} aria-pressed={kanbanIndex === i}
                   className={cn('shrink-0 h-10 px-3 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-400/40',
@@ -400,7 +400,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
           <div
             ref={kanbanRef}
             onScroll={e => { const el = e.currentTarget; setKanbanIndex(Math.min(PIPELINE_COLUMNS.length - 1, Math.round(el.scrollLeft / KANBAN_COL_W))) }}
-            className="flex gap-3 pb-4 overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-7 lg:overflow-visible lg:snap-none"
+            className="flex gap-3 pb-4 overflow-x-auto snap-x snap-mandatory max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300 lg:grid lg:grid-cols-7 lg:overflow-visible lg:snap-none"
           >
             {PIPELINE_COLUMNS.map(status => (
               <div key={status} onDragOver={handleDragOver} onDrop={e => handleDrop(e, status)}

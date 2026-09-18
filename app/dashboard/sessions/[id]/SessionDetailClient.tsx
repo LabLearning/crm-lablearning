@@ -469,7 +469,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
       )}
 
       {/* Onglets : barre défilante, scrollbar masquée, onglet actif recentré (cf. tabsRef) */}
-      <div ref={tabsRef} role="tablist" aria-label="Sections de la session" className="relative flex gap-1 bg-surface-100 rounded-lg p-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={tabsRef} role="tablist" aria-label="Sections de la session" className="relative flex gap-1 bg-surface-100 rounded-lg p-0.5 overflow-x-auto max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
         {[
           { id: 'session' as const, label: 'Session', icon: Calendar },
           ...(!isFormateur ? [{ id: 'dossier' as const, label: derouleIncomplet ? `Conformité (${derouleIncomplet} à faire)` : 'Conformité', icon: FolderCheck }] : []),

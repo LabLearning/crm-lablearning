@@ -220,7 +220,7 @@ export function RentabiliteClient({ lignes, du, au, afficherSansObjet, fraisDisp
 
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         {/* Pastilles : défilement horizontal bord à bord sur mobile, cibles de 40 px */}
-        <div className="flex gap-1 overflow-x-auto -mx-5 px-5 lg:mx-0 lg:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-1 overflow-x-auto -mx-5 px-5 lg:mx-0 lg:px-0 max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
           {options.map((opt) => (
             <button key={opt.value} type="button" onClick={() => setFiltre(opt.value)}
               className={cn(

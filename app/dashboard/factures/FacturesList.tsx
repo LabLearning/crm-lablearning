@@ -208,7 +208,7 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." className="h-10 sm:h-auto bg-transparent text-sm placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
         </div>
         {/* Pastilles : défilement horizontal bord à bord sur mobile, barre masquée */}
-        <div className="flex gap-1.5 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-1.5 overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
           {['all', 'brouillon', 'envoyee', 'payee_partiellement', 'payee', 'en_retard'].map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`min-h-10 sm:min-h-0 px-3.5 sm:px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${statusFilter === s ? 'bg-surface-900 text-white shadow-xs' : 'bg-white text-surface-500 border border-surface-200/80 hover:border-surface-300 hover:text-surface-700'}`}>

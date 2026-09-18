@@ -343,7 +343,7 @@ export function SessionMails({
       </div>
 
       {/* Onglets */}
-      <div className="flex items-center gap-1 px-3 pt-2 shadow-[inset_0_-1px_0_0_theme(colors.surface.100)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1 px-3 pt-2 shadow-[inset_0_-1px_0_0_theme(colors.surface.100)] overflow-x-auto max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
         {tabs.map((t) => {
           const Icon = t.icon
           const active = tab === t.id
