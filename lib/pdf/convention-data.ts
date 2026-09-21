@@ -59,6 +59,14 @@ export async function loadConventionForPdf(supabase: any, conventionId: string) 
     dossier = data
   }
 
+  // Avenants : le PDF mentionne les modifications intervenues après signature
+  const { data: avenants } = await supabase
+    .from('convention_avenants')
+    .select('*')
+    .eq('convention_id', conventionId)
+    .order('numero', { ascending: true })
+  convention.avenants = avenants || []
+
   // Participants : inscriptions actives de la session → apprenants
   let participants: any[] = []
   if (convention.session_id) {

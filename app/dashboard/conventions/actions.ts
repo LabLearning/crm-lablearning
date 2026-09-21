@@ -127,3 +127,63 @@ export async function deleteConventionAction(id: string): Promise<ActionResult> 
   revalidatePath('/dashboard/conventions')
   return { success: true }
 }
+
+/**
+ * Modifie le prix, la durée ou la prise en charge d'une convention.
+ *
+ * Tant qu'elle est en brouillon, la modification est directe. Dès qu'elle a
+ * été envoyée ou signée, la convention est mise à jour et un avenant numéroté
+ * en garde la trace : le PDF régénéré porte la nouvelle valeur et mentionne
+ * l'avenant, sans nouvelle signature à demander.
+ */
+export async function updateConventionContenuAction(
+  id: string,
+  contenu: { montant_ht?: number | null; duree_heures?: number | null; numero_prise_en_charge?: string | null },
+): Promise<ActionResult<{ avenant: number | null }>> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+
+  const { data: conv } = await supabase
+    .from('conventions')
+    .select('id, status, montant_ht, taux_tva, duree_heures, numero_prise_en_charge')
+    .eq('id', id).eq('organization_id', session.organization.id).maybeSingle()
+  if (!conv) return { success: false, error: 'Convention introuvable' }
+
+  const { STATUTS_CONTRACTUELS, enregistrerAvenantModification } = await import('@/lib/convention-avenants')
+  const changements: { champ: string; libelle: string; avant: string | number | null; apres: string | number | null }[] = []
+  if ('duree_heures' in contenu && Number(contenu.duree_heures ?? 0) !== Number(conv.duree_heures ?? 0)) {
+    changements.push({ champ: 'duree_heures', libelle: 'Durée (h)', avant: conv.duree_heures ?? null, apres: contenu.duree_heures ?? null })
+  }
+  if ('numero_prise_en_charge' in contenu && (contenu.numero_prise_en_charge || '') !== (conv.numero_prise_en_charge || '')) {
+    changements.push({ champ: 'numero_prise_en_charge', libelle: 'Numéro de prise en charge', avant: conv.numero_prise_en_charge || null, apres: contenu.numero_prise_en_charge || null })
+  }
+  const montantChange = 'montant_ht' in contenu && contenu.montant_ht != null && Number(contenu.montant_ht) !== Number(conv.montant_ht)
+  if (!montantChange && changements.length === 0) return { success: true, data: { avenant: null } }
+
+  if (STATUTS_CONTRACTUELS.includes(conv.status)) {
+    const r = await enregistrerAvenantModification(supabase, id, {
+      montantApres: montantChange ? Number(contenu.montant_ht) : null,
+      changements,
+    }, session.user.id)
+    if (!r) return { success: false, error: "L'avenant n'a pas pu être créé" }
+    await logAudit({ action: 'avenant_convention', entity_type: 'convention', entity_id: id, details: { numero: r.numero, contenu } })
+    revalidatePath(`/dashboard/conventions/${id}`)
+    revalidatePath('/dashboard/conventions')
+    return { success: true, data: { avenant: r.numero } }
+  }
+
+  const patch: Record<string, unknown> = {}
+  if (montantChange) {
+    const tva = Number(conv.taux_tva || 0)
+    patch.montant_ht = Number(contenu.montant_ht)
+    patch.montant_ttc = Math.round(Number(contenu.montant_ht) * (1 + tva / 100) * 100) / 100
+  }
+  for (const c of changements) patch[c.champ] = c.apres
+  const { error } = await supabase.from('conventions').update(patch).eq('id', id).eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+  await logAudit({ action: 'update', entity_type: 'convention', entity_id: id, details: contenu })
+  revalidatePath(`/dashboard/conventions/${id}`)
+  revalidatePath('/dashboard/conventions')
+  return { success: true, data: { avenant: null } }
+}

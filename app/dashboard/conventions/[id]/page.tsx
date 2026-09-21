@@ -50,7 +50,7 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
   // Avenants (modifications de participants après envoi/signature)
   const { data: avenants } = await supabase
     .from('convention_avenants')
-    .select('id, numero, motif, nombre_avant, nombre_apres, created_at')
+    .select('*')
     .eq('convention_id', c.id)
     .order('numero', { ascending: true })
 
@@ -111,7 +111,11 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
             {(avenants || []).map((a: any) => (
               <div key={a.id} className="flex items-center gap-3 py-2.5">
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-surface-900">Avenant n°{a.numero} — effectif {a.nombre_avant} → {a.nombre_apres}</div>
+                  <div className="text-sm font-medium text-surface-900">
+                    Avenant n°{a.numero}
+                    {a.montant_apres != null ? ` · prix ${Number(a.montant_avant || 0).toLocaleString('fr-FR')} € → ${Number(a.montant_apres).toLocaleString('fr-FR')} €` : ''}
+                    {a.nombre_avant !== a.nombre_apres || ((a.ajoutes || []).length + (a.retires || []).length) > 0 ? ` · effectif ${a.nombre_avant} → ${a.nombre_apres}` : ''}
+                  </div>
                   {a.motif && <div className="text-xs text-surface-500 truncate">{a.motif}</div>}
                   <div className="text-xs text-surface-400">{new Date(a.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
@@ -194,6 +198,10 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         financeurType={c.financeur_type || null}
         financeurNom={c.financeur_nom || null}
         sessions={(sessionsList || []) as any[]}
+        status={c.status}
+        montantHt={c.montant_ht != null ? Number(c.montant_ht) : null}
+        dureeHeures={c.duree_heures != null ? Number(c.duree_heures) : null}
+        numeroPriseEnCharge={c.numero_prise_en_charge || null}
       />
 
       {/* Détails de la session liée (lecture seule) */}

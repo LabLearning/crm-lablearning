@@ -235,6 +235,8 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     : (convention.dates_formation || '—')
 
   const cout = Number(convention.montant_ttc ?? convention.montant_ht ?? 0)
+  const avenants: any[] = Array.isArray(convention.avenants) ? convention.avenants : []
+  const avenantsPrix = avenants.filter((a: any) => a.montant_apres != null)
   const hasTva = Number(convention.taux_tva) > 0
 
   const objectifs = toList(formation.objectifs_pedagogiques)
@@ -411,6 +413,11 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <MoneyRow label={hasTva ? 'Total TTC' : 'Coût total'} amount={`${fmt(cout)} €`} bold top />
           </View>
           <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 6 }}>Soit {eurosEnLettres(cout)}.</Text>
+          {avenantsPrix.length > 0 && (
+            <Text style={{ fontSize: 7.5, color: SURFACE_700, marginTop: 4 }}>
+              {`Prix actualisé par ${avenantsPrix.length > 1 ? 'avenants' : 'avenant'} ${avenantsPrix.map((a: any) => `n°${a.numero} du ${fmtDate(a.created_at)}`).join(', ')} (montant initial : ${fmt(avenantsPrix[0].montant_avant)} €).`}
+            </Text>
+          )}
           {!hasTva && (
             <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 3 }}>
               TVA non applicable — article 261-4-4°a du CGI (action de formation professionnelle continue).
@@ -492,6 +499,23 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               pouvant excéder 30 % du prix peut être demandé, le solde étant échelonné au fur et à mesure du
               déroulement de l'action (art. L. 6353-6). En cas de cessation anticipée pour un motif légitime,
               seules les prestations effectivement dispensées sont dues (art. L. 6353-7).
+            </Text>
+          </View>
+        )}
+
+        {/* Avenants postérieurs à la signature : dits noir sur blanc, la signature porte sur la version initiale */}
+        {avenants.length > 0 && (
+          <View style={{ marginBottom: 8, padding: 8, borderRadius: 4, backgroundColor: '#F6F8FA' }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, marginBottom: 2 }}>
+              {`Avenant${avenants.length > 1 ? 's' : ''} à la présente convention`}
+            </Text>
+            {avenants.map((a: any) => (
+              <Text key={a.id} style={{ fontSize: 7.5, color: SURFACE_700, lineHeight: 1.45 }}>
+                {`Avenant n°${a.numero} du ${fmtDate(a.created_at)} : ${a.motif || 'modification'}.`}
+              </Text>
+            ))}
+            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 2 }}>
+              Les signatures ci-dessous portent sur la convention initiale ; les modifications ultérieures sont consignées dans les avenants, annexés à la convention.
             </Text>
           </View>
         )}

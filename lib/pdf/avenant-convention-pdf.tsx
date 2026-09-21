@@ -31,7 +31,11 @@ function ParticipantList({ title, items, accent }: { title: string; items: any[]
   )
 }
 
+const fmtEuro = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, ' ')} €`
+
 export function AvenantConventionPDF({ avenant, convention, org }: AvenantProps) {
+  const participantsModifies = (avenant.ajoutes || []).length > 0 || (avenant.retires || []).length > 0
+  let article = 1
   const numeroAvenant = `${convention.numero || 'CONVENTION'} — Avenant n°${avenant.numero}`
   const today = new Date(avenant.created_at || Date.now()).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const client = convention.client
@@ -60,19 +64,38 @@ export function AvenantConventionPDF({ avenant, convention, org }: AvenantProps)
           {sess?.date_debut ? <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>{`du ${fmtFr(sess.date_debut)} au ${fmtFr(sess.date_fin)}`}</Text></View> : null}
         </View>
 
-        {/* Article 1 : modification de l'effectif */}
-        <View style={shared.section}>
-          <PdfSectionTitle>Article 1 — Modification des participants</PdfSectionTitle>
-          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6, marginBottom: 8 }}>
-            {`L'effectif de l'action de formation passe de ${avenant.nombre_avant} à ${avenant.nombre_apres} participant${avenant.nombre_apres > 1 ? 's' : ''}, selon le détail suivant :`}
-          </Text>
-          <ParticipantList title="Participants ajoutés" items={avenant.ajoutes || []} accent />
-          <ParticipantList title="Participants retirés" items={avenant.retires || []} />
-        </View>
+        {/* Article 1 : prix et autres conditions, quand ils changent */}
+        {(avenant.montant_apres != null || (Array.isArray(avenant.changements) && avenant.changements.length > 0)) && (
+          <View style={shared.section}>
+            <PdfSectionTitle>{`Article ${article++} — Modification des conditions`}</PdfSectionTitle>
+            {avenant.montant_apres != null && (
+              <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6, marginBottom: 4 }}>
+                {`Le prix de l'action de formation est porté de ${fmtEuro(avenant.montant_avant)} à ${fmtEuro(avenant.montant_apres)}${convention.taux_tva ? ' HT' : ''}. Les autres conditions financières de la convention restent inchangées.`}
+              </Text>
+            )}
+            {(avenant.changements || []).map((c: any, i: number) => (
+              <Text key={i} style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>
+                {`${c.libelle} : ${c.avant ?? 'non renseigné'} devient ${c.apres ?? 'non renseigné'}.`}
+              </Text>
+            ))}
+          </View>
+        )}
 
-        {/* Article 2 : liste actualisée */}
+        {/* Participants, quand l'effectif change */}
+        {participantsModifies && (
+          <View style={shared.section}>
+            <PdfSectionTitle>{`Article ${article++} — Modification des participants`}</PdfSectionTitle>
+            <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6, marginBottom: 8 }}>
+              {`L'effectif de l'action de formation passe de ${avenant.nombre_avant} à ${avenant.nombre_apres} participant${avenant.nombre_apres > 1 ? 's' : ''}, selon le détail suivant :`}
+            </Text>
+            <ParticipantList title="Participants ajoutés" items={avenant.ajoutes || []} accent />
+            <ParticipantList title="Participants retirés" items={avenant.retires || []} />
+          </View>
+        )}
+
+        {/* Liste actualisée */}
         <View style={shared.section}>
-          <PdfSectionTitle>Article 2 — Liste complète des participants après avenant</PdfSectionTitle>
+          <PdfSectionTitle>{`Article ${article++} — Liste complète des participants après avenant`}</PdfSectionTitle>
           <View style={{ backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10 }}>
             {(avenant.participants_apres || []).map((p: any, i: number) => (
               <View key={i} style={{ flexDirection: 'row', gap: 5, marginBottom: 1.5 }}>
