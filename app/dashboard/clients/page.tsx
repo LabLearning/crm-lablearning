@@ -37,9 +37,13 @@ export default async function ClientsPage({
     .range(from, to)
 
   if (q) {
+    // Une ville ou une adresse ramènent tous les établissements de cet endroit ;
+    // le code postal se cherche en préfixe sur une saisie courte, le SIRET dès neuf chiffres
+    const champs = [`raison_sociale.ilike.%${q}%`, `nom_commercial.ilike.%${q}%`, `nom.ilike.%${q}%`, `prenom.ilike.%${q}%`, `email.ilike.%${q}%`, `ville.ilike.%${q}%`, `adresse.ilike.%${q}%`]
+    if (/^\d{2,5}$/.test(q)) champs.push(`code_postal.ilike.${q}%`)
+    if (/^\d{9,14}$/.test(q)) champs.push(`siret.ilike.%${q}%`)
     clientsQuery = clientsQuery.or(
-      // Une ville ou un code postal ramènent tous les établissements de cet endroit
-      `raison_sociale.ilike.%${q}%,nom_commercial.ilike.%${q}%,nom.ilike.%${q}%,prenom.ilike.%${q}%,email.ilike.%${q}%,ville.ilike.%${q}%,adresse.ilike.%${q}%,code_postal.ilike.%${q}%,siret.ilike.%${q}%`
+      champs.join(',')
     )
   }
   if (typeFilter) {

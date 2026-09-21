@@ -13,13 +13,17 @@ export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get('q') || '').replace(/[,()"%]/g, ' ').trim()
   if (q.length < 2) return NextResponse.json({ results: [] })
   const like = `%${q}%`
+  // Un code postal se tape en entier ou par département (« 33 ») ; un SIRET à partir de neuf chiffres.
+  // Sans cette garde, « 33000 » ressortirait tous les SIRET qui contiennent ces chiffres.
+  const champsClients = [`raison_sociale.ilike.${like}`, `nom_commercial.ilike.${like}`, `ville.ilike.${like}`, `adresse.ilike.${like}`]
+  if (/^\d{2,5}$/.test(q)) champsClients.push(`code_postal.ilike.${q}%`)
+  if (/^\d{9,14}$/.test(q)) champsClients.push(`siret.ilike.${like}`)
 
   const supabase = await createServiceRoleClient()
   const [clients, leads, sessions, apprenants, formateurs, formations, conventions, dossiers, parVille] = await Promise.all([
     // Le nom, mais aussi la ville, l'adresse, le code postal ou le SIRET
     supabase.from('clients').select('id, raison_sociale, nom_commercial, siret, adresse, code_postal, ville, telephone, email').eq('organization_id', orgId)
-      .or(`raison_sociale.ilike.${like},nom_commercial.ilike.${like},ville.ilike.${like},adresse.ilike.${like},code_postal.ilike.${like},siret.ilike.${like}`)
-      .order('raison_sociale').limit(8),
+      .or(champsClients.join(',')).order('raison_sociale').limit(8),
     supabase.from('leads').select('id, entreprise, contact_nom, contact_prenom, contact_email, contact_telephone, status, montant_estime').eq('organization_id', orgId)
       .or(`entreprise.ilike.${like},contact_nom.ilike.${like},contact_prenom.ilike.${like}`).limit(5),
     supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville').eq('organization_id', orgId)
