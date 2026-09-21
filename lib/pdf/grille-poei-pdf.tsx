@@ -109,7 +109,7 @@ export function GrillePoeiPDF(p: Props) {
         {([['Acquis', acquis, '#177245', '#e9f5ee'],
            ['En cours', encours, '#b45309', '#fdf1e3'],
            ['Non acquis', nonAcquis, '#b4241f', '#fbeceb'],
-           ['Évaluées', `${evalues.length}/${total}`, '#37414D', '#EEF1F4']] as const).map(([l, v, c, bg]) => (
+           ['Renseignées', `${evalues.length}/${total}`, '#37414D', '#EEF1F4']] as const).map(([l, v, c, bg]) => (
           <View key={l} style={{ flex: 1, backgroundColor: bg, borderRadius: 6, paddingVertical: 7, paddingHorizontal: 8 }}>
             <Text style={{ fontSize: 13, fontFamily: 'Satoshi', fontWeight: 700, color: c }}>{v}</Text>
             <Text style={{ fontSize: 6.5, color: c, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>{l}</Text>
@@ -193,7 +193,7 @@ export function GrillePoeiPDF(p: Props) {
       <Document>
         <Page size="A4" style={shared.page}>
           <PdfDocHeader
-            docTitle={`Grille d'évaluation — semaine ${p.semaine}`}
+            docTitle={`Bilan de la semaine ${p.semaine}`}
             numero={p.poei?.numero || ''} date={dateAff} org={p.org}
           />
           <View style={shared.section}>
@@ -201,7 +201,7 @@ export function GrillePoeiPDF(p: Props) {
             <View style={shared.row}><Text style={shared.label}>Nom et prénom :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{nomAppr}</Text></View>
             {clientNom ? <View style={shared.row}><Text style={shared.label}>Entreprise / site :</Text><Text style={shared.value}>{clientNom}</Text></View> : null}
             {posteVise ? <View style={shared.row}><Text style={shared.label}>Fonction visée :</Text><Text style={shared.value}>{posteVise}</Text></View> : null}
-            {p.formateurNom ? <View style={shared.row}><Text style={shared.label}>Formateur évaluateur :</Text><Text style={shared.value}>{p.formateurNom}</Text></View> : null}
+            {p.formateurNom ? <View style={shared.row}><Text style={shared.label}>Formateur :</Text><Text style={shared.value}>{p.formateurNom}</Text></View> : null}
           </View>
           {DetailGrille}
           <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />
@@ -334,14 +334,14 @@ export function GrillePoeiPDF(p: Props) {
       {/* L'évaluation détaillée du formateur : elle nourrit l'attestation. */}
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
-          docTitle="Annexe — détail de l'évaluation"
+          docTitle="Annexe : détail du bilan"
           numero={p.poei?.numero || ''} date={dateAff} org={p.org}
         />
         <View style={shared.section}>
           <PdfSectionTitle>Bénéficiaire</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Nom et prénom :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{nomAppr}</Text></View>
           {clientNom ? <View style={shared.row}><Text style={shared.label}>Entreprise / site :</Text><Text style={shared.value}>{clientNom}</Text></View> : null}
-          {p.formateurNom ? <View style={shared.row}><Text style={shared.label}>Formateur évaluateur :</Text><Text style={shared.value}>{p.formateurNom}</Text></View> : null}
+          {p.formateurNom ? <View style={shared.row}><Text style={shared.label}>Formateur :</Text><Text style={shared.value}>{p.formateurNom}</Text></View> : null}
         </View>
         {DetailGrille}
         <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />

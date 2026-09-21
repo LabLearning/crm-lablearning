@@ -86,7 +86,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const { data: grilles } = await q.order('semaine', { ascending: true, nullsFirst: false })
 
   if (!grilles || grilles.length === 0) {
-    return NextResponse.json({ error: 'Aucune évaluation à télécharger' }, { status: 404 })
+    return NextResponse.json({ error: 'Aucun bilan à télécharger' }, { status: 404 })
   }
 
   const meta = APPRECIATIONS.map((a) => ({ key: a.key, label: a.label }))
@@ -123,7 +123,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   )
 
   const nomDe = (g: any) => safeName(`${g.apprenant?.prenom || ''} ${g.apprenant?.nom || ''}`)
-  const libelle = (g: any) => (g.semaine == null ? 'evaluation finale' : `semaine ${g.semaine}`)
+  const libelle = (g: any) => (g.semaine == null ? 'bilan final' : `semaine ${g.semaine}`)
 
   // Une seule grille → PDF direct
   if (grilles.length === 1) {
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="Evaluation - ${nomDe(g)} - ${libelle(g)}.pdf"`,
+        'Content-Disposition': `attachment; filename="Bilan - ${nomDe(g)} - ${libelle(g)}.pdf"`,
         'Cache-Control': 'private, max-age=0',
       },
     })
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const used = new Set<string>()
   for (const g of grilles) {
     const buffer = await render(g)
-    let base = `Evaluation - ${nomDe(g)} - ${libelle(g)}`
+    let base = `Bilan - ${nomDe(g)} - ${libelle(g)}`
     let name = `${base}.pdf`
     let n = 2
     while (used.has(name)) name = `${base} (${n++}).pdf`
