@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { ReceiptEuro, FileText, Clock, Download } from '@/components/ui/icons'
 import { PoeiSection } from './PoeiSection'
 import { Button, useToast, Modal, Input } from '@/components/ui'
-import { generateFacturesPerCandidatPoeiAction, setCandidatNumeroEngagementAction } from '../actions'
+import { generateFacturesPerCandidatPoeiAction, setCandidatNumeroEngagementAction, setPoeiAgenceFtAction } from '../actions'
+import { AgenceFtSelect } from '../AgenceFtSelect'
 
 interface Candidat {
   id: string
@@ -71,6 +72,7 @@ export function PoeiFacturation({
   const { toast } = useToast()
   const router = useRouter()
   const [gen, setGen] = useState(false)
+  const [agenceId, setAgenceId] = useState<string>(currentAgenceId || '')
 
 
 
@@ -117,6 +119,25 @@ export function PoeiFacturation({
       ) : undefined}
     >
       <div className="card p-4 sm:p-5 space-y-4">
+
+      {/* Destinataire des factures : l'agence France Travail, créable ici */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <AgenceFtSelect
+          agences={agences}
+          value={agenceId}
+          onChange={async (id) => {
+            setAgenceId(id)
+            const r = await setPoeiAgenceFtAction(poeiId, id || null)
+            if (r.success) { toast('success', id ? 'Agence facturée enregistrée' : 'Agence retirée'); router.refresh() }
+            else toast('error', r.error || 'Erreur')
+          }}
+        />
+        {!agenceId && (
+          <p className="text-xs text-warning-700 bg-warning-50 border border-warning-100 rounded-xl px-3 py-2 sm:mt-6">
+            Sans agence, les factures ne peuvent pas être adressées à France Travail.
+          </p>
+        )}
+      </div>
 
       {!sessionTerminee ? (
         <div className="flex items-center gap-2 rounded-xl bg-surface-50 border border-surface-200/70 px-4 py-3 text-sm text-surface-500">

@@ -1,5 +1,6 @@
 'use client'
 
+import { AgenceFtSelect } from '../AgenceFtSelect'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save } from '@/components/ui/icons'
@@ -55,12 +56,12 @@ export function PoeiEditor({ poei, clients, formations, nbCandidats = 0, finance
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           {/* Destinataire des factures du dossier. */}
-          <Select
+          <AgenceFtSelect
             id="agence_ft_id"
             name="agence_ft_id"
             label="Agence France Travail facturée"
             defaultValue={(poei as any).agence_ft_id || ''}
-            options={[{ value: '', label: 'À préciser' }, ...agences.map((a) => ({ value: a.id, label: a.ville ? `${a.nom} (${a.ville})` : a.nom }))]}
+            agences={agences}
           />
           <Input id="montant_horaire" name="montant_horaire" type="number" label="Taux horaire (€)" defaultValue={poei.montant_horaire != null ? String(poei.montant_horaire) : ''} />
           {/* Le montant et l'encaissement viennent des FACTURES du dossier :

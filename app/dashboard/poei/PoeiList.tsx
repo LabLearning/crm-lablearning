@@ -1,5 +1,6 @@
 'use client'
 
+import { AgenceFtSelect } from './AgenceFtSelect'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -369,11 +370,11 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
               <Input id="montant_horaire" name="montant_horaire" type="number" label="Taux horaire (€)" placeholder="8.00" />
               {/* L'agence est le destinataire de la facture : elle se déclare
                   ici, pas au moment de facturer. */}
-              <Select
+              <AgenceFtSelect
                 id="agence_ft_id"
                 name="agence_ft_id"
                 label="Agence France Travail"
-                options={[{ value: '', label: 'À préciser' }, ...agences.map((a: any) => ({ value: a.id, label: a.ville ? `${a.nom} (${a.ville})` : a.nom }))]}
+                agences={agences as any[]}
                 defaultValue={agences.length === 1 ? agences[0].id : ''}
               />
             </div>
