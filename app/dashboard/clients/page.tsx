@@ -38,7 +38,8 @@ export default async function ClientsPage({
 
   if (q) {
     clientsQuery = clientsQuery.or(
-      `raison_sociale.ilike.%${q}%,nom_commercial.ilike.%${q}%,nom.ilike.%${q}%,prenom.ilike.%${q}%,email.ilike.%${q}%`
+      // Une ville ou un code postal ramènent tous les établissements de cet endroit
+      `raison_sociale.ilike.%${q}%,nom_commercial.ilike.%${q}%,nom.ilike.%${q}%,prenom.ilike.%${q}%,email.ilike.%${q}%,ville.ilike.%${q}%,adresse.ilike.%${q}%,code_postal.ilike.%${q}%,siret.ilike.%${q}%`
     )
   }
   if (typeFilter) {

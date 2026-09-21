@@ -15,13 +15,15 @@ export async function GET(req: NextRequest) {
   const like = `%${q}%`
 
   const supabase = await createServiceRoleClient()
-  const [clients, leads, sessions, apprenants, formateurs, formations, conventions, dossiers] = await Promise.all([
-    supabase.from('clients').select('id, raison_sociale, siret, adresse, code_postal, ville, telephone, email').eq('organization_id', orgId)
-      .ilike('raison_sociale', like).limit(5),
+  const [clients, leads, sessions, apprenants, formateurs, formations, conventions, dossiers, parVille] = await Promise.all([
+    // Le nom, mais aussi la ville, l'adresse, le code postal ou le SIRET
+    supabase.from('clients').select('id, raison_sociale, nom_commercial, siret, adresse, code_postal, ville, telephone, email').eq('organization_id', orgId)
+      .or(`raison_sociale.ilike.${like},nom_commercial.ilike.${like},ville.ilike.${like},adresse.ilike.${like},code_postal.ilike.${like},siret.ilike.${like}`)
+      .order('raison_sociale').limit(8),
     supabase.from('leads').select('id, entreprise, contact_nom, contact_prenom, contact_email, contact_telephone, status, montant_estime').eq('organization_id', orgId)
       .or(`entreprise.ilike.${like},contact_nom.ilike.${like},contact_prenom.ilike.${like}`).limit(5),
     supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville').eq('organization_id', orgId)
-      .or(`reference.ilike.${like},intitule.ilike.${like}`).order('date_debut', { ascending: false }).limit(5),
+      .or(`reference.ilike.${like},intitule.ilike.${like},ville.ilike.${like},lieu.ilike.${like}`).order('date_debut', { ascending: false }).limit(5),
     supabase.from('apprenants').select('id, nom, prenom, entreprise, email, telephone').eq('organization_id', orgId)
       .or(`nom.ilike.${like},prenom.ilike.${like}`).limit(5),
     supabase.from('formateurs').select('id, nom, prenom, email, telephone, zone_intervention').eq('organization_id', orgId)
@@ -32,15 +34,27 @@ export async function GET(req: NextRequest) {
       .ilike('numero', like).limit(3),
     supabase.from('dossiers_formation').select('id, numero').eq('organization_id', orgId)
       .ilike('numero', like).limit(3),
+    // Combien d'établissements dans cette ville : pour proposer la liste complète
+    supabase.from('clients').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).ilike('ville', like),
   ])
 
   const adresse = (r: any) => [r.adresse, [r.code_postal, r.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const line = (label: string, value: any) => value ? { label, value: String(value) } : null
   const clean = (arr: any[]) => arr.filter(Boolean)
 
+  // Ville reconnue : un raccourci vers la liste complète, avant les fiches
+  const nbVille = parVille.count || 0
+  const villeAffichee = nbVille > 0
+    ? ((clients.data || []).find((c: any) => c.ville && String(c.ville).toLowerCase().includes(q.toLowerCase()))?.ville || q)
+    : null
   const results = [
+    ...(nbVille > 0 ? [{
+      group: 'Villes', label: `Tous les clients à ${villeAffichee}`, sublabel: `${nbVille} établissement${nbVille > 1 ? 's' : ''}`,
+      href: `/dashboard/clients?q=${encodeURIComponent(q)}`,
+    }] : []),
     ...(clients.data || []).map((c: any) => ({
-      group: 'Clients', label: c.raison_sociale, sublabel: c.ville || '', href: `/dashboard/clients/${c.id}`,
+      group: 'Clients', label: c.nom_commercial ? `${c.raison_sociale} (${c.nom_commercial})` : c.raison_sociale,
+      sublabel: [c.code_postal, c.ville].filter(Boolean).join(' '), href: `/dashboard/clients/${c.id}`,
       preview: { title: c.raison_sociale, lines: clean([line('SIRET', c.siret), line('Adresse', adresse(c)), line('Téléphone', c.telephone), line('Email', c.email)]) },
     })),
     ...(leads.data || []).map((l: any) => ({
