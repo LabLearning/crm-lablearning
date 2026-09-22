@@ -9,6 +9,7 @@ import {
 import { Avatar, Badge, BackLink } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
 import { ApprenantEditButton } from './ApprenantEditButton'
+import { CopyButton, Copiable, type FormatCopie } from '@/components/ui/CopyButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,8 +79,8 @@ export default async function ApprenantDetailPage({ params }: { params: { id: st
             {a.situation_handicap && <Badge variant="warning"><Accessibility className="h-3 w-3 mr-0.5" />Situation de handicap</Badge>}
           </div>
           <div className="flex items-center gap-4 mt-2 text-sm text-surface-500 flex-wrap">
-            {a.email && <a href={`mailto:${a.email}`} className="flex items-center gap-1 hover:text-surface-700"><Mail className="h-3.5 w-3.5" />{a.email}</a>}
-            {a.telephone && <a href={`tel:${a.telephone}`} className="flex items-center gap-1 hover:text-surface-700"><Phone className="h-3.5 w-3.5" />{a.telephone}</a>}
+            {a.email && <span className="inline-flex items-center"><a href={`mailto:${a.email}`} className="flex items-center gap-1 hover:text-surface-700"><Mail className="h-3.5 w-3.5" />{a.email}</a><CopyButton valeur={a.email} libelle="l’email" /></span>}
+            {a.telephone && <span className="inline-flex items-center"><a href={`tel:${a.telephone}`} className="flex items-center gap-1 hover:text-surface-700"><Phone className="h-3.5 w-3.5" />{a.telephone}</a><CopyButton valeur={a.telephone} format="telephone" libelle="le téléphone" /></span>}
           </div>
         </div>
         <div className="text-center shrink-0">
@@ -90,11 +91,16 @@ export default async function ApprenantDetailPage({ params }: { params: { id: st
 
       {/* État civil */}
       <div className="card p-5 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-        {a.date_naissance && <Info icon={Cake} label="Né(e) le" value={`${formatDate(a.date_naissance, { day: '2-digit', month: '2-digit', year: 'numeric' })}${a.lieu_naissance ? ` à ${a.lieu_naissance}` : ''}`} />}
+        {a.nom && <Info label="Nom" value={a.nom} copie={a.nom} />}
+        {a.prenom && <Info label="Prénom" value={a.prenom} copie={a.prenom} />}
+        {a.date_naissance && <Info icon={Cake} label="Date de naissance" value={formatDate(a.date_naissance, { day: '2-digit', month: '2-digit', year: 'numeric' })} copie={a.date_naissance} format="date" />}
+        {a.lieu_naissance && <Info label="Lieu de naissance" value={a.lieu_naissance} copie={a.lieu_naissance} />}
         {a.sexe && <Info label="Sexe" value={a.sexe === 'H' ? 'Homme' : a.sexe === 'F' ? 'Femme' : a.sexe} />}
-        {a.numero_securite_sociale && <Info label="N° sécurité sociale" value={a.numero_securite_sociale} />}
-        {a.type_contrat && <Info label="Type de contrat" value={a.type_contrat} />}
-        {(a.adresse || a.ville) && <Info icon={MapPin} label="Adresse" value={[a.adresse, [a.code_postal, a.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')} />}
+        {a.numero_securite_sociale && <Info label="N° sécurité sociale" value={a.numero_securite_sociale} copie={a.numero_securite_sociale} format="chiffres" />}
+        {a.type_contrat && <Info label="Type de contrat" value={a.type_contrat} copie={a.type_contrat} />}
+        {a.adresse && <Info icon={MapPin} label="Adresse" value={a.adresse} copie={a.adresse} />}
+        {a.code_postal && <Info label="Code postal" value={a.code_postal} copie={a.code_postal} />}
+        {a.ville && <Info label="Ville" value={a.ville} copie={a.ville} />}
         {a.statut_bpf && <Info label="Statut BPF" value={a.statut_bpf} />}
       </div>
 
@@ -229,11 +235,13 @@ export default async function ApprenantDetailPage({ params }: { params: { id: st
   )
 }
 
-function Info({ icon: Icon, label, value }: { icon?: any; label: string; value: string }) {
+function Info({ icon: Icon, label, value, copie, format }: { icon?: any; label: string; value: string; copie?: string | null; format?: FormatCopie }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-2xs uppercase tracking-wider text-surface-400 mb-0.5 flex items-center gap-1">{Icon && <Icon className="h-3 w-3" />}{label}</div>
-      <div className="text-surface-800">{value}</div>
+      <div className="text-surface-800">
+        {copie !== undefined ? <Copiable valeur={copie} format={format} libelle={label.toLowerCase()}>{value}</Copiable> : value}
+      </div>
     </div>
   )
 }

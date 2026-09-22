@@ -19,6 +19,7 @@ import { ClientDocuments } from './ClientDocuments'
 import { ClientAuditsHygiene } from './ClientAuditsHygiene'
 import { ClientContacts } from './ClientContacts'
 import { ClientCompteOpco } from './ClientCompteOpco'
+import { CopyButton, Copiable, type FormatCopie } from '@/components/ui/CopyButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -183,12 +184,14 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     { label: 'CA facturé', value: fmtMontant(totalFacture), icon: Banknote },
   ]
 
-  const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) => (
+  const InfoRow = ({ icon: Icon, label, value, copie, format }: { icon: any; label: string; value: React.ReactNode; copie?: string | null; format?: FormatCopie }) => (
     <div className="flex items-start gap-2.5 py-1.5">
       <Icon className="h-3.5 w-3.5 text-surface-400 mt-0.5 shrink-0" />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="text-2xs text-surface-400 uppercase tracking-wider">{label}</div>
-        <div className="text-sm text-surface-700 break-words">{value}</div>
+        <div className="text-sm text-surface-700 break-words">
+          {copie !== undefined ? <Copiable valeur={copie} format={format} libelle={label.toLowerCase()}>{value}</Copiable> : value}
+        </div>
       </div>
     </div>
   )
@@ -223,11 +226,18 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             {(c.tags || []).map((t) => <Badge key={t} variant="default">{t}</Badge>)}
           </div>
           <div className="flex items-center gap-x-4 gap-y-1 mt-2 sm:mt-2.5 text-sm text-surface-500 flex-wrap">
-            {c.email && <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700 min-w-0"><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{c.email}</span></a>}
-            {c.telephone && <a href={`tel:${c.telephone}`} className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700"><Phone className="h-3.5 w-3.5 shrink-0" />{c.telephone}</a>}
+            {c.email && <span className="inline-flex items-center min-w-0"><a href={`mailto:${c.email}`} className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700 min-w-0"><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{c.email}</span></a><CopyButton valeur={c.email} libelle="l’email" /></span>}
+            {c.telephone && <span className="inline-flex items-center"><a href={`tel:${c.telephone}`} className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700"><Phone className="h-3.5 w-3.5 shrink-0" />{c.telephone}</a><CopyButton valeur={c.telephone} format="telephone" libelle="le téléphone" /></span>}
             {c.site_web && <a href={c.site_web.startsWith('http') ? c.site_web : `https://${c.site_web}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 min-h-10 sm:min-h-0 hover:text-surface-700 min-w-0"><Globe className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{c.site_web}</span></a>}
           </div>
-          {c.siret && <div className="text-xs text-surface-400 mt-1 font-mono">SIRET {c.siret}</div>}
+          {c.siret && (
+            <div className="text-xs text-surface-400 mt-1 font-mono inline-flex items-center gap-2 flex-wrap">
+              <Copiable valeur={c.siret} format="chiffres" libelle="le SIRET">SIRET {c.siret}</Copiable>
+              {c.siret.replace(/\D/g, '').length >= 9 && (
+                <Copiable valeur={c.siret.replace(/\D/g, '').slice(0, 9)} format="chiffres" libelle="le SIREN">SIREN {c.siret.replace(/\D/g, '').slice(0, 9)}</Copiable>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -255,11 +265,18 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Coordonnées</div>
             {(c.adresse || c.ville) ? (
               <InfoRow icon={MapPin} label="Adresse" value={
-                <>{c.adresse && <div>{c.adresse}</div>}<div>{[c.code_postal, c.ville].filter(Boolean).join(' ')}</div>{c.pays && c.pays !== 'France' && <div>{c.pays}</div>}</>
+                <>
+                  {c.adresse && <div><Copiable valeur={c.adresse} libelle="l’adresse" /></div>}
+                  <div className="flex flex-wrap items-center gap-x-2">
+                    {c.code_postal && <Copiable valeur={c.code_postal} libelle="le code postal" />}
+                    {c.ville && <Copiable valeur={c.ville} libelle="la ville" />}
+                  </div>
+                  {c.pays && c.pays !== 'France' && <div>{c.pays}</div>}
+                </>
               } />
             ) : null}
-            {c.email && <InfoRow icon={Mail} label="Email" value={c.email} />}
-            {c.telephone && <InfoRow icon={Phone} label="Téléphone" value={c.telephone} />}
+            {c.email && <InfoRow icon={Mail} label="Email" value={c.email} copie={c.email} />}
+            {c.telephone && <InfoRow icon={Phone} label="Téléphone" value={c.telephone} copie={c.telephone} format="telephone" />}
             {!c.adresse && !c.ville && !c.email && !c.telephone && (
               <div className="text-sm text-surface-400">Aucune coordonnée renseignée</div>
             )}
@@ -270,13 +287,13 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <div className="card p-5">
               <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Informations</div>
               {c.financeur_type && <InfoRow icon={Banknote} label="Financeur" value={FINANCEUR_LABELS[c.financeur_type]} />}
-              {c.numero_opco && <InfoRow icon={Hash} label="N° OPCO" value={c.numero_opco} />}
-              {c.code_naf && <InfoRow icon={Hash} label="Code NAF" value={c.code_naf} />}
-              {c.secteur_activite && <InfoRow icon={Building2} label="Secteur" value={c.secteur_activite} />}
+              {c.numero_opco && <InfoRow icon={Hash} label="N° OPCO" value={c.numero_opco} copie={c.numero_opco} />}
+              {c.code_naf && <InfoRow icon={Hash} label="Code NAF" value={c.code_naf} copie={c.code_naf} />}
+              {c.secteur_activite && <InfoRow icon={Building2} label="Secteur" value={c.secteur_activite} copie={c.secteur_activite} />}
               {c.taille_entreprise && <InfoRow icon={Users} label="Taille" value={c.taille_entreprise} />}
-              {(c as any).forme_juridique && <InfoRow icon={FileText} label="Forme juridique" value={(c as any).forme_juridique} />}
-              {(c as any).tva_intra && <InfoRow icon={Hash} label="TVA intra" value={(c as any).tva_intra} />}
-              {(c as any).convention_collective && <InfoRow icon={FileText} label="Convention collective" value={(c as any).convention_collective} />}
+              {(c as any).forme_juridique && <InfoRow icon={FileText} label="Forme juridique" value={(c as any).forme_juridique} copie={(c as any).forme_juridique} />}
+              {(c as any).tva_intra && <InfoRow icon={Hash} label="TVA intra" value={(c as any).tva_intra} copie={(c as any).tva_intra} format="chiffres" />}
+              {(c as any).convention_collective && <InfoRow icon={FileText} label="Convention collective" value={(c as any).convention_collective} copie={(c as any).convention_collective} />}
             </div>
           )}
 

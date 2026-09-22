@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, UserPlus, User, Mail, Phone, Pencil, Trash2, Save } from '@/components/ui/icons'
+import { Copiable } from '@/components/ui/CopyButton'
 import { Button, Badge, Modal, Input, Select, useToast, RowMenu } from '@/components/ui'
 import { createContactAction, updateContactAction, deleteContactAction } from '@/app/dashboard/contacts/actions'
 
@@ -87,8 +88,8 @@ export function ClientContacts({ clientId, contacts }: { clientId: string; conta
                 </div>
                 <div className="text-xs text-surface-500 flex items-center gap-x-3 gap-y-0.5 flex-wrap">
                   {ct.poste && <span>{ct.poste}</span>}
-                  {ct.email && <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /><span className="truncate">{ct.email}</span></span>}
-                  {(ct.telephone || ct.mobile) && <span className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" />{ct.telephone || ct.mobile}</span>}
+                  {ct.email && <span className="flex items-center gap-1 min-w-0"><Mail className="h-3 w-3 shrink-0" /><Copiable valeur={ct.email} libelle="l’email" /></span>}
+                  {(ct.telephone || ct.mobile) && <span className="flex items-center gap-1"><Phone className="h-3 w-3 shrink-0" /><Copiable valeur={ct.telephone || ct.mobile} format="telephone" libelle="le téléphone" /></span>}
                 </div>
               </div>
               <div className="shrink-0 -mr-2">
