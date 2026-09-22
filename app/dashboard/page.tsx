@@ -9,7 +9,7 @@ import {
   CreditCard, Clock, AlertTriangle, FileText, Receipt,
   UserPlus, ShieldCheck, Star, MessageSquareWarning,
   ArrowRight, CheckCircle2, BarChart3, Zap, ArrowUpRight,
-  MapPin, ChevronRight,
+  MapPin, ChevronRight, Briefcase,
 } from '@/components/ui/icons'
 import { Badge } from '@/components/ui'
 import { formatDateTime } from '@/lib/utils'
@@ -43,13 +43,13 @@ export default async function DashboardPage() {
     getDashboardData().catch(() => null),
     supabase
       .from('sessions')
-      .select('id, reference, status, date_debut, date_fin, lieu, intitule, mission_status, convocations_sent_at, formation:formation_id(intitule), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
+      .select('id, reference, status, date_debut, date_fin, lieu, intitule, mission_status, convocations_sent_at, poei_intervention_id, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
       .eq('organization_id', organization.id)
       .gte('date_fin', today)
       .lte('date_debut', inThreeMonths)
       .not('status', 'eq', 'annulee')
       .order('date_debut', { ascending: true })
-      .limit(15),
+      .limit(60),
     Promise.all([
       supabase.from('organizations').select('siret, representant_legal_nom, logo_url').eq('id', organization.id).single(),
       headCount('formations'), headCount('clients'), headCount('leads'),
@@ -59,20 +59,40 @@ export default async function DashboardPage() {
 
   const allSessions = upcomingSessions || []
 
-  // État du process par session (conventions, contrats, inscriptions) — 3 requêtes batchées
-  const sessionIds = allSessions.map((s: any) => s.id)
+  // Terminées récemment (30 derniers jours)
+  const ilYA30j = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+  const { data: terminees } = await supabase
+    .from('sessions')
+    .select('id, reference, status, date_debut, date_fin, intitule, poei_intervention_id, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
+    .eq('organization_id', organization.id)
+    .eq('status', 'terminee')
+    .gte('date_fin', ilYA30j)
+    .lt('date_fin', today)
+    .order('date_fin', { ascending: false })
+    .limit(24)
+
+  // État du process par session (conventions, contrats, inscriptions) — requêtes batchées
+  const sessionIds = [...allSessions, ...(terminees || [])].map((s: any) => s.id)
   const [convRows, contratRows, inscRows, poeiRows] = sessionIds.length > 0
     ? await Promise.all([
         supabase.from('conventions').select('session_id, status').in('session_id', sessionIds),
         supabase.from('contrats_formateur').select('session_id, signature_formateur_date').in('session_id', sessionIds).neq('status', 'annule'),
         supabase.from('inscriptions').select('session_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")'),
         // Sessions « parcours » POEI : elles n'ont pas de formateur par nature
-        supabase.from('poei').select('session_id').in('session_id', sessionIds),
+        supabase.from('poei').select('id, session_id').in('session_id', sessionIds),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }] as any
 
   const parcoursPoei = new Set<string>()
-  for (const p of (poeiRows.data || []) as any[]) if (p.session_id) parcoursPoei.add(p.session_id)
+  const poeiParSession = new Map<string, string>()
+  for (const p of (poeiRows.data || []) as any[]) if (p.session_id) { parcoursPoei.add(p.session_id); poeiParSession.set(p.session_id, p.id) }
+
+  // Deux familles : les sessions OPCO (plan de développement des compétences)
+  // et les parcours POEI. Les sessions d'intervention POEI sont des sous-
+  // périodes du parcours : elles n'apparaissent pas en plus de lui.
+  const estPoei = (s: any) => !!s.formation?.is_poei || parcoursPoei.has(s.id) || !!s.poei_intervention_id
+  const coteOpco = (s: any) => !estPoei(s)
+  const cotePoei = (s: any) => estPoei(s) && !s.poei_intervention_id
 
   const convBySession = new Map<string, string>()
   for (const c of (convRows.data || []) as any[]) convBySession.set(c.session_id, c.status)
@@ -85,23 +105,22 @@ export default async function DashboardPage() {
   const sessionsEnCours = allSessions.filter(s => s.status === 'en_cours' || (s.date_debut <= today && s.date_fin >= today))
   const sessionsAVenir = allSessions.filter(s => s.date_debut > today)
 
-  // Terminées récemment (30 derniers jours) — avec leurs inscrits
-  const ilYA30j = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-  const { data: terminees } = await supabase
-    .from('sessions')
-    .select('id, reference, status, date_debut, date_fin, intitule, formation:formation_id(intitule), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
-    .eq('organization_id', organization.id)
-    .eq('status', 'terminee')
-    .gte('date_fin', ilYA30j)
-    .lt('date_fin', today)
-    .order('date_fin', { ascending: false })
-    .limit(6)
-  const termineesIds = (terminees || []).map((s: any) => s.id)
-  if (termineesIds.length) {
-    const { data: insTerm } = await supabase.from('inscriptions').select('session_id').in('session_id', termineesIds)
-    for (const i of (insTerm || []) as any[]) inscritsBySession.set(i.session_id, (inscritsBySession.get(i.session_id) || 0) + 1)
-  }
-  const enTableau = (s: any) => ({ ...s, _inscrits: inscritsBySession.get(s.id) || 0 })
+  const enTableau = (s: any) => ({
+    ...s,
+    _inscrits: inscritsBySession.get(s.id) || 0,
+    _poei: estPoei(s),
+    _href: poeiParSession.has(s.id) ? `/dashboard/poei/${poeiParSession.get(s.id)}` : undefined,
+  })
+  const colonnes = [
+    {
+      cle: 'opco', titre: 'Sessions OPCO', Icone: Calendar, lienTous: '/dashboard/sessions', lienPassees: '/dashboard/sessions?periode=passees',
+      enCours: sessionsEnCours.filter(coteOpco), aVenir: sessionsAVenir.filter(coteOpco), terminees: (terminees || []).filter(coteOpco),
+    },
+    {
+      cle: 'poei', titre: 'POEI', Icone: Briefcase, lienTous: '/dashboard/poei', lienPassees: '/dashboard/poei',
+      enCours: sessionsEnCours.filter(cotePoei), aVenir: sessionsAVenir.filter(cotePoei), terminees: (terminees || []).filter(cotePoei),
+    },
+  ]
   const onboardingFlags = {
     org: !!((orgRow.data as any)?.siret && (orgRow.data as any)?.representant_legal_nom && (orgRow.data as any)?.logo_url),
     formations: (fCnt.count || 0) > 0,
@@ -161,26 +180,42 @@ export default async function DashboardPage() {
       {/* Guide de démarrage (masquable) */}
       <OnboardingGuide flags={onboardingFlags} firstName={user.first_name} />
 
-      {/* ── Agenda des sessions : tableaux en cours / à venir / terminées ── */}
-      <div className="space-y-6">
-        <SessionsTable
-          titre="Sessions en cours"
-          badge={<div className="h-2 w-2 rounded-full bg-success-500 animate-pulse" />}
-          sessions={sessionsEnCours.map(enTableau)}
-          vide="Aucune session en cours"
-        />
-        <SessionsTable
-          titre="Sessions à venir"
-          sessions={sessionsAVenir.slice(0, 8).map(enTableau)}
-          vide="Aucune session programmée"
-          lienTous="/dashboard/sessions"
-        />
-        <SessionsTable
-          titre="Terminées récemment"
-          sessions={(terminees || []).map(enTableau)}
-          vide="Aucune session terminée sur les 30 derniers jours"
-          lienTous="/dashboard/sessions?periode=passees"
-        />
+      {/* ── Agenda : sessions OPCO d'un côté, parcours POEI de l'autre, chacun en cours / à venir / terminées ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+        {colonnes.map((c) => (
+          <section key={c.cle} className="space-y-3 min-w-0">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div className="flex items-center gap-2">
+                <c.Icone className="h-4 w-4 text-brand-500" />
+                <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">{c.titre}</h2>
+              </div>
+              <span className="text-xs text-surface-400 tabular-nums">
+                {c.enCours.length} en cours · {c.aVenir.length} à venir · {c.terminees.length} terminée{c.terminees.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <SessionsTable
+              compact
+              titre="En cours"
+              badge={<div className="h-2 w-2 rounded-full bg-success-500 animate-pulse" />}
+              sessions={c.enCours.map(enTableau)}
+              vide={c.cle === 'poei' ? 'Aucun parcours POEI en cours' : 'Aucune session en cours'}
+            />
+            <SessionsTable
+              compact
+              titre="À venir"
+              sessions={c.aVenir.slice(0, 8).map(enTableau)}
+              vide={c.cle === 'poei' ? 'Aucun parcours POEI programmé' : 'Aucune session programmée'}
+              lienTous={c.lienTous}
+            />
+            <SessionsTable
+              compact
+              titre="Terminées récemment"
+              sessions={c.terminees.slice(0, 6).map(enTableau)}
+              vide={c.cle === 'poei' ? 'Aucun parcours POEI terminé sur les 30 derniers jours' : 'Aucune session terminée sur les 30 derniers jours'}
+              lienTous={c.lienPassees}
+            />
+          </section>
+        ))}
       </div>
 
       {data ? (
