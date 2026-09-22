@@ -67,7 +67,7 @@ function scoreColor(s: number) { return s >= 70 ? 'text-success-600' : s >= 40 ?
 function scoreBg(s: number) { return s >= 70 ? 'bg-success-50' : s >= 40 ? 'bg-warning-50' : 'bg-danger-50' }
 
 type ViewMode = 'kanban' | 'list'
-type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score'
+type FilterChip = 'all' | 'gagne' | 'perdu' | 'today' | 'high_score' | 'convertis'
 
 export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, currentUserId, formations = [], formateurs = [], franchises = [], interactions = [], isApporteur }: LeadsPipelineProps) {
   const { toast } = useToast()
@@ -145,6 +145,10 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
     }
     // Status filter
     if (filterStatus !== 'all') f = f.filter(l => l.status === filterStatus)
+    // Un lead converti est devenu un client : il quitte le pipeline pour ne
+    // pas apparaître deux fois. Le chip « Devenus clients » le ramène.
+    if (filterChip === 'convertis') return f.filter(l => !!(l as any).converted_client_id)
+    f = f.filter(l => !(l as any).converted_client_id)
     // Chips
     if (filterChip === 'gagne') f = f.filter(l => l.status === 'gagne')
     else if (filterChip === 'perdu') f = f.filter(l => l.status === 'perdu')
@@ -154,14 +158,19 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
   }, [leads, search, filterStatus, filterChip])
 
   // Stats
-  const stats = useMemo(() => ({
-    total: leads.length,
-    gagnes: leads.filter(l => l.status === 'gagne').length,
-    perdus: leads.filter(l => l.status === 'perdu').length,
-    enCours: leads.filter(l => !['gagne', 'perdu'].includes(l.status)).length,
-    today: leads.filter(l => l.created_at.startsWith(new Date().toISOString().split('T')[0])).length,
-    highScore: leads.filter(l => calcScore(l) >= 60).length,
-  }), [leads])
+  const stats = useMemo(() => {
+    const convertis = leads.filter(l => !!(l as any).converted_client_id)
+    const actifs = leads.filter(l => !(l as any).converted_client_id)
+    return {
+      total: actifs.length,
+      convertis: convertis.length,
+      gagnes: actifs.filter(l => l.status === 'gagne').length,
+      perdus: actifs.filter(l => l.status === 'perdu').length,
+      enCours: actifs.filter(l => !['gagne', 'perdu'].includes(l.status)).length,
+      today: actifs.filter(l => l.created_at.startsWith(new Date().toISOString().split('T')[0])).length,
+      highScore: actifs.filter(l => calcScore(l) >= 60).length,
+    }
+  }, [leads])
 
   const totalValue = leads.filter(l => !['perdu'].includes(l.status)).reduce((sum, l) => sum + (l.montant_estime || 0), 0)
   const leadsByStatus = PIPELINE_COLUMNS.reduce((acc, status) => { acc[status] = filtered.filter(l => l.status === status); return acc }, {} as Record<LeadStatus, Lead[]>)
@@ -180,8 +189,11 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
   }
   async function handleConvert(leadId: string) {
     const result = await convertLeadToClientAction(leadId)
-    if (result.success) toast('success', 'Lead converti en client')
-    else toast('error', result.error || 'Erreur')
+    if (!result.success) { toast('error', result.error || 'Erreur'); return }
+    const d = (result.data || {}) as { reutilise?: boolean; apprenants?: number; client_id?: string }
+    const suite = d.apprenants ? `, ${d.apprenants} apprenant${d.apprenants > 1 ? 's' : ''} repris` : ''
+    toast('success', (d.reutilise ? 'Lead rattaché au client existant' : 'Lead converti en client') + suite)
+    router.refresh()
   }
 
   // Drag & Drop
@@ -272,7 +284,8 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
                 items={[
                   { label: 'Voir le detail', icon: <Eye className="h-4 w-4 text-surface-400" />, onClick: () => setDetailLead(lead) },
                   { label: 'Modifier', icon: <Edit3 className="h-4 w-4 text-surface-400" />, onClick: () => setEditLead(lead) },
-                  { label: 'Convertir en client', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(lead.id), hidden: ['gagne', 'perdu'].includes(lead.status) },
+                  { label: 'Convertir en client', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(lead.id), hidden: ['perdu'].includes(lead.status) || !!(lead as any).converted_client_id },
+                  { label: 'Voir la fiche client', icon: <Building2 className="h-4 w-4 text-brand-500" />, href: `/dashboard/clients/${(lead as any).converted_client_id}`, hidden: !(lead as any).converted_client_id },
                   { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(lead.id), danger: true },
                 ]}
               />
@@ -366,6 +379,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
             { id: 'gagne' as const, label: 'Gagnés', count: stats.gagnes },
             { id: 'perdu' as const, label: 'Perdus', count: stats.perdus },
             { id: 'today' as const, label: "Aujourd'hui", count: stats.today },
+            { id: 'convertis' as const, label: 'Devenus clients', count: stats.convertis },
           ]).map(f => (
             <button key={f.id} type="button" onClick={() => setFilterChip(f.id)} aria-pressed={filterChip === f.id}
               className={cn('shrink-0 h-10 sm:h-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent-400/40',
@@ -465,7 +479,8 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
                     width={200}
                     triggerClassName="h-10 w-10 p-0 inline-flex items-center justify-center rounded-lg bg-surface-100 text-surface-600"
                     items={[
-                      { label: 'Convertir en client', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(lead.id), hidden: ['gagne', 'perdu'].includes(lead.status) },
+                      { label: 'Convertir en client', icon: <ArrowRight className="h-4 w-4 text-success-600" />, onClick: () => handleConvert(lead.id), hidden: ['perdu'].includes(lead.status) || !!(lead as any).converted_client_id },
+                      { label: 'Voir la fiche client', icon: <Building2 className="h-4 w-4 text-brand-500" />, href: `/dashboard/clients/${(lead as any).converted_client_id}`, hidden: !(lead as any).converted_client_id },
                       { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDelete(lead.id), danger: true },
                     ]}
                   />

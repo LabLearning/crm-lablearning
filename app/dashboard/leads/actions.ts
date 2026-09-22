@@ -356,86 +356,167 @@ export async function deleteLeadAction(id: string): Promise<ActionResult> {
   return { success: true }
 }
 
+/**
+ * Convertit un lead en client.
+ *
+ * Un même établissement ne doit jamais exister en double : on réutilise le
+ * client déjà lié au lead, sinon celui qui porte le même SIRET, et on ne crée
+ * la fiche que s'il n'existe vraiment rien. Les informations du lead viennent
+ * alors compléter les champs restés vides, sans écraser ce qui est déjà saisi.
+ *
+ * Les participants prévus sur le lead deviennent des apprenants rattachés au
+ * client : sans cela, il fallait les ressaisir un par un après la conversion.
+ */
 export async function convertLeadToClientAction(leadId: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
 
-  // Fetch lead
   const { data: lead, error: fetchError } = await supabase
     .from('leads')
     .select('*')
     .eq('id', leadId)
-    .eq('organization_id', session.organization.id)
+    .eq('organization_id', orgId)
     .single()
 
   if (fetchError || !lead) {
     return { success: false, error: 'Lead introuvable' }
   }
 
-  // Create client from lead — propage toutes les infos enrichies
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .insert({
-      organization_id: session.organization.id,
-      type: lead.type || 'entreprise',
-      raison_sociale: lead.entreprise,
-      siret: lead.siret,
-      sigle: lead.sigle,
-      code_naf: lead.code_naf,
-      secteur_activite: lead.secteur_activite,
-      taille_entreprise: lead.taille_entreprise,
-      forme_juridique: lead.forme_juridique,
-      date_creation_entreprise: lead.date_creation_entreprise,
-      effectif_libelle: lead.effectif_libelle,
-      tva_intra: lead.tva_intra,
-      est_qualiopi: lead.est_qualiopi,
-      est_organisme_formation: lead.est_organisme_formation,
-      // Classe l'établissement dans son réseau de franchise dès la conversion
-      franchise_id: lead.franchise_id || null,
-      // L'apporteur du lead suit l'établissement : sa commission se calcule par le client
-      apporteur_id: lead.apporteur_id || null,
-      adresse: lead.adresse,
-      code_postal: lead.code_postal,
-      ville: lead.ville,
-      site_web: lead.site_web,
-      telephone: lead.contact_telephone,
-      email: lead.contact_email,
-      financeur_type: lead.financeur_type,
-      opco_id: lead.opco_id,
-      opco_compte_status: lead.opco_compte_status || 'aucun',
-      code_idcc: lead.code_idcc,
-      convention_collective: lead.convention_collective,
-      numero_opco: lead.numero_opco,
-      assigned_to: lead.assigned_to || session.user.id,
-      created_by: session.user.id,
-    })
-    .select()
-    .single()
-
-  if (clientError) {
-    return { success: false, error: 'Erreur lors de la création du client' }
+  // Champs repris du lead, communs à la création et au complément
+  const champsClient: Record<string, unknown> = {
+    type: lead.type || 'entreprise',
+    raison_sociale: lead.entreprise,
+    siret: lead.siret,
+    sigle: lead.sigle,
+    code_naf: lead.code_naf,
+    secteur_activite: lead.secteur_activite,
+    taille_entreprise: lead.taille_entreprise,
+    forme_juridique: lead.forme_juridique,
+    date_creation_entreprise: lead.date_creation_entreprise,
+    effectif_libelle: lead.effectif_libelle,
+    tva_intra: lead.tva_intra,
+    est_qualiopi: lead.est_qualiopi,
+    est_organisme_formation: lead.est_organisme_formation,
+    // Classe l'établissement dans son réseau de franchise dès la conversion
+    franchise_id: lead.franchise_id,
+    // L'apporteur du lead suit l'établissement : sa commission se calcule par le client
+    apporteur_id: lead.apporteur_id,
+    adresse: lead.adresse,
+    code_postal: lead.code_postal,
+    ville: lead.ville,
+    site_web: lead.site_web,
+    telephone: lead.contact_telephone,
+    email: lead.contact_email,
+    financeur_type: lead.financeur_type,
+    opco_id: lead.opco_id,
+    code_idcc: lead.code_idcc,
+    convention_collective: lead.convention_collective,
+    numero_opco: lead.numero_opco,
   }
 
-  // Create contact (= dirigeant) from lead info
-  await supabase.from('contacts').insert({
-    organization_id: session.organization.id,
-    client_id: client.id,
-    civilite: lead.contact_civilite,
-    prenom: lead.contact_prenom || '',
-    nom: lead.contact_nom,
-    email: lead.contact_email,
-    telephone: lead.contact_telephone,
-    poste: lead.contact_qualite || lead.contact_poste,
-    est_principal: true,
-  })
+  // 1. Le client existe-t-il déjà ? (déjà converti, puis même SIRET)
+  let clientId: string | null = null
+  let clientExistant: any = null
+  if (lead.converted_client_id) {
+    const { data } = await supabase.from('clients').select('*')
+      .eq('id', lead.converted_client_id).eq('organization_id', orgId).maybeSingle()
+    if (data) { clientId = data.id; clientExistant = data }
+  }
+  if (!clientId) {
+    const siretNorm = (lead.siret || '').replace(/\D/g, '')
+    if (siretNorm.length >= 9) {
+      const { data: clients } = await supabase.from('clients').select('*')
+        .eq('organization_id', orgId).not('siret', 'is', null)
+      const match = (clients || []).find((c: any) => (c.siret || '').replace(/\D/g, '') === siretNorm)
+      if (match) { clientId = match.id; clientExistant = match }
+    }
+  }
 
-  // Update lead as converted
+  let reutilise = false
+  if (clientExistant) {
+    // 2a. Client déjà là : on ne remplit que ce qui manque
+    reutilise = true
+    const patch: Record<string, unknown> = {}
+    for (const [cle, valeur] of Object.entries(champsClient)) {
+      if (valeur === null || valeur === undefined || valeur === '') continue
+      const actuel = clientExistant[cle]
+      if (actuel === null || actuel === undefined || actuel === '') patch[cle] = valeur
+    }
+    if (!clientExistant.opco_compte_status && lead.opco_compte_status) patch.opco_compte_status = lead.opco_compte_status
+    if (Object.keys(patch).length) {
+      await supabase.from('clients').update(patch).eq('id', clientId).eq('organization_id', orgId)
+    }
+  } else {
+    // 2b. Création
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .insert({
+        organization_id: orgId,
+        ...champsClient,
+        opco_compte_status: lead.opco_compte_status || 'aucun',
+        assigned_to: lead.assigned_to || session.user.id,
+        created_by: session.user.id,
+      })
+      .select('id')
+      .single()
+    if (clientError || !client) {
+      return { success: false, error: 'Erreur lors de la création du client' }
+    }
+    clientId = client.id
+  }
+
+  // 3. Contact (le dirigeant) : jamais deux fois le même
+  if (lead.contact_nom || lead.contact_email) {
+    const { data: contacts } = await supabase.from('contacts').select('id, nom, prenom, email')
+      .eq('organization_id', orgId).eq('client_id', clientId)
+    const memeContact = (contacts || []).find((c: any) =>
+      (lead.contact_email && (c.email || '').toLowerCase() === String(lead.contact_email).toLowerCase())
+      || (`${c.prenom || ''} ${c.nom || ''}`.trim().toLowerCase() === `${lead.contact_prenom || ''} ${lead.contact_nom || ''}`.trim().toLowerCase()))
+    if (!memeContact) {
+      await supabase.from('contacts').insert({
+        organization_id: orgId,
+        client_id: clientId,
+        civilite: lead.contact_civilite,
+        prenom: lead.contact_prenom || '',
+        nom: lead.contact_nom,
+        email: lead.contact_email,
+        telephone: lead.contact_telephone,
+        poste: lead.contact_qualite || lead.contact_poste,
+        est_principal: (contacts || []).length === 0,
+      })
+    }
+  }
+
+  // 4. Participants prévus → apprenants du client (l'anti-doublon est dans
+  //    createApprenantFromParticipant : email, sinon prénom + nom)
+  const { data: participants } = await supabase
+    .from('lead_participants')
+    .select('*')
+    .eq('lead_id', leadId)
+    .eq('organization_id', orgId)
+
+  let apprenantsRepris = 0
+  for (const p of (participants || []) as any[]) {
+    const apprenantId = await createApprenantFromParticipant(supabase, orgId, clientId, p)
+    if (!apprenantId) continue
+    apprenantsRepris++
+    // L'apprenant suit l'établissement, et le participant garde son lien
+    await supabase.from('apprenants')
+      .update({ client_id: clientId, entreprise: lead.entreprise || null })
+      .eq('id', apprenantId).eq('organization_id', orgId)
+    if (p.apprenant_id !== apprenantId) {
+      await supabase.from('lead_participants').update({ apprenant_id: apprenantId }).eq('id', p.id)
+    }
+  }
+
+  // 5. Le lead sort du pipeline : il est désormais suivi comme client
   await supabase
     .from('leads')
     .update({
       status: 'gagne',
-      converted_client_id: client.id,
-      converted_at: new Date().toISOString(),
+      converted_client_id: clientId,
+      converted_at: lead.converted_at || new Date().toISOString(),
     })
     .eq('id', leadId)
 
@@ -443,12 +524,13 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
     action: 'convert',
     entity_type: 'lead',
     entity_id: leadId,
-    details: { client_id: client.id },
+    details: { client_id: clientId, client_reutilise: reutilise, apprenants: apprenantsRepris },
   })
 
   revalidatePath('/dashboard/leads')
   revalidatePath('/dashboard/clients')
-  return { success: true, data: { client_id: client.id } }
+  revalidatePath(`/dashboard/clients/${clientId}`)
+  return { success: true, data: { client_id: clientId, reutilise, apprenants: apprenantsRepris } }
 }
 
 export async function addInteractionAction(formData: FormData): Promise<ActionResult> {
