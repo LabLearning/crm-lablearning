@@ -6,8 +6,8 @@ import { getDashboardData } from './reporting/data'
 import Link from 'next/link'
 import {
   TrendingUp, Calendar, GraduationCap, Users, Euro,
-  CreditCard, Clock, AlertTriangle, FileText, Receipt,
-  UserPlus, ShieldCheck, Star, MessageSquareWarning,
+  CreditCard, Clock, AlertTriangle, Receipt,
+  ShieldCheck, Star, MessageSquareWarning,
   ArrowRight, CheckCircle2, BarChart3, Zap, ArrowUpRight,
   MapPin, ChevronRight, Briefcase,
 } from '@/components/ui/icons'
@@ -244,13 +244,6 @@ export default async function DashboardPage() {
     return 'Bonsoir'
   }
 
-  const quickLinks = [
-    { label: 'Nouveau lead', href: '/dashboard/leads', icon: UserPlus },
-    { label: 'Créer un devis', href: '/dashboard/devis', icon: FileText },
-    { label: 'Sessions', href: '/dashboard/sessions', icon: Calendar },
-    { label: 'Factures', href: '/dashboard/factures', icon: Receipt },
-  ]
-
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Welcome */}
@@ -260,16 +253,6 @@ export default async function DashboardPage() {
             {getGreeting()}, {user.first_name}
           </h1>
           <p className="text-surface-500 mt-1 text-sm">{organization.name}</p>
-        </div>
-        {/* Accès rapides : grille 2 x 2 avec libellés sur téléphone, ligne sur desktop */}
-        <div className="grid grid-cols-2 gap-2 sm:flex">
-          {quickLinks.map((link) => (
-            <Link key={link.href} href={link.href}
-              className="flex items-center gap-2 px-3.5 py-2 min-h-[40px] rounded-xl text-sm font-medium text-surface-600 bg-white border border-surface-200/80 hover:border-surface-300 hover:shadow-card hover:text-surface-800 transition-all duration-200 group">
-              <link.icon className="h-4 w-4 text-surface-400 group-hover:text-brand-500 transition-colors shrink-0" />
-              <span className="truncate">{link.label}</span>
-            </Link>
-          ))}
         </div>
       </div>
 
