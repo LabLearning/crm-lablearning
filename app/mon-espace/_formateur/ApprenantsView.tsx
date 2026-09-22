@@ -39,11 +39,24 @@ export async function ApprenantsView({ formateurId, token }: { formateurId: stri
     inscriptions = data || []
   }
 
-  // Group by session
-  const bySession = (sessions || []).map((s) => ({
-    ...s,
-    inscriptions: inscriptions.filter((i) => i.session_id === s.id),
-  }))
+  // Une carte par session : la séance du jour d'abord, puis les sessions à
+  // venir par ordre chronologique, puis les terminées de la plus récente à la
+  // plus ancienne.
+  const today = new Date().toISOString().slice(0, 10)
+  const bySession = (sessions || [])
+    .map((s) => ({
+      ...s,
+      inscriptions: inscriptions.filter((i) => i.session_id === s.id),
+      _isToday: s.date_debut <= today && s.date_fin >= today,
+      _terminee: s.status === 'terminee' || s.date_fin < today,
+    }))
+    .sort((a, b) => {
+      if (a._isToday !== b._isToday) return Number(b._isToday) - Number(a._isToday)
+      if (a._terminee !== b._terminee) return Number(a._terminee) - Number(b._terminee)
+      return a._terminee
+        ? String(b.date_debut).localeCompare(String(a.date_debut))
+        : String(a.date_debut).localeCompare(String(b.date_debut))
+    })
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -56,8 +69,12 @@ export async function ApprenantsView({ formateurId, token }: { formateurId: stri
         <div key={session.id} className="card overflow-hidden">
           <div className="px-6 py-4 bg-surface-50 border-b border-surface-200 flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-sm font-semibold text-surface-900">
-                {(session.formation as any)?.intitule || session.reference || 'Session'}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="text-sm font-semibold text-surface-900">
+                  {(session.formation as any)?.intitule || session.reference || 'Session'}
+                </div>
+                {session._isToday && <Badge variant="info" dot>Aujourd&apos;hui</Badge>}
+                {session._terminee && !session._isToday && <Badge variant="default">Terminée</Badge>}
               </div>
               {(session.client as any) && (
                 <div className="flex items-center gap-1 text-sm font-medium text-brand-700 mt-0.5">
@@ -66,7 +83,7 @@ export async function ApprenantsView({ formateurId, token }: { formateurId: stri
                 </div>
               )}
               <div className="text-xs text-surface-500">
-                {[session.reference, session.date_debut ? formatDate(session.date_debut, { day: 'numeric', month: 'short' }) : null].filter(Boolean).join(' · ')} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}
+                {[session.reference, session.date_debut ? formatDate(session.date_debut, { day: 'numeric', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ')} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">

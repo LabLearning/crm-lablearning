@@ -68,8 +68,16 @@ export async function EmargementListView({ formateurId, basePath }: { formateurI
     }
   })
 
-  // Une séance en cours passe devant : c'est celle sur laquelle le formateur agit
-  cards.sort((a: any, b: any) => Number(b._isToday) - Number(a._isToday))
+  // Une séance en cours passe devant : c'est celle sur laquelle le formateur
+  // agit. Puis les sessions à venir dans l'ordre, puis les terminées de la
+  // plus récente à la plus ancienne.
+  cards.sort((a: any, b: any) => {
+    if (a._isToday !== b._isToday) return Number(b._isToday) - Number(a._isToday)
+    const aFin = a.status === 'terminee' || a.date_fin < today
+    const bFin = b.status === 'terminee' || b.date_fin < today
+    if (aFin !== bFin) return Number(aFin) - Number(bFin)
+    return aFin ? String(b.date_debut).localeCompare(String(a.date_debut)) : String(a.date_debut).localeCompare(String(b.date_debut))
+  })
 
   return (
     <div className="space-y-5 animate-fade-in">
