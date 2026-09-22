@@ -21,8 +21,10 @@ export interface SessionTableRow {
   _inscrits?: number
   /** Cible du clic (par défaut la fiche session) : un parcours POEI ouvre son dossier. */
   _href?: string
-  /** Parcours POEI : pas de formateur par nature, on n'affiche pas « à affecter ». */
+  /** Parcours POEI : la session chapeau n'a pas de formateur, ce sont ses interventions qui en ont. */
   _poei?: boolean
+  /** Formateurs des interventions d'un parcours POEI, celui du jour en premier. */
+  _formateurs?: string
 }
 
 const GRILLE = 'minmax(0,2.2fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr) 70px 110px'
@@ -75,11 +77,9 @@ export function SessionsTable({ titre, sessions, badge, vide, lienTous, compact 
                     {s.date_fin !== s.date_debut ? ` au ${formatDate(s.date_fin, { day: 'numeric', month: 'short' })}` : ''}
                   </span>
                   {s.client?.raison_sociale && <span className="truncate max-w-full">{s.client.raison_sociale}</span>}
-                  {(s.formateur || !s._poei) && (
-                    <span className="truncate max-w-full">
-                      {s.formateur ? `${s.formateur.prenom} ${s.formateur.nom}` : <span className="text-surface-500 italic">Formateur à affecter</span>}
-                    </span>
-                  )}
+                  <span className="truncate max-w-full">
+                    {s.formateur ? `${s.formateur.prenom} ${s.formateur.nom}` : s._formateurs ? s._formateurs : <span className="text-surface-500 italic">Formateur à affecter</span>}
+                  </span>
                   <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-semibold ${(s._inscrits || 0) > 0 ? 'bg-brand-50 text-brand-600' : 'bg-surface-100 text-surface-400'}`}>
                     <Users className="h-3 w-3" /> {s._inscrits || 0}
                   </span>
@@ -116,7 +116,7 @@ export function SessionsTable({ titre, sessions, badge, vide, lienTous, compact 
                       {s.date_fin !== s.date_debut ? ` → ${formatDate(s.date_fin, { day: 'numeric', month: 'short' })}` : ''}
                     </span>
                     <span className="text-xs text-surface-500 truncate">
-                      {s.formateur ? `${s.formateur.prenom} ${s.formateur.nom}` : s._poei ? <span className="text-surface-400">Parcours POEI</span> : <span className="text-surface-500 italic">à affecter</span>}
+                      {s.formateur ? `${s.formateur.prenom} ${s.formateur.nom}` : s._formateurs ? s._formateurs : <span className="text-surface-500 italic">à affecter</span>}
                     </span>
                     <span className="flex justify-center">
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs font-semibold ${(s._inscrits || 0) > 0 ? 'bg-brand-50 text-brand-600' : 'bg-surface-100 text-surface-400'}`}>

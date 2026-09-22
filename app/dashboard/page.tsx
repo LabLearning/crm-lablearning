@@ -87,6 +87,31 @@ export default async function DashboardPage() {
   const poeiParSession = new Map<string, string>()
   for (const p of (poeiRows.data || []) as any[]) if (p.session_id) { parcoursPoei.add(p.session_id); poeiParSession.set(p.session_id, p.id) }
 
+  // Formateurs des parcours POEI : portés par les interventions, pas par la
+  // session chapeau. Celui qui intervient aujourd'hui est cité en premier.
+  const formateursParPoei = new Map<string, string>()
+  const poeiIds = [...new Set(poeiParSession.values())]
+  if (poeiIds.length) {
+    const { data: interv } = await supabase.from('poei_interventions')
+      .select('poei_id, date_debut, date_fin, formateur:formateur_id(prenom, nom)')
+      .in('poei_id', poeiIds).not('formateur_id', 'is', null).order('date_debut', { ascending: true })
+    const parPoei = new Map<string, { nom: string; enCours: boolean }[]>()
+    for (const i of (interv || []) as any[]) {
+      const nom = `${i.formateur?.prenom || ''} ${i.formateur?.nom || ''}`.trim()
+      if (!nom) continue
+      const liste = parPoei.get(i.poei_id) || []
+      const enCours = !!i.date_debut && !!i.date_fin && i.date_debut <= today && i.date_fin >= today
+      const existant = liste.find((x) => x.nom === nom)
+      if (existant) existant.enCours = existant.enCours || enCours
+      else liste.push({ nom, enCours })
+      parPoei.set(i.poei_id, liste)
+    }
+    for (const [pid, liste] of parPoei) {
+      const tries = [...liste].sort((a, b) => Number(b.enCours) - Number(a.enCours))
+      formateursParPoei.set(pid, tries.slice(0, 2).map((x) => x.nom).join(', ') + (tries.length > 2 ? ` +${tries.length - 2}` : ''))
+    }
+  }
+
   // Deux familles : les sessions OPCO (plan de développement des compétences)
   // et les parcours POEI. Les sessions d'intervention POEI sont des sous-
   // périodes du parcours : elles n'apparaissent pas en plus de lui.
@@ -110,6 +135,7 @@ export default async function DashboardPage() {
     _inscrits: inscritsBySession.get(s.id) || 0,
     _poei: estPoei(s),
     _href: poeiParSession.has(s.id) ? `/dashboard/poei/${poeiParSession.get(s.id)}` : undefined,
+    _formateurs: poeiParSession.has(s.id) ? formateursParPoei.get(poeiParSession.get(s.id)!) : undefined,
   })
   const colonnes = [
     {
