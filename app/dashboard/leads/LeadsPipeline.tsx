@@ -98,6 +98,9 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
     bar.scrollTo({ left: Math.max(0, target), behavior: 'smooth' })
   }, [kanbanIndex, view])
   const [createOpen, setCreateOpen] = useState(false)
+  // Conversion en attente d'un choix : même société, autre établissement
+  const [choixEtab, setChoixEtab] = useState<{ leadId: string; entreprise: string; etablissements: { id: string; raison_sociale: string | null; nom_commercial: string | null; siret: string | null; ville: string | null }[] } | null>(null)
+  const [conversionEnCours, setConversionEnCours] = useState(false)
   const [editLead, setEditLead] = useState<Lead | null>(null)
   const [detailLead, setDetailLead] = useState<Lead | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
@@ -187,9 +190,18 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
     if (result.success) toast('success', 'Lead supprime')
     else toast('error', result.error || 'Erreur')
   }
-  async function handleConvert(leadId: string) {
-    const result = await convertLeadToClientAction(leadId)
+  async function handleConvert(leadId: string, choix?: { clientId?: string; creerNouveau?: boolean }) {
+    setConversionEnCours(true)
+    const result = await convertLeadToClientAction(leadId, choix)
+    setConversionEnCours(false)
+    const etabs = (result.data as any)?.etablissements
+    if (!result.success && Array.isArray(etabs) && etabs.length) {
+      // Même société sous un autre SIRET : l'utilisateur choisit
+      setChoixEtab({ leadId, entreprise: leads.find((l) => l.id === leadId)?.entreprise || 'ce lead', etablissements: etabs })
+      return
+    }
     if (!result.success) { toast('error', result.error || 'Erreur'); return }
+    setChoixEtab(null)
     const d = (result.data || {}) as { reutilise?: boolean; apprenants?: number; client_id?: string }
     const suite = d.apprenants ? `, ${d.apprenants} apprenant${d.apprenants > 1 ? 's' : ''} repris` : ''
     toast('success', (d.reutilise ? 'Lead rattaché au client existant' : 'Lead converti en client') + suite)
@@ -528,7 +540,7 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
                           <button onClick={() => setEditLead(lead)} title="Modifier" className="p-1.5 rounded-lg text-surface-400 hover:bg-surface-100 hover:text-surface-700 transition-colors">
                             <Edit3 className="h-4 w-4" />
                           </button>
-                          {!['gagne', 'perdu'].includes(lead.status) && (
+                          {lead.status !== 'perdu' && !(lead as any).converted_client_id && (
                             <button onClick={() => handleConvert(lead.id)} title="Convertir en client" className="p-1.5 rounded-lg text-success-500 hover:bg-success-50 transition-colors">
                               <ArrowRight className="h-4 w-4" />
                             </button>
@@ -547,6 +559,35 @@ export function LeadsPipeline({ leads, users, gestionnaires, currentUserRole, cu
           {filtered.length === 0 && <div className="text-center py-12 text-sm text-surface-500">Aucun lead</div>}
         </div>
       )}
+
+      {/* Conversion : même société, autre établissement */}
+      <Modal isOpen={!!choixEtab} onClose={() => setChoixEtab(null)} size="md"
+        title="Cette société est déjà cliente"
+        description={choixEtab ? `Le SIRET de ${choixEtab.entreprise} appartient à une société qui a déjà un établissement dans le CRM. Rattachez le lead à l\u2019établissement concerné pour éviter un doublon, ou créez un nouvel établissement s\u2019il s\u2019agit d\u2019un autre site.` : undefined}>
+        {choixEtab && (
+          <div className="space-y-2">
+            {choixEtab.etablissements.map((e) => (
+              <button key={e.id} type="button" disabled={conversionEnCours}
+                onClick={() => handleConvert(choixEtab.leadId, { clientId: e.id })}
+                className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-surface-200 hover:border-brand-300 hover:bg-brand-50/40 transition-colors disabled:opacity-60">
+                <Building2 className="h-4 w-4 text-brand-500 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-surface-900 truncate">{e.nom_commercial || e.raison_sociale}</div>
+                  <div className="text-xs text-surface-500 truncate">{[e.ville, e.siret ? `SIRET ${e.siret}` : null].filter(Boolean).join(' · ')}</div>
+                </div>
+                <span className="text-xs font-medium text-brand-600 shrink-0">Rattacher</span>
+              </button>
+            ))}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="secondary" onClick={() => setChoixEtab(null)}>Annuler</Button>
+              <Button type="button" variant="secondary" isLoading={conversionEnCours}
+                onClick={() => handleConvert(choixEtab.leadId, { creerNouveau: true })}>
+                Créer un nouvel établissement
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Create Modal */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouveau lead" description={isApporteur ? 'Soumettez un prospect à Lab Learning' : 'Ajoutez un nouveau prospect'} size="lg">

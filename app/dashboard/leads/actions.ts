@@ -367,7 +367,10 @@ export async function deleteLeadAction(id: string): Promise<ActionResult> {
  * Les participants prévus sur le lead deviennent des apprenants rattachés au
  * client : sans cela, il fallait les ressaisir un par un après la conversion.
  */
-export async function convertLeadToClientAction(leadId: string): Promise<ActionResult> {
+export async function convertLeadToClientAction(
+  leadId: string,
+  choix?: { clientId?: string; creerNouveau?: boolean },
+): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
@@ -426,10 +429,39 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
   if (!clientId) {
     const siretNorm = (lead.siret || '').replace(/\D/g, '')
     if (siretNorm.length >= 9) {
+      // Recherche ciblée par préfixe SIREN : reste juste au-delà de 1000 clients
       const { data: clients } = await supabase.from('clients').select('*')
-        .eq('organization_id', orgId).not('siret', 'is', null)
+        .eq('organization_id', orgId).like('siret', `${siretNorm.slice(0, 9)}%`)
       const match = (clients || []).find((c: any) => (c.siret || '').replace(/\D/g, '') === siretNorm)
       if (match) { clientId = match.id; clientExistant = match }
+    }
+  }
+
+  // Établissement choisi à la main (même société, autre SIRET)
+  if (!clientId && choix?.clientId) {
+    const { data } = await supabase.from('clients').select('*')
+      .eq('id', choix.clientId).eq('organization_id', orgId).maybeSingle()
+    if (!data) return { success: false, error: 'Établissement introuvable' }
+    clientId = data.id; clientExistant = data
+  }
+
+  // Même société (même SIREN) sous un autre SIRET : un siège et son
+  // restaurant, ou deux restaurants d'un même exploitant. On ne tranche pas à
+  // la place de l'utilisateur, on lui demande : rattacher ou créer.
+  if (!clientId && !choix?.creerNouveau) {
+    const siren = (lead.siret || '').replace(/\D/g, '').slice(0, 9)
+    if (siren.length === 9) {
+      const { data: memeSociete } = await supabase.from('clients')
+        .select('id, raison_sociale, nom_commercial, siret, ville')
+        .eq('organization_id', orgId).like('siret', `${siren}%`)
+      const candidats = (memeSociete || []).filter((c: any) => (c.siret || '').replace(/\D/g, '').startsWith(siren))
+      if (candidats.length) {
+        return {
+          success: false,
+          error: `Un établissement de la même société existe déjà (${candidats.map((c: any) => c.nom_commercial || c.raison_sociale).join(', ')}) : convertissez le lead depuis la liste des leads pour choisir l\u2019établissement.`,
+          data: { etablissements: candidats },
+        }
+      }
     }
   }
 
@@ -438,7 +470,11 @@ export async function convertLeadToClientAction(leadId: string): Promise<ActionR
     // 2a. Client déjà là : on ne remplit que ce qui manque
     reutilise = true
     const patch: Record<string, unknown> = {}
+    // Rattaché à un autre établissement de la société : son identité et son
+    // adresse lui sont propres, on ne les recopie jamais depuis le lead
+    const propresEtablissement = choix?.clientId ? ['siret', 'raison_sociale', 'adresse', 'code_postal', 'ville', 'telephone', 'email'] : []
     for (const [cle, valeur] of Object.entries(champsClient)) {
+      if (propresEtablissement.includes(cle)) continue
       if (valeur === null || valeur === undefined || valeur === '') continue
       const actuel = clientExistant[cle]
       if (actuel === null || actuel === undefined || actuel === '') patch[cle] = valeur
@@ -810,10 +846,16 @@ async function createApprenantFromParticipant(supabase: any, orgId: string, clie
     if (nom) {
       const { data } = await supabase.from('apprenants').select('id, prenom, nom')
         .eq('organization_id', orgId).eq('client_id', clientId).ilike('nom', nom)
-      const m = (data || []).find((a: any) =>
-        (a.prenom || '').trim().toLowerCase() === prenom.toLowerCase() &&
-        (a.nom || '').trim().toLowerCase() === nom.toLowerCase())
+      const n = (x: string | null) => (x || '').trim().toLowerCase().replace(/\s+/g, ' ')
+      const m = (data || []).find((a: any) => n(a.prenom) === n(prenom) && n(a.nom) === n(nom))
       if (m) return m.id
+      // Prénom et nom saisis à l'envers sur l'une des deux fiches
+      if (prenom) {
+        const { data: croises } = await supabase.from('apprenants').select('id, prenom, nom')
+          .eq('organization_id', orgId).eq('client_id', clientId).ilike('nom', prenom)
+        const c = (croises || []).find((a: any) => n(a.nom) === n(prenom) && n(a.prenom) === n(nom))
+        if (c) return c.id
+      }
     }
   }
   const { data, error } = await supabase.from('apprenants').insert({
