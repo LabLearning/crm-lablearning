@@ -48,6 +48,7 @@ export default async function DashboardPage() {
       .gte('date_fin', today)
       .lte('date_debut', inThreeMonths)
       .not('status', 'eq', 'annulee')
+      .is('poei_intervention_id', null)
       .order('date_debut', { ascending: true })
       .limit(60),
     Promise.all([
@@ -68,8 +69,9 @@ export default async function DashboardPage() {
     .eq('status', 'terminee')
     .gte('date_fin', ilYA30j)
     .lt('date_fin', today)
+    .is('poei_intervention_id', null)
     .order('date_fin', { ascending: false })
-    .limit(24)
+    .limit(30)
 
   // État du process par session (conventions, contrats, inscriptions) — requêtes batchées
   const sessionIds = [...allSessions, ...(terminees || [])].map((s: any) => s.id)
@@ -87,10 +89,20 @@ export default async function DashboardPage() {
   const poeiParSession = new Map<string, string>()
   for (const p of (poeiRows.data || []) as any[]) if (p.session_id) { parcoursPoei.add(p.session_id); poeiParSession.set(p.session_id, p.id) }
 
+  // Parcours POEI de la fenêtre (30 jours passés à 3 mois), lus dans le
+  // dossier lui-même : un dossier sans session chapeau y figure quand même,
+  // et ce sont ses dates qui disent s'il est en cours, à venir ou terminé
+  // (le statut de la session chapeau n'est pas tenu à jour).
+  const { data: poeis } = await supabase.from('poei')
+    .select('id, numero, statut, date_debut, date_fin, session_id, poste_vise, client:client_id(raison_sociale), formation:formation_id(intitule), candidats:poei_candidats(id, statut)')
+    .eq('organization_id', organization.id)
+    .not('date_debut', 'is', null).gte('date_fin', ilYA30j).lte('date_debut', inThreeMonths)
+    .order('date_debut', { ascending: true })
+
   // Formateurs des parcours POEI : portés par les interventions, pas par la
   // session chapeau. Celui qui intervient aujourd'hui est cité en premier.
   const formateursParPoei = new Map<string, string>()
-  const poeiIds = [...new Set(poeiParSession.values())]
+  const poeiIds = ((poeis || []) as any[]).map((p) => p.id)
   if (poeiIds.length) {
     // Le formateur est sur l'intervention, ou sur la session d'intervention
     // qu'elle a engendrée (c'est elle que le formateur anime) : on lit les deux.
@@ -126,7 +138,25 @@ export default async function DashboardPage() {
   // périodes du parcours : elles n'apparaissent pas en plus de lui.
   const estPoei = (s: any) => !!s.formation?.is_poei || parcoursPoei.has(s.id) || !!s.poei_intervention_id
   const coteOpco = (s: any) => !estPoei(s)
-  const cotePoei = (s: any) => estPoei(s) && !s.poei_intervention_id
+
+  // Une ligne de tableau par dossier POEI : état déduit des dates du dossier,
+  // stagiaires = candidats non abandonnés, clic vers le dossier.
+  const poeiEnLigne = (p: any) => {
+    const fin = p.date_fin || p.date_debut
+    const status = fin < today ? 'terminee' : p.date_debut > today ? 'planifiee' : 'en_cours'
+    return {
+      id: p.id,
+      intitule: p.formation?.intitule || (p.poste_vise ? `POEI ${p.poste_vise}` : `POEI ${p.numero || ''}`.trim()),
+      formation: p.formation, client: p.client, formateur: null,
+      date_debut: p.date_debut, date_fin: fin, status,
+      _inscrits: ((p.candidats || []) as any[]).filter((c) => c.statut !== 'abandonne').length,
+      _href: `/dashboard/poei/${p.id}`, _poei: true, _formateurs: formateursParPoei.get(p.id),
+    }
+  }
+  const poeiLignes = ((poeis || []) as any[]).map(poeiEnLigne)
+  const poeiEnCours = poeiLignes.filter((x) => x.status === 'en_cours')
+  const poeiAVenir = poeiLignes.filter((x) => x.status === 'planifiee')
+  const poeiTerminees = poeiLignes.filter((x) => x.status === 'terminee').sort((a, b) => String(b.date_fin).localeCompare(String(a.date_fin)))
 
   const convBySession = new Map<string, string>()
   for (const c of (convRows.data || []) as any[]) convBySession.set(c.session_id, c.status)
@@ -136,16 +166,10 @@ export default async function DashboardPage() {
   for (const i of (inscRows.data || []) as any[]) inscritsBySession.set(i.session_id, (inscritsBySession.get(i.session_id) || 0) + 1)
 
   /** Session + état d'avancement, pour la barre de process du tableau de bord */
-  const sessionsEnCours = allSessions.filter(s => s.status === 'en_cours' || (s.date_debut <= today && s.date_fin >= today))
+  const sessionsEnCours = allSessions.filter(s => s.date_debut <= today && s.date_fin >= today)
   const sessionsAVenir = allSessions.filter(s => s.date_debut > today)
 
-  const enTableau = (s: any) => ({
-    ...s,
-    _inscrits: inscritsBySession.get(s.id) || 0,
-    _poei: estPoei(s),
-    _href: poeiParSession.has(s.id) ? `/dashboard/poei/${poeiParSession.get(s.id)}` : undefined,
-    _formateurs: poeiParSession.has(s.id) ? formateursParPoei.get(poeiParSession.get(s.id)!) : undefined,
-  })
+  const enTableau = (s: any) => (s._poei ? s : { ...s, _inscrits: inscritsBySession.get(s.id) || 0, _poei: false })
   const colonnes = [
     {
       cle: 'opco', titre: 'Sessions OPCO', Icone: Calendar, lienTous: '/dashboard/sessions', lienPassees: '/dashboard/sessions?periode=passees',
@@ -153,7 +177,7 @@ export default async function DashboardPage() {
     },
     {
       cle: 'poei', titre: 'POEI', Icone: Briefcase, lienTous: '/dashboard/poei', lienPassees: '/dashboard/poei',
-      enCours: sessionsEnCours.filter(cotePoei), aVenir: sessionsAVenir.filter(cotePoei), terminees: (terminees || []).filter(cotePoei),
+      enCours: poeiEnCours, aVenir: poeiAVenir, terminees: poeiTerminees,
     },
   ]
   const onboardingFlags = {
