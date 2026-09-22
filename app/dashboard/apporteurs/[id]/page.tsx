@@ -13,6 +13,7 @@ import {
   syncCommissionsApporteur, chargerCommissionsApporteur, totauxCommissions, nomApporteur, descriptionCommission,
 } from '@/lib/commission-apporteur'
 import { ApporteurCommissions } from '../ApporteurCommissions'
+import { ApporteurEditButton } from '../ApporteurEditButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,7 +75,10 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
 
   return (
     <div className="max-w-5xl mx-auto space-y-5 animate-fade-in">
-      <BackLink fallbackHref="/dashboard/apporteurs" label="Apporteurs" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700" />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <BackLink fallbackHref="/dashboard/apporteurs" label="Apporteurs" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700" />
+        {peutGerer && <ApporteurEditButton apporteur={a as any} />}
+      </div>
 
       {/* En-tête */}
       <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
