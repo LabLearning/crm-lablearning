@@ -5,7 +5,7 @@
 import type { BadgeVariant } from '@/lib/types'
 
 export type ModaliteFormation = 'presentiel' | 'distanciel' | 'mixte'
-export type SessionStatus = 'planifiee' | 'confirmee' | 'en_cours' | 'terminee' | 'annulee'
+export type SessionStatus = 'planifiee' | 'confirmee' | 'en_cours' | 'terminee' | 'annulee' | 'validee' | 'en_attente_signatures'
 export type SessionType = 'inter' | 'intra'
 export type SessionModalite = 'presentiel' | 'distanciel' | 'mixte'
 
@@ -209,6 +209,8 @@ export const MODALITE_COLORS: Record<ModaliteFormation, BadgeVariant> = {
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   planifiee: 'Planifiée',
   confirmee: 'Confirmée',
+  en_attente_signatures: 'En attente de signatures',
+  validee: 'Validée',
   en_cours: 'En cours',
   terminee: 'Terminée',
   annulee: 'Annulée',
@@ -220,6 +222,8 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
 export const SESSION_STATUS_COLORS: Record<SessionStatus, BadgeVariant> = {
   planifiee: 'info',
   confirmee: 'info',
+  en_attente_signatures: 'warning',
+  validee: 'info',
   en_cours: 'success',
   terminee: 'purple',
   annulee: 'danger',
