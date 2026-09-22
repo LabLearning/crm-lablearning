@@ -29,12 +29,14 @@ export interface SessionTableRow {
 
 const GRILLE = 'minmax(0,2.2fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.2fr) 70px 110px'
 
-export function SessionsTable({ titre, sessions, badge, vide, lienTous, compact = false }: {
+export function SessionsTable({ titre, sessions, badge, vide, lienTous, compact = false, sousTitre }: {
   titre: string
   sessions: SessionTableRow[]
   badge?: React.ReactNode
   vide: string
   lienTous?: string
+  /** Précision sous le titre, par exemple les bornes de la semaine. */
+  sousTitre?: string
   /** Liste de cartes à toutes les largeurs (colonnes côte à côte), sans tableau. */
   compact?: boolean
 }) {
@@ -46,6 +48,7 @@ export function SessionsTable({ titre, sessions, badge, vide, lienTous, compact 
           {badge}
           <span className="text-xs font-semibold text-surface-600 uppercase tracking-wider">{titre}</span>
           <span className="text-xs text-surface-400">{sessions.length}</span>
+          {sousTitre && <span className="text-xs text-surface-400 hidden sm:inline">· {sousTitre}</span>}
         </div>
         {lienTous && (
           <Link href={lienTous} className="text-xs text-brand-500 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 hover:text-brand-600">

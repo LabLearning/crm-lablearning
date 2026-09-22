@@ -12,9 +12,46 @@ import {
   MapPin, ChevronRight, Briefcase,
 } from '@/components/ui/icons'
 import { Badge } from '@/components/ui'
-import { formatDateTime } from '@/lib/utils'
+import { formatDateTime, formatDate } from '@/lib/utils'
 import { OnboardingGuide } from './OnboardingGuide'
 import { SessionsTable } from './SessionsTable'
+
+/** Lundi de la semaine qui contient la date (ISO, sans fuseau). */
+const lundiDe = (iso: string) => {
+  const d = new Date(iso.slice(0, 10) + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7))
+  return d.toISOString().slice(0, 10)
+}
+const plusJours = (iso: string, n: number) => {
+  const d = new Date(iso + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Regroupe des sessions par semaine : une session en cours est rangée dans
+ * la semaine courante, une session à venir dans la semaine de son premier
+ * jour. « Cette semaine » et « Semaine prochaine » sont toujours présentes,
+ * même vides ; les semaines suivantes n'apparaissent que si elles ont
+ * quelque chose.
+ */
+function parSemaine<T extends { date_debut: string }>(lignes: T[], today: string) {
+  const ceLundi = lundiDe(today)
+  const lundiSuivant = plusJours(ceLundi, 7)
+  const groupes = new Map<string, T[]>()
+  for (const s of lignes) {
+    const cle = lundiDe(s.date_debut > today ? s.date_debut : today)
+    if (!groupes.has(cle)) groupes.set(cle, [])
+    groupes.get(cle)!.push(s)
+  }
+  const cles = [ceLundi, lundiSuivant, ...[...groupes.keys()].filter((k) => k !== ceLundi && k !== lundiSuivant).sort()]
+  return cles.map((cle, i) => ({
+    cle,
+    label: i === 0 ? 'Cette semaine' : i === 1 ? 'Semaine prochaine' : `Semaine du ${formatDate(cle, { day: 'numeric', month: 'short' })}`,
+    sousTitre: `${formatDate(cle, { day: 'numeric', month: 'short' })} au ${formatDate(plusJours(cle, 6), { day: 'numeric', month: 'short' })}`,
+    lignes: (groupes.get(cle) || []).slice().sort((a, b) => a.date_debut.localeCompare(b.date_debut)),
+  }))
+}
 
 const ROLE_REDIRECTS: Record<string, string> = {
   directeur_commercial: '/dashboard/dirco-home',
@@ -173,11 +210,11 @@ export default async function DashboardPage() {
   const colonnes = [
     {
       cle: 'opco', titre: 'Sessions OPCO', Icone: Calendar, lienTous: '/dashboard/sessions', lienPassees: '/dashboard/sessions?periode=passees',
-      enCours: sessionsEnCours.filter(coteOpco), aVenir: sessionsAVenir.filter(coteOpco), terminees: (terminees || []).filter(coteOpco),
+      semaines: parSemaine([...sessionsEnCours, ...sessionsAVenir].filter(coteOpco), today), terminees: (terminees || []).filter(coteOpco),
     },
     {
       cle: 'poei', titre: 'POEI', Icone: Briefcase, lienTous: '/dashboard/poei', lienPassees: '/dashboard/poei',
-      enCours: poeiEnCours, aVenir: poeiAVenir, terminees: poeiTerminees,
+      semaines: parSemaine([...poeiEnCours, ...poeiAVenir], today), terminees: poeiTerminees,
     },
   ]
   const onboardingFlags = {
@@ -249,23 +286,23 @@ export default async function DashboardPage() {
                 <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">{c.titre}</h2>
               </div>
               <span className="text-xs text-surface-400 tabular-nums">
-                {c.enCours.length} en cours · {c.aVenir.length} à venir · {c.terminees.length} terminée{c.terminees.length > 1 ? 's' : ''}
+                {c.semaines[0].lignes.length} cette semaine · {c.semaines[1].lignes.length} semaine prochaine · {c.semaines.slice(2).reduce((n, w) => n + w.lignes.length, 0)} plus tard
               </span>
             </div>
-            <SessionsTable
-              compact
-              titre="En cours"
-              badge={<div className="h-2 w-2 rounded-full bg-success-500 animate-pulse" />}
-              sessions={c.enCours.map(enTableau)}
-              vide={c.cle === 'poei' ? 'Aucun parcours POEI en cours' : 'Aucune session en cours'}
-            />
-            <SessionsTable
-              compact
-              titre="À venir"
-              sessions={c.aVenir.slice(0, 8).map(enTableau)}
-              vide={c.cle === 'poei' ? 'Aucun parcours POEI programmé' : 'Aucune session programmée'}
-              lienTous={c.lienTous}
-            />
+            {c.semaines.map((sem, i) => (sem.lignes.length > 0 || i < 2) && (
+              <SessionsTable
+                key={sem.cle}
+                compact
+                titre={sem.label}
+                badge={i === 0 ? <div className="h-2 w-2 rounded-full bg-success-500 animate-pulse" /> : undefined}
+                sousTitre={sem.sousTitre}
+                sessions={sem.lignes.map(enTableau)}
+                vide={c.cle === 'poei'
+                  ? (i === 0 ? 'Aucun parcours POEI cette semaine' : 'Aucun parcours POEI programmé')
+                  : (i === 0 ? 'Aucune session cette semaine' : 'Aucune session programmée')}
+                lienTous={i === 1 ? c.lienTous : undefined}
+              />
+            ))}
             <SessionsTable
               compact
               titre="Terminées récemment"
