@@ -65,10 +65,10 @@ export default async function ClientsPage({
     if (apporteurRecord) {
       const { data: leadsWithClient } = await supabase
         .from('leads')
-        .select('client_id')
+        .select('converted_client_id')
         .eq('apporteur_id', apporteurRecord.id)
-        .not('client_id', 'is', null)
-      const clientIds = (leadsWithClient || []).map((l: any) => l.client_id).filter(Boolean)
+        .not('converted_client_id', 'is', null)
+      const clientIds = (leadsWithClient || []).map((l: any) => l.converted_client_id).filter(Boolean)
       if (clientIds.length > 0) {
         clientsQuery = clientsQuery.in('id', clientIds)
       } else {

@@ -249,7 +249,23 @@ export async function deleteClientAction(id: string): Promise<ActionResult> {
 }
 
 // ── Compte OPCO chiffré (coffre-fort par mot de passe) ──
-const OPCO_ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial']
+const OPCO_ROLES = ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial']
+
+/**
+ * Un commercial n'agit que sur les clients qu'il suit : assignés à lui, ou
+ * issus d'un lead qui lui est assigné. Même règle que l'ouverture de la fiche,
+ * appliquée ici côté serveur : l'identifiant du client arrive du navigateur.
+ */
+async function clientDuCommercial(supabase: any, session: { user: any; organization: any }, clientId: string): Promise<boolean> {
+  if (session.user.role !== 'commercial') return true
+  const { data: c } = await supabase.from('clients').select('assigned_to')
+    .eq('id', clientId).eq('organization_id', session.organization.id).maybeSingle()
+  if (!c) return false
+  if (c.assigned_to === session.user.id) return true
+  const { count } = await supabase.from('leads').select('id', { count: 'exact', head: true })
+    .eq('converted_client_id', clientId).eq('assigned_to', session.user.id).eq('organization_id', session.organization.id)
+  return !!count
+}
 
 const STATUTS_COMPTE_OPCO = ['aucun', 'courrier_envoye', 'en_attente_validation', 'actif', 'inactif']
 
@@ -300,6 +316,7 @@ export async function setClientCompteOpcoAction(
   if (!OPCO_ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   if (!STATUTS_COMPTE_OPCO.includes(compte.status)) return { success: false, error: 'État inconnu' }
   const supabase = await createServiceRoleClient()
+  if (!(await clientDuCommercial(supabase, session, clientId))) return { success: false, error: 'Accès non autorisé' }
 
   const { data: avant } = await supabase.from('clients')
     .select('opco_compte_status').eq('id', clientId).eq('organization_id', session.organization.id).maybeSingle()
@@ -351,6 +368,7 @@ export async function revealClientOpcoPasswordAction(clientId: string): Promise<
   const session = await getSession()
   if (!OPCO_ROLES.includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  if (!(await clientDuCommercial(supabase, session, clientId))) return { success: false, error: 'Accès non autorisé' }
   const { data: c } = await supabase.from('clients')
     .select('opco_compte_chiffre').eq('id', clientId).eq('organization_id', session.organization.id).maybeSingle()
   const blob: any = c?.opco_compte_chiffre

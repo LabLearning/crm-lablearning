@@ -47,7 +47,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     const { count } = await supabase
       .from('leads')
       .select('id', { count: 'exact', head: true })
-      .eq('client_id', params.id)
+      .eq('converted_client_id', params.id)
       .eq('assigned_to', session.user.id)
       .eq('organization_id', session.organization.id)
     if (!count) redirect('/dashboard/clients')
@@ -155,7 +155,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   // garde que l'existence et l'indice, réservés aux rôles qui peuvent l'ouvrir,
   // puis on retire le blob avant tout passage à un composant client
   // (ClientEditButton sérialise la ligne entière).
-  const peutGererCompteOpco = ['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)
+  const peutGererCompteOpco = ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'].includes(session.user.role)
   const aCoffre = !!(c as any).opco_compte_chiffre
   delete (c as any).opco_compte_chiffre
   // Carte « Compte OPCO » : entreprise rattachée à un OPCO, ou données déjà saisies
