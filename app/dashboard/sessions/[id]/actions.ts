@@ -104,7 +104,9 @@ export async function togglePresenceAction(
     .from('emargements')
     .update({
       est_present: estPresent,
-      motif_absence: estPresent === false ? (motifAbsence ?? null) : null,
+      // Une absence porte toujours un motif : sans lui, la ligne ne se
+      // distinguerait pas d'un créneau simplement pas encore signé
+      motif_absence: estPresent === false ? (motifAbsence?.trim() || 'Non précisé') : null,
     })
     .eq('id', emargementId)
   if (error) return { success: false, error: error.message }
@@ -1496,4 +1498,42 @@ export async function envoyerLienEmargementAction(sessionId: string, apprenantId
   if (!r.success) return { success: false, error: r.error || 'Envoi impossible' }
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true, data: { email: a.email } }
+}
+
+/**
+ * Rouvre une feuille d'émargement validée par le formateur.
+ *
+ * La validation verrouille la signature : un stagiaire ajouté après coup, ou
+ * qui n'a pas pu signer à temps, ne peut plus émarger. Rouvrir la feuille lui
+ * rend la main ; le formateur la valide de nouveau une fois la signature faite.
+ * Les signatures déjà posées sont conservées. Réservé à l'administration et
+ * tracé, parce que la feuille est une pièce Qualiopi.
+ */
+export async function rouvrirFeuilleEmargementAction(sessionId: string, date: string, creneau: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Réservé à l’administration' }
+  }
+  const supabase = await createServiceRoleClient()
+  const { data: s } = await supabase.from('sessions').select('id')
+    .eq('id', sessionId).eq('organization_id', session.organization.id).maybeSingle()
+  if (!s) return { success: false, error: 'Session introuvable' }
+
+  const { data: feuille } = await supabase.from('emargement_feuilles')
+    .select('id, validated_at')
+    .eq('session_id', sessionId).eq('date', date).eq('creneau', creneau).maybeSingle()
+  if (!feuille) return { success: false, error: 'Feuille introuvable' }
+  if (!feuille.validated_at) return { success: true }
+
+  const { error } = await supabase.from('emargement_feuilles')
+    .update({ validated_at: null, updated_at: new Date().toISOString() })
+    .eq('id', feuille.id)
+  if (error) return { success: false, error: error.message }
+
+  await logAudit({
+    action: 'rouvrir_feuille_emargement', entity_type: 'session', entity_id: sessionId,
+    details: { date, creneau, validee_le: feuille.validated_at },
+  })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true }
 }

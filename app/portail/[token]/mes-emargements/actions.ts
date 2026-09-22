@@ -26,13 +26,14 @@ export async function signerMonEmargementAction(
   const supabase = await createServiceRoleClient()
   const { data: em } = await supabase
     .from('emargements')
-    .select('id, session_id, date, creneau, apprenant_id, signature_data')
+    .select('id, session_id, date, creneau, apprenant_id, signature_data, motif_absence')
     .eq('id', emargementId)
     .eq('apprenant_id', context.apprenant.id)
     .single()
 
   if (!em) return { success: false, error: 'Émargement introuvable' }
   if (em.signature_data) return { success: false, error: 'Ce créneau est déjà signé' }
+  if (em.motif_absence) return { success: false, error: 'Le formateur vous a déclaré absent sur ce créneau' }
   if (String(em.date) > new Date().toISOString().slice(0, 10)) {
     return { success: false, error: 'Ce créneau n\'a pas encore eu lieu' }
   }
@@ -93,11 +94,13 @@ export async function signerMaJourneeAction(
   const supabase = await createServiceRoleClient()
   const { data: ems } = await supabase
     .from('emargements')
-    .select('id, creneau, est_present, signature_data')
+    .select('id, creneau, est_present, signature_data, motif_absence')
     .eq('apprenant_id', context.apprenant.id)
     .eq('session_id', sessionId)
     .eq('date', date)
-  const signables = (ems || []).filter((e) => !e.signature_data && e.est_present !== false)
+  // « présent = non » est l'état d'une ligne pas encore signée : seul un motif
+  // d'absence, posé par le formateur, retire le créneau des signables
+  const signables = (ems || []).filter((e) => !e.signature_data && !e.motif_absence)
   if (!signables.length) return { success: false, error: 'Aucun créneau à signer sur cette journée' }
 
   // Feuilles déjà validées par le formateur : créneaux verrouillés

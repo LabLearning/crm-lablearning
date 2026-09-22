@@ -541,7 +541,7 @@ export async function executerAction(type: string, params: any, orgId: string, u
       let q = supabase.from('emargements')
         .update(params.present
           ? { est_present: true, motif_absence: null }
-          : { est_present: false, motif_absence: params.motif || null })
+          : { est_present: false, motif_absence: params.motif || 'Non précisé' })
         .eq('organization_id', orgId).eq('session_id', String(params.session_id)).eq('apprenant_id', String(params.apprenant_id))
         .is('signature_data', null).is('validated_by', null)
       if (params.date) q = q.eq('date', String(params.date))

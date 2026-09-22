@@ -73,6 +73,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     { data: qcmBank },
     { data: conventions },
     { data: evaluationsAppr },
+    { data: feuillesEmargement },
   ] = await Promise.all([
     // Récupérer les émargements (y compris ceux qu'on vient de créer)
     supabase
@@ -132,6 +133,11 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
     supabase
       .from('evaluations_apprenant')
       .select('id, apprenant_id, intitule, note, note_max, appreciation, evaluateur, validated, date_evaluation')
+      .eq('session_id', params.id),
+    // Feuilles d'émargement : leur validation par le formateur verrouille la signature
+    supabase
+      .from('emargement_feuilles')
+      .select('date, creneau, validated_at')
       .eq('session_id', params.id),
   ])
 
@@ -365,6 +371,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         session={sessionData as any}
         inscriptions={(inscriptions || []) as any[]}
         emargements={(emargements || []) as any[]}
+        feuillesEmargement={(feuillesEmargement || []) as any[]}
         pointages={(pointages || []) as any[]}
         rapport={rapport as any}
         retoursClient={retoursClient as any[]}

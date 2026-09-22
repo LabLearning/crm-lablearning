@@ -49,8 +49,10 @@ export default async function PortalEmargementsPage({ params }: { params: { toke
             motif_absence: c.motif_absence,
             signe: !!c.signature_data,
           })),
-          // Journée signable : au moins un créneau passé, non signé, non absent
-          signable: tries.some((c: any) => !c.signature_data && date <= aujourdhui && c.est_present !== false),
+          // Journée signable : au moins un créneau passé, non signé, non absent.
+          // Une ligne naît avec « présent = non » tant qu'elle n'est pas signée :
+          // seul un motif d'absence (toujours posé par le formateur) fait l'absence.
+          signable: tries.some((c: any) => !c.signature_data && date <= aujourdhui && !c.motif_absence),
         }
       })
     return {

@@ -10,7 +10,7 @@ import {
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
   Star, ListChecks, FileSignature, Award, Euro, BookOpen, ClipboardList, FolderCheck, Mails, Route,
   QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2, Pencil, Sparkles, ReceiptEuro, Printer,
-  TrendingUp,
+  TrendingUp, Lock,
   ShieldCheck as PackHygieneIcon, Landmark,
 } from '@/components/ui/icons'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
@@ -37,7 +37,7 @@ import { SessionRentabilite } from './SessionRentabilite'
 import { SaisieQuestionnaire } from '@/components/qcm/SaisieQuestionnaire'
 import { SaisieRapide } from '@/components/qcm/SaisieRapide'
 import { DetailReponse } from '@/components/qcm/DetailReponse'
-import { marquerJourneePresentAction } from './actions'
+import { marquerJourneePresentAction, rouvrirFeuilleEmargementAction } from './actions'
 import { SessionContenuPedagogique } from './SessionContenuPedagogique'
 import { SessionRecueil } from './SessionRecueil'
 import { SessionForm } from '../SessionForm'
@@ -58,6 +58,8 @@ interface Props {
   clientsApprenants?: any[]
   inscriptions: any[]
   emargements: any[]
+  /** Feuilles d'émargement (date, créneau, validated_at) : une feuille validée verrouille la signature. */
+  feuillesEmargement?: { date: string; creneau: string; validated_at: string | null }[]
   pointages: any[]
   rapport: any
   retoursClient?: any[]
@@ -122,7 +124,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -268,6 +270,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
 
   const canChangeStatus = isFormateur || ['super_admin', 'gestionnaire', 'directeur_commercial'].includes(userRole)
   const canEmarge = isFormateur || ['super_admin', 'gestionnaire'].includes(userRole)
+  // Rouvrir une feuille validée : administration seulement (pièce Qualiopi)
+  const canRouvrirFeuille = ['super_admin', 'gestionnaire', 'directeur_commercial'].includes(userRole)
   const nextStatuses = STATUS_TRANSITIONS[session.status] || []
   const today = new Date().toISOString().split('T')[0]
 
@@ -342,6 +346,17 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
       router.refresh()
     })
   }
+  // Rouvre une feuille validée : un stagiaire ajouté après coup peut alors signer
+  function handleRouvrirFeuille(date: string, creneau: string) {
+    const libelle = creneau === 'matin' ? 'du matin' : creneau === 'apres_midi' ? 'de l\u2019après-midi' : 'de la journée'
+    if (!confirm(`Rouvrir la feuille ${libelle} du ${new Date(date).toLocaleDateString('fr-FR')} ? Les signatures déjà posées sont conservées ; le formateur devra la valider de nouveau.`)) return
+    startTransition(async () => {
+      const r = await rouvrirFeuilleEmargementAction(session.id, date, creneau)
+      if (r.success) { toast('success', 'Feuille rouverte : les stagiaires peuvent signer'); router.refresh() }
+      else toast('error', r.error || 'Erreur')
+    })
+  }
+
   function handleMarquerAbsent(emargementId: string) {
     // Motif optionnel — champ prévu par la feuille d'émargement
     const motif = window.prompt('Motif d\'absence (optionnel) :') || null
@@ -676,6 +691,18 @@ export function SessionDetailClient({ session, inscriptions, emargements, pointa
                         {dayEmargements.length > 0 && (
                           <span className="flex items-center gap-1"><UserCheck className="h-3 w-3" />{presentCount}/{dayEmargements.length}</span>
                         )}
+                        {feuillesEmargement.filter((f) => f.date === day && f.validated_at).sort((a, b) => (a.creneau === 'matin' ? -1 : 1) - (b.creneau === 'matin' ? -1 : 1)).map((f) => (
+                          <span key={f.creneau} className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-1.5 py-0.5 text-surface-600">
+                            <Lock className="h-3 w-3" />
+                            Feuille {f.creneau === 'matin' ? 'matin' : f.creneau === 'apres_midi' ? 'après-midi' : 'journée'} validée
+                            {canRouvrirFeuille && (
+                              <button type="button" disabled={isPending} onClick={() => handleRouvrirFeuille(day, f.creneau)}
+                                className="ml-0.5 font-semibold text-brand-600 hover:underline disabled:opacity-50">
+                                Rouvrir
+                              </button>
+                            )}
+                          </span>
+                        ))}
                         {dayPointage?.photo_arrivee_url && (
                           <a href={dayPointage.photo_arrivee_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-500 hover:text-emerald-600"><Camera className="h-3 w-3" />Arrivée</a>
                         )}
