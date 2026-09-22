@@ -92,12 +92,21 @@ export default async function DashboardPage() {
   const formateursParPoei = new Map<string, string>()
   const poeiIds = [...new Set(poeiParSession.values())]
   if (poeiIds.length) {
+    // Le formateur est sur l'intervention, ou sur la session d'intervention
+    // qu'elle a engendrée (c'est elle que le formateur anime) : on lit les deux.
     const { data: interv } = await supabase.from('poei_interventions')
-      .select('poei_id, date_debut, date_fin, formateur:formateur_id(prenom, nom)')
-      .in('poei_id', poeiIds).not('formateur_id', 'is', null).order('date_debut', { ascending: true })
+      .select('id, poei_id, date_debut, date_fin, formateur:formateur_id(prenom, nom)')
+      .in('poei_id', poeiIds).order('date_debut', { ascending: true })
+    const intervIds = ((interv || []) as any[]).map((i) => i.id)
+    const { data: sessInterv } = intervIds.length
+      ? await supabase.from('sessions').select('poei_intervention_id, formateur:formateurs(prenom, nom)').in('poei_intervention_id', intervIds).not('formateur_id', 'is', null)
+      : { data: [] as any[] }
+    const formateurSessionInterv = new Map<string, any>()
+    for (const x of (sessInterv || []) as any[]) if (x.formateur) formateurSessionInterv.set(x.poei_intervention_id, x.formateur)
     const parPoei = new Map<string, { nom: string; enCours: boolean }[]>()
     for (const i of (interv || []) as any[]) {
-      const nom = `${i.formateur?.prenom || ''} ${i.formateur?.nom || ''}`.trim()
+      const f = i.formateur || formateurSessionInterv.get(i.id)
+      const nom = `${f?.prenom || ''} ${f?.nom || ''}`.trim()
       if (!nom) continue
       const liste = parPoei.get(i.poei_id) || []
       const enCours = !!i.date_debut && !!i.date_fin && i.date_debut <= today && i.date_fin >= today
