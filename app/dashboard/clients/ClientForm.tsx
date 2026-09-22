@@ -246,14 +246,20 @@ export function ClientForm({ client, onSuccess, onCancel, users = [], canAssign 
             <Input id="effectif_libelle" name="effectif_libelle" label="Effectif" value={effectifLibelle} onChange={(e) => setEffectifLibelle(e.target.value)} placeholder="Ex: 10 à 19 salariés" />
           </div>
 
-          {/* Apporteur d'affaires à l'origine du client (commissions) */}
-          {apporteurs.length > 0 && (
+          {/* Apporteur d'affaires à l'origine du client : ses commissions se
+              calculent sur chaque session terminée de cet établissement */}
+          <div>
             <Select
               id="apporteur_id" name="apporteur_id" label="Apporteur d'affaires"
-              options={[{ value: '', label: '— Aucun —' }, ...apporteurs.map((a) => ({ value: a.id, label: a.label }))]}
+              options={[{ value: '', label: 'Aucun' }, ...apporteurs.map((a) => ({ value: a.id, label: a.label }))]}
               defaultValue={(client as any)?.apporteur_id || ''}
             />
-          )}
+            <p className="text-xs text-surface-400 mt-1">
+              {apporteurs.length > 0
+                ? 'L\u2019apporteur touche sa commission sur chaque formation réalisée chez ce client.'
+                : <>Aucun apporteur actif. <a href="/dashboard/apporteurs" className="text-brand-600 hover:underline">Créez-le dans Apporteurs</a>, puis revenez le choisir ici.</>}
+            </p>
+          </div>
 
           {/* Rattachement à un réseau de franchise (établissement multi-sites) */}
           {franchises.length > 0 && (

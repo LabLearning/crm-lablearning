@@ -20,7 +20,7 @@ const ROLE_REDIRECTS: Record<string, string> = {
   directeur_commercial: '/dashboard/dirco-home',
   commercial: '/dashboard/commercial',
   // Les rôles ci-dessous ont une interface portail dédiée (pas de dashboard admin)
-  apporteur_affaires: '/mon-espace',
+  apporteur_affaires: '/apporteur',
   formateur: '/mon-espace',
   apprenant: '/mon-espace',
   franchise: '/franchise',

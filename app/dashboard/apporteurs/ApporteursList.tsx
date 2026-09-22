@@ -66,6 +66,9 @@ function ApporteurForm({ apporteur, onDone }: { apporteur?: ApporteurAffaires; o
       </div>
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Commission</div>
+      <p className="text-xs text-surface-500 -mt-2">
+        Calculée sur chaque formation terminée chez un établissement rattaché à cet apporteur : montant pris en charge par l&apos;OPCO, sinon prix HT de la session.
+      </p>
       <div className="flex gap-2 mb-3">
         {['pourcentage', 'fixe'].map((m) => (
           <button key={m} type="button" onClick={() => setModeCalc(m)}
@@ -76,9 +79,9 @@ function ApporteurForm({ apporteur, onDone }: { apporteur?: ApporteurAffaires; o
         ))}
       </div>
       {modeCalc === 'pourcentage' ? (
-        <Input id="taux_commission" name="taux_commission" type="number" label="Taux de commission (%)" defaultValue={apporteur?.taux_commission?.toString() || '10'} />
+        <Input id="taux_commission" name="taux_commission" type="number" step="0.5" min="0" max="100" label="Taux de commission (%)" defaultValue={apporteur?.taux_commission?.toString() || '10'} error={errors.taux_commission?.[0]} />
       ) : (
-        <Input id="commission_fixe" name="commission_fixe" type="number" label="Commission fixe (€)" defaultValue={apporteur?.commission_fixe?.toString() || ''} />
+        <Input id="commission_fixe" name="commission_fixe" type="number" step="1" min="0" label="Commission fixe (€) par formation réalisée" defaultValue={apporteur?.commission_fixe?.toString() || ''} error={errors.commission_fixe?.[0]} />
       )}
 
       <div className="grid grid-cols-2 gap-3">
@@ -168,10 +171,13 @@ export function ApporteursList({ apporteurs }: ApporteursListProps) {
               {a.telephone && <div>{a.telephone}</div>}
             </div>
 
-            <div className="mt-3 pt-3 border-t border-surface-100">
+            <div className="mt-3 pt-3 border-t border-surface-100 flex items-center justify-between gap-3">
+              <Link href={`/dashboard/apporteurs/${a.id}`} className="text-xs font-medium text-surface-600 hover:text-brand-600 transition-colors">
+                Commissions et établissements
+              </Link>
               <a href={`/api/pdf/contrat-apporteur/${a.id}`} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs font-medium text-brand-500 hover:text-brand-600 transition-colors">
-                <Download className="h-3.5 w-3.5" /> Télécharger le contrat
+                <Download className="h-3.5 w-3.5" /> Contrat
               </a>
             </div>
           </div>

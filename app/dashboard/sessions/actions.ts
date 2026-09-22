@@ -636,6 +636,15 @@ export async function updateSessionStatusAction(id: string, status: string): Pro
       const r = await seedQcmReponsesForSession(supabase, id, t)
       if (r.created > 0) await notifyApprenantsForQcm(supabase, id, t)
     }
+    // Commission de l'apporteur d'affaires de l'établissement, s'il en a un
+    try {
+      const { data: s } = await supabase.from('sessions').select('client:client_id(apporteur_id)').eq('id', id).maybeSingle()
+      const apporteurId = (s as any)?.client?.apporteur_id
+      if (apporteurId) {
+        const { syncCommissionsApporteur } = await import('@/lib/commission-apporteur')
+        await syncCommissionsApporteur(supabase, session.organization.id, { apporteurId })
+      }
+    } catch (e) { console.error('[commission apporteur]', e) }
   }
 
   await logAudit({ action: 'update_status', entity_type: 'session', entity_id: id, details: { status } })

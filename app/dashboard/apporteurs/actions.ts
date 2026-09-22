@@ -202,3 +202,142 @@ export async function deleteApporteurAction(id: string): Promise<ActionResult> {
   revalidatePath('/dashboard/apporteurs')
   return { success: true }
 }
+
+// ─── Commissions par session ─────────────────────────────────────────────────
+
+function peutGererCommissions(role: string) {
+  return ['super_admin', 'gestionnaire', 'directeur_commercial', 'comptable'].includes(role)
+}
+
+function rafraichirCommissions(apporteurId: string) {
+  revalidatePath(`/dashboard/apporteurs/${apporteurId}`)
+  revalidatePath('/dashboard/apporteurs')
+  revalidatePath('/apporteur')
+  revalidatePath('/apporteur/commissions')
+}
+
+/** Aligne les commissions d'un apporteur sur les sessions terminées de ses établissements (bouton « Recalculer »). */
+export async function syncCommissionsApporteurAction(apporteurId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+  const { syncCommissionsApporteur } = await import('@/lib/commission-apporteur')
+  const r = await syncCommissionsApporteur(supabase, session.organization.id, { apporteurId })
+  rafraichirCommissions(apporteurId)
+  return { success: true, data: { creees: r.creees, misesAJour: r.misesAJour, validees: r.validees, supprimees: r.supprimees, sansMontant: r.sansMontant } }
+}
+
+/**
+ * Change l'état d'une commission : en_attente, validee (à verser), payee
+ * (versée, avec référence de virement), annulee. L'apporteur est prévenu
+ * quand la ligne passe à verser ou versée.
+ */
+export async function updateCommissionApporteurStatusAction(
+  commissionId: string,
+  status: 'en_attente' | 'validee' | 'payee' | 'annulee',
+  reference?: string,
+): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!['en_attente', 'validee', 'payee', 'annulee'].includes(status)) return { success: false, error: 'État inconnu' }
+  const supabase = await createServiceRoleClient()
+
+  const { data: ligne } = await supabase.from('commissions')
+    .select('id, apporteur_id, session_id, status, montant_commission, libelle, date_validation, client:client_id(raison_sociale, nom_commercial)')
+    .eq('id', commissionId).eq('organization_id', session.organization.id).maybeSingle()
+  if (!ligne) return { success: false, error: 'Commission introuvable' }
+
+  const now = new Date().toISOString()
+  const patch: Record<string, unknown> = { status }
+  if (status === 'validee') { patch.date_validation = ligne.date_validation || now; patch.date_paiement = null; patch.reference_paiement = null }
+  if (status === 'payee') { patch.date_validation = ligne.date_validation || now; patch.date_paiement = now; patch.reference_paiement = reference?.trim() || null }
+  if (status === 'en_attente' || status === 'annulee') { patch.date_validation = null; patch.date_paiement = null; patch.reference_paiement = null }
+
+  const { error } = await supabase.from('commissions').update(patch).eq('id', commissionId)
+  if (error) return { success: false, error: error.message }
+
+  if (status === 'validee' || status === 'payee') {
+    const { notifierApporteur } = await import('@/lib/apporteur-notify')
+    const montant = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(Number(ligne.montant_commission || 0))
+    const etab = (ligne.client as any)?.nom_commercial || (ligne.client as any)?.raison_sociale || 'un établissement'
+    const formation = (ligne.libelle || '').split(' · ')[0] || 'une formation'
+    await notifierApporteur(supabase, ligne.apporteur_id, session.organization.id, {
+      titre: status === 'payee' ? 'Commission versée' : 'Commission à verser',
+      message: status === 'payee'
+        ? `Votre commission de ${montant} (${formation}, ${etab}) a été versée.`
+        : `Votre commission de ${montant} (${formation}, ${etab}) est validée et sera versée prochainement.`,
+      type: status === 'payee' ? 'success' : 'info',
+      lienUrl: '/apporteur/commissions',
+      lienLabel: 'Voir mes commissions',
+      entityType: 'commission',
+      entityId: commissionId,
+      email: {
+        subject: status === 'payee' ? `Versement de commission : ${montant}` : `Commission validée : ${montant}`,
+        docTitle: status === 'payee' ? 'Votre commission a été versée' : 'Votre commission a été validée',
+        intro: status === 'payee'
+          ? `Votre commission liée à la formation « ${formation} » chez ${etab} vient d'être versée.`
+          : `Votre commission liée à la formation « ${formation} » chez ${etab} est validée et sera versée prochainement.`,
+        metadata: [
+          ['Établissement', etab],
+          ['Formation', formation],
+          ['Montant HT', montant],
+          ...(status === 'payee' && reference?.trim() ? [['Référence du virement', reference.trim()] as [string, string]] : []),
+          [status === 'payee' ? 'Date de versement' : 'Validée le', new Date().toLocaleDateString('fr-FR')],
+        ],
+        ctaLabel: 'Voir mes commissions',
+      },
+    })
+  }
+
+  await logAudit({ action: `commission_apporteur_${status}`, entity_type: 'commission', entity_id: commissionId, details: { apporteur_id: ligne.apporteur_id, session_id: ligne.session_id, montant: ligne.montant_commission, reference: reference || null } })
+  rafraichirCommissions(ligne.apporteur_id)
+  if (ligne.session_id) revalidatePath(`/dashboard/sessions/${ligne.session_id}`)
+  return { success: true }
+}
+
+/** Versement groupé : toutes les commissions à verser de l'apporteur passent en versées. */
+export async function payerCommissionsApporteurAction(apporteurId: string, reference?: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+
+  const { data: aPayer } = await supabase.from('commissions').select('id, montant_commission')
+    .eq('organization_id', orgId).eq('apporteur_id', apporteurId).eq('status', 'validee')
+  if (!(aPayer || []).length) return { success: false, error: 'Aucune commission à verser' }
+  const total = (aPayer || []).reduce((s: number, c: any) => s + Number(c.montant_commission || 0), 0)
+
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('commissions')
+    .update({ status: 'payee', date_paiement: now, reference_paiement: reference?.trim() || null })
+    .eq('organization_id', orgId).eq('apporteur_id', apporteurId).eq('status', 'validee')
+  if (error) return { success: false, error: error.message }
+
+  const montant = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(total)
+  const { notifierApporteur } = await import('@/lib/apporteur-notify')
+  await notifierApporteur(supabase, apporteurId, orgId, {
+    titre: 'Commissions versées',
+    message: `Un versement de ${montant} couvrant ${(aPayer || []).length} commission${(aPayer || []).length > 1 ? 's' : ''} a été effectué.`,
+    type: 'success',
+    lienUrl: '/apporteur/commissions',
+    lienLabel: 'Voir mes commissions',
+    entityType: 'apporteur',
+    entityId: apporteurId,
+    email: {
+      subject: `Versement de commissions : ${montant}`,
+      docTitle: 'Versement de commissions',
+      intro: `Un versement groupé vient d'être effectué pour l'ensemble de vos commissions validées.`,
+      metadata: [
+        ['Montant total HT', montant],
+        ['Commissions', String((aPayer || []).length)],
+        ...(reference?.trim() ? [['Référence du virement', reference.trim()] as [string, string]] : []),
+        ['Date', new Date().toLocaleDateString('fr-FR')],
+      ],
+      ctaLabel: 'Voir mes commissions',
+    },
+  })
+
+  await logAudit({ action: 'commissions_apporteur_payees', entity_type: 'apporteur', entity_id: apporteurId, details: { total, lignes: (aPayer || []).length, reference: reference || null } })
+  rafraichirCommissions(apporteurId)
+  return { success: true, data: { total } }
+}

@@ -4,33 +4,41 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   Building2, Mail, Phone, MapPin, Handshake, Users, GraduationCap,
-  Banknote, ReceiptEuro, TrendingUp, CheckCircle2,
+  Banknote, Clock, CheckCircle2, CalendarDays, UserCog,
 } from '@/components/ui/icons'
 import { Badge, Avatar } from '@/components/ui'
 import { BackLink } from '@/components/ui/BackLink'
 import { formatDate } from '@/lib/utils'
+import {
+  syncCommissionsApporteur, chargerCommissionsApporteur, totauxCommissions, nomApporteur, descriptionCommission,
+} from '@/lib/commission-apporteur'
+import { ApporteurCommissions } from '../ApporteurCommissions'
 
 export const dynamic = 'force-dynamic'
 
-const eur = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} €`
+const eur = (n: number) =>
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(n || 0))
 
 /**
- * Fiche apporteur d'affaires : ses clients apportés, leurs sessions, le CA
- * facturé qu'ils génèrent et la commission qui en découle — le pendant de
- * l'espace franchise, côté apporteurs.
+ * Fiche apporteur d'affaires : sa règle de commission, ses établissements,
+ * et chaque commission générée par une session terminée chez eux, avec
+ * son état (en attente, à verser, versée).
  */
 export default async function ApporteurDetailPage({ params }: { params: { id: string } }) {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
+  const peutGerer = ['super_admin', 'gestionnaire', 'directeur_commercial', 'comptable'].includes(session.user.role)
 
   const { data: a } = await supabase.from('apporteurs_affaires')
     .select('*').eq('id', params.id).eq('organization_id', orgId).maybeSingle()
   if (!a) redirect('/dashboard/apporteurs')
 
-  const nomAff = a.nom_enseigne || a.raison_sociale || `${a.prenom || ''} ${a.nom || ''}`.trim() || 'Apporteur'
+  const nomAff = nomApporteur(a)
+  const sync = await syncCommissionsApporteur(supabase, orgId, { apporteurId: params.id })
 
-  const [{ data: clients }, { data: leads }, { data: commissions }] = await Promise.all([
+  const [lignes, { data: clients }, { data: leads }, { data: compte }] = await Promise.all([
+    chargerCommissionsApporteur(supabase, params.id, orgId),
     supabase.from('clients')
       .select('id, raison_sociale, nom_commercial, ville, created_at')
       .eq('organization_id', orgId).eq('apporteur_id', params.id)
@@ -39,75 +47,59 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
       .select('id, entreprise, status, created_at')
       .eq('organization_id', orgId).eq('apporteur_id', params.id)
       .order('created_at', { ascending: false }).limit(20),
-    supabase.from('commissions')
-      .select('*').eq('apporteur_id', params.id)
-      .order('created_at', { ascending: false }).limit(20),
+    a.user_id
+      ? supabase.from('users').select('id, status, email').eq('id', a.user_id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
   ])
 
-  const clientIds = (clients || []).map((c) => c.id)
+  const clientIds = (clients || []).map((c: any) => c.id)
+  const { data: sessionsAVenir } = clientIds.length
+    ? await supabase.from('sessions').select('id', { count: 'exact', head: false })
+        .eq('organization_id', orgId).in('client_id', clientIds).in('status', ['planifiee', 'confirmee', 'en_cours'])
+    : { data: [] as any[] }
 
-  // Sessions et CA facturé des clients apportés
-  let sessions: any[] = []
-  let caFacture = 0
-  let caPaye = 0
-  if (clientIds.length) {
-    const [{ data: sess }, { data: factures }] = await Promise.all([
-      supabase.from('sessions')
-        .select('id, reference, date_debut, status, client_id, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial)')
-        .eq('organization_id', orgId).in('client_id', clientIds)
-        .order('date_debut', { ascending: false }).limit(30),
-      supabase.from('factures')
-        .select('montant_ht, status').eq('organization_id', orgId).in('client_id', clientIds)
-        .neq('status', 'annulee'),
-    ])
-    sessions = sess || []
-    caFacture = (factures || []).reduce((s2, f: any) => s2 + Number(f.montant_ht || 0), 0)
-    caPaye = (factures || []).filter((f: any) => f.status === 'payee').reduce((s2, f: any) => s2 + Number(f.montant_ht || 0), 0)
-  }
-
-  // Commission : taux de l'apporteur appliqué au CA facturé (estimation) ;
-  // les versements réels vivent dans la table commissions.
-  const taux = Number(a.taux_commission) || 0
-  const commissionEstimee = taux > 0 ? (caFacture * taux) / 100 : Number(a.commission_fixe || 0) * (clients || []).length
-  const commissionsVersees = (commissions || [])
-    .filter((c: any) => ['payee', 'versee'].includes(String(c.status || c.statut || '')))
-    .reduce((s2, c: any) => s2 + Number(c.montant || c.montant_ht || 0), 0)
+  const t = totauxCommissions(lignes)
+  const actives = lignes.filter((l) => l.status !== 'annulee')
 
   const kpis = [
-    { Icon: Building2, label: 'Clients apportés', valeur: String((clients || []).length) },
-    { Icon: GraduationCap, label: 'Sessions générées', valeur: String(sessions.length) },
-    { Icon: TrendingUp, label: 'CA facturé', valeur: eur(caFacture), sous: caPaye ? `dont ${eur(caPaye)} encaissés` : undefined },
-    {
-      Icon: ReceiptEuro,
-      label: taux > 0 ? `Commission (${taux} %)` : 'Commission',
-      valeur: eur(commissionEstimee),
-      sous: commissionsVersees ? `${eur(commissionsVersees)} déjà versés` : 'estimation sur CA facturé',
-    },
+    { Icon: Building2, label: 'Établissements apportés', valeur: String((clients || []).length), sous: (sessionsAVenir || []).length ? `${(sessionsAVenir || []).length} session${(sessionsAVenir || []).length > 1 ? 's' : ''} à venir` : undefined },
+    { Icon: GraduationCap, label: 'Formations commissionnées', valeur: String(actives.length), sous: `${eur(actives.reduce((s, l) => s + Number(l.montant_base || 0), 0))} de base` },
+    { Icon: Banknote, label: 'À verser', valeur: eur(t.validee), sous: t.en_attente ? `${eur(t.en_attente)} en attente d’encaissement` : undefined },
+    { Icon: CheckCircle2, label: 'Versées', valeur: eur(t.payee), sous: t.nb.payee ? `${t.nb.payee} versement${t.nb.payee > 1 ? 's' : ''}` : undefined },
   ]
+
+  const periodeContrat = a.date_debut_contrat || a.date_fin_contrat
+    ? `Contrat ${a.date_debut_contrat ? `du ${formatDate(a.date_debut_contrat, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}${a.date_fin_contrat ? ` au ${formatDate(a.date_fin_contrat, { day: 'numeric', month: 'short', year: 'numeric' })}` : ' sans échéance'}`
+    : null
 
   return (
     <div className="max-w-5xl mx-auto space-y-5 animate-fade-in">
       <BackLink fallbackHref="/dashboard/apporteurs" label="Apporteurs" className="inline-flex items-center gap-2 text-sm text-surface-500 hover:text-surface-700" />
 
       {/* En-tête */}
-      <div className="card p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+      <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-5">
         <Avatar firstName={a.prenom || nomAff} lastName={a.nom || ''} size="xl" className="!h-16 !w-16" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-xl font-heading font-bold text-surface-900">{nomAff}</h1>
             <Badge variant={a.is_active ? 'success' : 'default'} dot>{a.is_active ? 'Actif' : 'Inactif'}</Badge>
             {a.categorie && <Badge variant="purple">{a.categorie}</Badge>}
+            {compte && <Badge variant={compte.status === 'active' ? 'info' : 'warning'}>{compte.status === 'active' ? 'Compte actif' : 'Invitation envoyée'}</Badge>}
           </div>
+          {a.raison_sociale && a.raison_sociale !== nomAff && <div className="text-sm text-surface-500 mt-0.5">{a.raison_sociale}</div>}
           <div className="flex items-center gap-4 mt-2 text-sm text-surface-500 flex-wrap">
             {a.email && <a href={`mailto:${a.email}`} className="flex items-center gap-1 hover:text-surface-700"><Mail className="h-3.5 w-3.5" />{a.email}</a>}
             {a.telephone && <a href={`tel:${a.telephone}`} className="flex items-center gap-1 hover:text-surface-700"><Phone className="h-3.5 w-3.5" />{a.telephone}</a>}
             {a.ville && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{a.ville}</span>}
           </div>
-          <div className="flex items-center gap-4 mt-1.5 text-xs text-surface-400 flex-wrap">
-            {taux > 0 && <span className="flex items-center gap-1"><Banknote className="h-3.5 w-3.5" />Commission : {taux} % {a.mode_calcul ? `(${a.mode_calcul})` : ''}</span>}
-            {Number(a.commission_fixe) > 0 && <span>Fixe : {eur(Number(a.commission_fixe))} / dossier</span>}
-            {a.date_debut_contrat && <span>Contrat depuis le {formatDate(a.date_debut_contrat, { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+          <div className="flex items-center gap-4 mt-2 text-xs text-surface-500 flex-wrap">
+            <span className="inline-flex items-center gap-1 font-medium text-surface-700"><Banknote className="h-3.5 w-3.5 text-brand-500" />{descriptionCommission(a)}</span>
+            {periodeContrat && <span className="inline-flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{periodeContrat}</span>}
+            {compte?.id && session.user.role === 'super_admin' && (
+              <Link href="/dashboard/users" className="inline-flex items-center gap-1 text-brand-600 hover:underline"><UserCog className="h-3.5 w-3.5" />Voir son espace depuis Utilisateurs</Link>
+            )}
           </div>
+          {a.conditions && <p className="text-xs text-surface-500 mt-2 max-w-2xl">{a.conditions}</p>}
         </div>
       </div>
 
@@ -123,60 +115,40 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
         ))}
       </div>
 
-      {/* Clients apportés */}
+      {/* Commissions par état */}
+      <ApporteurCommissions apporteurId={params.id} lignes={lignes} peutGerer={peutGerer} sansMontant={sync.sansMontant} />
+
+      {/* Établissements apportés */}
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
           <Handshake className="h-4 w-4 text-brand-500" />
-          <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Clients apportés ({(clients || []).length})</span>
+          <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Établissements apportés ({(clients || []).length})</span>
         </div>
         {(clients || []).length === 0 ? (
-          <div className="text-center py-8 text-sm text-surface-400">
-            Aucun client rattaché — assignez cet apporteur depuis la fiche d&apos;un client.
+          <div className="text-center py-8 text-sm text-surface-400 px-6">
+            Aucun établissement rattaché. Choisissez cet apporteur dans le formulaire d&apos;un client (bouton Modifier de la fiche client).
           </div>
         ) : (
           <div className="divide-y divide-surface-100">
-            {(clients || []).map((c: any) => (
-              <Link key={c.id} href={`/dashboard/clients/${c.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                <Building2 className="h-4 w-4 text-surface-400 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-surface-900 truncate">{c.nom_commercial || c.raison_sociale}</div>
-                  <div className="text-xs text-surface-500">{[c.ville, `apporté le ${formatDate(c.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}`].filter(Boolean).join(' · ')}</div>
-                </div>
-              </Link>
-            ))}
+            {(clients || []).map((c: any) => {
+              const total = lignes.filter((l) => l.client_id === c.id && l.status !== 'annulee').reduce((s, l) => s + Number(l.montant_commission || 0), 0)
+              return (
+                <Link key={c.id} href={`/dashboard/clients/${c.id}`}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                  <Building2 className="h-4 w-4 text-surface-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-surface-900 truncate">{c.nom_commercial || c.raison_sociale}</div>
+                    <div className="text-xs text-surface-500">{[c.ville, `rattaché le ${formatDate(c.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}`].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  {total > 0 && <span className="text-sm font-semibold text-surface-700 tabular-nums">{eur(total)}</span>}
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
 
-      {/* Sessions générées */}
-      {sessions.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
-            <GraduationCap className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Sessions des clients apportés ({sessions.length})</span>
-          </div>
-          <div className="divide-y divide-surface-100">
-            {sessions.slice(0, 12).map((s2: any) => (
-              <Link key={s2.id} href={`/dashboard/sessions/${s2.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                {s2.status === 'terminee'
-                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                  : <GraduationCap className="h-4 w-4 text-surface-400 shrink-0" />}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-surface-900 truncate">{s2.formation?.intitule || s2.reference}</div>
-                  <div className="text-xs text-surface-500">
-                    {[s2.client?.nom_commercial || s2.client?.raison_sociale, s2.date_debut ? formatDate(s2.date_debut, { day: 'numeric', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ')}
-                  </div>
-                </div>
-                <Badge variant={s2.status === 'terminee' ? 'purple' : 'default'}>{s2.status === 'terminee' ? 'Terminée' : s2.status}</Badge>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Leads apportés */}
+      {/* Leads apportés (ancien circuit) */}
       {(leads || []).length > 0 && (
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
@@ -198,24 +170,11 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
         </div>
       )}
 
-      {/* Versements de commissions */}
-      {(commissions || []).length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
-            <ReceiptEuro className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Commissions ({(commissions || []).length})</span>
-          </div>
-          <div className="divide-y divide-surface-100">
-            {(commissions || []).map((c: any) => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                <Banknote className="h-4 w-4 text-surface-400 shrink-0" />
-                <div className="flex-1 min-w-0 text-sm text-surface-900">{eur(Number(c.montant || c.montant_ht || 0))}</div>
-                <span className="text-xs text-surface-400">{formatDate(c.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                <Badge variant="default">{String(c.status || c.statut || '—')}</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
+      {t.nb.en_attente > 0 && (
+        <p className="text-xs text-surface-400 inline-flex items-start gap-1.5 px-1">
+          <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          Les lignes en attente sont recalculées à chaque ouverture de cette fiche : une session terminée, un prix modifié ou une facture réglée s&apos;y reflètent d&apos;eux-mêmes. Les lignes à verser ou versées sont figées.
+        </p>
       )}
     </div>
   )

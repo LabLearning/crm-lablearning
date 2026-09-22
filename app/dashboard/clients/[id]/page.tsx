@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Mail, Phone, Globe, MapPin, Building2, User, FileText,
-  Receipt, FolderOpen, Users, Hash, Banknote, Calendar,
+  Receipt, FolderOpen, Users, Hash, Banknote, Calendar, Handshake,
 } from '@/components/ui/icons'
 import { Badge, BackLink } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
@@ -65,6 +65,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     { data: documents },
     { data: sessions },
     { data: franchises },
+    { data: apporteursActifs },
+    { data: apporteurClient },
   ] = await Promise.all([
     supabase.from('contacts').select('*').eq('client_id', params.id).order('est_principal', { ascending: false }),
     supabase.from('leads').select('*').eq('converted_client_id', params.id).order('created_at', { ascending: false }),
@@ -80,8 +82,22 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     // gardent leur client_id et s'affichaient ici en double ou en triple.
     supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, status, formateur:formateurs(prenom, nom), formation:formation_id(intitule)').eq('client_id', params.id).eq('organization_id', session.organization.id).order('date_debut', { ascending: false }),
     supabase.from('franchises').select('id, nom').eq('organization_id', session.organization.id).eq('is_active', true).order('nom'),
+    supabase.from('apporteurs_affaires').select('id, nom, prenom, raison_sociale, nom_enseigne').eq('organization_id', session.organization.id).eq('is_active', true).order('raison_sociale'),
+    (client as any).apporteur_id
+      ? supabase.from('apporteurs_affaires').select('id, nom, prenom, raison_sociale, nom_enseigne, taux_commission, commission_fixe, mode_calcul, is_active').eq('id', (client as any).apporteur_id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
   ])
   const sessionsList = (sessions || []) as any[]
+  const nomApp = (a: any) => a.nom_enseigne || a.raison_sociale || `${a.prenom || ''} ${a.nom || ''}`.trim() || 'Apporteur'
+  const apporteursOptions = ((apporteursActifs || []) as any[]).map((a) => ({ id: a.id, label: nomApp(a) }))
+  if (apporteurClient && !apporteursOptions.some((o) => o.id === apporteurClient.id)) {
+    apporteursOptions.push({ id: apporteurClient.id, label: `${nomApp(apporteurClient)} (inactif)` })
+  }
+  const regleApporteur = apporteurClient
+    ? apporteurClient.mode_calcul === 'fixe'
+      ? `${Number(apporteurClient.commission_fixe || 0).toLocaleString('fr-FR')} € par formation réalisée`
+      : `${Number(apporteurClient.taux_commission || 0).toLocaleString('fr-FR')} % du montant HT de chaque formation réalisée`
+    : null
 
   // Audits hygiène / DUERP réalisés sur les établissements de ce client
   // (miroir d'AuditHygiène Pro — absent tant que la migration 114 n'est pas passée).
@@ -189,7 +205,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <Calendar className="h-4 w-4" /> Créer une session
             </Link>
           )}
-          <ClientEditButton client={c} users={(users || []) as any[]} franchises={(franchises || []) as any[]} canAssign={canAssign} />
+          <ClientEditButton client={c} users={(users || []) as any[]} franchises={(franchises || []) as any[]} apporteurs={apporteursOptions} canAssign={canAssign} />
         </div>
       </div>
 
@@ -263,6 +279,28 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               {(c as any).convention_collective && <InfoRow icon={FileText} label="Convention collective" value={(c as any).convention_collective} />}
             </div>
           )}
+
+          {/* Apporteur d'affaires à l'origine du client */}
+          <div className="card p-5">
+            <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-2">Apporteur d&apos;affaires</div>
+            {apporteurClient ? (
+              <>
+                <Link href={`/dashboard/apporteurs/${apporteurClient.id}`} className="flex items-center gap-2.5 group">
+                  <div className="h-9 w-9 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><Handshake className="h-4 w-4" /></div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-surface-900 group-hover:text-brand-600 truncate">{nomApp(apporteurClient)}</div>
+                    <div className="text-xs text-surface-500 truncate">{regleApporteur}</div>
+                  </div>
+                </Link>
+                {apporteurClient.is_active === false && <div className="text-xs text-warning-600 mt-2">Apporteur désactivé : ses commissions ne sont plus calculées.</div>}
+                <p className="text-xs text-surface-400 mt-2">La commission naît à chaque session terminée de cet établissement.</p>
+              </>
+            ) : (
+              <p className="text-sm text-surface-400">
+                Aucun apporteur. {canAssign ? 'Choisissez-le via le bouton Modifier.' : ''}
+              </p>
+            )}
+          </div>
 
           {compteOpcoVisible && (
             <ClientCompteOpco

@@ -12,6 +12,10 @@ export default async function MonEspaceLayout({ children }: { children: React.Re
   if (!PORTAIL_ROLES.includes(session.user.role)) {
     redirect('/dashboard')
   }
+  // Les apporteurs d'affaires ont leur propre espace (commissions, établissements)
+  if (session.user.role === 'apporteur_affaires') {
+    redirect('/apporteur')
+  }
 
   return (
     <MonEspaceShell user={session.user} orgName={session.organization.name} impersonatedBy={session.impersonatedBy}>
