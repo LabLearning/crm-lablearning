@@ -6,6 +6,7 @@ import type { InscriptionStatus } from '@/lib/types/formation'
 import { DeclareChangeButton } from '@/app/portail/[token]/apprenants/DeclareChangeButton'
 import { AddApprenantButton } from '@/app/portail/[token]/apprenants/AddApprenantButton'
 import { sessionsFormateur } from '@/lib/formateur-sessions'
+import { formatDate } from '@/lib/utils'
 
 /**
  * Vue « Mes apprenants » du formateur, partagée entre l'espace connecté et
@@ -18,7 +19,7 @@ export async function ApprenantsView({ formateurId, token }: { formateurId: stri
   // Get all sessions for this formateur
   const sessions = await sessionsFormateur(
     supabase, formateurId,
-    'id, reference, status, date_debut, date_fin, formation:formation_id(intitule)',
+    'id, reference, status, date_debut, date_fin, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial, ville)',
   )
 
   const sessionIds = (sessions || []).map((s) => s.id)
@@ -58,7 +59,15 @@ export async function ApprenantsView({ formateurId, token }: { formateurId: stri
               <div className="text-sm font-semibold text-surface-900">
                 {(session.formation as any)?.intitule || session.reference || 'Session'}
               </div>
-              <div className="text-xs text-surface-500">{session.reference} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}</div>
+              {(session.client as any) && (
+                <div className="flex items-center gap-1 text-sm font-medium text-brand-700 mt-0.5">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{(session.client as any).nom_commercial || (session.client as any).raison_sociale}{(session.client as any).ville ? ` · ${(session.client as any).ville}` : ''}</span>
+                </div>
+              )}
+              <div className="text-xs text-surface-500">
+                {[session.reference, session.date_debut ? formatDate(session.date_debut, { day: 'numeric', month: 'short' }) : null].filter(Boolean).join(' · ')} · {session.inscriptions.length} apprenant{session.inscriptions.length > 1 ? 's' : ''}
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <AddApprenantButton token={token} sessionId={session.id} />

@@ -1,7 +1,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
-import { CalendarDays, MapPin, Users, ChevronRight, CheckCircle2, CheckSquare } from '@/components/ui/icons'
+import { CalendarDays, MapPin, Users, ChevronRight, CheckCircle2, CheckSquare, Building2 } from '@/components/ui/icons'
 import { formatShortDate, todayISO } from '@/app/portail/[token]/emargement/helpers'
 import { sessionsFormateur } from '@/lib/formateur-sessions'
 
@@ -19,7 +19,7 @@ export async function EmargementListView({ formateurId, basePath }: { formateurI
   // complétée ou validée après la fin de la formation.
   const sessions = await sessionsFormateur(
     supabase, formateurId,
-    'id, reference, intitule, status, date_debut, date_fin, lieu, ville, organization_id, formation:formation_id(intitule)',
+    'id, reference, intitule, status, date_debut, date_fin, lieu, ville, organization_id, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial, ville)',
   )
 
   const sessionIds = (sessions || []).map((s) => s.id)
@@ -119,6 +119,12 @@ export async function EmargementListView({ formateurId, basePath }: { formateurI
                   <h2 className="text-sm sm:text-base font-semibold text-surface-900 leading-snug">
                     {s.formation?.intitule || s.intitule || 'Session'}
                   </h2>
+                  {s.client && (
+                    <div className="flex items-center gap-1 text-sm font-medium text-brand-700 mt-0.5 min-w-0">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{s.client.nom_commercial || s.client.raison_sociale}{s.client.ville ? ` · ${s.client.ville}` : ''}</span>
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-surface-500">
                     <span className="flex items-center gap-1">

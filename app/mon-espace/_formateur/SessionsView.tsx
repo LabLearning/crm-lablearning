@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui'
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/formation'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { Calendar, MapPin, Video, Users, Clock, BookOpen, ClipboardList, CheckCircle2 } from '@/components/ui/icons'
+import { Calendar, MapPin, Video, Users, Clock, BookOpen, ClipboardList, CheckCircle2, Building2 } from '@/components/ui/icons'
 import type { SessionStatus } from '@/lib/types/formation'
 
 /**
@@ -18,7 +18,8 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
     .from('sessions')
     .select(`
       *,
-      formation:formation_id(intitule, duree_heures, modalite)
+      formation:formation_id(intitule, duree_heures, modalite),
+      client:client_id(raison_sociale, nom_commercial, ville)
     `)
     .eq('formateur_id', formateurId)
     .order('date_debut', { ascending: false })
@@ -90,6 +91,12 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
                   <h3 className="text-sm font-semibold text-surface-900 truncate">
                     {s.formation?.intitule || s.intitule || 'Session'}
                   </h3>
+                  {s.client && (
+                    <div className="flex items-center gap-1 text-sm font-medium text-brand-700 mt-0.5 min-w-0">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{s.client.nom_commercial || s.client.raison_sociale}{s.client.ville ? ` · ${s.client.ville}` : ''}</span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-surface-500">
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />

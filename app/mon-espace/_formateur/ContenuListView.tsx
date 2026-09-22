@@ -8,7 +8,7 @@ export async function ContenuListView({ formateurId, basePath }: { formateurId: 
 
   const sessions = await sessionsFormateur(
     supabase, formateurId,
-    'id, reference, intitule, status, date_debut, date_fin, lieu, ville, formation:formation_id(intitule)',
+    'id, reference, intitule, status, date_debut, date_fin, lieu, ville, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial, ville)',
   )
 
   return (

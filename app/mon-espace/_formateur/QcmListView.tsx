@@ -11,7 +11,7 @@ export async function QcmListView({ formateurId, basePath }: { formateurId: stri
   // froid à J+30 / J+90.
   const sessions = await sessionsFormateur(
     supabase, formateurId,
-    'id, reference, intitule, status, date_debut, date_fin, lieu, ville, formation:formation_id(intitule)',
+    'id, reference, intitule, status, date_debut, date_fin, lieu, ville, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial, ville)',
   )
 
   return (
