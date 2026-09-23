@@ -20,6 +20,7 @@ import { PoeiMandat } from './PoeiMandat'
 import { PoeiMails } from './PoeiMails'
 import { PoeiIncidents } from '@/components/poei/PoeiIncidents'
 import { PoeiPlanning } from './PoeiPlanning'
+import { PoeiEmargement, type LigneEmargementCandidat, type SessionEmargement } from './PoeiEmargement'
 import type { CandidatMail } from './PoeiMails'
 import type { CandidatDoc } from './PoeiDocuments'
 import type { LigneCandidat, Etat } from './PoeiPilotage'
@@ -104,6 +105,60 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       .eq('is_active', true)
       .order('nom'),
   ])
+
+  // ── Émargement du parcours : la session chapeau et celles des interventions ──
+  // La session d'une intervention porte le lien (sessions.poei_intervention_id),
+  // l'intervention n'a pas de colonne session.
+  const idsInterventions = ((interventions || []) as any[]).map((iv) => iv.id)
+  const { data: sessionsInterv } = idsInterventions.length
+    ? await supabase.from('sessions').select('id, poei_intervention_id').in('poei_intervention_id', idsInterventions)
+    : { data: [] as any[] }
+  const idsSessionsPoei = [
+    (p as any).session?.id,
+    ...((sessionsInterv || []) as any[]).map((x) => x.id),
+  ].filter(Boolean) as string[]
+
+  let sessionsEmargement: SessionEmargement[] = []
+  let candidatsEmargement: LigneEmargementCandidat[] = []
+  if (idsSessionsPoei.length) {
+    const [{ data: sessionsPoei }, { data: feuilles }, { data: lignesEm }] = await Promise.all([
+      supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, poei_intervention_id').in('id', idsSessionsPoei),
+      supabase.from('emargement_feuilles').select('session_id, date, creneau, validated_at').in('session_id', idsSessionsPoei),
+      supabase.from('emargements').select('apprenant_id, session_id, date, creneau, signature_data, motif_absence').in('session_id', idsSessionsPoei),
+    ])
+    const libelleParIntervention = new Map(((interventions || []) as any[]).map((iv) => [iv.id, iv.libelle]))
+    const libelleIntervention = new Map(((sessionsInterv || []) as any[]).map((x) => [x.id, libelleParIntervention.get(x.poei_intervention_id) || null]))
+    sessionsEmargement = ((sessionsPoei || []) as any[]).map((sp) => {
+      const f = (feuilles || []).filter((x: any) => x.session_id === sp.id)
+      const creneaux = new Set(((lignesEm || []) as any[]).filter((x: any) => x.session_id === sp.id).map((x: any) => `${x.date}|${x.creneau}`))
+      return {
+        id: sp.id, reference: sp.reference, intitule: sp.intitule, date_debut: sp.date_debut, date_fin: sp.date_fin,
+        intervention: libelleIntervention.get(sp.id) || null,
+        feuillesValidees: f.filter((x: any) => x.validated_at).length,
+        feuillesTotal: creneaux.size,
+      }
+    }).sort((a, b) => String(a.date_debut).localeCompare(String(b.date_debut)))
+
+    const { heuresCertificats } = await import('@/lib/certificat-heures')
+    const heures = (p as any).session?.id
+      ? await heuresCertificats(supabase, { sessionId: (p as any).session.id, organizationId: session.organization.id, dureeFormation: (p as any).formation?.duree_heures })
+      : new Map()
+    candidatsEmargement = candidats.map((c: any) => {
+      const aid = c.apprenant?.id || c.apprenant_id || ''
+      const siennes = ((lignesEm || []) as any[]).filter((x: any) => x.apprenant_id === aid)
+      const absences = siennes.filter((x: any) => x.motif_absence)
+        .map((x: any) => ({ date: x.date, creneau: x.creneau, motif: x.motif_absence }))
+        .sort((x, y) => String(x.date).localeCompare(String(y.date)))
+      return {
+        apprenantId: aid,
+        nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat',
+        signees: siennes.filter((x: any) => x.signature_data).length,
+        absences,
+        aSigner: siennes.filter((x: any) => !x.signature_data && !x.motif_absence).length,
+        heuresCertifiees: heures.get(String(aid))?.heures ?? Number(p.duree_heures || 0),
+      }
+    })
+  }
 
   // Formateurs intervenus (uniques) et état des évaluations demandées au
   // référent pour chacun d'eux, résilient avant la migration 146.
@@ -492,6 +547,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             candidats={candidats.map((c: any) => ({ id: c.id, nom: `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat' }))}
             jours={(planningJours || []) as any[]}
             defaults={planningDefaults}
+          />
+        }
+        emargement={
+          <PoeiEmargement
+            sessions={sessionsEmargement}
+            candidats={candidatsEmargement}
+            dureeParcours={Number(p.duree_heures) || null}
           />
         }
         evaluations={

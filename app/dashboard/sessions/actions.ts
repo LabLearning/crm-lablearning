@@ -709,13 +709,15 @@ export async function sendDocumentToApprenantAction(
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
   const orgDoc = await withDocumentLogo(supabase, org)
 
-  // Assiduité (émargements)
-  const { data: emargements } = await supabase
-    .from('emargements').select('est_present').eq('session_id', sessionId).eq('apprenant_id', apprenantId)
-  const totalEm = (emargements || []).length
-  const present = (emargements || []).filter((e: any) => e.est_present).length
-  const assiduite = totalEm > 0 ? Math.round((present / totalEm) * 100) : undefined
-  const heuresPresence = formation?.duree_heures && assiduite ? Math.round(formation.duree_heures * assiduite / 100) : undefined
+  // Heures certifiées : durée du parcours POEI, sinon durée prévue moins les
+  // absences déclarées (une demi-journée non signée n'est pas une absence)
+  const { heuresCertificat } = await import('@/lib/certificat-heures')
+  const hCert = await heuresCertificat(supabase, {
+    sessionId, apprenantId, organizationId: session.organization.id, dureeFormation: formation?.duree_heures,
+  })
+  const assiduite = hCert.assiduite
+  const heuresPresence = hCert.heures || undefined
+  const dureeTotale = hCert.dureeTotale || undefined
 
   // Rendu du PDF
   const { createElement } = await import('react')
@@ -746,7 +748,7 @@ export async function sendDocumentToApprenantAction(
       docNom = `Attestation d'hygiène alimentaire — ${formationNom}`
     } else {
       const { CertificatRealisationPDF } = await import('@/lib/pdf/certificat-realisation-pdf')
-      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: sess, formation, org: orgDoc, assiduite, heuresPresence }) as any)
+      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: sess, formation, org: orgDoc, assiduite, heuresPresence, dureeTotale }) as any)
       docDbType = 'certificat_realisation'
       docNom = `Certificat de réalisation — ${formationNom}`
     }

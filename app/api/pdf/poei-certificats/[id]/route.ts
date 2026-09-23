@@ -57,17 +57,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const files: Record<string, Uint8Array> = {}
   const usedNames = new Set<string>()
+  // La POEI porte la durée de son parcours : ni prorata de signatures, ni
+  // durée de la formation quand elles diffèrent
+  const { heuresCertificats } = await import('@/lib/certificat-heures')
+  const heuresParApprenant = await heuresCertificats(supabase, {
+    sessionId: sess.id, organizationId: poei.organization_id, dureeFormation: formation?.duree_heures,
+  })
+
   for (const a of apprenants) {
-    const { data: ema } = await supabase.from('emargements').select('est_present')
-      .eq('session_id', sess.id).eq('apprenant_id', a.id)
-    const total = (ema || []).length
-    const present = (ema || []).filter((e: any) => e.est_present).length
-    const assiduite = total > 0 ? Math.round((present / total) * 100) : undefined
-    const heuresPresence = formation?.duree_heures && assiduite ? Math.round(formation.duree_heures * assiduite / 100) : undefined
+    const h = heuresParApprenant.get(String(a.id))
+    const assiduite = h?.assiduite
+    const heuresPresence = h?.heures || undefined
+    const dureeTotale = h?.dureeTotale || undefined
 
     const buffer = await renderToBuffer(
       createElement(CertificatRealisationPDF, {
-        apprenant: a, session: sess, formation, org, assiduite, heuresPresence,
+        apprenant: a, session: sess, formation, org, assiduite, heuresPresence, dureeTotale,
         signatureCandidat: (() => { const g = sigByAppr.get(String(a.id)); return g ? { data: g.signature_data, nom: g.signataire_nom, signedAt: g.signed_at } : null })(),
         dateSignature: sigByAppr.get(String(a.id))?.date_signature || datePoei,
       }) as any,

@@ -27,11 +27,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
   const org = await withDocumentLogo(supabase, orgRaw)
 
-  const { data: emargements } = await supabase.from('emargements').select('est_present').eq('session_id', sessionId).eq('apprenant_id', params.id)
-  const total = (emargements || []).length
-  const present = (emargements || []).filter(e => e.est_present).length
-  const assiduite = total > 0 ? Math.round((present / total) * 100) : undefined
-  const heuresPresence = formation?.duree_heures && assiduite ? Math.round(formation.duree_heures * assiduite / 100) : undefined
+  // Heures certifiées : durée du parcours POEI, sinon durée prévue moins les
+  // absences déclarées — une demi-journée non signée n'est pas une absence
+  const { heuresCertificat } = await import('@/lib/certificat-heures')
+  const h = await heuresCertificat(supabase, {
+    sessionId, apprenantId: params.id, organizationId: auth.user.organizationId, dureeFormation: formation?.duree_heures,
+  })
+  const assiduite = h.assiduite
+  const heuresPresence = h.heures || undefined
+  const dureeTotale = h.dureeTotale || undefined
 
   // Signature électronique du bénéficiaire (POEI) : recherchée par apprenant,
   // sur la POEI liée à la session si elle existe, sinon la plus récente.
@@ -54,7 +58,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
   } catch { /* table absente avant migration 109 */ }
 
-  const buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session, formation, org, assiduite, heuresPresence, signatureCandidat, dateSignature }) as any)
+  const buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session, formation, org, assiduite, heuresPresence, dureeTotale, signatureCandidat, dateSignature }) as any)
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',

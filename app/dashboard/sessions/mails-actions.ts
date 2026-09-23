@@ -311,15 +311,17 @@ export async function envoyerDocumentsAuReferentAction(
   if (inscrits.length === 0) return { success: false, error: 'Aucun stagiaire sur cette session' }
 
   // L'assiduité de chaque stagiaire, comme sur les envois individuels.
-  const { data: em } = await supabase.from('emargements')
-    .select('apprenant_id, est_present').eq('session_id', sessionId)
+  // Heures certifiées : durée du parcours POEI, sinon durée prévue moins les
+  // absences déclarées (une demi-journée non signée n'est pas une absence)
+  const { heuresCertificats } = await import('@/lib/certificat-heures')
   const dureePrevue = Number(formation?.duree_heures || 0)
+  const heuresParStagiaire = await heuresCertificats(supabase, {
+    sessionId, organizationId: session.organization.id, dureeFormation: dureePrevue,
+  })
   const assiduiteDe = (apprenantId: string) => {
-    const lignes = (em || []).filter((e: any) => e.apprenant_id === apprenantId)
-    if (lignes.length === 0) return { assiduite: undefined as number | undefined, heures: dureePrevue }
-    const presents = lignes.filter((e: any) => e.est_present).length
-    const pct = Math.round((presents / lignes.length) * 100)
-    return { assiduite: pct, heures: Math.round(dureePrevue * pct) / 100 }
+    const h = heuresParStagiaire.get(String(apprenantId))
+    if (!h) return { assiduite: undefined as number | undefined, heures: dureePrevue, dureeTotale: dureePrevue }
+    return { assiduite: h.assiduite, heures: h.heures, dureeTotale: h.dureeTotale }
   }
   // Même règle que l'envoi automatique : aucune attestation d'hygiène à 0 heure
   const apprenants = type === 'hygiene' ? inscrits.filter((a: any) => assiduiteDe(a.id).heures > 0) : inscrits
@@ -386,10 +388,10 @@ export async function envoyerDocumentsAuReferentAction(
         ? (await import('@/lib/pdf/attestation-formation-pdf')).AttestationFormationPDF
         : (await import('@/lib/pdf/certificat-realisation-pdf')).CertificatRealisationPDF
       for (const a of apprenants) {
-        const { assiduite, heures } = assiduiteDe(a.id)
+        const { assiduite, heures, dureeTotale } = assiduiteDe(a.id)
         const buffer = await renderToBuffer(createElement(composant as any, {
           apprenant: a, session: sess, formation, org: orgDoc,
-          assiduite, heuresPresence: heures,
+          assiduite, heuresPresence: heures, dureeTotale,
         }) as any)
         attachments.push({
           filename: `${type}-${(a.nom || 'stagiaire')}-${(a.prenom || '')}.pdf`.replace(/\s+/g, '_'),

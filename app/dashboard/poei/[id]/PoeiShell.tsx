@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { LayoutGrid, Settings, Users, Target, CalendarRange, CalendarClock, ClipboardCheck, ReceiptEuro, Mails, FileStack, ShieldAlert } from '@/components/ui/icons'
+import { LayoutGrid, Settings, Users, Target, CalendarRange, CalendarClock, ClipboardCheck, ReceiptEuro, Mails, FileStack, ShieldAlert, CheckSquare } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
-type Onglet = 'pilotage' | 'documents' | 'incidents' | 'dossier' | 'candidats' | 'positionnement' | 'interventions' | 'planning' | 'evaluations' | 'facturation' | 'mails'
+type Onglet = 'pilotage' | 'documents' | 'incidents' | 'dossier' | 'candidats' | 'positionnement' | 'interventions' | 'planning' | 'emargement' | 'evaluations' | 'facturation' | 'mails'
 
-const ONGLETS_VALIDES: Onglet[] = ['pilotage', 'documents', 'incidents', 'dossier', 'candidats', 'positionnement', 'interventions', 'planning', 'evaluations', 'facturation', 'mails']
+const ONGLETS_VALIDES: Onglet[] = ['pilotage', 'documents', 'incidents', 'dossier', 'candidats', 'positionnement', 'interventions', 'planning', 'emargement', 'evaluations', 'facturation', 'mails']
 
 /**
  * Fiche d'un dossier POEI organisée en parcours plutôt qu'en empilement.
@@ -19,7 +19,7 @@ const ONGLETS_VALIDES: Onglet[] = ['pilotage', 'documents', 'incidents', 'dossie
  */
 export function PoeiShell({
   nbCandidats, nbInterventions, nbMails, nbIncidents = 0, alertes,
-  pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, evaluations, facturation, mails,
+  pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, emargement, evaluations, facturation, mails,
 }: {
   nbCandidats: number
   nbInterventions: number
@@ -35,6 +35,7 @@ export function PoeiShell({
   positionnement: React.ReactNode
   interventions: React.ReactNode
   planning: React.ReactNode
+  emargement: React.ReactNode
   evaluations: React.ReactNode
   facturation: React.ReactNode
   mails: React.ReactNode
@@ -67,6 +68,7 @@ export function PoeiShell({
     { id: 'positionnement', label: 'Positionnement', icon: Target },
     { id: 'interventions', label: 'Interventions', icon: CalendarRange, n: nbInterventions },
     { id: 'planning', label: 'Planning', icon: CalendarClock },
+    { id: 'emargement', label: 'Émargement', icon: CheckSquare },
     { id: 'evaluations', label: 'Évaluations', icon: ClipboardCheck },
     { id: 'documents', label: 'Documents', icon: FileStack },
     { id: 'incidents', label: 'Incidents', icon: ShieldAlert, n: nbIncidents },
@@ -76,7 +78,7 @@ export function PoeiShell({
   ]
 
   const contenu: Record<Onglet, React.ReactNode> = {
-    pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, evaluations, facturation, mails,
+    pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, emargement, evaluations, facturation, mails,
   }
 
   return (

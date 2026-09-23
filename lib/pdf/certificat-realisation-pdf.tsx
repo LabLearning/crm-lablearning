@@ -9,20 +9,22 @@ interface CertificatRealisationProps {
   org: any
   assiduite?: number
   heuresPresence?: number
+  /** Durée de référence de l'action : le parcours POEI plutôt que la formation. */
+  dureeTotale?: number
   /** Signature électronique du bénéficiaire (candidat POEI) */
   signatureCandidat?: { data?: string | null; nom?: string | null; signedAt?: string | null } | null
   /** Date portée sur le certificat (ex. dernier jour de la POEI) */
   dateSignature?: string | null
 }
 
-export function CertificatRealisationPage({ apprenant, session, formation, org, assiduite, heuresPresence, signatureCandidat, dateSignature }: CertificatRealisationProps) {
+export function CertificatRealisationPage({ apprenant, session, formation, org, assiduite, heuresPresence, dureeTotale, signatureCandidat, dateSignature }: CertificatRealisationProps) {
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   // La date portée sur le certificat prime sur la date du jour (dernier jour de POEI)
   const dateSignatureAffichee = dateSignature
     ? new Date(dateSignature).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
   const numero = `CR-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
-  const duree = formation.duree_heures || 0
+  const duree = dureeTotale || formation.duree_heures || 0
   const heuresRealisees = heuresPresence != null ? heuresPresence : duree
   const enTotalite = !duree || heuresRealisees >= duree
   const representant = [org?.representant_legal_civilite, org?.representant_legal_prenom, org?.representant_legal_nom].filter(Boolean).join(' ').trim() || `le représentant légal de ${org?.name || 'l\'organisme'}`
@@ -99,7 +101,7 @@ export function CertificatRealisationPage({ apprenant, session, formation, org, 
           </Text>
           {assiduite != null && (
             <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 4 }}>
-              Taux d'assiduité : {assiduite}% (calculé sur la base des feuilles d'émargement signées).
+              Taux d'assiduité : {assiduite}% (hors demi-journées d’absence déclarées sur les feuilles d’émargement).
             </Text>
           )}
         </View>
@@ -167,7 +169,7 @@ export function CertificatRealisationPDF(props: CertificatRealisationProps) {
 
 /** Tous les certificats d'une session, un stagiaire par page. */
 export function CertificatsSessionPDF({ stagiaires, session, formation, org }: {
-  stagiaires: { apprenant: any; assiduite?: number; heuresPresence?: number }[]
+  stagiaires: { apprenant: any; assiduite?: number; heuresPresence?: number; dureeTotale?: number }[]
   session: any
   formation: any
   org: any
@@ -176,7 +178,7 @@ export function CertificatsSessionPDF({ stagiaires, session, formation, org }: {
     <Document>
       {stagiaires.map((s, i) => (
         <CertificatRealisationPage key={i} apprenant={s.apprenant} session={session}
-          formation={formation} org={org} assiduite={s.assiduite} heuresPresence={s.heuresPresence} />
+          formation={formation} org={org} assiduite={s.assiduite} heuresPresence={s.heuresPresence} dureeTotale={s.dureeTotale} />
       ))}
     </Document>
   )
