@@ -6,14 +6,15 @@ export default async function CarteSessionsPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
+  // Une POEI = un point : chapeau, ou première intervention s'il n'y en a pas
+  const { cartePoeiSessions } = await import('@/lib/poei-sessions')
+  const { doublons: doublonsPoei } = await cartePoeiSessions(supabase, session.organization.id)
+
   const [{ data: sessions }, { data: franchises }, { data: etabs }] = await Promise.all([
     supabase
     .from('sessions')
     .select('id, reference, intitule, status, date_debut, date_fin, lieu, ville, code_postal, formation:formation_id(intitule, duree_heures, categorie), formateur:formateurs(prenom, nom), client:client_id(raison_sociale, nom_commercial, sigle)')
     .eq('organization_id', session.organization.id)
-      // Un parcours POEI est un seul point : ses sessions d'intervention n'en
-      // sont que des sous-périodes, au même endroit
-      .is('poei_intervention_id', null)
       // Les annulées sont affichées (pastille rouge), pas exclues.
       .order('date_debut', { ascending: false }),
     supabase
@@ -28,7 +29,7 @@ export default async function CarteSessionsPage() {
 
   return (
     <div className="animate-fade-in">
-      <CarteClient sessions={(sessions || []) as any[]} franchises={(franchises || []) as any[]} etablissements={(etabs || []) as any[]} />
+      <CarteClient sessions={((sessions || []) as any[]).filter((s) => !doublonsPoei.has(s.id))} franchises={(franchises || []) as any[]} etablissements={(etabs || []) as any[]} />
     </div>
   )
 }

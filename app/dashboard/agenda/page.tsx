@@ -19,10 +19,7 @@ export default async function AgendaPage() {
       .from('sessions')
       .select('id, reference, date_debut, date_fin, horaires, horaires_jours, lieu, status, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom)')
       .eq('organization_id', orgId)
-      .in('status', ['planifiee', 'confirmee', 'en_cours'])
-      // Un parcours POEI apparaît une fois, par sa session chapeau : ses
-      // sessions d'intervention n'en sont que des sous-périodes
-      .is('poei_intervention_id', null),
+      .in('status', ['planifiee', 'confirmee', 'en_cours']),
     supabase
       .from('crm_taches')
       .select(
@@ -51,8 +48,10 @@ export default async function AgendaPage() {
       .is('session_id', null),
   ])
 
-  const poeiSessionIds = new Set((poeiRes.data || []).map((p: any) => p.session_id))
-  const poeiParSession = new Map((poeiRes.data || []).map((p: any) => [p.session_id, p.id]))
+  // Une POEI = un bloc : chapeau, ou première intervention s'il n'y en a pas
+  const { cartePoeiSessions } = await import('@/lib/poei-sessions')
+  const { doublons: doublonsPoei, poeiParSession } = await cartePoeiSessions(supabase, orgId)
+  const poeiSessionIds = new Set([...(poeiRes.data || []).map((p: any) => p.session_id), ...poeiParSession.keys()])
   const { formateursDesPoei } = await import('@/lib/poei-formateurs')
   const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()] as string[])
 
@@ -95,7 +94,7 @@ export default async function AgendaPage() {
           leadEntreprise: i.lead?.entreprise || '',
           done: false,
         }))}
-        sessions={[...previsionnels, ...(sessionsRes.data || []).map((s: any) => ({
+        sessions={[...previsionnels, ...(sessionsRes.data || []).filter((s: any) => !doublonsPoei.has(s.id)).map((s: any) => ({
           id: s.id,
           titre: s.formation?.intitule || s.reference || 'Session',
           reference: s.reference || '',

@@ -70,11 +70,13 @@ export default async function SessionsPage({
       ? [...list].sort((a, b) => (a.date_debut || '').localeCompare(b.date_debut || ''))
       : list
 
-  const [dossiers, { data: parcoursPoei }] = await Promise.all([
+  // Une POEI = une ligne : chapeau (ou première intervention s'il n'y en a
+  // pas), les autres sessions d'intervention sont masquées (lib/poei-sessions)
+  const { cartePoeiSessions } = await import('@/lib/poei-sessions')
+  const [dossiers, { doublons: doublonsPoei, poeiParSession }] = await Promise.all([
     etatsDossiers(supabase, orgId),
-    supabase.from('poei').select('id, session_id').eq('organization_id', orgId).not('session_id', 'is', null),
+    cartePoeiSessions(supabase, orgId),
   ])
-  const poeiParSession = new Map(((parcoursPoei || []) as any[]).map((p) => [p.session_id, p.id]))
   // Formateurs de chaque parcours, portés par ses interventions
   const { formateursDesPoei } = await import('@/lib/poei-formateurs')
   const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()])
@@ -99,13 +101,14 @@ export default async function SessionsPage({
   try {
     const { data, error } = await supabase.rpc('sessions_page_data', { org: orgId, depuis, jusqua })
     if (!error && data && Array.isArray(data.sessions)) {
-      const sessionsWithCounts = sortSessions(data.sessions).map((s: any) => ({
+      const sessionsWithCounts = sortSessions(data.sessions.filter((s: any) => !doublonsPoei.has(s.id))).map((s: any) => ({
         ...s,
         ...avecDossier(s),
         _nb_inscrits: (s._inscrits_ids || []).length,
         _inscrits_ids: s._inscrits_ids || [],
         _formation_ids: s._formation_ids || [],
-        _is_poei: !!s._is_poei,
+        _is_poei: !!s._is_poei || poeiParSession.has(s.id) || s._poei_role === 'intervention',
+        _poei_role: poeiParSession.has(s.id) ? 'parcours' : s._poei_role,
         _poei_id: poeiParSession.get(s.id) || null,
         _poei_formateurs: formateursDuParcours(s.id),
       }))
@@ -198,7 +201,7 @@ export default async function SessionsPage({
 
   const poeiSessionIds = new Set((poeiLinks || []).map((p: any) => p.session_id))
 
-  const sessionsWithCounts = sortSessions(sessions || []).map((s) => {
+  const sessionsWithCounts = sortSessions((sessions || []).filter((s: any) => !doublonsPoei.has(s.id))).map((s) => {
     const inscritsIds = inscritsBySession[s.id] || []
     return {
       ...s,
@@ -206,8 +209,8 @@ export default async function SessionsPage({
       _nb_inscrits: inscritsIds.length,
       _inscrits_ids: inscritsIds,
       _formation_ids: formationsBySession[s.id] || [],
-      _is_poei: !!((s as any).formation?.is_poei) || poeiSessionIds.has(s.id) || !!(s as any).poei_intervention_id,
-      _poei_role: (s as any).poei_intervention_id ? 'intervention' : poeiSessionIds.has(s.id) ? 'parcours' : null,
+      _is_poei: !!((s as any).formation?.is_poei) || poeiSessionIds.has(s.id) || poeiParSession.has(s.id) || !!(s as any).poei_intervention_id,
+      _poei_role: poeiParSession.has(s.id) ? 'parcours' : (s as any).poei_intervention_id ? 'intervention' : null,
       _poei_id: poeiParSession.get(s.id) || null,
       _poei_formateurs: formateursDuParcours(s.id),
     }

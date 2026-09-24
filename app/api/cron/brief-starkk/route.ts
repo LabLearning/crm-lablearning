@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       // Sessions qui se déroulent au moins un jour cette semaine (hors sous-périodes POEI)
       on(supabase.from('sessions').select('id, date_debut, date_fin, lieu, ville, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial), formateur:formateurs(prenom, nom)'))
         .lte('date_debut', dimanche).gte('date_fin', lundi).not('status', 'in', '("annulee")')
-        .is('poei_intervention_id', null).order('date_debut'),
+        .order('date_debut'),
       on(supabase.from('conventions').select('id, numero, sent_at, session_id, client:client_id(raison_sociale, nom_commercial)'))
         .not('sent_at', 'is', null).is('signature_client_date', null).order('sent_at').limit(8),
       on(supabase.from('dossiers_agefice').select('id, numero_dossier, statut, mode_reglement, signature_stagiaire_date, date_fin_formation, session_id, apprenant:apprenant_id(prenom, nom)'))
@@ -86,15 +86,15 @@ export async function GET(req: Request) {
       } : null
     }).filter(Boolean) as any[]
 
-    const semaine = (sessSemaine.data || []) as any[]
+    // Une POEI = une ligne : chapeau, ou première intervention s'il n'y en a pas
+    const { cartePoeiSessions } = await import('@/lib/poei-sessions')
+    const { doublons: doublonsPoei, poeiParSession: representantsPoei } = await cartePoeiSessions(supabase, org.id)
+    const semaine = ((sessSemaine.data || []) as any[]).filter((s) => !doublonsPoei.has(s.id))
     const dejaEnCours = semaine.filter((s) => s.date_debut < lundi).length
 
     // Parcours POEI : la session chapeau n'a pas de formateur, ce sont les
     // interventions qui en portent un (même lecture que le tableau de bord)
-    const { data: parcours } = semaine.length
-      ? await supabase.from('poei').select('id, session_id').in('session_id', semaine.map((s) => s.id))
-      : { data: [] as any[] }
-    const poeiParSession = new Map(((parcours || []) as any[]).map((p) => [p.session_id, p.id]))
+    const poeiParSession = new Map(semaine.filter((s) => representantsPoei.has(s.id)).map((s) => [s.id, representantsPoei.get(s.id)!]))
     const { formateursDesPoei } = await import('@/lib/poei-formateurs')
     const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()])
     const formateurDe = (s: any) => nomForm(s.formateur) || (poeiParSession.has(s.id) ? formateursPoei.get(poeiParSession.get(s.id)!) || '' : '')
