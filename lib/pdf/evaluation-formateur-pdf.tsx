@@ -24,7 +24,7 @@ export function EvaluationFormateurPDF({ formateur, evaluation, org, nbSessions 
   const domaines = Array.isArray(formateur.domaines_expertise)
     ? formateur.domaines_expertise.join(', ')
     : String(formateur.domaines_expertise || '')
-  const diplomes = Array.isArray(formateur.diplomes) ? formateur.diplomes.join(', ') : String(formateur.diplomes || '')
+  const diplomes = Array.isArray(formateur.diplomes) ? formateur.diplomes.map((d: any) => (d && typeof d === 'object' ? d.intitule : d)).filter(Boolean).join(', ') : String(formateur.diplomes || '')
 
   const lignes: [string, string][] = [
     ['Prénom et nom', nom],

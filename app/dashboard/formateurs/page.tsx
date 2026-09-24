@@ -27,11 +27,21 @@ export default async function FormateursPage() {
     }
   }
 
+  // Lien général d'inscription (migration 160) ; absent tant qu'elle n'est pas appliquée
+  const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).maybeSingle()
+  const lienInscription = {
+    token: ((org as any)?.inscription_formateur_token as string | null) || null,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr',
+    peutRegenerer: session.user.role === 'super_admin',
+    visible: ['super_admin', 'gestionnaire', 'commercial'].includes(session.user.role),
+  }
+
   return (
     <div className="animate-fade-in">
       <FormateursList
         formateurs={(formateurs || []) as Formateur[]}
         sessionCounts={sessionCounts}
+        lienInscription={lienInscription}
       />
     </div>
   )

@@ -31,7 +31,7 @@ export function ContratFormationPDF({ dossier, client, formation, session, org, 
   const formateurNom = formateur ? `${formateur.prenom || ''} ${formateur.nom || ''}`.trim() : ''
   const formateurRefs = formateur
     ? [
-        Array.isArray(formateur.diplomes) ? formateur.diplomes.join(', ') : formateur.diplomes,
+        Array.isArray(formateur.diplomes) ? formateur.diplomes.map((d: any) => (d && typeof d === 'object' ? d.intitule : d)).filter(Boolean).join(', ') : formateur.diplomes,
         Array.isArray(formateur.qualifications) ? formateur.qualifications.join(', ') : formateur.qualifications,
         Array.isArray(formateur.certifications) ? formateur.certifications.join(', ') : formateur.certifications,
       ].filter(Boolean).join(' · ')

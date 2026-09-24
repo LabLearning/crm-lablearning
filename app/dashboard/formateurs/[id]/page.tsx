@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Mail, Phone, Euro, Presentation, Award, Star, Calendar,
-  MapPin, Building2, ShieldCheck, FileText,
+  MapPin, Building2, ShieldCheck, FileText, AlertTriangle, ExternalLink, Clock,
 } from '@/components/ui/icons'
 import { Avatar, Badge, BackLink } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
@@ -12,6 +12,7 @@ import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/format
 import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES_FORMATEUR } from '@/lib/types/document'
 import { Download } from '@/components/ui/icons'
 import { FormateurFacturesAdmin } from './FormateurFacturesAdmin'
+import { MarquerVerifieButton } from './MarquerVerifieButton'
 import { EvaluationFormateur } from './EvaluationFormateur'
 import { FormateurDocUpload, FormateurDocDelete } from '@/app/mon-espace/_formateur/FormateurDocUpload'
 
@@ -79,6 +80,39 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
     ;(signed || []).forEach((s, i) => { if (s?.signedUrl && !s.error) facUrls[facPaths[i]] = s.signedUrl })
   }
 
+  // CV : lien externe (Drive) ou fichier déposé par le formulaire d'inscription
+  const cvBrut = (f as any).cv_url as string | null
+  let cvLien: string | null = null
+  if (cvBrut && /^https?:\/\//.test(cvBrut)) cvLien = cvBrut
+  else if (cvBrut) {
+    const { data: signe } = await supabase.storage.from('documents').createSignedUrl(cvBrut, 3600)
+    cvLien = signe?.signedUrl || null
+  }
+
+  // Dernier envoi du formulaire d'inscription (migration 160) : ce qui diffère de la fiche
+  let derniereInscription: any = null
+  if ((f as any).inscrit_via_formulaire_at) {
+    const r = await supabase.from('formateur_inscriptions').select('created_at, resultat, differences')
+      .eq('formateur_id', params.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (!r.error) derniereInscription = r.data
+  }
+  const LIBELLES_CHAMPS: Record<string, string> = {
+    civilite: 'Civilité', prenom: 'Prénom', nom: 'Nom', telephone: 'Téléphone', adresse: 'Adresse', code_postal: 'Code postal',
+    ville: 'Ville', type_contrat: 'Statut', siret: 'SIRET', numero_da: 'N° de déclaration d’activité', taux_tva: 'TVA',
+    qualifications: 'Expérience', zone_intervention: 'Zone', disponibilites: 'Disponibilités', tarif_journalier: 'Tarif journalier',
+    tarif_horaire: 'Tarif horaire', bio: 'Présentation', cv_url: 'CV',
+  }
+  const differences = ((derniereInscription?.differences || []) as any[]).filter((d) => d?.champ)
+  const diplomes = (Array.isArray((f as any).diplomes) ? (f as any).diplomes : [])
+    .map((d: any) => (d && typeof d === 'object' ? [d.intitule, d.etablissement, d.annee].filter(Boolean).join(' · ') : String(d || '')))
+    .filter(Boolean) as string[]
+  const peutVerifier = ['super_admin', 'gestionnaire'].includes(session.user.role)
+  const valeurLisible = (champ: string, v: unknown) =>
+    champ === 'type_contrat' ? (contratLabels[String(v)] || String(v))
+    : champ === 'taux_tva' ? (Number(v) === 0 ? 'sans TVA' : `${Number(v)} %`)
+    : champ === 'tarif_journalier' || champ === 'tarif_horaire' ? `${Number(v).toLocaleString('fr-FR')} €`
+    : String(v)
+
   const SessionRow = (s: any) => (
     <Link key={s.id} href={`/dashboard/sessions/${s.id}`}
       className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors border-b border-surface-100/60 last:border-0">
@@ -127,6 +161,68 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
           <div className="text-xs text-surface-500">session{list.length > 1 ? 's' : ''}</div>
         </div>
       </div>
+
+      {/* Fiche remplie par le formateur lui-même, à relire */}
+      {(f as any).a_verifier && (
+        <div className="card p-4 border-warning-100 bg-warning-50/60 space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-warning-600 shrink-0" />
+            <div className="flex-1 min-w-[200px] text-sm text-surface-800">
+              <span className="font-medium">Fiche remplie par le formateur</span>
+              {(f as any).inscrit_via_formulaire_at && <> le {formatDate((f as any).inscrit_via_formulaire_at, { day: 'numeric', month: 'long', year: 'numeric' })}</>}
+              <span className="text-surface-500"> · à relire avant de lui confier une mission</span>
+            </div>
+            {peutVerifier && <MarquerVerifieButton formateurId={f.id} />}
+          </div>
+          {differences.length > 0 && (
+            <div className="text-xs text-surface-600 space-y-1 pl-7">
+              <div className="font-medium text-surface-700">Il a déclaré des informations différentes de la fiche, qui n&apos;ont pas été remplacées :</div>
+              {differences.map((d: any, i: number) => (
+                <div key={i}>
+                  <span className="text-surface-500">{LIBELLES_CHAMPS[d.champ] || d.champ} :</span>{' '}
+                  {d.champ === 'cv_url'
+                    ? <>nouveau CV déposé, il remplace le précédent{/^https?:\/\//.test(String(d.actuel)) && <> (<a href={String(d.actuel)} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">ancien CV</a>)</>}</>
+                    : <><span className="line-through text-surface-400">{valeurLisible(d.champ, d.actuel)}</span> → <span className="font-medium text-surface-900">{valeurLisible(d.champ, d.declare)}</span></>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Profil déclaré : CV, tarifs, disponibilités, parcours */}
+      {(cvLien || (f as any).tarif_horaire || (f as any).disponibilites || (f as any).qualifications || (f as any).bio || diplomes.length > 0) && (
+        <div className="card p-5 space-y-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-surface-700">
+            {cvLien && (
+              <a href={cvLien} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline">
+                <FileText className="h-4 w-4" /> Voir le CV <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+            {(f as any).tarif_horaire && <span className="inline-flex items-center gap-1"><Euro className="h-3.5 w-3.5 text-surface-400" />{Number((f as any).tarif_horaire).toLocaleString('fr-FR')} €/h HT</span>}
+            {(f as any).inscrit_via_formulaire_at && Number((f as any).taux_tva) === 0 && <span className="text-surface-500">Sans TVA (franchise en base)</span>}
+            {(f as any).disponibilites && <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-surface-400" />{(f as any).disponibilites}</span>}
+          </div>
+          {diplomes.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-1.5">Diplômes</div>
+              <ul className="text-sm text-surface-700 space-y-0.5">{diplomes.map((d, i) => <li key={i}>{d}</li>)}</ul>
+            </div>
+          )}
+          {(f as any).qualifications && (
+            <div>
+              <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-1.5">Expérience</div>
+              <p className="text-sm text-surface-700 whitespace-pre-line">{(f as any).qualifications}</p>
+            </div>
+          )}
+          {(f as any).bio && (
+            <div>
+              <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-1.5">Présentation</div>
+              <p className="text-sm text-surface-700 whitespace-pre-line">{(f as any).bio}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Expertise / certifications */}
       {((f.domaines_expertise || []).length > 0 || (f.certifications || []).length > 0) && (
