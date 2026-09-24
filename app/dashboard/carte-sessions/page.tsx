@@ -11,6 +11,9 @@ export default async function CarteSessionsPage() {
     .from('sessions')
     .select('id, reference, intitule, status, date_debut, date_fin, lieu, ville, code_postal, formation:formation_id(intitule, duree_heures, categorie), formateur:formateurs(prenom, nom), client:client_id(raison_sociale, nom_commercial, sigle)')
     .eq('organization_id', session.organization.id)
+      // Un parcours POEI est un seul point : ses sessions d'intervention n'en
+      // sont que des sous-périodes, au même endroit
+      .is('poei_intervention_id', null)
       // Les annulées sont affichées (pastille rouge), pas exclues.
       .order('date_debut', { ascending: false }),
     supabase

@@ -81,6 +81,8 @@ interface Session {
   id: string; titre: string; dateDebut: string; dateFin: string
   horaires: string; lieu: string; status: string
   reference?: string; formateurNom?: string | null; horairesJours?: HoraireJour[]; isPoei?: boolean
+  /** Dossier POEI du parcours : le clic l'ouvre plutôt que la session chapeau. */
+  poeiId?: string | null
   // Formation encore au stade lead (pas de session créée) : bloc prévisionnel
   isPrevisionnel?: boolean; leadId?: string; entreprise?: string
 }
@@ -88,7 +90,9 @@ interface Session {
 // Style des blocs prévisionnels : gris, bordure pointillée — jamais confondus
 // avec une session réelle
 const PREV_COLOR = 'bg-surface-50 border-dashed border-surface-400 text-surface-600'
-const sessionHref = (s: Session) => s.isPrevisionnel && s.leadId ? `/dashboard/leads?lead=${s.leadId}` : `/dashboard/sessions/${s.id}`
+const sessionHref = (s: Session) => s.isPrevisionnel && s.leadId
+  ? `/dashboard/leads?lead=${s.leadId}`
+  : s.poeiId ? `/dashboard/poei/${s.poeiId}` : `/dashboard/sessions/${s.id}`
 
 // Créneau (début / fin) d'une session pour une date donnée, depuis horaires_jours
 function creneauForDate(s: Session, date: string): { debut: string; fin: string } | null {
@@ -704,7 +708,7 @@ function FormationsView({
               .slice()
               .sort((a, b) => a.dateDebut.localeCompare(b.dateDebut))
               .map(s => (
-                <Link key={s.id} href={`/dashboard/sessions/${s.id}`}
+                <Link key={s.id} href={sessionHref(s)}
                   className="flex items-center gap-3 p-3 rounded-xl border border-surface-200/80 bg-white hover:border-brand-300 transition-colors">
                   <div className="h-10 w-10 rounded-lg flex items-center justify-center shrink-0 bg-brand-50">
                     <GraduationCap className="h-5 w-5 text-brand-600" />

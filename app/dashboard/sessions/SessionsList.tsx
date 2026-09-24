@@ -128,6 +128,30 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   function handlePeriode(p: string) {
     router.replace(p === 'actives' ? pathname : `${pathname}?periode=${p}`)
   }
+  // Sessions OPCO ou parcours POEI : comme au tableau de bord, un parcours
+  // n'apparaît qu'une fois (sa session chapeau), ses sessions d'intervention
+  // restent dans la fiche POEI et l'espace du formateur.
+  const searchParamsFamille = useSearchParams()
+  const [famille, setFamille] = useState<'opco' | 'poei'>(searchParamsFamille.get('famille') === 'poei' ? 'poei' : 'opco')
+  function choisirFamille(f: 'opco' | 'poei') {
+    setFamille(f)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (f === 'poei') url.searchParams.set('famille', 'poei')
+      else url.searchParams.delete('famille')
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
+  }
+  const estParcoursPoei = (x: Session) => !!(x as any)._is_poei && (x as any)._poei_role !== 'intervention'
+  const nbOpco = useMemo(() => sessions.filter((x) => !(x as any)._is_poei).length, [sessions])
+  const nbPoei = useMemo(() => sessions.filter(estParcoursPoei).length, [sessions])
+  const deFamille = useMemo(
+    () => sessions.filter((x) => (famille === 'poei' ? estParcoursPoei(x) : !(x as any)._is_poei)),
+    [sessions, famille],
+  )
+  /** Un parcours POEI ouvre son dossier ; une session, sa fiche. */
+  const lienSession = (x: Session) => ((x as any)._poei_id ? `/dashboard/poei/${(x as any)._poei_id}` : `/dashboard/sessions/${x.id}`)
+
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [formateurFilter, setFormateurFilter] = useState<string>('all')
@@ -157,7 +181,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   }, [searchParams])
 
   const filtered = useMemo(() => {
-    return sessions.filter((s) => {
+    return deFamille.filter((s) => {
       const title = s.intitule || s.formation?.intitule || ''
       const matchSearch = title.toLowerCase().includes(search.toLowerCase()) ||
         (s.reference || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -170,7 +194,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
       const matchFormation = formationFilter === 'all' || (s as any).formation_id === formationFilter
       return matchSearch && matchStatus && matchType && matchFormateur && matchFormation
     })
-  }, [sessions, search, statusFilter, typeFilter, formateurFilter, formationFilter])
+  }, [deFamille, search, statusFilter, typeFilter, formateurFilter, formationFilter])
 
   // Liste : groupée par jour de début (les plus récentes/futures en premier — même ordre que le fetch)
   const grouped = useMemo(() => {
@@ -184,10 +208,10 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   }, [filtered])
 
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: sessions.length }
-    sessions.forEach((s) => { counts[s.status] = (counts[s.status] || 0) + 1 })
+    const counts: Record<string, number> = { all: deFamille.length }
+    deFamille.forEach((s) => { counts[s.status] = (counts[s.status] || 0) + 1 })
     return counts
-  }, [sessions])
+  }, [deFamille])
 
   // Kanban : colonnes par statut (ordre fixe, colonnes vides masquées sauf les 4 principales)
   const kanbanCols = useMemo(() => {
@@ -248,7 +272,9 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
         <div>
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Sessions de formation</h1>
           <p className="text-surface-500 mt-1 text-sm">
-            {sessions.length} session{sessions.length > 1 ? 's' : ''}
+            {famille === 'poei'
+              ? `${deFamille.length} parcours POEI`
+              : `${deFamille.length} session${deFamille.length > 1 ? 's' : ''}`}
             {periode !== 'toutes' && <span className="text-surface-400"> · {PERIODE_LABELS[periode].toLowerCase()}</span>}
           </p>
         </div>
@@ -270,6 +296,15 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
           derrière un bouton « Filtres » avec compteur. */}
       <div className="space-y-3 mb-5">
         <div className="flex flex-col md:flex-row gap-3">
+          <div role="radiogroup" aria-label="Famille de sessions" className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start w-full md:w-auto">
+            {([['opco', 'Sessions OPCO', nbOpco], ['poei', 'POEI', nbPoei]] as const).map(([f, label, n]) => (
+              <button key={f} type="button" role="radio" aria-checked={famille === f} onClick={() => choisirFamille(f)}
+                className={`flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg text-[13px] md:text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] md:min-h-0 ${famille === f ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
+                {label}
+                <span className={`text-2xs rounded-full px-1.5 py-px tabular-nums ${famille === f ? 'bg-surface-100 text-surface-600' : 'bg-white/70 text-surface-500'}`}>{n}</span>
+              </button>
+            ))}
+          </div>
           <div role="radiogroup" aria-label="Période" className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start w-full md:w-auto">
             {(['actives', 'passees', 'toutes'] as const).map((p) => (
               <button key={p} type="button" role="radio" aria-checked={periode === p} onClick={() => handlePeriode(p)}
@@ -356,7 +391,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
               <div className="card overflow-hidden divide-y divide-surface-100">
                 {items.map((s) => (
                   <div key={s.id}
-                    onClick={() => window.location.href = `/dashboard/sessions/${s.id}`}
+                    onClick={() => window.location.href = lienSession(s)}
                     className={`hover:bg-surface-50/70 transition-colors cursor-pointer ${isToday(s) ? 'bg-brand-50/30' : ''}`}>
                     {/* ── Carte mobile (< 768 px) : tout ce qu'il faut pour reconnaître la session ── */}
                     <div className="md:hidden px-4 py-3 flex items-start gap-3">
@@ -383,7 +418,9 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                             {s.formateur
                               ? <span className="truncate">{s.formateur.prenom} {s.formateur.nom}</span>
                               : (s as any)._poei_role === 'parcours'
-                                ? <span className="text-surface-400">formateur par intervention</span>
+                                ? ((s as any)._poei_formateurs
+                                  ? <span className="truncate">{(s as any)._poei_formateurs}</span>
+                                  : <span className="text-amber-600">formateur à affecter</span>)
                                 : <span className="text-surface-400">formateur à affecter</span>}
                           </span>
                         </div>
@@ -423,8 +460,10 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                       {s.formateur ? (
                         <><UserIcon className="h-3.5 w-3.5 text-surface-400 shrink-0" />{s.formateur.prenom} {s.formateur.nom}</>
                       ) : (s as any)._poei_role === 'parcours' ? (
-                        // Un parcours n'a pas de formateur : ils sont affectés par intervention
-                        <span className="text-surface-300">par intervention</span>
+                        // Un parcours n'a pas de formateur : ils sont portés par ses interventions
+                        (s as any)._poei_formateurs
+                          ? <><UserIcon className="h-3.5 w-3.5 text-surface-400 shrink-0" /><span className="truncate">{(s as any)._poei_formateurs}</span></>
+                          : <span className="text-amber-600">à affecter</span>
                       ) : (
                         <span className="text-surface-300">à affecter</span>
                       )}
@@ -461,7 +500,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                 )}
                 {col.items.map((s) => (
                   <div key={s.id}
-                    onClick={() => window.location.href = `/dashboard/sessions/${s.id}`}
+                    onClick={() => window.location.href = lienSession(s)}
                     className={`bg-white rounded-xl border border-surface-200/70 p-3 hover:border-surface-300 hover:shadow-card transition-all cursor-pointer ${isToday(s) ? 'ring-1 ring-brand-300' : ''}`}>
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="flex items-center gap-1.5 min-w-0">

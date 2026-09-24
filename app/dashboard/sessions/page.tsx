@@ -70,7 +70,18 @@ export default async function SessionsPage({
       ? [...list].sort((a, b) => (a.date_debut || '').localeCompare(b.date_debut || ''))
       : list
 
-  const dossiers = await etatsDossiers(supabase, orgId)
+  const [dossiers, { data: parcoursPoei }] = await Promise.all([
+    etatsDossiers(supabase, orgId),
+    supabase.from('poei').select('id, session_id').eq('organization_id', orgId).not('session_id', 'is', null),
+  ])
+  const poeiParSession = new Map(((parcoursPoei || []) as any[]).map((p) => [p.session_id, p.id]))
+  // Formateurs de chaque parcours, portés par ses interventions
+  const { formateursDesPoei } = await import('@/lib/poei-formateurs')
+  const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()])
+  const formateursDuParcours = (sessionId: string) => {
+    const pid = poeiParSession.get(sessionId)
+    return pid ? formateursPoei.get(pid) || null : null
+  }
   const avecDossier = (s: any) => {
     const conv = dossiers.convSessions.has(s.id)
     const contrat = dossiers.contratSessions.has(s.id) ||
@@ -95,6 +106,8 @@ export default async function SessionsPage({
         _inscrits_ids: s._inscrits_ids || [],
         _formation_ids: s._formation_ids || [],
         _is_poei: !!s._is_poei,
+        _poei_id: poeiParSession.get(s.id) || null,
+        _poei_formateurs: formateursDuParcours(s.id),
       }))
       return (
         <div className="animate-fade-in">
@@ -193,7 +206,10 @@ export default async function SessionsPage({
       _nb_inscrits: inscritsIds.length,
       _inscrits_ids: inscritsIds,
       _formation_ids: formationsBySession[s.id] || [],
-      _is_poei: !!((s as any).formation?.is_poei) || poeiSessionIds.has(s.id),
+      _is_poei: !!((s as any).formation?.is_poei) || poeiSessionIds.has(s.id) || !!(s as any).poei_intervention_id,
+      _poei_role: (s as any).poei_intervention_id ? 'intervention' : poeiSessionIds.has(s.id) ? 'parcours' : null,
+      _poei_id: poeiParSession.get(s.id) || null,
+      _poei_formateurs: formateursDuParcours(s.id),
     }
   })
 

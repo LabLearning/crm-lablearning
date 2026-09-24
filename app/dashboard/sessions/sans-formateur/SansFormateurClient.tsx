@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { UserPlus, CheckCircle2, Loader2, Search } from '@/components/ui/icons'
+import { UserPlus, CheckCircle2, Loader2, Search, Briefcase, ArrowRight } from '@/components/ui/icons'
 import { useToast, BackLink } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { assignerFormateurAction } from './actions'
@@ -19,9 +19,20 @@ interface Ligne {
 
 /** Affectation à la volée : choisir un formateur dans la liste enregistre
  *  immédiatement — la ligne passe en vert, rien d'autre à faire. */
-export function SansFormateurClient({ sessions, formateurs }: {
+interface ParcoursPoei {
+  id: string
+  numero: string | null
+  date_debut: string | null
+  date_fin: string | null
+  client: string | null
+  formation: string | null
+}
+
+export function SansFormateurClient({ sessions, formateurs, parcoursPoei = [] }: {
   sessions: Ligne[]
   formateurs: { id: string; nom: string }[]
+  /** Parcours POEI dont aucune intervention n'a de formateur. */
+  parcoursPoei?: ParcoursPoei[]
 }) {
   const { toast } = useToast()
   const [faits, setFaits] = useState<Record<string, string>>({})
@@ -117,6 +128,34 @@ export function SansFormateurClient({ sessions, formateurs }: {
           </table>
         </div>
       </div>
+
+      {parcoursPoei.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-brand-500" />
+            <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Parcours POEI sans formateur ({parcoursPoei.length})</span>
+          </div>
+          <p className="px-4 pt-3 text-xs text-surface-500">
+            Le formateur d&apos;une POEI se choisit sur chaque intervention du parcours : ouvrez le dossier pour l&apos;affecter.
+          </p>
+          <div className="divide-y divide-surface-100 mt-2">
+            {parcoursPoei.map((p) => (
+              <Link key={p.id} href={`/dashboard/poei/${p.id}?onglet=interventions`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-surface-900 truncate">{p.client || p.numero || 'Parcours POEI'}</div>
+                  <div className="text-xs text-surface-500 truncate">
+                    {[p.numero, p.formation, p.date_debut ? `${formatDate(p.date_debut, { day: '2-digit', month: 'short' })}${p.date_fin ? ` au ${formatDate(p.date_fin, { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}` : 'dates à fixer'].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 shrink-0">
+                  Affecter <ArrowRight className="h-3.5 w-3.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

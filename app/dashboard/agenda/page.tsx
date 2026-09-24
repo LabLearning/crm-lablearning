@@ -19,7 +19,10 @@ export default async function AgendaPage() {
       .from('sessions')
       .select('id, reference, date_debut, date_fin, horaires, horaires_jours, lieu, status, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom)')
       .eq('organization_id', orgId)
-      .in('status', ['planifiee', 'confirmee', 'en_cours']),
+      .in('status', ['planifiee', 'confirmee', 'en_cours'])
+      // Un parcours POEI apparaît une fois, par sa session chapeau : ses
+      // sessions d'intervention n'en sont que des sous-périodes
+      .is('poei_intervention_id', null),
     supabase
       .from('crm_taches')
       .select(
@@ -37,7 +40,7 @@ export default async function AgendaPage() {
     // Sessions rattachées à un projet POEI
     supabase
       .from('poei')
-      .select('session_id')
+      .select('id, session_id')
       .eq('organization_id', orgId)
       .not('session_id', 'is', null),
     // Formations de leads avec une date mais pas encore de session → prévisionnel
@@ -49,6 +52,9 @@ export default async function AgendaPage() {
   ])
 
   const poeiSessionIds = new Set((poeiRes.data || []).map((p: any) => p.session_id))
+  const poeiParSession = new Map((poeiRes.data || []).map((p: any) => [p.session_id, p.id]))
+  const { formateursDesPoei } = await import('@/lib/poei-formateurs')
+  const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()] as string[])
 
   // Blocs prévisionnels : date confirmée ou souhaitée, lead encore actif
   const previsionnels = (leadFormationsRes.data || [])
@@ -99,8 +105,11 @@ export default async function AgendaPage() {
           horairesJours: Array.isArray(s.horaires_jours) ? s.horaires_jours : [],
           lieu: s.lieu || '',
           status: s.status,
-          formateurNom: s.formateur ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim() : null,
+          formateurNom: s.formateur
+            ? `${s.formateur.prenom || ''} ${s.formateur.nom || ''}`.trim()
+            : (poeiParSession.has(s.id) ? formateursPoei.get(poeiParSession.get(s.id) as string) || null : null),
           isPoei: !!(s.formation?.is_poei) || poeiSessionIds.has(s.id),
+          poeiId: poeiParSession.get(s.id) || null,
         }))]}
         taches={(tachesRes.data || []).map((t: any) => ({
           id: t.id,
