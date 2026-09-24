@@ -88,6 +88,16 @@ export async function GET(req: Request) {
 
     const semaine = (sessSemaine.data || []) as any[]
     const dejaEnCours = semaine.filter((s) => s.date_debut < lundi).length
+
+    // Parcours POEI : la session chapeau n'a pas de formateur, ce sont les
+    // interventions qui en portent un (même lecture que le tableau de bord)
+    const { data: parcours } = semaine.length
+      ? await supabase.from('poei').select('id, session_id').in('session_id', semaine.map((s) => s.id))
+      : { data: [] as any[] }
+    const poeiParSession = new Map(((parcours || []) as any[]).map((p) => [p.session_id, p.id]))
+    const { formateursDesPoei } = await import('@/lib/poei-formateurs')
+    const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()])
+    const formateurDe = (s: any) => nomForm(s.formateur) || (poeiParSession.has(s.id) ? formateursPoei.get(poeiParSession.get(s.id)!) || '' : '')
     const conventions = (convs.data || []) as any[]
     const nbRecl = recl.count || 0
     const nbSignatures = conventions.length + alertesAgefice.length
@@ -144,7 +154,7 @@ export async function GET(req: Request) {
       : `le ${frDate(s.date_debut)}`
     const lignesSessions = semaine.map((s) => L(
       `${s.date_debut < lundi ? `${tag('En cours', 'muted')}&nbsp; ` : ''}${esc(s.formation?.intitule || 'Formation')} <span style="font-weight:500;color:${SLATE}">chez</span> ${esc(nomCli(s.client))}`,
-      [periodeSession(s), nomForm(s.formateur) ? `Formateur : ${esc(nomForm(s.formateur))}` : `<span style="color:${AMBER};font-weight:600">Aucun formateur affecté</span>`, s.lieu || s.ville ? esc(s.lieu || s.ville) : ''].filter(Boolean).join(' · '),
+      [periodeSession(s), formateurDe(s) ? `Formateur : ${esc(formateurDe(s))}` : `<span style="color:${AMBER};font-weight:600">Aucun formateur affecté</span>`, s.lieu || s.ville ? esc(s.lieu || s.ville) : ''].filter(Boolean).join(' · '),
       bouton(`/dashboard/sessions/${s.id}`, s.date_debut < lundi ? 'Ouvrir' : 'Préparer'),
     ))
 
