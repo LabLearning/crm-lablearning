@@ -37,6 +37,9 @@ export async function creerDossierCompletAction(formData: FormData): Promise<Act
       adresse: String(formData.get('client_adresse') || '').trim() || null,
       code_postal: String(formData.get('client_code_postal') || '').trim() || null,
       ville: String(formData.get('client_ville') || '').trim() || null,
+      // Le client créé appartient à celui qui monte le dossier (un commercial le retrouve dans ses clients)
+      created_by: session.user.id,
+      assigned_to: session.user.id,
     }).select('id').single()
     if (eClient) {
       console.error('[dossier client]', eClient.message)

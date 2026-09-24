@@ -72,7 +72,8 @@ export async function createClientAction(formData: FormData): Promise<ActionResu
     est_qualiopi: parsed.data.est_qualiopi === true,
     est_organisme_formation: parsed.data.est_organisme_formation === true,
     notes: parsed.data.notes || null,
-    assigned_to: parsed.data.assigned_to || session.user.id,
+    // Un commercial garde toujours les clients qu'il crée ; un manager peut les assigner à quelqu'un d'autre
+    assigned_to: session.user.role === 'commercial' ? session.user.id : (parsed.data.assigned_to || session.user.id),
     created_by: session.user.id,
   }
 
@@ -180,7 +181,7 @@ export async function updateClientAction(id: string, formData: FormData): Promis
   // N'écrase l'assignation que si le champ est présent dans le formulaire.
   // (Les commerciaux ne voient pas ce champ → il est absent → assignation préservée.
   //  Les managers l'envoient toujours, vide = désassigner.)
-  if (parsed.data.assigned_to !== undefined) {
+  if (parsed.data.assigned_to !== undefined && session.user.role !== 'commercial') {
     updateData.assigned_to = parsed.data.assigned_to || null
   }
 

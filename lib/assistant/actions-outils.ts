@@ -494,6 +494,8 @@ export async function executerAction(type: string, params: any, orgId: string, u
         type: params.type === 'particulier' ? 'particulier' : 'entreprise',
         email: params.email || null, telephone: params.telephone || null, ville: params.ville || null,
         financeur_type: params.financeur_type || 'entreprise',
+        // Créé à la demande de l'utilisateur : il lui revient (un commercial le retrouve dans ses clients)
+        created_by: userId || null, assigned_to: userId || null,
       }).select('id').single()
       if (error) return { success: false, message: error.message }
       return { success: true, message: `Client « ${params.raison_sociale} » créé : /dashboard/clients/${data.id}` }

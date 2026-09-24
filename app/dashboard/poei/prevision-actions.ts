@@ -138,6 +138,7 @@ export async function transformerPrevisionAction(id: string): Promise<ActionResu
         type: 'entreprise',
         raison_sociale: prev.entreprise,
         created_by: session.user.id,
+        assigned_to: session.user.id,
       })
       .select('id')
       .single()

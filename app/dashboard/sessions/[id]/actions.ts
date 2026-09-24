@@ -1165,6 +1165,7 @@ export async function envoyerContratParticulierAction(
       civilite: app.civilite || null, nom: app.nom, prenom: app.prenom,
       raison_sociale: `${app.nom || ''} ${app.prenom || ''}`.trim(),
       email: app.email, financeur_type: 'fonds_propres',
+      created_by: session.user.id, assigned_to: session.user.id,
     }).select('id').single()
     if (eCli || !cree) return { success: false, error: 'Création de la fiche particulier impossible' }
     clientId = cree.id
