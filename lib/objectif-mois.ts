@@ -93,6 +93,8 @@ export interface ObjectifMois {
   caPoei: number
   /** Part du CA calé par des sessions créées depuis lundi 00:00 (Paris). */
   caCetteSemaine: number
+  /** Dont parcours POEI créés depuis lundi. */
+  caCetteSemainePoei: number
   /** Pourcentage de l'objectif de CA atteint (peut dépasser 100). */
   caPourcentage: number
   /** Sessions et parcours POEI du mois sans aucun montant : leur CA n'est pas compté. */
@@ -230,6 +232,7 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
   let caCetteSemaine = 0
   const sessionsSansMontant: { id: string; libelle: string; href: string }[] = []
   let caPoei = 0
+  let caCetteSemainePoei = 0
   for (const s of sessions) {
     const v = valeurSession(s)
     if (v <= 0) {
@@ -239,7 +242,7 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     }
     caCale += v
     if (s.formation?.is_poei) caPoei += v
-    if (s.created_at >= debutSemaine) caCetteSemaine += v
+    if (s.created_at >= debutSemaine) { caCetteSemaine += v; if (s.formation?.is_poei) caCetteSemainePoei += v }
   }
   for (const p of parcoursPoei) {
     const v = valeurPoei(p)
@@ -251,11 +254,12 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     }
     caCale += v
     caPoei += v
-    if (p.created_at >= debutSemaine) caCetteSemaine += v
+    if (p.created_at >= debutSemaine) { caCetteSemaine += v; caCetteSemainePoei += v }
   }
   caCale = Math.round(caCale)
   caPoei = Math.round(caPoei)
   caCetteSemaine = Math.round(caCetteSemaine)
+  caCetteSemainePoei = Math.round(caCetteSemainePoei)
 
   const etablissements = [...parEtab.values()]
     .sort((a, b) => a.caleLe.localeCompare(b.caleLe))
@@ -284,6 +288,7 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     caCale,
     caPoei,
     caCetteSemaine,
+    caCetteSemainePoei,
     caPourcentage: objectifCa > 0 ? Math.round((caCale / objectifCa) * 100) : 0,
     sessionsSansMontant,
   }

@@ -44,13 +44,14 @@ function pasRond(max: number) {
   const p = 10 ** Math.floor(Math.log10(Math.max(1, brut)))
   return [1, 2, 2.5, 5, 10].map((m) => m * p).find((v) => v >= brut) ?? p * 10
 }
-/** Graduations de 0 à max ; en dépassement, l'objectif a son propre repère et ses voisins trop proches s'effacent. */
-function graduer(max: number, objectif: number, pas: number, depasse: boolean) {
+/** Graduations de 0 à max ; en dépassement, l'objectif a son propre repère et ses voisins trop proches s'effacent
+    (écartMin : distance minimale, en fraction de la jauge, entre l'étiquette de l'objectif et celle de fin). */
+function graduer(max: number, objectif: number, pas: number, depasse: boolean, ecartMin = 0.08) {
   const g: number[] = []
   for (let v = 0; v < max; v += pas) {
     if (v === 0 || (max - v >= pas / 2 && (!depasse || Math.abs(v - objectif) >= pas / 2))) g.push(v)
   }
-  if (!depasse || (max - objectif) / max >= 0.08) g.push(max)
+  if (!depasse || (max - objectif) / max >= ecartMin) g.push(max)
   return g
 }
 
@@ -222,10 +223,11 @@ function Tube(p: {
   texte: string
   /** Part remplie de la jauge, 0 à 1. */
   part: number
-  /** Part hachurée (calée cette semaine), en fraction du remplissage. */
-  recent: number
   /** Part POEI, en fraction du remplissage (à droite de la part OPCO). */
   poei: number
+  /** Parts hachurées (calées cette semaine), en fraction du remplissage : au bout de la zone OPCO, au bout de la zone POEI. */
+  recentOpco: number
+  recentPoei: number
   /** Repère de l'objectif quand il est dépassé, 0 à 1. */
   objectif: number | null
   plein: boolean
@@ -252,7 +254,8 @@ function Tube(p: {
         >
           {p.poei > 0 && <div className="ll-obj-poei absolute inset-y-0 right-0" style={{ left: `${(1 - p.poei) * 100}%` }} />}
           {p.objectif !== null && <div className="absolute inset-y-0 right-0 bg-white/25" style={{ left: `${(p.objectif / p.part) * 100}%` }} />}
-          {p.recent > 0 && <div className="ll-obj-recent absolute inset-y-0 right-0" style={{ left: `${(1 - p.recent) * 100}%` }} />}
+          {p.recentOpco > 0 && <div className="ll-obj-recent absolute inset-y-0" style={{ left: `${(1 - p.poei - p.recentOpco) * 100}%`, width: `${p.recentOpco * 100}%` }} />}
+          {p.recentPoei > 0 && <div className="ll-obj-recent absolute inset-y-0 right-0" style={{ left: `${(1 - p.recentPoei) * 100}%` }} />}
         </div>
       )}
       {p.reperes.map((x) => (
@@ -365,6 +368,7 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const restantE = Math.max(0, objectif - realise)
   const rythmeE = restantE / jours
   const poeiE = etabs.filter((e) => e.poei).length
+  const nouveauxPoei = etabs.filter((e) => e.recent && e.poei).length
   const opcoE = realise - poeiE
   const texteE = `${realise} ${pluriel(realise, 'établissement calé', 'établissements calés')} sur un objectif de ${objectif}, soit ${pctE}${NNBSP}% : ${opcoE} en OPCO, ${poeiE} en POEI`
     + (nouveaux > 0 ? `, dont ${nouveaux} cette semaine` : '')
@@ -388,6 +392,7 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const avertissement = nbSans === 1 ? '1 session sans montant n’est pas comptée' : `${nbSans} sessions sans montant ne sont pas comptées`
   const caPoei = Math.min(data.caPoei, ca)
   const caOpco = ca - caPoei
+  const caSemainePoei = Math.min(data.caCetteSemainePoei ?? 0, caSemaine, caPoei)
   const texteC = `${euros(ca)} HT calés sur un objectif de ${euros(objectifCa)}, soit ${pctC}${NNBSP}% : ${euros(caOpco)} en OPCO, ${euros(caPoei)} en POEI`
     + (caSemaine > 0 ? `, dont ${euros(caSemaine)} cette semaine` : '')
     + (nbSans > 0 ? `. ${avertissement}.` : '')
@@ -512,8 +517,9 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
               now={realise}
               texte={texteE}
               part={realise / maxE}
-              recent={realise > 0 ? nouveaux / realise : 0}
               poei={realise > 0 ? poeiE / realise : 0}
+              recentOpco={realise > 0 ? (nouveaux - nouveauxPoei) / realise : 0}
+              recentPoei={realise > 0 ? nouveauxPoei / realise : 0}
               objectif={etatE === 'depasse' ? objectif / maxE : null}
               plein={etatE === 'atteint' || etatE === 'depasse'}
               appel={etatE === 'vide' ? 1 / maxE : null}
@@ -651,8 +657,9 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
               now={ca}
               texte={texteC}
               part={ca / maxC}
-              recent={ca > 0 ? caSemaine / ca : 0}
               poei={ca > 0 ? caPoei / ca : 0}
+              recentOpco={ca > 0 ? (caSemaine - caSemainePoei) / ca : 0}
+              recentPoei={ca > 0 ? caSemainePoei / ca : 0}
               objectif={etatC === 'depasse' ? objectifCa / maxC : null}
               plein={etatC === 'atteint' || etatC === 'depasse'}
               appel={etatC === 'vide' ? Math.min(pasC, maxC) / maxC : null}
@@ -661,7 +668,7 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
             />
             <Echelle
               max={maxC}
-              marques={graduer(maxC, objectifCa, maxC / pasC > 4 ? pasC * 2 : pasC, etatC === 'depasse')}
+              marques={graduer(maxC, objectifCa, maxC / pasC > 4 ? pasC * 2 : pasC, etatC === 'depasse', 0.18)}
               objectif={etatC === 'depasse' ? objectifCa : null}
               format={milliers}
             />
