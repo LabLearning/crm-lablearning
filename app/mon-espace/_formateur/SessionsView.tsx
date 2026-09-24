@@ -1,5 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { Badge } from '@/components/ui'
+import { Badge, PoeiBadge } from '@/components/ui'
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/formation'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -18,7 +18,7 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
     .from('sessions')
     .select(`
       *,
-      formation:formation_id(intitule, duree_heures, modalite),
+      formation:formation_id(intitule, duree_heures, modalite, is_poei),
       client:client_id(raison_sociale, nom_commercial, ville)
     `)
     .eq('formateur_id', formateurId)
@@ -86,6 +86,8 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
                       {SESSION_STATUS_LABELS[s.status as SessionStatus]}
                     </Badge>
                     {isToday && <Badge variant="info">Aujourd&apos;hui</Badge>}
+                    {/* Intervention sur un parcours POEI : même travail (émargement, stagiaires), autre financement */}
+                    {((s as any).poei_intervention_id || (s as any).formation?.is_poei) && <PoeiBadge role={(s as any).poei_intervention_id ? 'intervention' : null} />}
                     {s.reference && <span className="text-xs font-mono text-surface-400">{s.reference}</span>}
                   </div>
                   <h3 className="text-sm font-semibold text-surface-900 truncate">

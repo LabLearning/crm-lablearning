@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Plus, Search, Briefcase, Building2, GraduationCap, Trash2,
-  ChevronRight, CheckCircle2, Clock, Users, CalendarClock, FolderTree, Calendar,
+  ChevronRight, CheckCircle2, Clock, Users, CalendarClock, FolderTree, Calendar, User, UserX,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast } from '@/components/ui'
 import { createPoeiAction, updatePoeiStatutAction, deletePoeiAction } from './actions'
@@ -43,6 +43,15 @@ function PaiementBadge({ p }: { p: any }) {
 }
 
 const statusOptions = Object.entries(POEI_STATUS_LABELS).map(([v, l]) => ({ value: v, label: l }))
+
+/** Formateur(s) du parcours, ou « Formateur à affecter » tant qu'il n'est pas terminé. */
+function FormateursPoei({ p }: { p: any }) {
+  if (p._formateurs) {
+    return <span className="inline-flex min-w-0 items-center gap-1"><User className="h-3.5 w-3.5 shrink-0 text-surface-400" /><span className="truncate">{p._formateurs}</span></span>
+  }
+  if (['terminee', 'abandonne', 'refuse', 'embauche'].includes(p.statut)) return null
+  return <span className="inline-flex items-center gap-1 font-medium text-warning-700"><UserX className="h-3.5 w-3.5 shrink-0" />Formateur à affecter</span>
+}
 
 export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog, vivierCandidats = [], agences = [] }: Props) {
   const { toast } = useToast()
@@ -245,6 +254,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
                   <Users className="h-3.5 w-3.5 text-surface-400" />
                   {p.candidats_count || 0} candidat{(p.candidats_count || 0) > 1 ? 's' : ''}
                 </span>
+                <FormateursPoei p={p} />
               </div>
               <div className="flex flex-wrap items-center gap-1.5 mt-2">
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-100 text-surface-800 text-xs font-medium">
@@ -301,6 +311,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
                         {companyLabel(p.client) || <span className="text-surface-500 italic font-normal">Sans entreprise</span>}
                       </div>
                       <div className="text-xs text-surface-500">{p.numero}</div>
+                      <div className="mt-0.5 text-xs text-surface-500"><FormateursPoei p={p} /></div>
                     </Link>
                   </td>
                   <td className="px-5 py-3 hidden md:table-cell text-sm text-surface-600 max-w-[240px] truncate">{p.formation?.intitule || '—'}</td>

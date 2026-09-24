@@ -11,7 +11,7 @@ import {
   Star, ListChecks, FileSignature, Award, Euro, BookOpen, ClipboardList, FolderCheck, Mails, Route,
   QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2, Pencil, Sparkles, ReceiptEuro, Printer,
   TrendingUp, Lock,
-  ShieldCheck as PackHygieneIcon, Landmark,
+  ShieldCheck as PackHygieneIcon, Landmark, Briefcase,
 } from '@/components/ui/icons'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
 import { SessionRetourClient } from './SessionRetourClient'
@@ -86,6 +86,8 @@ interface Props {
   isFormateur: boolean
   userRole: string
   isPoei?: boolean
+  /** Session technique d'une POEI, ouverte depuis sa fiche : seuls l'émargement, les stagiaires, les questionnaires et le bilan s'affichent. */
+  poeiLien?: { id: string; numero: string | null; client: string | null; intervention: string | null } | null
   recueilTemplates?: any[]
   recueil?: any
   formationIntitule?: string
@@ -124,7 +126,10 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null }: Props) {
+/** Onglets d'une session POEI (les autres relèvent de l'OPCO ou se gèrent sur la fiche POEI). */
+const ONGLETS_POEI: string[] = ['presences', 'apprenants', 'qcm', 'rapport']
+
+export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, poeiLien = null, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -166,7 +171,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     } else toast('error', (r as any).error || 'Erreur')
   }
   const estAgefice = dossiersAgefice.length > 0 || (session as any).client?.financeur_type === 'agefice'
-  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>('session')
+  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>(poeiLien ? 'presences' : 'session')
   // Arrivée ciblée (ex. ?tab=facturation depuis la vue AGEFICE) : lue après montage,
   // jamais dans l'état initial, pour que le rendu serveur et le premier rendu client
   // soient identiques (sinon erreur d'hydratation sur la fiche session).
@@ -174,7 +179,9 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     const t = new URLSearchParams(window.location.search).get('tab')
     if (!t) return
     const ALIAS: Record<string, string> = { pointages: 'session', evaluations: 'qcm', contenu: 'docs', deroule: 'dossier' }
-    setTab((ALIAS[t] || t) as any)
+    const cible = ALIAS[t] || t
+    if (poeiLien && !ONGLETS_POEI.includes(cible)) return
+    setTab(cible as any)
   }, [])
   // Barre d'onglets défilante : on centre l'onglet actif (mobile)
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -375,7 +382,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     <div className="max-w-4xl mx-auto space-y-5">
       {/* Header : retour + titre sur deux lignes, actions sur leur propre rangée sous 640 px */}
       <div className="flex items-start gap-2 sm:gap-4">
-        <BackLink fallbackHref="/dashboard/sessions" iconOnly className="mt-0.5 sm:mt-1 -ml-2 sm:ml-0 p-2 rounded-xl hover:bg-surface-100 transition-colors shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center" />
+        <BackLink fallbackHref={poeiLien ? `/dashboard/poei/${poeiLien.id}?onglet=emargement` : '/dashboard/sessions'} iconOnly className="mt-0.5 sm:mt-1 -ml-2 sm:ml-0 p-2 rounded-xl hover:bg-surface-100 transition-colors shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <div className="flex items-start gap-2 flex-wrap min-w-0 flex-1">
@@ -385,8 +392,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
               {isPoei && <span className="mt-1"><PoeiBadge /></span>}
             </div>
             <div className="flex items-center gap-2 shrink-0 -ml-10 sm:ml-0">
-              {/* Modifier la session */}
-              {!isFormateur && (
+              {/* Modifier la session (une session POEI se modifie par son intervention, sur la fiche POEI) */}
+              {!isFormateur && !poeiLien && (
                 <button
                   onClick={() => setEditSessionOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-xl border border-surface-200 text-[13px] sm:text-xs font-medium text-surface-700 hover:border-brand-300 hover:bg-brand-50/50 transition-colors shrink-0"
@@ -397,13 +404,13 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
               {/* Statut */}
               <div className="relative shrink-0">
                 <button
-                  onClick={() => canChangeStatus && nextStatuses.length > 0 && setShowStatusMenu(!showStatusMenu)}
-                  className={cn('flex items-center gap-1.5 min-h-[40px] sm:min-h-0', canChangeStatus && nextStatuses.length > 0 && 'cursor-pointer')}
+                  onClick={() => canChangeStatus && !poeiLien && nextStatuses.length > 0 && setShowStatusMenu(!showStatusMenu)}
+                  className={cn('flex items-center gap-1.5 min-h-[40px] sm:min-h-0', canChangeStatus && !poeiLien && nextStatuses.length > 0 && 'cursor-pointer')}
                 >
                   <Badge variant={SESSION_STATUS[session.status]?.variant || 'default'}>
                     {SESSION_STATUS[session.status]?.label || session.status}
                   </Badge>
-                  {canChangeStatus && nextStatuses.length > 0 && <ChevronDown className="h-3.5 w-3.5 text-surface-400" />}
+                  {canChangeStatus && !poeiLien && nextStatuses.length > 0 && <ChevronDown className="h-3.5 w-3.5 text-surface-400" />}
                 </button>
                 {showStatusMenu && (
                   <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1 w-44 bg-white rounded-xl border shadow-elevated py-1 z-20">
@@ -433,7 +440,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 <span className="inline-flex items-center gap-1 min-w-0"><Building2 className="h-3.5 w-3.5 shrink-0" /><span className="[overflow-wrap:anywhere]">{etablissement}</span></span>
               )
             )}
-            {compteOpco && (
+            {compteOpco && !poeiLien && (
               <Link href={`/dashboard/clients/${session.client_id}`} title={compteOpco.date ? `Depuis le ${formatDate(compteOpco.date)}` : 'État du compte OPCO du client'}
                 className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-semibold ${OPCO_COMPTE_STATUS_STYLES[compteOpco.status]}`}>
                 <Landmark className="h-3 w-3" />{libelleCompteOpco(compteOpco.status, compteOpco.opcoNom)}
@@ -447,8 +454,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
             {formation?.duree_heures && <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 shrink-0" />{formation.duree_heures}h</span>}
             <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5 shrink-0" />{inscriptions.length} apprenant{inscriptions.length > 1 ? 's' : ''}</span>
           </div>
-          {/* Téléchargements : pleine largeur en colonne sur mobile */}
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mt-3 sm:mt-2 -ml-10 sm:ml-0">
+          {/* Téléchargements : pleine largeur en colonne sur mobile (une POEI a ses propres documents, sur sa fiche) */}
+          {!poeiLien && <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 mt-3 sm:mt-2 -ml-10 sm:ml-0">
             {session.formation_id && (
               <a href={`/api/pdf/programme/${session.formation_id}?session=${session.id}`} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-50 text-brand-500 text-[13px] sm:text-xs font-medium hover:bg-brand-100 transition-colors">
@@ -459,9 +466,24 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
               className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-50 text-brand-500 text-[13px] sm:text-xs font-medium hover:bg-brand-100 transition-colors">
               <Download className="h-3.5 w-3.5 shrink-0" /> Convocation
             </a>
-          </div>
+          </div>}
         </div>
       </div>
+
+      {/* Session technique d'une POEI : on rappelle d'où elle vient et où se gère le reste */}
+      {poeiLien && (
+        <div className="card flex flex-wrap items-center gap-3 border-brand-100 bg-brand-50/50 px-4 py-3">
+          <Briefcase className="h-4 w-4 shrink-0 text-brand-500" />
+          <p className="min-w-[200px] flex-1 text-sm text-surface-700">
+            {poeiLien.intervention ? <>Émargement de l&apos;intervention <span className="font-medium text-surface-900">{poeiLien.intervention}</span></> : 'Émargement du parcours'}
+            {' '}de la POEI <span className="font-medium text-surface-900">{[poeiLien.numero, poeiLien.client].filter(Boolean).join(' · ')}</span>.
+            <span className="text-surface-500"> Dates, formateur, candidats et documents se gèrent sur la fiche POEI.</span>
+          </p>
+          <Link href={`/dashboard/poei/${poeiLien.id}?onglet=emargement`} className="btn-primary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-xs">
+            <ArrowLeft className="h-3.5 w-3.5" /> Retour à la POEI
+          </Link>
+        </div>
+      )}
 
       {/* Validation du montant formateur à la confirmation de la session */}
       {showMontantModal && (
@@ -504,7 +526,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
           ...(!isFormateur && estFormationHygiene((session as any).formation || { intitule: session.intitule }) ? [{ id: 'pack' as const, label: 'Pack Hygiène', icon: PackHygieneIcon }] : []),
           ...(!isFormateur ? [{ id: 'facturation' as const, label: estAgefice ? 'AGEFICE' : 'Facturation', icon: ReceiptEuro }] : []),
           ...(!isFormateur ? [{ id: 'mails' as const, label: `Mails (${emailLogs.length})`, icon: Mails }] : []),
-        ].map(t => (
+        ].filter((t) => !poeiLien || ONGLETS_POEI.includes(t.id)).map(t => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
             className={cn('flex items-center justify-center gap-2 px-3 py-2.5 min-h-[40px] rounded-md text-sm font-medium transition-colors whitespace-nowrap shrink-0',
               tab === t.id ? 'bg-white shadow-xs text-surface-900' : 'text-surface-500 hover:text-surface-800')}>

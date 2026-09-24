@@ -13,7 +13,7 @@ export default async function SansFormateurPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const [{ data: sessionsBrutes }, { data: formateurs }, { data: parcours }] = await Promise.all([
+  const [{ data: sessionsBrutes }, { data: formateurs }, { data: tousChapeaux }] = await Promise.all([
     // Les sessions d'intervention POEI reçoivent leur formateur depuis
     // l'intervention (une affectation ici serait écrasée) : elles sont exclues
     supabase.from('sessions')
@@ -29,32 +29,13 @@ export default async function SansFormateurPage() {
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('nom'),
-    // Parcours POEI en cours ou à venir (le statut n'est pas toujours tenu :
-    // la date de fin fait foi) ; leur session chapeau n'a jamais de formateur
-    supabase.from('poei')
-      .select('id, numero, session_id, date_debut, date_fin, statut, client:client_id(raison_sociale, nom_commercial), formation:formation_id(intitule)')
-      .eq('organization_id', session.organization.id)
-      .not('statut', 'in', '("terminee","abandonne","refuse","embauche")')
-      .or(`date_fin.is.null,date_fin.gte.${new Date().toISOString().slice(0, 10)}`),
+    // Sessions chapeau des POEI : elles n'ont jamais de formateur (ce sont les interventions qui en portent)
+    supabase.from('poei').select('session_id').eq('organization_id', session.organization.id).not('session_id', 'is', null),
   ])
 
-  // La session chapeau d'un parcours n'est pas « sans formateur » : ce sont
-  // les interventions qui en portent un. Le parcours est signalé à part s'il
-  // n'a aucun formateur sur aucune intervention.
-  const sessionsChapeau = new Set(((parcours || []) as any[]).map((p) => p.session_id).filter(Boolean))
-  const { data: tousChapeaux } = await supabase.from('poei').select('session_id').eq('organization_id', session.organization.id).not('session_id', 'is', null)
-  for (const x of (tousChapeaux || []) as any[]) sessionsChapeau.add(x.session_id)
+  // Écran 100 % OPCO : une POEI sans formateur est signalée dans la liste des POEI
+  const sessionsChapeau = new Set(((tousChapeaux || []) as any[]).map((x) => x.session_id))
   const sessions = ((sessionsBrutes || []) as any[]).filter((s) => !sessionsChapeau.has(s.id) && !s.formation?.is_poei)
-  const { formateursDesPoei } = await import('@/lib/poei-formateurs')
-  const formateursPoei = await formateursDesPoei(supabase, ((parcours || []) as any[]).map((p) => p.id))
-  const parcoursSansFormateur = ((parcours || []) as any[])
-    .filter((p) => !formateursPoei.get(p.id))
-    .sort((a, b) => String(a.date_debut || '9999').localeCompare(String(b.date_debut || '9999')))
-    .map((p) => ({
-      id: p.id, numero: p.numero, date_debut: p.date_debut, date_fin: p.date_fin,
-      client: p.client?.nom_commercial || p.client?.raison_sociale || null,
-      formation: p.formation?.intitule || null,
-    }))
 
   // Le nombre d'inscrits aide à prioriser (une session à 10 stagiaires
   // compte plus qu'une coquille vide).
@@ -77,7 +58,6 @@ export default async function SansFormateurPage() {
         inscrits: inscritsParSession[s.id] || 0,
       }))}
       formateurs={(formateurs || []).map((f: any) => ({ id: f.id, nom: `${f.prenom} ${f.nom}` }))}
-      parcoursPoei={parcoursSansFormateur}
     />
   )
 }

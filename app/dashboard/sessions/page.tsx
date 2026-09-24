@@ -1,5 +1,6 @@
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { SessionsList } from './SessionsList'
 import type { Session } from '@/lib/types/formation'
 
@@ -49,8 +50,10 @@ async function etatsDossiers(supabase: any, orgId: string) {
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: { periode?: string }
+  searchParams: { periode?: string; famille?: string }
 }) {
+  // Les POEI ont quitté cet écran : elles se gèrent dans le module POEI
+  if (searchParams.famille === 'poei') redirect('/dashboard/poei')
   const session = await getSession()
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
@@ -70,13 +73,17 @@ export default async function SessionsPage({
       ? [...list].sort((a, b) => (a.date_debut || '').localeCompare(b.date_debut || ''))
       : list
 
-  // Une POEI = une ligne : chapeau (ou première intervention s'il n'y en a
-  // pas), les autres sessions d'intervention sont masquées (lib/poei-sessions)
+  // Écran 100 % OPCO : les sessions d'une POEI (chapeau, interventions) sont
+  // des supports techniques gérés depuis la fiche POEI, elles ne s'affichent pas ici
   const { cartePoeiSessions } = await import('@/lib/poei-sessions')
-  const [dossiers, { doublons: doublonsPoei, poeiParSession }] = await Promise.all([
+  const [dossiers, { doublons: doublonsPoei, poeiParSession }, { data: formationsPoei }] = await Promise.all([
     etatsDossiers(supabase, orgId),
     cartePoeiSessions(supabase, orgId),
+    supabase.from('formations').select('id').eq('organization_id', orgId).eq('is_poei', true),
   ])
+  const idsFormationsPoei = new Set(((formationsPoei || []) as any[]).map((f) => f.id))
+  const sansPoei = (list: any[]) => list.filter((s: any) => !s._is_poei)
+  const formationsOpco = (list: any[]) => list.filter((f: any) => !idsFormationsPoei.has(f.id))
   // Formateurs de chaque parcours, portés par ses interventions
   const { formateursDesPoei } = await import('@/lib/poei-formateurs')
   const formateursPoei = await formateursDesPoei(supabase, [...poeiParSession.values()])
@@ -115,8 +122,8 @@ export default async function SessionsPage({
       return (
         <div className="animate-fade-in">
           <SessionsList
-            sessions={sessionsWithCounts as Session[]}
-            formations={(data.formations || []) as any[]}
+            sessions={sansPoei(sessionsWithCounts) as Session[]}
+            formations={formationsOpco(data.formations || [])}
             formateurs={(data.formateurs || []) as any[]}
             clients={(data.clients || []) as any[]}
             apprenants={(data.apprenants || []) as any[]}
@@ -219,8 +226,8 @@ export default async function SessionsPage({
   return (
     <div className="animate-fade-in">
       <SessionsList
-        sessions={sessionsWithCounts as Session[]}
-        formations={(formations || []) as any[]}
+        sessions={sansPoei(sessionsWithCounts) as Session[]}
+        formations={formationsOpco(formations || [])}
         formateurs={(formateurs || []) as any[]}
         clients={(clients || []) as any[]}
         apprenants={(apprenants || []) as any[]}

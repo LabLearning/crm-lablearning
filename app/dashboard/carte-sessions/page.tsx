@@ -6,14 +6,15 @@ export default async function CarteSessionsPage() {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  // Une POEI = un point : chapeau, ou première intervention s'il n'y en a pas
+  // Carte des sessions OPCO : les sessions d'une POEI (chapeau, interventions) se voient dans le module POEI
   const { cartePoeiSessions } = await import('@/lib/poei-sessions')
-  const { doublons: doublonsPoei } = await cartePoeiSessions(supabase, session.organization.id)
+  const { doublons: doublonsPoei, poeiParSession } = await cartePoeiSessions(supabase, session.organization.id)
+  const estPoei = (s: any) => doublonsPoei.has(s.id) || poeiParSession.has(s.id) || !!s.poei_intervention_id || !!s.formation?.is_poei
 
   const [{ data: sessions }, { data: franchises }, { data: etabs }] = await Promise.all([
     supabase
     .from('sessions')
-    .select('id, reference, intitule, status, date_debut, date_fin, lieu, ville, code_postal, formation:formation_id(intitule, duree_heures, categorie), formateur:formateurs(prenom, nom), client:client_id(raison_sociale, nom_commercial, sigle)')
+    .select('id, reference, intitule, status, date_debut, date_fin, lieu, ville, code_postal, poei_intervention_id, formation:formation_id(intitule, duree_heures, categorie, is_poei), formateur:formateurs(prenom, nom), client:client_id(raison_sociale, nom_commercial, sigle)')
     .eq('organization_id', session.organization.id)
       // Les annulées sont affichées (pastille rouge), pas exclues.
       .order('date_debut', { ascending: false }),
@@ -29,7 +30,7 @@ export default async function CarteSessionsPage() {
 
   return (
     <div className="animate-fade-in">
-      <CarteClient sessions={((sessions || []) as any[]).filter((s) => !doublonsPoei.has(s.id))} franchises={(franchises || []) as any[]} etablissements={(etabs || []) as any[]} />
+      <CarteClient sessions={((sessions || []) as any[]).filter((s) => !estPoei(s))} franchises={(franchises || []) as any[]} etablissements={(etabs || []) as any[]} />
     </div>
   )
 }

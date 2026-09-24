@@ -128,27 +128,8 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
   function handlePeriode(p: string) {
     router.replace(p === 'actives' ? pathname : `${pathname}?periode=${p}`)
   }
-  // Sessions OPCO ou parcours POEI : comme au tableau de bord, un parcours
-  // n'apparaît qu'une fois (sa session chapeau), ses sessions d'intervention
-  // restent dans la fiche POEI et l'espace du formateur.
-  const searchParamsFamille = useSearchParams()
-  const [famille, setFamille] = useState<'opco' | 'poei'>(searchParamsFamille.get('famille') === 'poei' ? 'poei' : 'opco')
-  function choisirFamille(f: 'opco' | 'poei') {
-    setFamille(f)
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      if (f === 'poei') url.searchParams.set('famille', 'poei')
-      else url.searchParams.delete('famille')
-      window.history.replaceState(window.history.state, '', url.toString())
-    }
-  }
-  const estParcoursPoei = (x: Session) => !!(x as any)._is_poei && (x as any)._poei_role !== 'intervention'
-  const nbOpco = useMemo(() => sessions.filter((x) => !(x as any)._is_poei).length, [sessions])
-  const nbPoei = useMemo(() => sessions.filter(estParcoursPoei).length, [sessions])
-  const deFamille = useMemo(
-    () => sessions.filter((x) => (famille === 'poei' ? estParcoursPoei(x) : !(x as any)._is_poei)),
-    [sessions, famille],
-  )
+  // Écran 100 % OPCO : les POEI se gèrent dans leur module (le serveur les écarte déjà)
+  const deFamille = useMemo(() => sessions.filter((x) => !(x as any)._is_poei), [sessions])
   /** Un parcours POEI ouvre son dossier ; une session, sa fiche. */
   const lienSession = (x: Session) => ((x as any)._poei_id ? `/dashboard/poei/${(x as any)._poei_id}` : `/dashboard/sessions/${x.id}`)
 
@@ -272,10 +253,10 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
         <div>
           <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Sessions de formation</h1>
           <p className="text-surface-500 mt-1 text-sm">
-            {famille === 'poei'
-              ? `${deFamille.length} parcours POEI`
-              : `${deFamille.length} session${deFamille.length > 1 ? 's' : ''}`}
+            {`${deFamille.length} session${deFamille.length > 1 ? 's' : ''} OPCO`}
             {periode !== 'toutes' && <span className="text-surface-400"> · {PERIODE_LABELS[periode].toLowerCase()}</span>}
+            <span className="text-surface-400"> · les POEI se gèrent dans </span>
+            <Link href="/dashboard/poei" className="font-medium text-brand-600 hover:underline">POEI</Link>
           </p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
@@ -296,15 +277,6 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
           derrière un bouton « Filtres » avec compteur. */}
       <div className="space-y-3 mb-5">
         <div className="flex flex-col md:flex-row gap-3">
-          <div role="radiogroup" aria-label="Famille de sessions" className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start w-full md:w-auto">
-            {([['opco', 'Sessions OPCO', nbOpco], ['poei', 'POEI', nbPoei]] as const).map(([f, label, n]) => (
-              <button key={f} type="button" role="radio" aria-checked={famille === f} onClick={() => choisirFamille(f)}
-                className={`flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg text-[13px] md:text-xs font-medium transition-colors whitespace-nowrap min-h-[36px] md:min-h-0 ${famille === f ? 'bg-white shadow-sm text-surface-900' : 'text-surface-500 hover:text-surface-700'}`}>
-                {label}
-                <span className={`text-2xs rounded-full px-1.5 py-px tabular-nums ${famille === f ? 'bg-surface-100 text-surface-600' : 'bg-white/70 text-surface-500'}`}>{n}</span>
-              </button>
-            ))}
-          </div>
           <div role="radiogroup" aria-label="Période" className="flex gap-1 bg-surface-100 rounded-xl p-1 shrink-0 self-start w-full md:w-auto">
             {(['actives', 'passees', 'toutes'] as const).map((p) => (
               <button key={p} type="button" role="radio" aria-checked={periode === p} onClick={() => handlePeriode(p)}

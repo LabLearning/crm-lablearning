@@ -55,6 +55,9 @@ export default async function PoeiPage() {
     .eq('organization_id', session.organization.id).eq('is_active', true).order('nom')
 
   const { statutAttenduPoei, blocagesPoei } = await import('@/lib/poei-statut')
+  // Formateurs de chaque parcours (portés par ses interventions) : repris de l'écran « sans formateur » des sessions
+  const { formateursDesPoei } = await import('@/lib/poei-formateurs')
+  const formateursParPoei = await formateursDesPoei(supabase, ((poeiRaw || []) as any[]).map((p) => p.id))
   const poei = (poeiRaw || []).map((p: any) => {
     const nb = (p.candidats || []).length
     const faits = {
@@ -70,6 +73,7 @@ export default async function PoeiPage() {
     return {
       ...p,
       candidats_count: nb,
+      _formateurs: formateursParPoei.get(p.id) || null,
       statut: statutAttenduPoei(faits),
       nb_blocages: blocagesPoei({
         ...faits,

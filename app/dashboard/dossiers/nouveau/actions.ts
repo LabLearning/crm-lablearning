@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
 import { estimationPriseEnCharge } from '@/lib/agefice'
+import { refusFormationPoei } from '@/lib/poei-garde'
 
 /**
  * Création d'un dossier complet en un geste : client (existant ou nouveau)
@@ -15,6 +16,8 @@ export async function creerDossierCompletAction(formData: FormData): Promise<Act
   const session = await getSession()
   if (['formateur', 'apprenant'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  const erreurPoei = await refusFormationPoei(supabase, [String(formData.get('formation_id') || '')])
+  if (erreurPoei) return { success: false, error: erreurPoei }
   const orgId = session.organization.id
 
   // ── 1. Le client : existant, ou créé à la volée ──

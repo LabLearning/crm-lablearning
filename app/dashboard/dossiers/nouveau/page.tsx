@@ -19,9 +19,10 @@ export default async function NouveauDossierPage() {
       .select('id, raison_sociale, nom_commercial, siret, ville')
       .eq('organization_id', orgId).eq('type', 'entreprise')
       .order('raison_sociale'),
+    // Une POEI ne passe pas par un dossier OPCO : elle se crée dans le module POEI
     supabase.from('formations')
       .select('id, intitule, duree_heures, duree_jours')
-      .eq('organization_id', orgId).eq('is_active', true)
+      .eq('organization_id', orgId).eq('is_active', true).or('is_poei.is.null,is_poei.eq.false')
       .order('intitule'),
     supabase.from('formateurs')
       .select('id, prenom, nom')

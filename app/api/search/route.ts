@@ -43,8 +43,10 @@ export async function GET(req: NextRequest) {
       .or(personne('prenom', 'nom', ['email', 'telephone', 'mobile'])).order('nom').limit(6),
     supabase.from('leads').select('id, entreprise, contact_nom, contact_prenom, contact_email, contact_telephone, status, montant_estime').eq('organization_id', orgId)
       .or(personne('contact_prenom', 'contact_nom', ['entreprise', 'contact_email'])).limit(5),
-    supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville').eq('organization_id', orgId)
-      .or(`reference.ilike.${like},intitule.ilike.${like},ville.ilike.${like},lieu.ilike.${like}`).order('date_debut', { ascending: false }).limit(5),
+    // Sessions OPCO seulement : les sessions techniques d'une POEI sortent sous « POEI »
+    supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville, formation:formation_id(is_poei)').eq('organization_id', orgId)
+      .is('poei_intervention_id', null)
+      .or(`reference.ilike.${like},intitule.ilike.${like},ville.ilike.${like},lieu.ilike.${like}`).order('date_debut', { ascending: false }).limit(10),
     supabase.from('apprenants').select('id, nom, prenom, entreprise, email, telephone').eq('organization_id', orgId)
       .or(personne('prenom', 'nom', ['email'])).limit(5),
     supabase.from('formateurs').select('id, nom, prenom, email, telephone, zone_intervention').eq('organization_id', orgId)
@@ -58,6 +60,16 @@ export async function GET(req: NextRequest) {
     // Combien d'établissements dans cette ville : pour proposer la liste complète
     supabase.from('clients').select('id', { count: 'exact', head: true }).eq('organization_id', orgId).ilike('ville', like),
   ])
+
+  // POEI : par numéro, poste visé, ou entreprise trouvée ci-dessus (« NEW SCHOOL » sort ses parcours)
+  const idsClients = ((clients.data || []) as any[]).map((c) => c.id)
+  const condPoei = [`numero.ilike.${like}`, `poste_vise.ilike.${like}`, ...(idsClients.length ? [`client_id.in.(${idsClients.join(',')})`] : [])]
+  const { data: poeis } = await supabase.from('poei')
+    .select('id, numero, date_debut, date_fin, statut, client:client_id(raison_sociale, nom_commercial, ville), formation:formation_id(intitule)')
+    .eq('organization_id', orgId).or(condPoei.join(',')).order('date_debut', { ascending: false, nullsFirst: false }).limit(5)
+  const { data: chapeaux } = await supabase.from('poei').select('session_id').eq('organization_id', orgId).not('session_id', 'is', null)
+  const sessionsChapeau = new Set(((chapeaux || []) as any[]).map((x) => x.session_id))
+  const sessionsOpco = ((sessions.data || []) as any[]).filter((s) => !s.formation?.is_poei && !sessionsChapeau.has(s.id)).slice(0, 5)
 
   const adresse = (r: any) => [r.adresse, [r.code_postal, r.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const line = (label: string, value: any) => value ? { label, value: String(value) } : null
@@ -96,7 +108,17 @@ export async function GET(req: NextRequest) {
       sublabel: l.status, href: `/dashboard/leads?lead=${l.id}`,
       preview: { title: l.entreprise || `${l.contact_prenom || ''} ${l.contact_nom || ''}`.trim(), lines: clean([line('Contact', `${l.contact_prenom || ''} ${l.contact_nom || ''}`.trim()), line('Statut', l.status), line('Email', l.contact_email), line('Téléphone', l.contact_telephone), line('Montant estimé', l.montant_estime ? `${Number(l.montant_estime).toLocaleString('fr-FR')} €` : null)]) },
     })),
-    ...(sessions.data || []).map((s: any) => ({
+    ...((poeis || []) as any[]).map((p: any) => {
+      const entreprise = p.client?.nom_commercial || p.client?.raison_sociale || null
+      const dates = p.date_debut ? `${new Date(p.date_debut).toLocaleDateString('fr-FR')}${p.date_fin ? ' → ' + new Date(p.date_fin).toLocaleDateString('fr-FR') : ''}` : null
+      return {
+        group: 'POEI', label: [entreprise, p.client?.ville].filter(Boolean).join(' · ') || p.numero,
+        sublabel: [p.numero, dates].filter(Boolean).join(' · '),
+        href: `/dashboard/poei/${p.id}`,
+        preview: { title: entreprise || p.numero, lines: clean([line('Numéro', p.numero), line('Formation', p.formation?.intitule), line('Dates', dates)]) },
+      }
+    }),
+    ...sessionsOpco.map((s: any) => ({
       group: 'Sessions', label: s.intitule || s.reference,
       sublabel: `${s.reference || ''}${s.date_debut ? ' · ' + new Date(s.date_debut).toLocaleDateString('fr-FR') : ''}`,
       href: `/dashboard/sessions/${s.id}`,

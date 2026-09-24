@@ -5,7 +5,10 @@ import { SessionDetailClient } from './SessionDetailClient'
 import { peutVoirMarge } from '@/lib/rentabilite'
 import { rentabiliteSession, MESSAGE_RENTABILITE_INDISPONIBLE } from '@/lib/rentabilite-data'
 
-export default async function SessionDetailPage({ params }: { params: { id: string } }) {
+/** Onglets d'une session POEI ouverts depuis la fiche POEI ; tout le reste se gère sur la POEI. */
+const ONGLETS_POEI = ['presences', 'apprenants', 'qcm', 'rapport']
+
+export default async function SessionDetailPage({ params, searchParams }: { params: { id: string }; searchParams?: { tab?: string } }) {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
   const today = new Date().toISOString().split('T')[0]
@@ -35,15 +38,32 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         .catch(() => ({ erreur: MESSAGE_RENTABILITE_INDISPONIBLE }))
     : Promise.resolve(null)
 
-  // POEI : formation éligible OU projet POEI rattaché à la session
-  const { data: poeiLink } = await supabase
-    .from('poei')
-    .select('id')
-    .eq('session_id', params.id)
-    .eq('organization_id', session.organization.id)
-    .limit(1)
-    .maybeSingle()
-  const isPoei = !!((sessionData as any).formation?.is_poei) || !!poeiLink
+  // POEI : session chapeau d'un parcours, ou session d'une de ses interventions
+  const ivId = (sessionData as any).poei_intervention_id as string | null
+  const [{ data: poeiLink }, { data: ivLink }] = await Promise.all([
+    supabase.from('poei')
+      .select('id, numero, client:client_id(raison_sociale, nom_commercial)')
+      .eq('session_id', params.id)
+      .eq('organization_id', session.organization.id)
+      .limit(1)
+      .maybeSingle(),
+    ivId
+      ? supabase.from('poei_interventions').select('libelle, poei:poei(id, numero, client:client_id(raison_sociale, nom_commercial))').eq('id', ivId).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+  ])
+  const parent: any = poeiLink || (Array.isArray(ivLink?.poei) ? ivLink.poei[0] : ivLink?.poei) || null
+  const poeiLien = parent?.id ? {
+    id: parent.id as string,
+    numero: (parent.numero as string) || null,
+    client: (parent.client?.nom_commercial || parent.client?.raison_sociale || null) as string | null,
+    intervention: ((ivLink as any)?.libelle as string) || null,
+  } : null
+  // Une session POEI n'est qu'un support technique : elle se gère depuis la fiche POEI.
+  // Seul un lien de la fiche POEI vers un de ses onglets (émargement…) ouvre la session.
+  if (poeiLien && !ONGLETS_POEI.includes(searchParams?.tab || '')) {
+    redirect(`/dashboard/poei/${poeiLien.id}${ivId ? '?onglet=emargement' : ''}`)
+  }
+  const isPoei = !!((sessionData as any).formation?.is_poei) || !!poeiLien
 
   // Inscriptions avec apprenants
   const { data: inscriptions } = await supabase
@@ -400,6 +420,7 @@ export default async function SessionDetailPage({ params }: { params: { id: stri
         clientsApprenants={(clientsApprenants || []) as any[]}
         userRole={session.user.role}
         isPoei={isPoei}
+        poeiLien={poeiLien}
         recueilTemplates={recueilTemplates as any[]}
         recueil={recueil as any}
         formationIntitule={(sessionData as any).formation?.intitule || ''}

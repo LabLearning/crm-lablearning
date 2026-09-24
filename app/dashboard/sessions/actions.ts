@@ -6,6 +6,7 @@ import { createSessionSchema } from '@/lib/validations/formation'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
+import { refusFormationPoei } from '@/lib/poei-garde'
 
 /**
  * Apprenants d'un client, chargés à la volée quand on le sélectionne dans le
@@ -60,6 +61,10 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
   }
 
   const supabase = await createServiceRoleClient()
+
+  // Une formation POEI ne donne pas de session OPCO : la POEI crée elle-même ses sessions
+  const erreurPoei = await refusFormationPoei(supabase, (parsed.data.formation_ids || parsed.data.formation_id || '').split(','))
+  if (erreurPoei) return { success: false, error: erreurPoei }
 
   const { count } = await supabase
     .from('sessions')
@@ -489,6 +494,16 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
   }
 
   const supabase = await createServiceRoleClient()
+
+  // Une session OPCO ne bascule pas sur une formation POEI (les sessions d'une POEI se gèrent depuis sa fiche)
+  const [{ data: sesPoei }, { data: chapeau }] = await Promise.all([
+    supabase.from('sessions').select('poei_intervention_id').eq('id', id).maybeSingle(),
+    supabase.from('poei').select('id').eq('session_id', id).limit(1).maybeSingle(),
+  ])
+  if (!(sesPoei as any)?.poei_intervention_id && !chapeau) {
+    const erreurPoei = await refusFormationPoei(supabase, (parsed.data.formation_ids || parsed.data.formation_id || '').split(','))
+    if (erreurPoei) return { success: false, error: erreurPoei }
+  }
 
   const horairesJours = parsed.data.horaires_jours ? safeParseJson(parsed.data.horaires_jours) : []
 

@@ -137,6 +137,9 @@ async function syncAction(sb: any, actionId: string): Promise<{ status: 'process
     await sb.from('sessions').update(base).eq('id', sess.id)
   } else {
     if (!formationId) return { status: 'ignored' } // pas de formation correspondante → on n'insère pas
+    // Une POEI se crée dans le module POEI, qui fabrique ses propres sessions : pas de session OPCO en double
+    const { data: f } = await sb.from('formations').select('is_poei').eq('id', formationId).maybeSingle()
+    if (f?.is_poei) return { status: 'ignored' }
     await sb.from('sessions').insert({
       organization_id: ORG, dendreo_id: String(actionId), formation_id: formationId,
       status: past ? 'terminee' : 'confirmee', type_session: a.mode_organisation === 'intra' ? 'intra' : 'inter',
