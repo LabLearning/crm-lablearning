@@ -6,10 +6,11 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /**
- * Le brief du matin de Starkk : chaque jour ouvré, l'équipe reçoit par email
- * le point du jour — sessions, signatures en attente, encours de facturation,
- * alertes AGEFICE, réclamations. Composé depuis les mêmes données que les
- * outils de l'assistant.
+ * Le brief de la semaine de Starkk : chaque lundi matin, l'équipe reçoit par
+ * email le point de la semaine — sessions du lundi au dimanche, signatures en
+ * attente, encours de facturation, alertes AGEFICE, réclamations. Composé
+ * depuis les mêmes données que les outils de l'assistant. (Il partait chaque
+ * jour ouvré jusqu'au 24/09/2026 : trop fréquent pour l'équipe.)
  *
  * GET /api/cron/brief-starkk  (Authorization: Bearer CRON_SECRET)
  *   ?dry=1              → renvoie le HTML sans envoyer
@@ -47,15 +48,18 @@ export async function GET(req: Request) {
     const destinataires = test ? [{ email: test, first_name: null as string | null }] : (equipe || [])
     if (!destinataires.length) continue
 
-    const auj = new Date().toISOString().slice(0, 10)
-    const demain = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    // La semaine en cours, du lundi au dimanche
+    const d0 = new Date()
+    const decalage = (d0.getUTCDay() + 6) % 7
+    const lundi = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() - decalage)).toISOString().slice(0, 10)
+    const dimanche = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() - decalage + 6)).toISOString().slice(0, 10)
     const on = (q: any) => q.eq('organization_id', org.id)
 
-    const [sessJour, sessDemain, convs, dossiers, factRetard, recl] = await Promise.all([
+    const [sessSemaine, convs, dossiers, factRetard, recl] = await Promise.all([
+      // Sessions qui se déroulent au moins un jour cette semaine (hors sous-périodes POEI)
       on(supabase.from('sessions').select('id, date_debut, date_fin, lieu, ville, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial), formateur:formateurs(prenom, nom)'))
-        .lte('date_debut', auj).gte('date_fin', auj).not('status', 'in', '("annulee")'),
-      on(supabase.from('sessions').select('id, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial), formateur:formateurs(prenom, nom)'))
-        .eq('date_debut', demain).not('status', 'in', '("annulee")'),
+        .lte('date_debut', dimanche).gte('date_fin', lundi).not('status', 'in', '("annulee")')
+        .is('poei_intervention_id', null).order('date_debut'),
       on(supabase.from('conventions').select('id, numero, sent_at, session_id, client:client_id(raison_sociale, nom_commercial)'))
         .not('sent_at', 'is', null).is('signature_client_date', null).order('sent_at').limit(8),
       on(supabase.from('dossiers_agefice').select('id, numero_dossier, statut, mode_reglement, signature_stagiaire_date, date_fin_formation, session_id, apprenant:apprenant_id(prenom, nom)'))
@@ -84,8 +88,8 @@ export async function GET(req: Request) {
       } : null
     }).filter(Boolean) as any[]
 
-    const jour = (sessJour.data || []) as any[]
-    const lendemain = (sessDemain.data || []) as any[]
+    const semaine = (sessSemaine.data || []) as any[]
+    const dejaEnCours = semaine.filter((s) => s.date_debut < lundi).length
     const conventions = (convs.data || []) as any[]
     const retards = (factRetard.data || []) as any[]
     const totalRetard = retards.reduce((s, f) => s + Number(f.montant_restant || 0), 0)
@@ -138,19 +142,15 @@ export async function GET(req: Request) {
         </table>
       </td>`
 
-    // ── Sessions ──
-    const lignesSessions = [
-      ...jour.map((s) => L(
-        `${esc(s.formation?.intitule || 'Formation')} <span style="font-weight:500;color:${SLATE}">chez</span> ${esc(nomCli(s.client))}`,
-        [nomForm(s.formateur) ? `Formateur : ${esc(nomForm(s.formateur))}` : `<span style="color:${AMBER};font-weight:600">Aucun formateur affecté</span>`, s.lieu || s.ville ? esc(s.lieu || s.ville) : '', s.date_fin !== s.date_debut ? `jusqu’au ${frDate(s.date_fin)}` : ''].filter(Boolean).join(' · '),
-        bouton(`/dashboard/sessions/${s.id}`, 'Ouvrir'),
-      )),
-      ...lendemain.map((s) => L(
-        `${tag('Demain', 'muted')}&nbsp; ${esc(s.formation?.intitule || 'Formation')} <span style="font-weight:500;color:${SLATE}">chez</span> ${esc(nomCli(s.client))}`,
-        nomForm(s.formateur) ? `Formateur : ${esc(nomForm(s.formateur))}` : `<span style="color:${AMBER};font-weight:600">Aucun formateur affecté</span>`,
-        bouton(`/dashboard/sessions/${s.id}`, 'Préparer'),
-      )),
-    ]
+    // ── Sessions de la semaine, dans l'ordre ──
+    const periodeSession = (s: any) => s.date_fin && s.date_fin !== s.date_debut
+      ? `du ${frDate(s.date_debut)} au ${frDate(s.date_fin)}`
+      : `le ${frDate(s.date_debut)}`
+    const lignesSessions = semaine.map((s) => L(
+      `${s.date_debut < lundi ? `${tag('En cours', 'muted')}&nbsp; ` : ''}${esc(s.formation?.intitule || 'Formation')} <span style="font-weight:500;color:${SLATE}">chez</span> ${esc(nomCli(s.client))}`,
+      [periodeSession(s), nomForm(s.formateur) ? `Formateur : ${esc(nomForm(s.formateur))}` : `<span style="color:${AMBER};font-weight:600">Aucun formateur affecté</span>`, s.lieu || s.ville ? esc(s.lieu || s.ville) : ''].filter(Boolean).join(' · '),
+      bouton(`/dashboard/sessions/${s.id}`, s.date_debut < lundi ? 'Ouvrir' : 'Préparer'),
+    ))
 
     // ── Signatures et dossiers ──
     const lignesSignatures = [
@@ -182,14 +182,14 @@ export async function GET(req: Request) {
       ? [L(`${nbRecl} réclamation${nbRecl > 1 ? 's' : ''} ouverte${nbRecl > 1 ? 's' : ''}`, 'À traiter dans les délais Qualiopi', bouton('/dashboard/reclamations', 'Traiter', 'pine'))]
       : []
 
-    const toutCalme = !jour.length && !lendemain.length && !nbSignatures && !retards.length && !nbRecl
-    const dateLongue = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    const toutCalme = !semaine.length && !nbSignatures && !retards.length && !nbRecl
+    const dateLongue = `semaine du ${frDate(lundi)}`
     const Dat = dateLongue.charAt(0).toUpperCase() + dateLongue.slice(1)
     const prenom = (u: { first_name: string | null }) => (u.first_name ? `Bonjour ${esc(u.first_name)},` : 'Bonjour,')
     const accroche = toutCalme
-      ? 'rien ne presse aujourd’hui. Je continue de veiller.'
+      ? 'rien ne presse cette semaine. Je continue de veiller.'
       : [
-          jour.length ? `${jour.length} session${jour.length > 1 ? 's' : ''} en cours` : '',
+          semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''} cette semaine` : '',
           nbSignatures ? `${nbSignatures} signature${nbSignatures > 1 ? 's' : ''} à obtenir` : '',
           retards.length ? `${euros(totalRetard)} de factures en retard` : '',
           nbRecl ? `${nbRecl} réclamation${nbRecl > 1 ? 's' : ''}` : '',
@@ -203,7 +203,7 @@ export async function GET(req: Request) {
             <table width="100%" cellpadding="0" cellspacing="0"><tr>
               <td style="width:52px;vertical-align:middle"><img src="${appUrl}/starkk.png" width="52" height="52" style="border-radius:50%;display:block;border:2px solid ${MINT}" alt="Starkk"/></td>
               <td style="padding-left:14px;vertical-align:middle">
-                <div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${MINT}">Le brief du matin</div>
+                <div style="font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${MINT}">Le brief de la semaine</div>
                 <div style="font-size:20px;font-weight:800;color:${WHITE};line-height:1.2;margin-top:2px">${Dat}</div>
               </td>
             </tr></table>
@@ -211,7 +211,7 @@ export async function GET(req: Request) {
               ${prenom(u)} ${accroche}
             </div>
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px"><tr>
-              ${tuile(String(jour.length), 'Sessions', jour.length > 0)}
+              ${tuile(String(semaine.length), 'Sessions', semaine.length > 0)}
               ${tuile(String(nbSignatures), 'Signatures', nbSignatures > 0)}
               ${tuile(retards.length ? euros(totalRetard).replace(' €', '&nbsp;€') : '0', 'En retard', retards.length > 0)}
               ${tuile(String(nbRecl), 'Réclamations', nbRecl > 0)}
@@ -220,7 +220,7 @@ export async function GET(req: Request) {
           <!-- Corps -->
           <tr><td style="background:${WHITE};border:1px solid ${LINE};border-top:0;border-radius:0 0 18px 18px;padding:18px 16px 6px">
             <table width="100%" cellpadding="0" cellspacing="0">
-              ${carte('Sessions', jour.length + lendemain.length ? `${jour.length} aujourd’hui · ${lendemain.length} demain` : '', lignesSessions, 'Aucune session aujourd’hui ni demain.')}
+              ${carte('Sessions de la semaine', semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''}${dejaEnCours ? ` · dont ${dejaEnCours} déjà en cours` : ''}` : '', lignesSessions, 'Aucune session cette semaine.')}
               ${carte('Signatures et dossiers en attente', nbSignatures ? `${nbSignatures} en attente` : '', lignesSignatures, 'Rien à relancer : toutes les conventions envoyées sont signées.')}
               ${carte('Facturation', retards.length ? `${retards.length} en retard · ${euros(totalRetard)}` : '', lignesFactures, 'Aucune facture en retard.')}
               ${nbRecl ? carte('Réclamations', `${nbRecl} ouverte${nbRecl > 1 ? 's' : ''}`, lignesRecl, '') : ''}
@@ -243,7 +243,7 @@ export async function GET(req: Request) {
       const r = await sendBrandedEmail({
         to: u.email,
         toName: u.first_name || undefined,
-        subject: toutCalme ? `Brief de Starkk, ${dateLongue} : tout est calme` : `Brief de Starkk, ${dateLongue} : ${[jour.length ? `${jour.length} session${jour.length > 1 ? 's' : ''}` : '', nbSignatures ? `${nbSignatures} signature${nbSignatures > 1 ? 's' : ''}` : '', retards.length ? `${euros(totalRetard)} en retard` : ''].filter(Boolean).join(', ')}`,
+        subject: toutCalme ? `Brief de Starkk, ${dateLongue} : tout est calme` : `Brief de Starkk, ${dateLongue} : ${[semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''}` : '', nbSignatures ? `${nbSignatures} signature${nbSignatures > 1 ? 's' : ''}` : '', retards.length ? `${euros(totalRetard)} en retard` : ''].filter(Boolean).join(', ')}`,
         html: htmlPour(u as any),
         orgName: org.name || 'Lab Learning',
         orgEmail: (org as any).email || undefined,

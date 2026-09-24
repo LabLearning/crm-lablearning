@@ -37,7 +37,7 @@
     },
     {
       "path": "/api/cron/brief-starkk",
-      "schedule": "0 6 * * 1-5"
+      "schedule": "0 6 * * 1"
     }
   ]
 }
