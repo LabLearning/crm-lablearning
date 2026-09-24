@@ -8,9 +8,10 @@ export const maxDuration = 60
 /**
  * Le brief de la semaine de Starkk : chaque lundi matin, l'équipe reçoit par
  * email le point de la semaine — sessions du lundi au dimanche, signatures en
- * attente, encours de facturation, alertes AGEFICE, réclamations. Composé
+ * attente, alertes AGEFICE, réclamations. Composé
  * depuis les mêmes données que les outils de l'assistant. (Il partait chaque
- * jour ouvré jusqu'au 24/09/2026 : trop fréquent pour l'équipe.)
+ * jour ouvré jusqu'au 24/09/2026 : trop fréquent pour l'équipe. Les factures
+ * en retard n'y figurent plus, à la demande de Brahim.)
  *
  * GET /api/cron/brief-starkk  (Authorization: Bearer CRON_SECRET)
  *   ?dry=1              → renvoie le HTML sans envoyer
@@ -19,7 +20,6 @@ export const maxDuration = 60
 // Valeurs de l'ENUM user_role uniquement (« admin »/« manager » n'existent pas)
 const ROLES_DESTINATAIRES = ['super_admin', 'gestionnaire', 'commercial']
 
-const euros = (n: number) => `${Math.round(n).toLocaleString('fr-FR').replace(/[  ]/g, ' ')} €`
 const frDate = (d: string | null | undefined) =>
   d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : ''
 const esc = (s: any) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     const dimanche = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate() - decalage + 6)).toISOString().slice(0, 10)
     const on = (q: any) => q.eq('organization_id', org.id)
 
-    const [sessSemaine, convs, dossiers, factRetard, recl] = await Promise.all([
+    const [sessSemaine, convs, dossiers, recl] = await Promise.all([
       // Sessions qui se déroulent au moins un jour cette semaine (hors sous-périodes POEI)
       on(supabase.from('sessions').select('id, date_debut, date_fin, lieu, ville, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial), formateur:formateurs(prenom, nom)'))
         .lte('date_debut', dimanche).gte('date_fin', lundi).not('status', 'in', '("annulee")')
@@ -64,8 +64,6 @@ export async function GET(req: Request) {
         .not('sent_at', 'is', null).is('signature_client_date', null).order('sent_at').limit(8),
       on(supabase.from('dossiers_agefice').select('id, numero_dossier, statut, mode_reglement, signature_stagiaire_date, date_fin_formation, session_id, apprenant:apprenant_id(prenom, nom)'))
         .neq('statut', 'solde'),
-      on(supabase.from('factures').select('id, numero, montant_restant, client:client_id(raison_sociale, nom_commercial)'))
-        .eq('status', 'en_retard').gt('montant_restant', 0).order('montant_restant', { ascending: false }),
       on(supabase.from('reclamations').select('id', { count: 'exact', head: true }))
         .not('status', 'in', '("cloturee","resolue")'),
     ])
@@ -91,8 +89,6 @@ export async function GET(req: Request) {
     const semaine = (sessSemaine.data || []) as any[]
     const dejaEnCours = semaine.filter((s) => s.date_debut < lundi).length
     const conventions = (convs.data || []) as any[]
-    const retards = (factRetard.data || []) as any[]
-    const totalRetard = retards.reduce((s, f) => s + Number(f.montant_restant || 0), 0)
     const nbRecl = recl.count || 0
     const nbSignatures = conventions.length + alertesAgefice.length
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
@@ -133,7 +129,7 @@ export async function GET(req: Request) {
     const L = (titre: string, detail: string, action: string) => ligne(titre, detail, action)
     /** Tuile chiffrée du bandeau. */
     const tuile = (valeur: string, label: string, alerte: boolean) => `
-      <td style="width:25%;padding:0 4px">
+      <td style="width:33%;padding:0 4px">
         <table width="100%" cellpadding="0" cellspacing="0" style="background:${alerte ? 'rgba(92,217,160,0.14)' : 'rgba(255,255,255,0.06)'};border:1px solid ${alerte ? 'rgba(92,217,160,0.45)' : 'rgba(255,255,255,0.12)'};border-radius:12px">
           <tr><td style="padding:10px 8px;text-align:center">
             <div style="font-size:22px;font-weight:800;color:${alerte ? MINT : WHITE};line-height:1.1">${valeur}</div>
@@ -169,20 +165,12 @@ export async function GET(req: Request) {
       )),
     ]
 
-    // ── Facturation ──
-    const lignesFactures = retards.slice(0, 4).map((f) => L(
-      `${esc(f.numero)} <span style="font-weight:500;color:${SLATE}">de</span> ${esc(nomCli(f.client))}`,
-      `${euros(Number(f.montant_restant))} restant dus`,
-      bouton('/dashboard/factures', 'Relancer'),
-    ))
-    if (retards.length > 4) lignesFactures.push(L(`+ ${retards.length - 4} autre${retards.length - 4 > 1 ? 's' : ''} facture${retards.length - 4 > 1 ? 's' : ''} en retard`, '', bouton('/dashboard/factures', 'Voir tout')))
-
     // ── Réclamations ──
     const lignesRecl = nbRecl > 0
       ? [L(`${nbRecl} réclamation${nbRecl > 1 ? 's' : ''} ouverte${nbRecl > 1 ? 's' : ''}`, 'À traiter dans les délais Qualiopi', bouton('/dashboard/reclamations', 'Traiter', 'pine'))]
       : []
 
-    const toutCalme = !semaine.length && !nbSignatures && !retards.length && !nbRecl
+    const toutCalme = !semaine.length && !nbSignatures && !nbRecl
     const dateLongue = `semaine du ${frDate(lundi)}`
     const Dat = dateLongue.charAt(0).toUpperCase() + dateLongue.slice(1)
     const prenom = (u: { first_name: string | null }) => (u.first_name ? `Bonjour ${esc(u.first_name)},` : 'Bonjour,')
@@ -191,7 +179,6 @@ export async function GET(req: Request) {
       : [
           semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''} cette semaine` : '',
           nbSignatures ? `${nbSignatures} signature${nbSignatures > 1 ? 's' : ''} à obtenir` : '',
-          retards.length ? `${euros(totalRetard)} de factures en retard` : '',
           nbRecl ? `${nbRecl} réclamation${nbRecl > 1 ? 's' : ''}` : '',
         ].filter(Boolean).join(', ') + '. Voici le détail.'
 
@@ -213,7 +200,6 @@ export async function GET(req: Request) {
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px"><tr>
               ${tuile(String(semaine.length), 'Sessions', semaine.length > 0)}
               ${tuile(String(nbSignatures), 'Signatures', nbSignatures > 0)}
-              ${tuile(retards.length ? euros(totalRetard).replace(' €', '&nbsp;€') : '0', 'En retard', retards.length > 0)}
               ${tuile(String(nbRecl), 'Réclamations', nbRecl > 0)}
             </tr></table>
           </td></tr>
@@ -222,7 +208,6 @@ export async function GET(req: Request) {
             <table width="100%" cellpadding="0" cellspacing="0">
               ${carte('Sessions de la semaine', semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''}${dejaEnCours ? ` · dont ${dejaEnCours} déjà en cours` : ''}` : '', lignesSessions, 'Aucune session cette semaine.')}
               ${carte('Signatures et dossiers en attente', nbSignatures ? `${nbSignatures} en attente` : '', lignesSignatures, 'Rien à relancer : toutes les conventions envoyées sont signées.')}
-              ${carte('Facturation', retards.length ? `${retards.length} en retard · ${euros(totalRetard)}` : '', lignesFactures, 'Aucune facture en retard.')}
               ${nbRecl ? carte('Réclamations', `${nbRecl} ouverte${nbRecl > 1 ? 's' : ''}`, lignesRecl, '') : ''}
             </table>
           </td></tr>
@@ -243,7 +228,7 @@ export async function GET(req: Request) {
       const r = await sendBrandedEmail({
         to: u.email,
         toName: u.first_name || undefined,
-        subject: toutCalme ? `Brief de Starkk, ${dateLongue} : tout est calme` : `Brief de Starkk, ${dateLongue} : ${[semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''}` : '', nbSignatures ? `${nbSignatures} signature${nbSignatures > 1 ? 's' : ''}` : '', retards.length ? `${euros(totalRetard)} en retard` : ''].filter(Boolean).join(', ')}`,
+        subject: toutCalme ? `Brief de Starkk, ${dateLongue} : tout est calme` : `Brief de Starkk, ${dateLongue} : ${[semaine.length ? `${semaine.length} session${semaine.length > 1 ? 's' : ''}` : '', nbSignatures ? `${nbSignatures} signature${nbSignatures > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ')}`,
         html: htmlPour(u as any),
         orgName: org.name || 'Lab Learning',
         orgEmail: (org as any).email || undefined,
