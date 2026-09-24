@@ -34,6 +34,18 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = await createServiceRoleClient()
+  // Sessions techniques des POEI (chapeaux) et formations POEI : exclues du groupe « Sessions »
+  // dans la requête elle-même, sinon elles prennent les places de la limite
+  const [{ data: chapeaux }, { data: formationsPoei }] = await Promise.all([
+    supabase.from('poei').select('session_id').eq('organization_id', orgId).not('session_id', 'is', null),
+    supabase.from('formations').select('id').eq('organization_id', orgId).eq('is_poei', true),
+  ])
+  const idsChapeaux = ((chapeaux || []) as any[]).map((x) => x.session_id).filter(Boolean)
+  const idsFormationsPoei = ((formationsPoei || []) as any[]).map((f) => f.id)
+  let requeteSessions = supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville').eq('organization_id', orgId)
+    .is('poei_intervention_id', null)
+  if (idsChapeaux.length) requeteSessions = requeteSessions.not('id', 'in', `(${idsChapeaux.join(',')})`)
+  if (idsFormationsPoei.length) requeteSessions = requeteSessions.or(`formation_id.is.null,formation_id.not.in.(${idsFormationsPoei.join(',')})`)
   const [clients, contacts, leads, sessions, apprenants, formateurs, formations, conventions, dossiers, parVille] = await Promise.all([
     // Le nom, mais aussi la ville, l'adresse, le code postal ou le SIRET
     supabase.from('clients').select('id, raison_sociale, nom_commercial, siret, adresse, code_postal, ville, telephone, email').eq('organization_id', orgId)
@@ -44,9 +56,7 @@ export async function GET(req: NextRequest) {
     supabase.from('leads').select('id, entreprise, contact_nom, contact_prenom, contact_email, contact_telephone, status, montant_estime').eq('organization_id', orgId)
       .or(personne('contact_prenom', 'contact_nom', ['entreprise', 'contact_email'])).limit(5),
     // Sessions OPCO seulement : les sessions techniques d'une POEI sortent sous « POEI »
-    supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville, formation:formation_id(is_poei)').eq('organization_id', orgId)
-      .is('poei_intervention_id', null)
-      .or(`reference.ilike.${like},intitule.ilike.${like},ville.ilike.${like},lieu.ilike.${like}`).order('date_debut', { ascending: false }).limit(10),
+    requeteSessions.or(`reference.ilike.${like},intitule.ilike.${like},ville.ilike.${like},lieu.ilike.${like}`).order('date_debut', { ascending: false }).limit(5),
     supabase.from('apprenants').select('id, nom, prenom, entreprise, email, telephone').eq('organization_id', orgId)
       .or(personne('prenom', 'nom', ['email'])).limit(5),
     supabase.from('formateurs').select('id, nom, prenom, email, telephone, zone_intervention').eq('organization_id', orgId)
@@ -67,9 +77,7 @@ export async function GET(req: NextRequest) {
   const { data: poeis } = await supabase.from('poei')
     .select('id, numero, date_debut, date_fin, statut, client:client_id(raison_sociale, nom_commercial, ville), formation:formation_id(intitule)')
     .eq('organization_id', orgId).or(condPoei.join(',')).order('date_debut', { ascending: false, nullsFirst: false }).limit(5)
-  const { data: chapeaux } = await supabase.from('poei').select('session_id').eq('organization_id', orgId).not('session_id', 'is', null)
-  const sessionsChapeau = new Set(((chapeaux || []) as any[]).map((x) => x.session_id))
-  const sessionsOpco = ((sessions.data || []) as any[]).filter((s) => !s.formation?.is_poei && !sessionsChapeau.has(s.id)).slice(0, 5)
+  const sessionsOpco = (sessions.data || []) as any[]
 
   const adresse = (r: any) => [r.adresse, [r.code_postal, r.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const line = (label: string, value: any) => value ? { label, value: String(value) } : null

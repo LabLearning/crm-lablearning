@@ -68,9 +68,10 @@ export default async function FormationDetailPage({ params }: { params: { id: st
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <ModifierFormationButton formation={formation as any} />
-          <Link href={`/dashboard/sessions?formation=${params.id}`}
+          {/* Une formation POEI ne donne pas de session : on crée une POEI, qui fabrique ses sessions */}
+          <Link href={(formation as any).is_poei ? '/dashboard/poei' : `/dashboard/sessions?formation=${params.id}`}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-surface-900 text-white hover:bg-surface-800 transition-colors">
-            <Calendar className="h-4 w-4" /> Créer une session
+            <Calendar className="h-4 w-4" /> {(formation as any).is_poei ? 'Créer une POEI' : 'Créer une session'}
           </Link>
           <a href={`/api/pdf/programme/${params.id}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-colors" style={{ backgroundColor: '#205040' }}>

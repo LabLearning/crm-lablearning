@@ -1102,8 +1102,9 @@ export function postesFormateur(u: Unite, d: DonneesRentabilite): { postes: Post
 
     if (montant == null) {
       manque(ctx, `Coût formateur de ${nom}`)
-      const href = sessionLien ? `/dashboard/sessions/${sessionLien.id}?tab=session`
-        : intervention ? `/dashboard/poei/${intervention.poei_id}` : undefined
+      // Une intervention POEI porte sa rémunération : elle se renseigne sur la fiche POEI, onglet Interventions
+      const href = intervention ? `/dashboard/poei/${intervention.poei_id}?onglet=interventions`
+        : sessionLien ? `/dashboard/sessions/${sessionLien.id}?tab=session` : undefined
       if (href) liens.unshift({ href, label: 'Renseigner la rémunération' })
     }
     if (estPoei && intervention && sessionLien) {

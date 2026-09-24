@@ -126,8 +126,9 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   annulee: [],
 }
 
-/** Onglets d'une session POEI (les autres relèvent de l'OPCO ou se gèrent sur la fiche POEI). */
-const ONGLETS_POEI: string[] = ['presences', 'apprenants', 'qcm', 'rapport']
+/** Onglets d'une session POEI (les autres relèvent de l'OPCO ou se gèrent sur la fiche POEI).
+    « facturation » n'y montre que la rentabilité et les frais annexes. */
+const ONGLETS_POEI: string[] = ['presences', 'apprenants', 'qcm', 'rapport', 'facturation']
 
 export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, poeiLien = null, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null }: Props) {
   const router = useRouter()
@@ -524,7 +525,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
           ...(!isFormateur ? [{ id: 'conventions' as const, label: 'Contractualisation', icon: FileSignature }] : []),
           ...(!isFormateur ? [{ id: 'docs' as const, label: 'Documents', icon: FileText }] : []),
           ...(!isFormateur && estFormationHygiene((session as any).formation || { intitule: session.intitule }) ? [{ id: 'pack' as const, label: 'Pack Hygiène', icon: PackHygieneIcon }] : []),
-          ...(!isFormateur ? [{ id: 'facturation' as const, label: estAgefice ? 'AGEFICE' : 'Facturation', icon: ReceiptEuro }] : []),
+          ...(!isFormateur && (!poeiLien || rentabilite) ? [{ id: 'facturation' as const, label: poeiLien ? 'Rentabilité' : estAgefice ? 'AGEFICE' : 'Facturation', icon: ReceiptEuro }] : []),
           ...(!isFormateur ? [{ id: 'mails' as const, label: `Mails (${emailLogs.length})`, icon: Mails }] : []),
         ].filter((t) => !poeiLien || ONGLETS_POEI.includes(t.id)).map(t => (
           <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
@@ -873,6 +874,25 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                     {isExpanded ? <ChevronUp className="h-4 w-4 text-surface-400" /> : <ChevronDown className="h-4 w-4 text-surface-400" />}
                   </div>
                 </button>
+
+                {/* Feuilles validées du jour (verrouillées) : ici aussi, et pas seulement dans l'onglet Session,
+                    car une session POEI n'affiche que cet onglet d'émargement */}
+                {feuillesEmargement.some((f) => f.date === day && f.validated_at) && (
+                  <div className="px-4 pb-3 -mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    {feuillesEmargement.filter((f) => f.date === day && f.validated_at).sort((a, b) => (a.creneau === 'matin' ? -1 : 1) - (b.creneau === 'matin' ? -1 : 1)).map((f) => (
+                      <span key={f.creneau} className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-1.5 py-0.5 text-surface-600">
+                        <Lock className="h-3 w-3" />
+                        Feuille {f.creneau === 'matin' ? 'matin' : f.creneau === 'apres_midi' ? 'après-midi' : 'journée'} validée
+                        {canRouvrirFeuille && (
+                          <button type="button" disabled={isPending} onClick={() => handleRouvrirFeuille(day, f.creneau)}
+                            className="ml-0.5 font-semibold text-brand-600 hover:underline disabled:opacity-50">
+                            Rouvrir
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {!isFormateur && presentCount < allDay.length && (
                   <div className="px-4 pb-3 -mt-1">
@@ -1523,10 +1543,10 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
       )}
 
       {tab === 'facturation' && !isFormateur && rentabilite && <SessionRentabilite vue={rentabilite} sessionId={session.id} />}
-      {tab === 'facturation' && !isFormateur && estAgefice && (
+      {tab === 'facturation' && !isFormateur && !poeiLien && estAgefice && (
         <SessionAgefice sessionId={session.id} dossiers={dossiersAgefice} />
       )}
-      {tab === 'facturation' && !isFormateur && !estAgefice && (
+      {tab === 'facturation' && !isFormateur && !poeiLien && !estAgefice && (
         <FacturationOpco
           sessionId={session.id}
           statutSession={session.status || null}

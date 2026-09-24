@@ -102,21 +102,17 @@ export default async function DashboardPage() {
     .order('date_fin', { ascending: false })
     .limit(30)
 
-  // État du process par session (conventions, contrats, inscriptions) — requêtes batchées
+  // Inscrits par session, et sessions « parcours » POEI (écartées de la colonne OPCO) — requêtes batchées
   const sessionIds = [...allSessions, ...(terminees || [])].map((s: any) => s.id)
-  const [convRows, contratRows, inscRows, poeiRows] = sessionIds.length > 0
+  const [inscRows, poeiRows] = sessionIds.length > 0
     ? await Promise.all([
-        supabase.from('conventions').select('session_id, status').in('session_id', sessionIds),
-        supabase.from('contrats_formateur').select('session_id, signature_formateur_date').in('session_id', sessionIds).neq('status', 'annule'),
         supabase.from('inscriptions').select('session_id').in('session_id', sessionIds).not('status', 'in', '("annule","abandonne")'),
-        // Sessions « parcours » POEI : elles n'ont pas de formateur par nature
         supabase.from('poei').select('id, session_id').in('session_id', sessionIds),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }] as any
+    : [{ data: [] }, { data: [] }] as any
 
   const parcoursPoei = new Set<string>()
-  const poeiParSession = new Map<string, string>()
-  for (const p of (poeiRows.data || []) as any[]) if (p.session_id) { parcoursPoei.add(p.session_id); poeiParSession.set(p.session_id, p.id) }
+  for (const p of (poeiRows.data || []) as any[]) if (p.session_id) parcoursPoei.add(p.session_id)
 
   // Parcours POEI de la fenêtre (30 jours passés à 3 mois), lus dans le
   // dossier lui-même : un dossier sans session chapeau y figure quand même,
@@ -158,10 +154,6 @@ export default async function DashboardPage() {
   const poeiAVenir = poeiLignes.filter((x) => x.status === 'planifiee')
   const poeiTerminees = poeiLignes.filter((x) => x.status === 'terminee').sort((a, b) => String(b.date_fin).localeCompare(String(a.date_fin)))
 
-  const convBySession = new Map<string, string>()
-  for (const c of (convRows.data || []) as any[]) convBySession.set(c.session_id, c.status)
-  const contratSigneBySession = new Set<string>()
-  for (const c of (contratRows.data || []) as any[]) if (c.signature_formateur_date) contratSigneBySession.add(c.session_id)
   const inscritsBySession = new Map<string, number>()
   for (const i of (inscRows.data || []) as any[]) inscritsBySession.set(i.session_id, (inscritsBySession.get(i.session_id) || 0) + 1)
 

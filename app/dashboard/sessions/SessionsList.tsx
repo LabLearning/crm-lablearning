@@ -152,7 +152,8 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
     const fid = searchParams.get('formation')
     const cid = searchParams.get('client')
     if (fid || cid) {
-      if (fid) setPrefillFormationId(fid)
+      // Une formation absente de la liste (formation POEI, inactive) ne se présélectionne pas
+      if (fid && formations.some((f: any) => f.id === fid)) setPrefillFormationId(fid)
       if (cid) setPrefillClientId(cid)
       setCreateOpen(true)
       // Nettoie l'URL pour éviter la réouverture au refresh

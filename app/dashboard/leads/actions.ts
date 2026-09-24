@@ -7,6 +7,7 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import { extractParticipantsFromText, type ExtractedParticipant } from '@/lib/ai'
 import type { ActionResult } from '@/lib/types'
+import { refusFormationPoei } from '@/lib/poei-garde'
 
 export async function createLeadAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
@@ -1047,6 +1048,9 @@ export async function confirmLeadDateAction(leadId: string, formData: FormData):
 
   // Éviter les doublons si une session est déjà créée
   if (lead.session_id) return { success: false, error: 'Une session existe déjà pour ce lead' }
+  // Une POEI ne donne pas de session OPCO : elle se crée dans le module POEI
+  const erreurPoei = await refusFormationPoei(supabase, [lead.formation_id])
+  if (erreurPoei) return { success: false, error: erreurPoei }
 
   const { data: formation } = await supabase
     .from('formations')
@@ -1410,6 +1414,8 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
   if (!lf) return { success: false, error: 'Formation introuvable' }
   if (!lf.formation_id) return { success: false, error: 'Aucune formation associée' }
   if (lf.session_id) return { success: false, error: 'Une session existe déjà pour cette formation' }
+  const erreurPoei = await refusFormationPoei(supabase, [lf.formation_id])
+  if (erreurPoei) return { success: false, error: erreurPoei }
 
   const { data: lead } = await supabase.from('leads').select('*').eq('id', lf.lead_id).single()
   // Lieu de la session = adresse de la société (intra chez le client)

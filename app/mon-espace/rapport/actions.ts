@@ -70,7 +70,7 @@ export async function enregistrerRapportAction(formData: FormData): Promise<Acti
       titre: 'Rapport de session transmis',
       message: `${formateur.prenom} ${formateur.nom} a transmis son rapport pour « ${intitule} »${(sess as any).reference ? ` (${(sess as any).reference})` : ''}.`,
       type: 'info',
-      lienUrl: `/dashboard/sessions/${sessionId}`,
+      lienUrl: `/dashboard/sessions/${sessionId}?tab=rapport`,
       lienLabel: 'Voir la session',
       entityType: 'session',
       entityId: sessionId,

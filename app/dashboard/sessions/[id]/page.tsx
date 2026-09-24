@@ -5,8 +5,9 @@ import { SessionDetailClient } from './SessionDetailClient'
 import { peutVoirMarge } from '@/lib/rentabilite'
 import { rentabiliteSession, MESSAGE_RENTABILITE_INDISPONIBLE } from '@/lib/rentabilite-data'
 
-/** Onglets d'une session POEI ouverts depuis la fiche POEI ; tout le reste se gère sur la POEI. */
-const ONGLETS_POEI = ['presences', 'apprenants', 'qcm', 'rapport']
+/** Onglets d'une session POEI ouverts depuis la fiche POEI ou la rentabilité ; tout le reste se gère sur la POEI.
+    (« facturation » n'y affiche que la rentabilité et les frais annexes.) */
+const ONGLETS_POEI = ['presences', 'apprenants', 'qcm', 'rapport', 'facturation']
 
 export default async function SessionDetailPage({ params, searchParams }: { params: { id: string }; searchParams?: { tab?: string } }) {
   const session = await getSession()
