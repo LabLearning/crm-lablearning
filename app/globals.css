@@ -579,6 +579,9 @@
   animation: ll-obj-reflet 5s ease-in-out 2s 3;
 }
 .ll-obj-remplissage.is-full::after { animation-iteration-count: 1; }
+/* Part POEI du remplissage : menthe pâle, séparée de la part OPCO par un filet sombre */
+.ll-obj-poei { background: linear-gradient(180deg, #F2FDF8 0%, #D2F7E6 50%, #BCF2D9 100%); box-shadow: inset 2px 0 0 rgb(16 42 34 / .55); }
+.ll-obj-pastille-poei { background: #D2F7E6; }
 /* Calés cette semaine : hachures, dans la jauge et dans la légende */
 .ll-obj-recent { background: repeating-linear-gradient(135deg, rgb(255 255 255 / .32) 0 5px, transparent 5px 10px); }
 .ll-obj-hachure { background: repeating-linear-gradient(135deg, rgb(255 255 255 / .55) 0 1.5px, transparent 1.5px 3.5px), #5CD9A0; }

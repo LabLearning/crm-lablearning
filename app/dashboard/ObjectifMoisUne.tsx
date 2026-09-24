@@ -224,6 +224,8 @@ function Tube(p: {
   part: number
   /** Part hachurée (calée cette semaine), en fraction du remplissage. */
   recent: number
+  /** Part POEI, en fraction du remplissage (à droite de la part OPCO). */
+  poei: number
   /** Repère de l'objectif quand il est dépassé, 0 à 1. */
   objectif: number | null
   plein: boolean
@@ -248,6 +250,7 @@ function Tube(p: {
           className={cn('ll-obj-remplissage absolute inset-y-0 left-0 min-w-[12px]', p.plein && 'is-full')}
           style={{ width: `${p.part * 100}%` }}
         >
+          {p.poei > 0 && <div className="ll-obj-poei absolute inset-y-0 right-0" style={{ left: `${(1 - p.poei) * 100}%` }} />}
           {p.objectif !== null && <div className="absolute inset-y-0 right-0 bg-white/25" style={{ left: `${(p.objectif / p.part) * 100}%` }} />}
           {p.recent > 0 && <div className="ll-obj-recent absolute inset-y-0 right-0" style={{ left: `${(1 - p.recent) * 100}%` }} />}
         </div>
@@ -302,6 +305,22 @@ function Semaine({ valeur, children }: { valeur: number; children: ReactNode }) 
   )
 }
 
+/** Légende sous la jauge : ce qui vient des sessions OPCO et ce qui vient des POEI. */
+function Repartition({ opco, poei }: { opco: string; poei: string }) {
+  return (
+    <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-white/70">
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-[3px] bg-accent-400" />
+        OPCO <b className="font-semibold tabular-nums text-white">{opco}</b>
+      </span>
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <span aria-hidden="true" className="ll-obj-pastille-poei h-2.5 w-2.5 shrink-0 rounded-[3px]" />
+        POEI <b className="font-semibold tabular-nums text-white">{poei}</b>
+      </span>
+    </p>
+  )
+}
+
 function Etiquette({ children }: { children: ReactNode }) {
   return (
     <span className="ll-obj-tampon inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-accent-400 px-2 py-0.5 text-2xs font-bold text-brand-800">
@@ -345,7 +364,9 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const pctE = Math.round((realise / objectif) * 100)
   const restantE = Math.max(0, objectif - realise)
   const rythmeE = restantE / jours
-  const texteE = `${realise} ${pluriel(realise, 'établissement calé', 'établissements calés')} sur un objectif de ${objectif}, soit ${pctE}${NNBSP}%`
+  const poeiE = etabs.filter((e) => e.poei).length
+  const opcoE = realise - poeiE
+  const texteE = `${realise} ${pluriel(realise, 'établissement calé', 'établissements calés')} sur un objectif de ${objectif}, soit ${pctE}${NNBSP}% : ${opcoE} en OPCO, ${poeiE} en POEI`
     + (nouveaux > 0 ? `, dont ${nouveaux} cette semaine` : '')
 
   // ── Chiffre d'affaires ──
@@ -365,7 +386,9 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const sansMontant = data.sessionsSansMontant
   const nbSans = sansMontant.length
   const avertissement = nbSans === 1 ? '1 session sans montant n’est pas comptée' : `${nbSans} sessions sans montant ne sont pas comptées`
-  const texteC = `${euros(ca)} HT calés sur un objectif de ${euros(objectifCa)}, soit ${pctC}${NNBSP}%`
+  const caPoei = Math.min(data.caPoei, ca)
+  const caOpco = ca - caPoei
+  const texteC = `${euros(ca)} HT calés sur un objectif de ${euros(objectifCa)}, soit ${pctC}${NNBSP}% : ${euros(caOpco)} en OPCO, ${euros(caPoei)} en POEI`
     + (caSemaine > 0 ? `, dont ${euros(caSemaine)} cette semaine` : '')
     + (nbSans > 0 ? `. ${avertissement}.` : '')
   const pasC = pasRond(maxC)
@@ -373,9 +396,10 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const groupesCa = ca >= 1_000_000 ? 3 : ca >= 1000 ? 2 : 1
 
   const lesDeux = (etatE === 'atteint' || etatE === 'depasse') && (etatC === 'atteint' || etatC === 'depasse')
-  const definition = `Établissement calé : au moins une session non annulée qui démarre en ${mois}, POEI comprises.`
-  const compteurs = `${data.nbSessions} ${pluriel(data.nbSessions, 'session', 'sessions')} · ${data.nbStagiaires} ${pluriel(data.nbStagiaires, 'stagiaire inscrit', 'stagiaires inscrits')}`
-  const compteursCourts = `${data.nbSessions} ${pluriel(data.nbSessions, 'session', 'sessions')} · ${data.nbStagiaires} ${pluriel(data.nbStagiaires, 'stagiaire', 'stagiaires')}`
+  const definition = `Établissement calé : une session OPCO ou un parcours POEI qui démarre en ${mois}.`
+  const parcours = `${data.nbParcoursPoei} POEI`
+  const compteurs = `${data.nbSessions} ${pluriel(data.nbSessions, 'session', 'sessions')} · ${parcours} · ${data.nbStagiaires} ${pluriel(data.nbStagiaires, 'stagiaire inscrit', 'stagiaires inscrits')}`
+  const compteursCourts = `${data.nbSessions} ${pluriel(data.nbSessions, 'session', 'sessions')} · ${parcours} · ${data.nbStagiaires} ${pluriel(data.nbStagiaires, 'stagiaire', 'stagiaires')}`
   const visibles = tout ? etabs : etabs.slice(0, MAX_NOMS)
 
   const envoiE: Envoi = {
@@ -486,12 +510,14 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
               texte={texteE}
               part={realise / maxE}
               recent={realise > 0 ? nouveaux / realise : 0}
+              poei={realise > 0 ? poeiE / realise : 0}
               objectif={etatE === 'depasse' ? objectif / maxE : null}
               plein={etatE === 'atteint' || etatE === 'depasse'}
               appel={etatE === 'vide' ? 1 / maxE : null}
               reperes={maxE <= 40 ? Array.from({ length: maxE - 1 }, (_, k) => (k + 1) / maxE) : []}
             />
             <Echelle max={maxE} marques={graduer(maxE, objectif, pasDe(maxE), etatE === 'depasse')} objectif={etatE === 'depasse' ? objectif : null} format={String} />
+            <Repartition opco={String(opcoE)} poei={String(poeiE)} />
           </div>
 
           <div className={ligneRythme} style={vars({ '--i': 1 })}>
@@ -623,6 +649,7 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
               texte={texteC}
               part={ca / maxC}
               recent={ca > 0 ? caSemaine / ca : 0}
+              poei={ca > 0 ? caPoei / ca : 0}
               objectif={etatC === 'depasse' ? objectifCa / maxC : null}
               plein={etatC === 'atteint' || etatC === 'depasse'}
               appel={etatC === 'vide' ? Math.min(pasC, maxC) / maxC : null}
@@ -635,6 +662,7 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
               objectif={etatC === 'depasse' ? objectifCa : null}
               format={milliers}
             />
+            <Repartition opco={euros(caOpco)} poei={euros(caPoei)} />
           </div>
 
           <div className={ligneRythme} style={vars({ '--i': 2 })}>
