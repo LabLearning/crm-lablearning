@@ -73,10 +73,10 @@ export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: st
       <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex items-center gap-3">
           {orgLogo
-            ? <img src={orgLogo} alt={orgNom} className="h-10 w-auto rounded-md bg-white p-1" />
+            ? <img src={orgLogo} alt={orgNom} className="h-10 w-auto" />
             : <span className="font-heading font-extrabold text-lg tracking-tight">{orgNom}</span>}
         </div>
-        <h1 className="mt-5 font-heading text-2xl sm:text-3xl font-bold leading-tight text-balance">Rejoignez notre réseau de formateurs</h1>
+        <h1 className="mt-5 font-heading text-2xl sm:text-3xl font-bold leading-tight text-balance !text-white">Rejoignez notre réseau de formateurs</h1>
         <p className="mt-2 text-sm sm:text-base text-white/80 max-w-xl">
           Renseignez votre profil une fois : vos domaines, vos tarifs et votre CV arrivent directement chez {orgNom}.
           Nous vous contactons dès qu&apos;une mission correspond à votre profil.
