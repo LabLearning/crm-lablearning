@@ -80,7 +80,10 @@ export async function GET(req: NextRequest) {
     })),
     ...(contacts.data || []).map((ct: any) => {
       const nom = `${ct.prenom || ''} ${ct.nom || ''}`.trim()
-      const entreprise = ct.client?.nom_commercial || ct.client?.raison_sociale || ''
+      // Même libellé que le groupe Clients : raison sociale, puis l'enseigne entre parenthèses
+      const entreprise = ct.client?.raison_sociale
+        ? (ct.client.nom_commercial ? `${ct.client.raison_sociale} (${ct.client.nom_commercial})` : ct.client.raison_sociale)
+        : (ct.client?.nom_commercial || '')
       return {
         group: 'Contacts', label: nom || ct.email || 'Contact',
         sublabel: [entreprise, ct.poste].filter(Boolean).join(' · '),
