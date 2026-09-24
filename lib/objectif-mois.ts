@@ -5,10 +5,11 @@
  * « Établissement calé » = client distinct ayant, dans le mois visé, au moins
  *  - côté OPCO : une session non annulée qui DÉMARRE dans le mois. Une session
  *    INTER (sans client) compte les établissements de ses stagiaires inscrits ;
- *  - côté POEI : un parcours POEI qui DÉMARRE dans le mois (date de début du
- *    parcours, comme la colonne POEI du tableau de bord). Les sessions d'un
- *    parcours (chapeau, interventions) ne comptent pas en plus : le parcours
- *    est lu dans la table poei, qu'il ait des sessions ou non.
+ *  - côté POEI : un parcours POEI qui SE TERMINE dans le mois (sa date de fin,
+ *    à défaut sa date de début) : une POEI se compte le mois où elle s'achève.
+ *    Les sessions d'un parcours (chapeau, interventions) ne comptent pas en
+ *    plus : le parcours est lu dans la table poei, qu'il ait des sessions ou
+ *    non. Un parcours sans aucune date n'est rattaché à aucun mois.
  * Un établissement qui a une POEI dans le mois est rangé côté POEI.
  * Les sessions « BPF-… » (reprises comptables) sont ignorées.
  *
@@ -24,6 +25,7 @@
  */
 
 import { cartePoeiSessions } from '@/lib/poei-sessions'
+import { villeLisible } from '@/lib/utils'
 
 export const OBJECTIF_PAR_DEFAUT = 25
 /** Objectif de chiffre d'affaires HT calé par mois, faute de saisie. */
@@ -39,7 +41,7 @@ export interface EtablissementCale {
   ville: string | null
   /** Premier jour de formation dans le mois. */
   premiereSession: string
-  /** Un parcours POEI de l'établissement démarre dans le mois (il est rangé côté POEI). */
+  /** Un parcours POEI de l'établissement se termine dans le mois (il est rangé côté POEI). */
   poei: boolean
   /** Date à laquelle sa première session du mois a été créée (calage). */
   caleLe: string
@@ -69,7 +71,7 @@ export interface ObjectifMois {
   etablissements: EtablissementCale[]
   /** Nombre de sessions (hors POEI) qui démarrent dans le mois. */
   nbSessions: number
-  /** Nombre de parcours POEI qui démarrent dans le mois. */
+  /** Nombre de parcours POEI qui se terminent dans le mois. */
   nbParcoursPoei: number
   /** Stagiaires distincts : inscrits actifs des sessions + candidats POEI non abandonnés. */
   nbStagiaires: number
@@ -156,9 +158,9 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
       .neq('status', 'annulee'),
     cartePoeiSessions(supabase, organizationId),
     supabase.from('poei')
-      .select('id, numero, statut, date_debut, created_at, montant_total, montant_horaire, duree_heures, client:client_id(id, raison_sociale, nom_commercial, ville), candidats:poei_candidats(apprenant_id, statut)')
+      .select('id, numero, statut, date_debut, date_fin, created_at, montant_total, montant_horaire, duree_heures, client:client_id(id, raison_sociale, nom_commercial, ville), candidats:poei_candidats(apprenant_id, statut)')
       .eq('organization_id', organizationId)
-      .gte('date_debut', m.debut).lte('date_debut', m.fin),
+      .or(`and(date_fin.gte.${m.debut},date_fin.lte.${m.fin}),and(date_fin.is.null,date_debut.gte.${m.debut},date_debut.lte.${m.fin})`),
   ])
   // supabase-js ne lève pas : une requête en échec doit masquer le bloc (catch de la page), pas afficher un faux zéro
   if (sessRes.error) throw sessRes.error
@@ -192,7 +194,7 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
   const parEtab = new Map<string, EtablissementCale>()
   const ajouter = (client: any, s: any, poei = false) => {
     if (!client?.id) return
-    const nom = client.nom_commercial || client.raison_sociale || 'Établissement'
+    const nom = String(client.nom_commercial || client.raison_sociale || 'Établissement').trim()
     const e = parEtab.get(client.id)
     if (!e) {
       parEtab.set(client.id, { id: client.id, nom, ville: client.ville || null, premiereSession: s.date_debut, poei, caleLe: s.created_at, recent: false })
@@ -208,7 +210,8 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     if (s.client_id) { ajouter(s.client, s, poei); continue }
     for (const ins of inscriptions.filter((x) => x.session_id === s.id)) ajouter(ins.apprenant?.client, s, poei)
   }
-  for (const p of parcoursPoei) ajouter(p.client, p, true)
+  // Une POEI est rattachée au mois par sa fin : c'est cette date qui la situe dans le mois
+  for (const p of parcoursPoei) ajouter(p.client, { ...p, date_debut: p.date_fin || p.date_debut }, true)
 
   // ── Chiffre d'affaires calé ──
   const candidatsActifs = (p: any) => ((p.candidats || []) as any[]).filter((c) => c.statut !== 'abandonne')
@@ -241,8 +244,9 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
   for (const p of parcoursPoei) {
     const v = valeurPoei(p)
     if (v <= 0) {
-      const qui = p.client?.nom_commercial || p.client?.raison_sociale || p.numero || 'Parcours'
-      sessionsSansMontant.push({ id: p.id, libelle: `${qui} (POEI)`, href: `/dashboard/poei/${p.id}` })
+      const qui = String(p.client?.nom_commercial || p.client?.raison_sociale || p.numero || 'Parcours').trim()
+      const ville = p.client?.ville ? ` · ${villeLisible(p.client.ville)}` : ''
+      sessionsSansMontant.push({ id: p.id, libelle: `${qui}${ville} (POEI)`, href: `/dashboard/poei/${p.id}` })
       continue
     }
     caCale += v

@@ -98,3 +98,8 @@ export function titreFormation(intitule: string | null | undefined): string {
     return bas
   }).join(' ')
 }
+
+/** « ARRAS » → « Arras », « SAINT-DENIS » → « Saint-Denis ». */
+export function villeLisible(v: string): string {
+  return String(v).trim().toLowerCase().replace(/(^|[\s-])\p{L}/gu, (c) => c.toUpperCase())
+}

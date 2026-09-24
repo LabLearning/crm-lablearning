@@ -17,7 +17,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent, ReactNode } from 'react'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
+import { cn, villeLisible } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Pencil, Check, X, Minus, Plus, Award, ArrowRight, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2 } from '@/components/ui/icons'
 import type { ObjectifMois } from '@/lib/objectif-mois'
@@ -396,11 +396,14 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const groupesCa = ca >= 1_000_000 ? 3 : ca >= 1000 ? 2 : 1
 
   const lesDeux = (etatE === 'atteint' || etatE === 'depasse') && (etatC === 'atteint' || etatC === 'depasse')
-  const definition = `Établissement calé : une session OPCO ou un parcours POEI qui démarre en ${mois}.`
+  const definition = `Établissement calé : une session OPCO qui démarre en ${mois}, ou un parcours POEI qui se termine en ${mois}.`
   const parcours = `${data.nbParcoursPoei} POEI`
   const compteurs = `${data.nbSessions} ${pluriel(data.nbSessions, 'session', 'sessions')} · ${parcours} · ${data.nbStagiaires} ${pluriel(data.nbStagiaires, 'stagiaire inscrit', 'stagiaires inscrits')}`
   const compteursCourts = `${data.nbSessions} ${pluriel(data.nbSessions, 'session', 'sessions')} · ${parcours} · ${data.nbStagiaires} ${pluriel(data.nbStagiaires, 'stagiaire', 'stagiaires')}`
   const visibles = tout ? etabs : etabs.slice(0, MAX_NOMS)
+  // Deux établissements du même nom (franchise) : la ville les distingue
+  const homonymes = new Set(etabs.map((e) => e.nom.toLowerCase()).filter((n, i, t) => t.indexOf(n) !== i))
+  const nomAffiche = (e: { nom: string; ville: string | null }) => (homonymes.has(e.nom.toLowerCase()) && e.ville ? `${e.nom} · ${villeLisible(e.ville)}` : e.nom)
 
   const envoiE: Envoi = {
     action: (v) => setObjectifMoisAction(data.cle, v),
@@ -569,7 +572,7 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
                       className={cn('group flex min-h-[40px] items-center gap-2 rounded-md sm:min-h-[28px]', FOCUS)}
                     >
                       <span className="shrink-0 font-mono text-2xs tabular-nums text-accent-300/80">{String(i + 1).padStart(2, '0')}</span>
-                      <span className="ll-underline min-w-0 truncate text-sm font-semibold text-white/90 group-hover:text-white group-hover:[background-size:100%_1px]">{e.nom}</span>
+                      <span className="ll-underline min-w-0 truncate text-sm font-semibold text-white/90 group-hover:text-white group-hover:[background-size:100%_1px]">{nomAffiche(e)}</span>
                       {e.poei && <span className="shrink-0 font-mono text-[10px] font-medium text-accent-300">POEI</span>}
                       {e.recent && (
                         <>
