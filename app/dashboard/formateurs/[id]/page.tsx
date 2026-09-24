@@ -92,7 +92,7 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
   // Dernier envoi du formulaire d'inscription (migration 160) : ce qui diffère de la fiche
   let derniereInscription: any = null
   if ((f as any).inscrit_via_formulaire_at) {
-    const r = await supabase.from('formateur_inscriptions').select('created_at, resultat, differences')
+    const r = await supabase.from('formateur_inscriptions').select('created_at, resultat, differences, payload')
       .eq('formateur_id', params.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (!r.error) derniereInscription = r.data
   }
@@ -176,13 +176,13 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
           </div>
           {differences.length > 0 && (
             <div className="text-xs text-surface-600 space-y-1 pl-7">
-              <div className="font-medium text-surface-700">Il a déclaré des informations différentes de la fiche, qui n&apos;ont pas été remplacées :</div>
+              <div className="font-medium text-surface-700">Écarts avec ce qui figurait déjà sur la fiche, à trancher :</div>
               {differences.map((d: any, i: number) => (
                 <div key={i}>
                   <span className="text-surface-500">{LIBELLES_CHAMPS[d.champ] || d.champ} :</span>{' '}
                   {d.champ === 'cv_url'
                     ? <>nouveau CV déposé, il remplace le précédent{/^https?:\/\//.test(String(d.actuel)) && <> (<a href={String(d.actuel)} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">ancien CV</a>)</>}</>
-                    : <><span className="line-through text-surface-400">{valeurLisible(d.champ, d.actuel)}</span> → <span className="font-medium text-surface-900">{valeurLisible(d.champ, d.declare)}</span></>}
+                    : <>la fiche garde <span className="font-medium text-surface-900">{valeurLisible(d.champ, d.actuel)}</span>, il a déclaré <span className="font-medium text-surface-900">{valeurLisible(d.champ, d.declare)}</span></>}
                 </div>
               ))}
             </div>
@@ -200,7 +200,7 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
               </a>
             )}
             {(f as any).tarif_horaire && <span className="inline-flex items-center gap-1"><Euro className="h-3.5 w-3.5 text-surface-400" />{Number((f as any).tarif_horaire).toLocaleString('fr-FR')} €/h HT</span>}
-            {(f as any).inscrit_via_formulaire_at && Number((f as any).taux_tva) === 0 && <span className="text-surface-500">Sans TVA (franchise en base)</span>}
+            {derniereInscription?.payload?.taux_tva === 0 && Number((f as any).taux_tva) === 0 && <span className="text-surface-500">Sans TVA (franchise en base)</span>}
             {(f as any).disponibilites && <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-surface-400" />{(f as any).disponibilites}</span>}
           </div>
           {diplomes.length > 0 && (

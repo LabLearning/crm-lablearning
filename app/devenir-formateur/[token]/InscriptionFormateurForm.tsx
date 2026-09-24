@@ -19,10 +19,9 @@ const VIDE: InscriptionFormateur = {
   cv_path: null, cv_nom: null, consentement: false,
 }
 
-export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: string; orgNom: string; orgLogo: string | null }) {
+export function InscriptionFormateurForm({ token, jetonPage, orgNom, orgLogo }: { token: string; jetonPage: string; orgNom: string; orgLogo: string | null }) {
   const [f, setF] = useState<InscriptionFormateur>(VIDE)
   const [pot, setPot] = useState('')
-  const t0 = useRef(Date.now())
   const [cvEtat, setCvEtat] = useState<'vide' | 'envoi' | 'ok'>('vide')
   const [erreur, setErreur] = useState<string | null>(null)
   const [envoi, setEnvoi] = useState(false)
@@ -39,13 +38,19 @@ export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: st
     if (!CV_TYPES.includes(file.type)) { setErreur('Le CV doit être un fichier PDF ou Word (.doc, .docx).'); return }
     if (file.size > CV_TAILLE_MAX) { setErreur('Le CV ne doit pas dépasser 8 Mo.'); return }
     setCvEtat('envoi')
-    const prep = await preparerDepotCvAction(token, file.name, file.size, file.type)
-    if (!prep.success || !prep.data) { setCvEtat('vide'); setErreur(prep.error || 'Le dépôt du CV a échoué.'); return }
-    const { error } = await createClient().storage.from('documents')
-      .uploadToSignedUrl(prep.data.path, prep.data.jeton, file, { contentType: file.type })
-    if (error) { setCvEtat('vide'); setErreur('Le dépôt du CV a échoué. Réessayez.'); return }
-    setF((p) => ({ ...p, cv_path: prep.data!.path, cv_nom: file.name }))
-    setCvEtat('ok')
+    // En cas d'échec, le champ est vidé : choisir à nouveau le même fichier relance bien le dépôt
+    const echec = (message: string) => { setCvEtat('vide'); setErreur(message); if (fichier.current) fichier.current.value = '' }
+    try {
+      const prep = await preparerDepotCvAction(token, jetonPage, file.name, file.size, file.type)
+      if (!prep.success || !prep.data) { echec(prep.error || 'Le dépôt du CV a échoué. Réessayez.'); return }
+      const { error } = await createClient().storage.from('documents')
+        .uploadToSignedUrl(prep.data.path, prep.data.jeton, file, { contentType: file.type })
+      if (error) { echec('Le dépôt du CV a échoué. Réessayez.'); return }
+      setF((p) => ({ ...p, cv_path: prep.data!.path, cv_nom: file.name }))
+      setCvEtat('ok')
+    } catch {
+      echec('Le dépôt du CV a échoué : vérifiez votre connexion puis réessayez.')
+    }
   }
 
   function retirerCv() {
@@ -61,7 +66,16 @@ export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: st
     if (!f.consentement) { setErreur('Merci d’accepter l’enregistrement de vos informations.'); return }
     if (cvEtat === 'envoi') { setErreur('Le CV est encore en cours d’envoi, patientez un instant.'); return }
     setEnvoi(true)
-    const r = await soumettreInscriptionFormateurAction(token, f, { t0: t0.current, pot })
+    // Un salarié n'a ni SIRET, ni déclaration d'activité, ni TVA : ce qui a été saisi avant de changer de statut est ignoré
+    const saisie = f.type_contrat === 'salarie' ? { ...f, siret: '', numero_da: '', taux_tva: null } : f
+    let r: Awaited<ReturnType<typeof soumettreInscriptionFormateurAction>>
+    try {
+      r = await soumettreInscriptionFormateurAction(token, saisie, { jeton: jetonPage, pot })
+    } catch {
+      setEnvoi(false)
+      setErreur('L’envoi a échoué : vérifiez votre connexion puis réessayez. Vos informations sont conservées.')
+      return
+    }
     setEnvoi(false)
     if (!r.success) { setErreur(r.error || 'L’envoi a échoué. Réessayez.'); return }
     setFini(r.data?.resultat || 'cree')
@@ -120,7 +134,7 @@ export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: st
           <div className="grid grid-cols-[110px_1fr] gap-3">
             <Champ label="Civilité">
               <select className="input-base" value={f.civilite} onChange={(e) => maj('civilite', e.target.value)}>
-                <option value="">—</option><option value="Mme">Mme</option><option value="M.">M.</option>
+                <option value="">Choisir</option><option value="Mme">Mme</option><option value="M.">M.</option>
               </select>
             </Champ>
             <Champ label="Prénom" requis>
@@ -152,7 +166,7 @@ export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: st
         </Bloc>
 
         <Bloc titre="Votre statut" aide="Pour établir votre contrat et vos factures.">
-          <Champ label="Vous intervenez">
+          <Champ label="Vous intervenez" groupe>
             <div className="grid gap-2">
               {STATUTS_FORMATEUR.map((s) => (
                 <label key={s.value} className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm cursor-pointer transition-colors ${f.type_contrat === s.value ? 'border-brand-500 bg-brand-50 text-surface-900' : 'border-surface-200 bg-white text-surface-700 hover:border-surface-300'}`}>
@@ -172,7 +186,7 @@ export function InscriptionFormateurForm({ token, orgNom, orgLogo }: { token: st
                   <input className="input-base font-mono" value={f.numero_da} onChange={(e) => maj('numero_da', e.target.value)} />
                 </Champ>
               </div>
-              <Champ label="TVA">
+              <Champ label="TVA" groupe>
                 <div className="flex flex-wrap gap-2">
                   <Puce actif={f.taux_tva === 20} onClick={() => maj('taux_tva', f.taux_tva === 20 ? null : 20)}>Assujetti (20 %)</Puce>
                   <Puce actif={f.taux_tva === 0} onClick={() => maj('taux_tva', f.taux_tva === 0 ? null : 0)}>Franchise en base, pas de TVA</Puce>
@@ -290,16 +304,16 @@ function Bloc({ titre, aide, children }: { titre: string; aide?: string; childre
   )
 }
 
-function Champ({ label, aide, requis, children }: { label: string; aide?: string; requis?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5 min-w-0">
-      <div className="text-sm font-medium text-surface-700">
-        {label}{requis && <span className="text-danger-500"> *</span>}
-        {aide && <span className="font-normal text-surface-400"> · {aide}</span>}
-      </div>
-      {children}
-    </div>
+/** Libellé relié à son champ (le label l'englobe) ; pour un groupe de choix, un groupe nommé. */
+function Champ({ label, aide, requis, groupe, children }: { label: string; aide?: string; requis?: boolean; groupe?: boolean; children: React.ReactNode }) {
+  const titre = (
+    <span className="block text-sm font-medium text-surface-700">
+      {label}{requis && <span className="text-danger-500" aria-hidden="true"> *</span>}
+      {aide && <span className="font-normal text-surface-400"> · {aide}</span>}
+    </span>
   )
+  if (groupe) return <div role="group" aria-label={label} className="space-y-1.5 min-w-0">{titre}{children}</div>
+  return <label className="block space-y-1.5 min-w-0">{titre}{children}</label>
 }
 
 function Puce({ actif, onClick, children }: { actif: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -314,7 +328,7 @@ function Puce({ actif, onClick, children }: { actif: boolean; onClick: () => voi
 function Montant({ valeur, onChange, suffixe }: { valeur: number | null; onChange: (v: number | null) => void; suffixe: string }) {
   return (
     <div className="relative">
-      <input className="input-base pr-16 tabular-nums" type="number" inputMode="decimal" min={0} step="1"
+      <input className="input-base pr-16 tabular-nums" type="number" inputMode="decimal" min={0} step="0.01"
         value={valeur ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))} />
       <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-surface-400">{suffixe}</span>
     </div>

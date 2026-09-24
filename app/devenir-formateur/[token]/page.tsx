@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { emettreHorodatage } from '@/lib/inscription-formateur-garde'
 import { InscriptionFormateurForm } from './InscriptionFormateurForm'
 
 export const dynamic = 'force-dynamic'
@@ -37,6 +38,7 @@ export default async function DevenirFormateurPage({ params }: { params: { token
   return (
     <InscriptionFormateurForm
       token={params.token}
+      jetonPage={emettreHorodatage(params.token)}
       orgNom={(org as any).name || 'Lab Learning'}
       orgLogo={(org as any).logo_url || null}
     />

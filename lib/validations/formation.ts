@@ -102,7 +102,7 @@ export const createFormateurSchema = z.object({
   qualifications: z.string().optional(),
   domaines_expertise: z.string().optional(), // Sera splitté
   certifications: z.string().optional(),
-  type_contrat: z.enum(['salarie', 'prestataire', 'benevole']).default('prestataire'),
+  type_contrat: z.enum(['salarie', 'prestataire', 'sous_traitance', 'benevole']).default('prestataire'),
   siret: z.string().optional(),
   tarif_journalier: z.coerce.number().min(0).optional(),
   tarif_horaire: z.coerce.number().min(0).optional(),

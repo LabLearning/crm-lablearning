@@ -6,6 +6,7 @@ import {
   PREFIXE_CV, CV_TAILLE_MAX, CV_TYPES, DOMAINES_FORMATEUR, CERTIFICATIONS_FORMATEUR, STATUTS_FORMATEUR,
   listeLibre, type InscriptionFormateur,
 } from '@/lib/inscription-formateur'
+import { ageHorodatage } from '@/lib/inscription-formateur-garde'
 
 type Resultat<T = undefined> = { success: boolean; error?: string; data?: T }
 
@@ -24,7 +25,9 @@ async function organisationDuLien(supabase: any, token: string) {
  * stockage par une URL signée, sans passer par le serveur (pas de limite de
  * taille de requête, pas de fichier en mémoire côté fonction).
  */
-export async function preparerDepotCvAction(token: string, nomFichier: string, taille: number, type: string): Promise<Resultat<{ path: string; jeton: string }>> {
+export async function preparerDepotCvAction(token: string, jetonPage: string, nomFichier: string, taille: number, type: string): Promise<Resultat<{ path: string; jeton: string }>> {
+  // Seule une page servie par nous depuis moins d'un jour peut demander un dépôt
+  if (ageHorodatage(token, jetonPage) === null) return { success: false, error: 'Page expirée : rechargez-la puis déposez à nouveau votre CV.' }
   const supabase = await createServiceRoleClient()
   const org = await organisationDuLien(supabase, token)
   if (!org) return { success: false, error: 'Lien d’inscription invalide ou expiré.' }
@@ -45,6 +48,17 @@ const montant = (n: unknown): number | null => {
 /** Le gabarit des mails n'échappe pas le HTML : toute valeur saisie publiquement passe par ici. */
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 const vide = (v: unknown) => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
+/** Lettres, espaces, apostrophes, traits d'union, points : un nom, jamais une adresse web. */
+const NOM_VALIDE = /^[\p{L}][\p{L}\p{M}' ’.-]{0,79}$/u
+/** Forme comparable d'une valeur, pour ne pas relever d'écart sur la casse, les espaces ou le format. */
+function comparable(cle: string, v: unknown): string {
+  if (v === null || v === undefined) return ''
+  if (['tarif_journalier', 'tarif_horaire', 'taux_tva'].includes(cle)) return String(Number(v))
+  if (cle === 'telephone') { const d = String(v).replace(/\D/g, ''); return d.length === 11 && d.startsWith('33') ? `0${d.slice(2)}` : d }
+  if (cle === 'siret' || cle === 'code_postal') return String(v).replace(/\D/g, '')
+  if (cle === 'numero_da') return String(v).replace(/\W/g, '').toLowerCase()
+  return String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
+}
 
 /**
  * Enregistre l'inscription d'un formateur.
@@ -53,20 +67,22 @@ const vide = (v: unknown) => v === null || v === undefined || v === '' || (Array
  *   domaines et certifications ajoutés, CV remplacé s'il en dépose un) ; ce
  *   qui diffère d'une valeur déjà saisie n'est jamais écrasé mais relevé
  *   pour le gestionnaire, puisque n'importe qui peut taper une adresse.
- * Chaque envoi est conservé tel quel dans formateur_inscriptions.
+ * Chaque envoi est conservé (valeurs nettoyées) dans formateur_inscriptions.
  */
 export async function soumettreInscriptionFormateurAction(
   token: string,
   saisie: InscriptionFormateur,
-  garde: { t0: number; pot: string },
+  garde: { jeton: string; pot: string },
 ): Promise<Resultat<{ resultat: 'cree' | 'complete' }>> {
   const supabase = await createServiceRoleClient()
   const org = await organisationDuLien(supabase, token)
   if (!org) return { success: false, error: 'Lien d’inscription invalide ou expiré.' }
 
-  // Anti-robots : champ piège rempli, ou formulaire envoyé en moins de 5 secondes
+  // Anti-robots : champ piège rempli, page non servie par nous, ou envoyée moins de 5 secondes après son affichage
   if (garde?.pot) return { success: true, data: { resultat: 'cree' } }
-  if (!garde?.t0 || Date.now() - Number(garde.t0) < 5000) return { success: false, error: 'Merci de vérifier vos informations avant d’envoyer.' }
+  const age = ageHorodatage(token, garde?.jeton)
+  if (age === null) return { success: false, error: 'Page expirée : rechargez-la. Vos informations devront être saisies à nouveau.' }
+  if (age < 5000) return { success: false, error: 'Merci de vérifier vos informations avant d’envoyer.' }
 
   const email = nettoyer(saisie.email, 200).toLowerCase()
   const s = {
@@ -78,9 +94,10 @@ export async function soumettreInscriptionFormateurAction(
     code_postal: nettoyer(saisie.code_postal, 10) || null,
     ville: nettoyer(saisie.ville, 100) || null,
     type_contrat: STATUTS_FORMATEUR.some((x) => x.value === saisie.type_contrat) ? saisie.type_contrat : null,
-    siret: nettoyer(saisie.siret, 20).replace(/\s+/g, '') || null,
-    numero_da: nettoyer(saisie.numero_da, 20).replace(/\s+/g, '') || null,
-    taux_tva: saisie.taux_tva === 0 || saisie.taux_tva === 20 ? saisie.taux_tva : null,
+    // Un salarié n'a ni SIRET, ni déclaration d'activité, ni TVA à déclarer
+    siret: saisie.type_contrat === 'salarie' ? null : nettoyer(saisie.siret, 20).replace(/\s+/g, '') || null,
+    numero_da: saisie.type_contrat === 'salarie' ? null : nettoyer(saisie.numero_da, 20).replace(/\s+/g, '') || null,
+    taux_tva: saisie.type_contrat !== 'salarie' && (saisie.taux_tva === 0 || saisie.taux_tva === 20) ? saisie.taux_tva : null,
     domaines: [...new Set([...(saisie.domaines || []).filter((d) => (DOMAINES_FORMATEUR as readonly string[]).includes(d)), ...listeLibre(saisie.domaines_autres).map((x) => x.slice(0, 80))])].slice(0, 30),
     certifications: [...new Set([...(saisie.certifications || []).filter((c) => (CERTIFICATIONS_FORMATEUR as readonly string[]).includes(c)), ...listeLibre(saisie.certifications_autres).map((x) => x.slice(0, 80))])].slice(0, 30),
     diplomes: listeLibre(nettoyer(saisie.diplomes, 2000).replace(/\n/g, ';')).slice(0, 20).map((intitule) => ({ intitule })),
@@ -94,25 +111,43 @@ export async function soumettreInscriptionFormateurAction(
 
   // Contrôles
   if (!s.prenom || !s.nom) return { success: false, error: 'Indiquez votre prénom et votre nom.' }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { success: false, error: 'Indiquez une adresse email valide.' }
+  if (!NOM_VALIDE.test(s.prenom) || !NOM_VALIDE.test(s.nom)) return { success: false, error: 'Votre prénom et votre nom ne peuvent contenir que des lettres, des espaces, des apostrophes et des traits d’union.' }
+  // « * » et « % » servent de jokers dans les recherches : refusés, ils ne figurent dans aucune adresse réelle
+  if (!/^[^\s@*%]+@[^\s@*%]+\.[^\s@*%]{2,}$/.test(email)) return { success: false, error: 'Indiquez une adresse email valide.' }
   if (s.telephone.replace(/\D/g, '').length < 9) return { success: false, error: 'Indiquez un numéro de téléphone valide.' }
   if (!s.domaines.length) return { success: false, error: 'Choisissez au moins un domaine d’intervention.' }
   if (s.siret && !/^\d{14}$/.test(s.siret)) return { success: false, error: 'Le SIRET compte 14 chiffres.' }
   if (!saisie.consentement) return { success: false, error: 'Merci d’accepter l’enregistrement de vos informations.' }
 
-  // Pas plus de 5 envois par heure pour une même adresse
+  // Limites par heure : 5 envois par adresse, 10 par connexion, 40 pour tout l'organisme
+  const h = headers()
+  const ip = nettoyer((h.get('x-forwarded-for') || '').split(',')[0] || h.get('x-real-ip'), 60) || 'inconnue'
   const ilYAUneHeure = new Date(Date.now() - 3600000).toISOString()
-  const { count: recents } = await supabase.from('formateur_inscriptions').select('id', { count: 'exact', head: true })
-    .eq('organization_id', org.id).eq('email', email).gte('created_at', ilYAUneHeure)
-  if ((recents || 0) >= 5) return { success: false, error: 'Plusieurs envois ont déjà été faits avec cette adresse. Réessayez plus tard.' }
+  const compter = (q: any) => q.select('id', { count: 'exact', head: true }).eq('organization_id', org.id).gte('created_at', ilYAUneHeure)
+  const [parAdresse, parConnexion, auTotal] = await Promise.all([
+    compter(supabase.from('formateur_inscriptions')).eq('email', email),
+    compter(supabase.from('formateur_inscriptions')).eq('payload->>_ip', ip),
+    compter(supabase.from('formateur_inscriptions')),
+  ])
+  if ((parAdresse.count || 0) >= 5) return { success: false, error: 'Plusieurs envois ont déjà été faits avec cette adresse. Réessayez plus tard.' }
+  if ((parConnexion.count || 0) >= 10 || (auTotal.count || 0) >= 40) return { success: false, error: 'Trop d’envois en peu de temps. Réessayez dans une heure.' }
 
-  // CV : uniquement un fichier déposé par ce formulaire, pour cette organisation, et présent
+  // CV : un fichier déposé par ce formulaire, pour cette organisation, présent, PDF ou Word, 8 Mo au plus
   let cvPath: string | null = null
   if (saisie.cv_path) {
     const p = String(saisie.cv_path)
-    if (!p.startsWith(`${PREFIXE_CV}/${org.id}/`) || p.includes('..')) return { success: false, error: 'CV invalide : déposez-le à nouveau.' }
-    const { error: eCv } = await supabase.storage.from('documents').createSignedUrl(p, 60)
-    if (eCv) return { success: false, error: 'Le CV n’a pas été reçu : déposez-le à nouveau.' }
+    const forme = new RegExp(`^${PREFIXE_CV}/${org.id}/[0-9a-f-]{36}/([A-Za-z0-9._-]{1,80})$`).exec(p)
+    if (!forme || forme[1].startsWith('.')) return { success: false, error: 'CV invalide : déposez-le à nouveau.' }
+    const dossier = p.slice(0, p.lastIndexOf('/'))
+    const { data: objets } = await supabase.storage.from('documents').list(dossier, { limit: 10 })
+    const objet = (objets || []).find((o: any) => o.name === forme[1]) as any
+    if (!objet) return { success: false, error: 'Le CV n’a pas été reçu : déposez-le à nouveau.' }
+    const taille = Number(objet.metadata?.size) || 0
+    const type = String(objet.metadata?.mimetype || '')
+    if (taille > CV_TAILLE_MAX || !CV_TYPES.includes(type)) {
+      await supabase.storage.from('documents').remove([p])
+      return { success: false, error: 'Le CV doit être un fichier PDF ou Word de 8\u202fMo au plus.' }
+    }
     cvPath = p
   }
 
@@ -120,10 +155,11 @@ export async function soumettreInscriptionFormateurAction(
   const aujourdhui = maintenant.slice(0, 10)
   const traceCv = cvPath ? [{ date: aujourdhui, type: 'verification_competences', piece: 'CV et compétences déclarés par le formulaire d’inscription' }] : []
 
-  // Fiche existante ?
+  // Fiche existante : même adresse exactement (la recherche insensible à la casse ne sert qu'à la retrouver)
   const { data: existants } = await supabase.from('formateurs').select('*')
-    .eq('organization_id', org.id).ilike('email', email.replace(/[\\%_]/g, (c) => `\\${c}`)).limit(2)
-  const existant = (existants || [])[0] as any
+    .eq('organization_id', org.id).ilike('email', email.replace(/[\\%_]/g, (c) => `\\${c}`))
+    .order('created_at', { ascending: true }).limit(5)
+  const existant = ((existants || []) as any[]).find((x) => String(x.email || '').trim().toLowerCase() === email)
 
   const champs: Record<string, unknown> = {
     civilite: s.civilite, prenom: s.prenom, nom: s.nom, telephone: s.telephone,
@@ -164,8 +200,10 @@ export async function soumettreInscriptionFormateurAction(
     const patch: Record<string, unknown> = { a_verifier: true, inscrit_via_formulaire_at: maintenant }
     for (const [cle, valeur] of Object.entries(champs)) {
       if (vide(valeur)) continue
-      if (vide(existant[cle])) patch[cle] = valeur
-      else if (String(existant[cle]) !== String(valeur)) differences.push({ champ: cle, actuel: existant[cle], declare: valeur })
+      // taux_tva vaut 0 par défaut en base : 0 n'y est pas une réponse, on le traite comme vide
+      const videExistant = cle === 'taux_tva' ? Number(existant[cle]) === 0 : vide(existant[cle])
+      if (videExistant) patch[cle] = valeur
+      else if (comparable(cle, existant[cle]) !== comparable(cle, valeur)) differences.push({ champ: cle, actuel: existant[cle], declare: valeur })
     }
     patch.domaines_expertise = [...new Set([...(existant.domaines_expertise || []), ...s.domaines])]
     patch.certifications = [...new Set([...(existant.certifications || []), ...s.certifications])]
@@ -187,12 +225,12 @@ export async function soumettreInscriptionFormateurAction(
     resultat = 'complete'
   }
 
-  // Trace de l'envoi, tel quel
+  // Trace de l'envoi : les valeurs nettoyées, jamais l'objet brut reçu
   await supabase.from('formateur_inscriptions').insert({
     organization_id: org.id, formateur_id: formateurId, email,
-    payload: { ...saisie, email, cv_path: cvPath },
+    payload: { ...s, email, cv_path: cvPath, consentement: true, _ip: ip },
     cv_path: cvPath, resultat, differences,
-    user_agent: nettoyer(headers().get('user-agent'), 300) || null,
+    user_agent: nettoyer(h.get('user-agent'), 300) || null,
   })
 
   // Prévenir l'équipe (dans le CRM et par mail) et confirmer au formateur : au mieux
@@ -234,15 +272,15 @@ export async function soumettreInscriptionFormateurAction(
         })
       }
     }
+    // Confirmation au formateur : texte fixe, seul le prénom (lettres uniquement) est repris
     await sendDocumentEmail({
       to: email,
       orgName: org.name || 'Lab Learning', orgEmail: org.email_contact || org.email, orgLogoUrl: org.logo_url,
       qualiopiCertified: org.is_qualiopi !== false,
-      recipientName: esc(s.prenom) || 'Madame, Monsieur',
+      recipientName: esc(s.prenom),
       subject: 'Votre fiche formateur est enregistrée',
       docTitle: 'Merci, votre fiche est enregistrée',
       intro: `Vos informations sont bien arrivées chez ${esc(org.name || 'nous')}. Nous revenons vers vous dès qu’une mission correspond à votre profil.`,
-      metadata: [['Domaines', esc(s.domaines.join(', '))], ...(s.zone_intervention ? [['Zone', esc(s.zone_intervention)] as [string, string]] : [])],
       organizationId: org.id, entityType: 'formateur', entityId: formateurId, templateSlug: 'formateur_inscription_confirmation',
     })
   } catch (e) {
