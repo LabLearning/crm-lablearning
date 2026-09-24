@@ -19,19 +19,36 @@ export async function GET(req: NextRequest) {
   if (/^\d{2,5}$/.test(q)) champsClients.push(`code_postal.ilike.${q}%`)
   if (/^\d{9,14}$/.test(q)) champsClients.push(`siret.ilike.${like}`)
 
+  // Une personne se tape « Anis Zerroudi » comme « Zerroudi Anis », prénoms et
+  // noms composés compris : on essaie chaque coupure entre prénom et nom.
+  // Sans cela, la phrase entière était comparée à chaque champ et ne trouvait rien.
+  const mots = q.split(/\s+/).filter(Boolean)
+  const personne = (prenom: string, nom: string, autres: string[] = []) => {
+    const conds = [`${prenom}.ilike.${like}`, `${nom}.ilike.${like}`, ...autres.map((c) => `${c}.ilike.${like}`)]
+    for (let i = 1; i < Math.min(mots.length, 5); i++) {
+      const avant = `%${mots.slice(0, i).join(' ')}%`
+      const apres = `%${mots.slice(i).join(' ')}%`
+      conds.push(`and(${prenom}.ilike.${avant},${nom}.ilike.${apres})`, `and(${nom}.ilike.${avant},${prenom}.ilike.${apres})`)
+    }
+    return conds.join(',')
+  }
+
   const supabase = await createServiceRoleClient()
-  const [clients, leads, sessions, apprenants, formateurs, formations, conventions, dossiers, parVille] = await Promise.all([
+  const [clients, contacts, leads, sessions, apprenants, formateurs, formations, conventions, dossiers, parVille] = await Promise.all([
     // Le nom, mais aussi la ville, l'adresse, le code postal ou le SIRET
     supabase.from('clients').select('id, raison_sociale, nom_commercial, siret, adresse, code_postal, ville, telephone, email').eq('organization_id', orgId)
       .or(champsClients.join(',')).order('raison_sociale').limit(8),
+    // Contacts des clients : nom, prénom, email ou téléphone ; ils s'ouvrent sur la fiche de leur client
+    supabase.from('contacts').select('id, civilite, prenom, nom, email, telephone, mobile, poste, client_id, client:client_id(raison_sociale, nom_commercial)').eq('organization_id', orgId)
+      .or(personne('prenom', 'nom', ['email', 'telephone', 'mobile'])).order('nom').limit(6),
     supabase.from('leads').select('id, entreprise, contact_nom, contact_prenom, contact_email, contact_telephone, status, montant_estime').eq('organization_id', orgId)
-      .or(`entreprise.ilike.${like},contact_nom.ilike.${like},contact_prenom.ilike.${like}`).limit(5),
+      .or(personne('contact_prenom', 'contact_nom', ['entreprise', 'contact_email'])).limit(5),
     supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, lieu, ville').eq('organization_id', orgId)
       .or(`reference.ilike.${like},intitule.ilike.${like},ville.ilike.${like},lieu.ilike.${like}`).order('date_debut', { ascending: false }).limit(5),
     supabase.from('apprenants').select('id, nom, prenom, entreprise, email, telephone').eq('organization_id', orgId)
-      .or(`nom.ilike.${like},prenom.ilike.${like}`).limit(5),
+      .or(personne('prenom', 'nom', ['email'])).limit(5),
     supabase.from('formateurs').select('id, nom, prenom, email, telephone, zone_intervention').eq('organization_id', orgId)
-      .or(`nom.ilike.${like},prenom.ilike.${like}`).limit(5),
+      .or(personne('prenom', 'nom', ['email'])).limit(5),
     supabase.from('formations').select('id, intitule, reference').eq('organization_id', orgId)
       .or(`intitule.ilike.${like},reference.ilike.${like}`).limit(5),
     supabase.from('conventions').select('id, numero').eq('organization_id', orgId)
@@ -61,6 +78,16 @@ export async function GET(req: NextRequest) {
       sublabel: [c.code_postal, c.ville].filter(Boolean).join(' '), href: `/dashboard/clients/${c.id}`,
       preview: { title: c.raison_sociale, lines: clean([line('SIRET', c.siret), line('Adresse', adresse(c)), line('Téléphone', c.telephone), line('Email', c.email)]) },
     })),
+    ...(contacts.data || []).map((ct: any) => {
+      const nom = `${ct.prenom || ''} ${ct.nom || ''}`.trim()
+      const entreprise = ct.client?.nom_commercial || ct.client?.raison_sociale || ''
+      return {
+        group: 'Contacts', label: nom || ct.email || 'Contact',
+        sublabel: [entreprise, ct.poste].filter(Boolean).join(' · '),
+        href: ct.client_id ? `/dashboard/clients/${ct.client_id}` : '/dashboard/clients',
+        preview: { title: [ct.civilite, nom].filter(Boolean).join(' '), lines: clean([line('Entreprise', entreprise), line('Poste', ct.poste), line('Email', ct.email), line('Téléphone', ct.telephone || ct.mobile)]) },
+      }
+    }),
     ...(leads.data || []).map((l: any) => ({
       group: 'Leads', label: l.entreprise || `${l.contact_prenom || ''} ${l.contact_nom || ''}`.trim(),
       sublabel: l.status, href: `/dashboard/leads?lead=${l.id}`,
