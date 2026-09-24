@@ -1,18 +1,8 @@
-import type { BadgeVariant } from '@/lib/types'
 import { getSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { getDashboardData } from './reporting/data'
-import Link from 'next/link'
-import {
-  TrendingUp, Calendar, GraduationCap, Users, Euro,
-  CreditCard, Clock, AlertTriangle, Receipt,
-  ShieldCheck, Star, MessageSquareWarning,
-  ArrowRight, CheckCircle2, BarChart3, Zap, ArrowUpRight,
-  MapPin, ChevronRight, Briefcase,
-} from '@/components/ui/icons'
-import { Badge } from '@/components/ui'
-import { formatDateTime, formatDate } from '@/lib/utils'
+import { Calendar, Briefcase } from '@/components/ui/icons'
+import { formatDate } from '@/lib/utils'
 import { OnboardingGuide } from './OnboardingGuide'
 import { SessionsTable } from './SessionsTable'
 import { ObjectifMoisUne } from './ObjectifMoisUne'
@@ -77,9 +67,8 @@ export default async function DashboardPage() {
   const inThreeMonths = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
   const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
 
-  // Les 4 blocs sont indépendants → exécutés en parallèle (KPIs, agenda, compteurs onboarding, objectif du mois)
-  const [data, { data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt], objectifMois] = await Promise.all([
-    getDashboardData().catch(() => null),
+  // Les 3 blocs sont indépendants → exécutés en parallèle (agenda, compteurs onboarding, objectif du mois)
+  const [{ data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt], objectifMois] = await Promise.all([
     supabase
       .from('sessions')
       .select('id, reference, status, date_debut, date_fin, lieu, intitule, mission_status, convocations_sent_at, poei_intervention_id, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
@@ -202,15 +191,6 @@ export default async function DashboardPage() {
     team: (uCnt.count || 0) > 1,
   }
 
-  // Convention de couleur commune (cf. SESSION_STATUS_COLORS)
-  const SESSION_STATUS: Record<string, { label: string; variant: BadgeVariant }> = {
-    planifiee: { label: 'Planifiée', variant: 'info' },
-    confirmee: { label: 'Confirmée', variant: 'info' },
-    en_cours: { label: 'En cours', variant: 'success' },
-    terminee: { label: 'Terminée', variant: 'purple' },
-    annulee: { label: 'Annulée', variant: 'danger' },
-  }
-
   const getGreeting = () => {
     const hour = new Date().getHours()
     if (hour < 12) return 'Bonjour'
@@ -273,162 +253,6 @@ export default async function DashboardPage() {
           </section>
         ))}
       </div>
-
-      {data ? (
-        <>
-          {/* Primary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {[
-              { label: 'CA Réalisé', value: `${data.ca_realise.toLocaleString('fr-FR')} €`, sub: `${data.ca_mois.toLocaleString('fr-FR')} € ce mois`, icon: Euro, iconBg: 'bg-surface-100', iconColor: 'text-surface-600' },
-              { label: 'Encaissé', value: `${data.encaisse.toLocaleString('fr-FR')} €`, sub: null, icon: CreditCard, iconBg: 'bg-success-50', iconColor: 'text-success-600' },
-              { label: 'Sessions', value: String(data.sessions_en_cours), sub: `en cours · ${data.sessions_a_venir} à venir`, icon: Calendar, iconBg: 'bg-brand-50', iconColor: 'text-brand-600' },
-              { label: 'Apprenants', value: String(data.apprenants_formes), sub: `formés · ${data.apprenants_en_cours} en cours`, icon: GraduationCap, iconBg: 'bg-surface-100', iconColor: 'text-surface-600' },
-            ].map((kpi) => (
-              <div key={kpi.label} className="stat-card p-4 sm:p-5 gap-3 sm:gap-4 flex-col sm:flex-row">
-                <div className={`stat-icon ${kpi.iconBg}`}>
-                  <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
-                </div>
-                <div className="min-w-0">
-                  <p className="stat-label">{kpi.label}</p>
-                  <p className="stat-value text-surface-900 mt-0.5 text-xl sm:text-2xl break-words">{kpi.value}</p>
-                  {kpi.sub && <p className="stat-sub">{kpi.sub}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Two columns */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* Alerts */}
-            <div className="card p-4 sm:p-6 space-y-5">
-              <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Alertes</h2>
-              <div className="space-y-2.5">
-                {data.factures_en_retard > 0 && (
-                  <Link href="/dashboard/factures" className="flex items-center gap-3 p-3.5 rounded-xl bg-danger-50/60 border border-danger-100 hover:bg-danger-50 transition-colors group">
-                    <Receipt className="h-4 w-4 text-danger-500 shrink-0" />
-                    <span className="text-sm text-danger-700 flex-1">{data.factures_en_retard} facture{data.factures_en_retard > 1 ? 's' : ''} en retard</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-danger-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Link>
-                )}
-                {data.impaye > 0 && (
-                  <Link href="/dashboard/factures" className="flex items-center gap-3 p-3.5 rounded-xl bg-warning-50/60 border border-warning-100 hover:bg-warning-50 transition-colors group">
-                    <AlertTriangle className="h-4 w-4 text-warning-500 shrink-0" />
-                    <span className="text-sm text-warning-700 flex-1">{data.impaye.toLocaleString('fr-FR')} € d&apos;impayés</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-warning-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Link>
-                )}
-                {data.reclamations_ouvertes > 0 && (
-                  <Link href="/dashboard/reclamations" className="flex items-center gap-3 p-3.5 rounded-xl bg-surface-50 border border-surface-200/80 hover:bg-surface-100 transition-colors group">
-                    <MessageSquareWarning className="h-4 w-4 text-surface-500 shrink-0" />
-                    <span className="text-sm text-surface-700 flex-1">{data.reclamations_ouvertes} réclamation{data.reclamations_ouvertes > 1 ? 's' : ''}</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-surface-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Link>
-                )}
-                {data.habilitations_a_renouveler > 0 && (
-                  <Link href="/dashboard/formateurs" className="flex items-center gap-3 p-3.5 rounded-xl bg-surface-50 border border-surface-200/80 hover:bg-surface-100 transition-colors group">
-                    <ShieldCheck className="h-4 w-4 text-surface-500 shrink-0" />
-                    <span className="text-sm text-surface-700 flex-1">{data.habilitations_a_renouveler} habilitation{data.habilitations_a_renouveler > 1 ? 's' : ''}</span>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-surface-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Link>
-                )}
-                {data.factures_en_retard === 0 && data.impaye === 0 && data.reclamations_ouvertes === 0 && data.habilitations_a_renouveler === 0 && (
-                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-success-50/60 border border-success-100">
-                    <CheckCircle2 className="h-4 w-4 text-success-500" />
-                    <span className="text-sm text-success-700">Tout est en ordre</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Quality mini-stats */}
-              <div className="pt-4 border-t border-surface-100 grid grid-cols-3 gap-2 text-center">
-                <div><div className="text-2xs text-surface-400">Satisfaction</div><div className="text-sm font-semibold text-surface-800">{data.taux_satisfaction}%</div></div>
-                <div><div className="text-2xs text-surface-400">Réussite</div><div className="text-sm font-semibold text-surface-800">{data.taux_reussite}%</div></div>
-                <div><div className="text-2xs text-surface-400">Qualiopi</div><div className="text-sm font-semibold text-brand-600">{data.conformite_qualiopi}%</div></div>
-              </div>
-            </div>
-
-            {/* Right column */}
-            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-              {/* Pipeline */}
-              <div className="card p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Pipeline commercial</h2>
-                  <Link href="/dashboard/leads" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 transition-colors">
-                    Voir tout <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Leads', value: data.leads_total, color: 'text-surface-800' },
-                    { label: 'Devis en attente', value: data.devis_en_attente, color: 'text-brand-600' },
-                    { label: 'Transformation', value: `${data.taux_transformation}%`, color: 'text-success-600' },
-                    { label: 'Valeur pipeline', value: `${data.leads_valeur.toLocaleString('fr-FR')} €`, color: 'text-surface-800' },
-                  ].map((s) => (
-                    <div key={s.label} className="p-3 rounded-xl bg-surface-50">
-                      <div className={`text-lg sm:text-xl font-heading font-bold tracking-tight break-words ${s.color}`}>{s.value}</div>
-                      <div className="text-[11px] text-surface-400 mt-0.5">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Activity */}
-              <div className="card p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Activité récente</h2>
-                  <Link href="/dashboard/reporting" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 transition-colors">
-                    Rapports <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
-                {data.activite_recente.length > 0 ? (
-                  <div className="space-y-0">
-                    {data.activite_recente.slice(0, 6).map((event, i) => (
-                      <div key={i} className="flex items-start gap-3 py-2.5 border-b border-surface-100/80 last:border-0">
-                        <div className="shrink-0 mt-1.5 h-1.5 w-1.5 rounded-full bg-brand-400" />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm text-surface-600">
-                            <span className="font-medium text-surface-800">{event.user_name}</span>
-                            <span className="text-surface-400"> · </span>
-                            {event.action} {event.entity_type}
-                          </div>
-                          <div className="text-[11px] text-surface-400 mt-0.5">{formatDateTime(event.created_at)}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-10">
-                    <Clock className="h-5 w-5 mx-auto text-surface-300 mb-2" />
-                    <p className="text-sm text-surface-400">L&apos;activité apparaîtra ici</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Qualiopi bar */}
-          <div className="card p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="h-4 w-4 text-brand-500" />
-                <h2 className="text-sm font-heading font-semibold text-surface-900 tracking-tight">Conformité Qualiopi</h2>
-              </div>
-              <Link href="/dashboard/qualiopi" className="text-xs text-surface-500 hover:text-brand-600 font-medium flex items-center gap-1 min-h-[40px] sm:min-h-0 -my-2 sm:my-0 transition-colors">
-                Détail <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-            <div className="h-2 rounded-full bg-surface-100 overflow-hidden">
-              <div className="h-full rounded-full bg-brand-500 transition-all duration-700 ease-out" style={{ width: `${data.conformite_qualiopi}%` }} />
-            </div>
-            <div className="text-xs text-surface-400 mt-2">{data.conformite_qualiopi}% de conformité sur les 32 indicateurs</div>
-          </div>
-        </>
-      ) : (
-        <div className="card p-8 sm:p-16 text-center">
-          <BarChart3 className="h-6 w-6 text-surface-300 mx-auto mb-3" />
-          <p className="text-sm text-surface-500">Les données du tableau de bord seront disponibles après la création de vos premières données.</p>
-        </div>
-      )}
     </div>
   )
 }
