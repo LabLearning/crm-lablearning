@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import { OnboardingGuide } from './OnboardingGuide'
 import { SessionsTable } from './SessionsTable'
+import { ObjectifMoisUne } from './ObjectifMoisUne'
+import { chargerObjectifMois, ROLES_OBJECTIF } from '@/lib/objectif-mois'
 
 /** Lundi de la semaine qui contient la date (ISO, sans fuseau). */
 const lundiDe = (iso: string) => {
@@ -75,8 +77,8 @@ export default async function DashboardPage() {
   const inThreeMonths = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
   const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
 
-  // Les 3 blocs sont indépendants → exécutés en parallèle (KPIs, agenda, compteurs onboarding)
-  const [data, { data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt]] = await Promise.all([
+  // Les 4 blocs sont indépendants → exécutés en parallèle (KPIs, agenda, compteurs onboarding, objectif du mois)
+  const [data, { data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt], objectifMois] = await Promise.all([
     getDashboardData().catch(() => null),
     supabase
       .from('sessions')
@@ -93,6 +95,7 @@ export default async function DashboardPage() {
       headCount('formations'), headCount('clients'), headCount('leads'),
       headCount('sessions'), headCount('devis'), headCount('factures'), headCount('users'),
     ]),
+    chargerObjectifMois(supabase, organization.id).catch(() => null),
   ])
 
   const allSessions = upcomingSessions || []
@@ -229,6 +232,9 @@ export default async function DashboardPage() {
 
       {/* Guide de démarrage (masquable) */}
       <OnboardingGuide flags={onboardingFlags} firstName={user.first_name} />
+
+      {/* Objectif du mois : établissements calés pour le mois suivant */}
+      {objectifMois && <ObjectifMoisUne data={objectifMois} peutModifier={ROLES_OBJECTIF.includes(user.role)} />}
 
       {/* ── Agenda : sessions OPCO d'un côté, parcours POEI de l'autre, chacun en cours / à venir / terminées ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
