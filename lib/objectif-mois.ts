@@ -11,6 +11,13 @@
  * écrans de sessions). Les sessions « BPF-… » (reprises comptables) sont
  * ignorées.
  *
+ * Chiffre d'affaires calé = somme, sur ces mêmes sessions, de leur valeur HT :
+ * montant financé par l'OPCO, sinon prix HT, sinon factures HT non annulées.
+ * Un parcours POEI vaut son montant total, sinon taux horaire × durée ×
+ * candidats non abandonnés. Une session sans aucun montant compte 0 et est
+ * listée à part : le chiffre affiché n'est jamais présenté comme complet
+ * alors qu'il ne l'est pas.
+ *
  * Ce module ne dépend que du client Supabase passé en paramètre : il est
  * appelé par le tableau de bord (rendu serveur).
  */
@@ -18,6 +25,8 @@
 import { cartePoeiSessions } from '@/lib/poei-sessions'
 
 export const OBJECTIF_PAR_DEFAUT = 25
+/** Objectif de chiffre d'affaires HT calé par mois, faute de saisie. */
+export const OBJECTIF_CA_PAR_DEFAUT = 60000
 
 /** Rôles qui fixent l'objectif. Déclaré ici et pas dans objectif-actions.ts :
     un fichier 'use server' n'exporte que des fonctions async. */
@@ -67,6 +76,20 @@ export interface ObjectifMois {
   nbPoei: number
   /** Pourcentage de l'objectif atteint (peut dépasser 100). */
   pourcentage: number
+  /** Objectif de chiffre d'affaires HT du mois. */
+  objectifCa: number
+  /** L'objectif de CA vient-il d'une saisie (sinon 60 000 € par défaut) ? */
+  objectifCaSaisi: boolean
+  /** La colonne ca_ht n'existe pas encore (migration 159 à appliquer). */
+  colonneCaAbsente: boolean
+  /** Chiffre d'affaires HT déjà calé sur le mois, arrondi à l'euro. */
+  caCale: number
+  /** Part du CA calé par des sessions créées depuis lundi 00:00 (Paris). */
+  caCetteSemaine: number
+  /** Pourcentage de l'objectif de CA atteint (peut dépasser 100). */
+  caPourcentage: number
+  /** Sessions du mois sans aucun montant : leur CA n'est pas compté. */
+  sessionsSansMontant: { id: string; libelle: string; href: string }[]
 }
 
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -107,11 +130,22 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     .formatToParts(new Date(`${lundi}T00:00:00Z`)).find((p) => p.type === 'timeZoneName')?.value || 'GMT').replace('GMT', '') || '+00:00'
   const debutSemaine = new Date(`${lundi}T00:00:00${decalage}`).toISOString()
 
+  const lireObjectif = async () => {
+    const r = await supabase.from('objectifs_formation').select('etablissements, ca_ht')
+      .eq('organization_id', organizationId).eq('mois', m.debut).maybeSingle()
+    // Colonne ca_ht absente tant que la migration 159 n'est pas appliquée : on relit sans elle
+    if (r.error && /ca_ht|42703/i.test(`${r.error.code} ${r.error.message}`)) {
+      const r2 = await supabase.from('objectifs_formation').select('etablissements')
+        .eq('organization_id', organizationId).eq('mois', m.debut).maybeSingle()
+      return { ...r2, colonneCaAbsente: true }
+    }
+    return { ...r, colonneCaAbsente: false }
+  }
+
   const [objRes, sessRes, carte] = await Promise.all([
-    supabase.from('objectifs_formation').select('etablissements')
-      .eq('organization_id', organizationId).eq('mois', m.debut).maybeSingle(),
+    lireObjectif(),
     supabase.from('sessions')
-      .select('id, reference, client_id, date_debut, created_at, poei_intervention_id, formation:formation_id(is_poei), client:client_id(id, raison_sociale, nom_commercial, ville)')
+      .select('id, reference, client_id, date_debut, created_at, prix_ht, montant_finance_opco, poei_intervention_id, formation:formation_id(is_poei, intitule), client:client_id(id, raison_sociale, nom_commercial, ville), factures(montant_ht, status)')
       .eq('organization_id', organizationId)
       .gte('date_debut', m.debut).lte('date_debut', m.fin)
       .neq('status', 'annulee'),
@@ -124,6 +158,8 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
   const tableAbsente = !!objRes.error && /objectifs_formation|42P01|PGRST205/i.test(`${objRes.error.code} ${objRes.error.message}`)
   const objectifSaisi = !objRes.error && !!objRes.data?.etablissements
   const objectif = objectifSaisi ? Number(objRes.data.etablissements) : OBJECTIF_PAR_DEFAUT
+  const objectifCaSaisi = !objRes.error && Number((objRes.data as any)?.ca_ht) > 0
+  const objectifCa = objectifCaSaisi ? Number((objRes.data as any).ca_ht) : OBJECTIF_CA_PAR_DEFAUT
 
   // Une session d'intervention POEI ne s'ajoute pas à son parcours (règle de lib/poei-sessions.ts)
   const sessions = ((sessRes.data || []) as any[])
@@ -160,6 +196,48 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     for (const ins of inscriptions.filter((x) => x.session_id === s.id)) ajouter(ins.apprenant?.client, s)
   }
 
+  // ── Chiffre d'affaires calé ──
+  const poeiIds = [...new Set(sessions.map((s) => carte.poeiParSession.get(s.id)).filter(Boolean))] as string[]
+  const { data: parcours, error: errPoei } = poeiIds.length
+    ? await supabase.from('poei').select('id, numero, montant_total, montant_horaire, duree_heures, candidats:poei_candidats(statut)').in('id', poeiIds)
+    : { data: [] as any[], error: null }
+  if (errPoei) throw errPoei
+  const valeurPoei = new Map<string, number>()
+  for (const p of (parcours || []) as any[]) {
+    const total = Number(p.montant_total) || 0
+    const actifs = ((p.candidats || []) as any[]).filter((c) => c.statut !== 'abandonne').length
+    valeurPoei.set(p.id, total > 0 ? total : (Number(p.montant_horaire) || 0) * (Number(p.duree_heures) || 0) * actifs)
+  }
+  const valeurSession = (s: any): number => {
+    const pid = carte.poeiParSession.get(s.id)
+    if (pid) return valeurPoei.get(pid) || 0
+    const opco = Number(s.montant_finance_opco) || 0
+    if (opco > 0) return opco
+    const prix = Number(s.prix_ht) || 0
+    if (prix > 0) return prix
+    return ((s.factures || []) as any[]).filter((f) => f.status !== 'annulee').reduce((t, f) => t + (Number(f.montant_ht) || 0), 0)
+  }
+  let caCale = 0
+  let caCetteSemaine = 0
+  const sessionsSansMontant: { id: string; libelle: string; href: string }[] = []
+  for (const s of sessions) {
+    const v = valeurSession(s)
+    if (v <= 0) {
+      const pid = carte.poeiParSession.get(s.id)
+      const qui = s.client?.nom_commercial || s.client?.raison_sociale || s.formation?.intitule || 'Session'
+      sessionsSansMontant.push({
+        id: s.id,
+        libelle: pid ? `${qui} (POEI)` : [qui, s.reference].filter(Boolean).join(' · '),
+        href: pid ? `/dashboard/poei/${pid}` : `/dashboard/sessions/${s.id}`,
+      })
+      continue
+    }
+    caCale += v
+    if (s.created_at >= debutSemaine) caCetteSemaine += v
+  }
+  caCale = Math.round(caCale)
+  caCetteSemaine = Math.round(caCetteSemaine)
+
   const etablissements = [...parEtab.values()]
     .sort((a, b) => a.caleLe.localeCompare(b.caleLe))
     .map((e) => ({ ...e, recent: e.caleLe >= debutSemaine }))
@@ -177,5 +255,12 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
     nouveauxCetteSemaine: etablissements.filter((e) => e.recent).length,
     nbPoei: etablissements.filter((e) => e.poei).length,
     pourcentage: objectif > 0 ? Math.round((etablissements.length / objectif) * 100) : 0,
+    objectifCa,
+    objectifCaSaisi,
+    colonneCaAbsente: !!(objRes as any).colonneCaAbsente,
+    caCale,
+    caCetteSemaine,
+    caPourcentage: objectifCa > 0 ? Math.round((caCale / objectifCa) * 100) : 0,
+    sessionsSansMontant,
   }
 }
