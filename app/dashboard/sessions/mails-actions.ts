@@ -340,6 +340,15 @@ export async function envoyerDocumentsAuReferentAction(
   }[type]
 
   const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : '—'
+  // POEI : dates du parcours entier, et heures de chaque stagiaire (saisies dans la POEI), comme sur les documents
+  const { datesDuParcours } = await import('@/lib/certificat-poei')
+  const sessDates: any = type === 'hygiene' ? sess : await datesDuParcours(supabase, sess as any, session.organization.id)
+  const hFr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',')
+  const stagiaireLigne = (a: any) => {
+    const nom = `${a.prenom || ''} ${a.nom || ''}`.trim()
+    const h = assiduiteDe(a.id).heures
+    return type !== 'hygiene' && h ? `${nom} (${hFr(h)} h)` : nom
+  }
   const emailParams = {
     orgName: (org as any)?.name || 'Lab Learning',
     orgEmail: (org as any)?.email_contact || (org as any)?.email,
@@ -351,9 +360,9 @@ export async function envoyerDocumentsAuReferentAction(
     intro: `Veuillez trouver ci-joint les ${LIBELLES.pluriel} des ${apprenants.length} stagiaires de ${clientNom} pour la session « ${formationNom} ». Merci de remettre à chacun son exemplaire${type === 'hygiene' ? " : c'est ce document qui est présenté lors d'un contrôle sanitaire de l'établissement" : ''}.`,
     metadata: ([
       ['Formation', formationNom],
-      ['Dates', `Du ${fmtFr((sess as any).date_debut)} au ${fmtFr((sess as any).date_fin || (sess as any).date_debut)}`],
+      ['Dates', `Du ${fmtFr(sessDates.date_debut)} au ${fmtFr(sessDates.date_fin || sessDates.date_debut)}`],
       ['Établissement', clientNom],
-      ['Stagiaires', apprenants.map((a: any) => `${a.prenom || ''} ${a.nom || ''}`.trim()).join(', ')],
+      ['Stagiaires', apprenants.map(stagiaireLigne).join(', ')],
     ]) as [string, string][],
     footerNote: `${apprenants.length} document(s) en pièce jointe — un par stagiaire.`,
   }

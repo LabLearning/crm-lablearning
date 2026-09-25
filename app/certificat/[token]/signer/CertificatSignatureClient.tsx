@@ -6,11 +6,16 @@ import { Button } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { signCertificatAction } from './actions'
 
-export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employeurNom = null }: {
+/** 63.5 → « 63,5 » */
+const heuresFr = (n: number) => String(Math.round(Number(n) * 100) / 100).replace('.', ',')
+
+export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employeurNom = null, heuresCandidat = null }: {
   sig: any
   token: string
   nbCandidats?: number
   employeurNom?: string | null
+  /** Heures portées sur le certificat de ce candidat (saisies dans la POEI, sinon durée du parcours). */
+  heuresCandidat?: { heures: number; prevues: number } | null
 }) {
   // Le représentant de l'employeur signe l'attestation France Travail, une
   // fois pour tous les candidats ; le candidat signe son propre certificat.
@@ -104,7 +109,9 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
           ['Entreprise', client.nom_commercial || client.raison_sociale || sig.apprenant?.entreprise],
           ['Formation', formation.intitule || poei.poste_vise],
           ['Période', poei.date_debut ? `${formatDate(poei.date_debut, { day: 'numeric', month: 'short', year: 'numeric' })}${poei.date_fin ? ` → ${formatDate(poei.date_fin, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}` : null],
-          ['Durée', poei.duree_heures || formation.duree_heures ? `${poei.duree_heures || formation.duree_heures} heures` : null],
+          heuresCandidat
+            ? ['Heures effectuées', `${heuresFr(heuresCandidat.heures)} heures${heuresCandidat.prevues && heuresCandidat.heures < heuresCandidat.prevues ? ` sur ${heuresFr(heuresCandidat.prevues)} prévues` : ''}`]
+            : ['Durée', poei.duree_heures || formation.duree_heures ? `${poei.duree_heures || formation.duree_heures} heures` : null],
         ].filter(([, v]) => v).map(([l, v]) => (
           <div key={l as string} className="flex justify-between gap-4 border-b border-surface-100 pb-2 last:border-0">
             <span className="text-surface-500 shrink-0">{l}</span>

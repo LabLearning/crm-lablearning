@@ -10,7 +10,7 @@ export default async function CertificatSignerPage({ params }: { params: { token
   const { data: sig } = await supabase
     .from('certificat_signatures')
     .select(`
-      id, token, token_expires_at, signed_at, date_signature, signature_data, role, email,
+      id, token, token_expires_at, signed_at, date_signature, signature_data, role, email, apprenant_id,
       apprenant:apprenants(prenom, nom, entreprise),
       poei:poei(id, date_debut, date_fin, duree_heures, poste_vise,
         formation:formation_id(intitule, duree_heures),
@@ -45,9 +45,18 @@ export default async function CertificatSignerPage({ params }: { params: { token
     }
   }
 
+  // Candidat : les heures portées sur SON certificat (saisies dans la POEI, sinon durée du parcours)
+  let heuresCandidat: { heures: number; prevues: number } | null = null
+  if ((sig as any).role !== 'employeur' && (sig as any).apprenant_id && (sig as any).poei?.id) {
+    const { heuresCertificatsPoei } = await import('@/lib/certificat-heures')
+    const h = (await heuresCertificatsPoei(supabase, (sig as any).poei, (sig as any).poei?.formation?.duree_heures))
+      .get(String((sig as any).apprenant_id))
+    if (h) heuresCandidat = { heures: h.heures, prevues: h.dureeTotale }
+  }
+
   return (
     <div className="min-h-screen bg-surface-50">
-      <CertificatSignatureClient sig={sig as any} token={params.token} nbCandidats={nbCandidats} employeurNom={employeurNom} />
+      <CertificatSignatureClient sig={sig as any} token={params.token} nbCandidats={nbCandidats} employeurNom={employeurNom} heuresCandidat={heuresCandidat} />
     </div>
   )
 }

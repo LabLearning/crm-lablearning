@@ -34,6 +34,8 @@ export interface ContexteMailPoei {
   formateurStr: string
   planningStr: string
   fmtFr: (d: string | null) => string
+  /** Heures de chaque candidat (par apprenant_id) : celles saisies, sinon la durée du parcours. */
+  heuresParApprenant: Map<string, { heures: number; dureeTotale: number }>
 }
 
 /** Tout ce dont un email POEI a besoin : projet, formation, employeur, lieu, planning. */
@@ -115,7 +117,10 @@ export async function contexteMailPoei(supabase: any, orgId: string, poeiId: str
     })
     .join('\n\n')
 
-  return { p, formation, employeur, org, orgRaw, datesStr, lieuStr, horairesStr, formateurStr, planningStr, fmtFr }
+  const { heuresCertificatsPoei } = await import('@/lib/certificat-heures')
+  const heuresParApprenant = await heuresCertificatsPoei(supabase, p, formation?.duree_heures)
+
+  return { p, formation, employeur, org, orgRaw, datesStr, lieuStr, horairesStr, formateurStr, planningStr, fmtFr, heuresParApprenant }
 }
 
 /** Variables {prenom}, {formation}, {dates}… remplacées pour un destinataire. */
@@ -128,6 +133,12 @@ export function remplirVariables(ctx: ContexteMailPoei, a: any, s: string): stri
     .replace(/\{dates\}/gi, ctx.datesStr)
     .replace(/\{lieu\}/gi, ctx.lieuStr)
     .replace(/\{duree_heures\}/gi, ctx.p.duree_heures != null ? String(ctx.p.duree_heures) : '')
+    // Heures effectuées saisies pour ce candidat (onglet Documents), sinon durée du parcours
+    .replace(/\{heures_effectuees\}/gi, (() => {
+      const h = a?.id ? ctx.heuresParApprenant?.get(String(a.id)) : null
+      const n = h?.heures ?? (ctx.p.duree_heures != null ? Number(ctx.p.duree_heures) : null)
+      return n != null ? String(Math.round(n * 100) / 100).replace('.', ',') : ''
+    })())
     .replace(/\{date_debut\}/gi, ctx.fmtFr(ctx.p.date_debut))
     .replace(/\{date_fin\}/gi, ctx.fmtFr(ctx.p.date_fin))
     .replace(/\{adresse\}/gi, ctx.lieuStr)

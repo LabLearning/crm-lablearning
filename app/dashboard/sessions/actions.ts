@@ -774,9 +774,16 @@ export async function sendDocumentToApprenantAction(
 
   // Textes du courriel, partagés entre l'aperçu et l'envoi réel : un aperçu qui
   // divergerait de ce qui part vraiment ferait pire que pas d'aperçu du tout.
-  const formationDates = sess.date_debut
-    ? `Du ${new Date(sess.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sess.date_fin || sess.date_debut).toLocaleDateString('fr-FR')}`
+  // POEI : la période est celle du parcours entier (comme sur le document), sauf l'attestation d'hygiène
+  const sessDates = docType === 'hygiene' ? sess : await datesDuParcours(supabase, sess, session.organization.id)
+  const formationDates = sessDates.date_debut
+    ? `Du ${new Date(sessDates.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sessDates.date_fin || sessDates.date_debut).toLocaleDateString('fr-FR')}`
     : '—'
+  // Durée : les heures portées sur le document (saisies pour une POEI), pas la durée du catalogue
+  const hFr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',')
+  const dureeEmail = heuresPresence != null
+    ? `${hFr(heuresPresence)} h${dureeTotale && heuresPresence < dureeTotale ? ` sur ${hFr(dureeTotale)} h prévues` : ''}`
+    : formation?.duree_heures ? `${formation.duree_heures} h` : '—'
   const isAtt = docType === 'attestation'
   const isHyg = docType === 'hygiene'
   const sujetEmail = isHyg
@@ -795,7 +802,7 @@ export async function sendDocumentToApprenantAction(
   const metaEmail: Array<[string, string]> = [
     ['Formation', formationNom],
     ['Période', formationDates],
-    ['Durée', formation?.duree_heures ? `${formation.duree_heures} h` : '—'],
+    ['Durée', dureeEmail],
   ]
 
   if (opts?.preview) {
