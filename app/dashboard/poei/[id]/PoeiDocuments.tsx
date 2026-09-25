@@ -268,7 +268,7 @@ function LigneCertificat({ c, lien }: { c: CandidatDoc; lien: { href: string; te
 
   async function enregistrer() {
     const brut = valeur.trim().replace(',', '.')
-    if (brut === initial.replace(',', '.')) return
+    if (enCours || brut === initial.replace(',', '.')) return
     const heures = brut === '' ? null : Number(brut)
     if (heures !== null && !Number.isFinite(heures)) { toast('error', 'Indiquez un nombre d’heures, par exemple 70 ou 52,5'); return }
     setEnCours(true)
@@ -291,7 +291,7 @@ function LigneCertificat({ c, lien }: { c: CandidatDoc; lien: { href: string; te
           type="text" inputMode="decimal" value={valeur} disabled={enCours}
           onChange={(e) => setValeur(e.target.value)}
           onBlur={enregistrer}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() } }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); enregistrer() } }}
           placeholder={parcours ? parcours.replace(' h', '') : '—'}
           className="input-base !w-20 !py-1 text-right tabular-nums"
         />

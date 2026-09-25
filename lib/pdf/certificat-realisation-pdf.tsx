@@ -17,6 +17,9 @@ interface CertificatRealisationProps {
   dateSignature?: string | null
 }
 
+/** 63.5 → « 63,5 », 70 → « 70 » */
+const heuresFr = (n: number) => String(Math.round(Number(n) * 100) / 100).replace('.', ',')
+
 export function CertificatRealisationPage({ apprenant, session, formation, org, assiduite, heuresPresence, dureeTotale, signatureCandidat, dateSignature }: CertificatRealisationProps) {
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   // La date portée sur le certificat prime sur la date du jour (dernier jour de POEI)
@@ -91,7 +94,7 @@ export function CertificatRealisationPage({ apprenant, session, formation, org, 
             {`qui s'est déroulée ${periode}${session.lieu ? ` à ${session.lieu}` : ''},`}
           </Text>
           <Text style={{ fontSize: 9, color: SURFACE_900, lineHeight: 1.8 }}>
-            {`pour une durée totale de ${heuresRealisees} heures${duree && heuresRealisees < duree ? ` (sur ${duree} heures prévues)` : ''}.`}
+            {`pour une durée totale de ${heuresFr(heuresRealisees)} heures${duree && heuresRealisees < duree ? ` (sur ${heuresFr(duree)} heures prévues)` : ''}.`}
           </Text>
 
           <Text style={{ fontSize: 8.5, color: SURFACE_700, marginTop: 8 }}>
