@@ -1524,3 +1524,38 @@ export async function declarerAbandonCandidatAction(
   revalidatePath('/dashboard/factures')
   return { success: true, warning }
 }
+
+/**
+ * Heures effectuées d'un candidat, saisies par l'équipe : c'est ce chiffre qui
+ * part sur le certificat de réalisation (un candidat peut faire ses heures sans
+ * suivre les jours de la feuille d'émargement). Vide = durée du parcours.
+ * Pour un candidat en abandon, ces heures servent aussi à la facture au
+ * prorata : elles ne peuvent pas être vidées.
+ */
+export async function definirHeuresEffectueesAction(candidatId: string, heures: number | null): Promise<ActionResult<{ heures: number | null }>> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  if (heures !== null && (!Number.isFinite(heures) || heures <= 0 || heures > 2000)) {
+    return { success: false, error: 'Indiquez un nombre d’heures entre 0,5 et 2 000, ou laissez vide pour la durée du parcours.' }
+  }
+  const valeur = heures === null ? null : Math.round(heures * 2) / 2
+
+  const supabase = await createServiceRoleClient()
+  const { data: c } = await supabase.from('poei_candidats').select('id, poei_id, statut, heures_effectuees')
+    .eq('id', candidatId).eq('organization_id', orgId).maybeSingle()
+  if (!c) return { success: false, error: 'Candidat introuvable' }
+  if (valeur === null && c.statut === 'abandonne') {
+    return { success: false, error: 'Un candidat en abandon garde ses heures effectuées : elles servent à la facture au prorata.' }
+  }
+
+  const { error } = await supabase.from('poei_candidats').update({ heures_effectuees: valeur })
+    .eq('id', candidatId).eq('organization_id', orgId)
+  if (error) return { success: false, error: error.message }
+  // Un abandon est facturé au prorata de ces heures : le total du projet suit
+  if (c.statut === 'abandonne') await recalcPoeiTotal(supabase, orgId, c.poei_id)
+
+  await logAudit({ action: 'heures_effectuees', entity_type: 'poei_candidat', entity_id: candidatId, details: { poei_id: c.poei_id, avant: c.heures_effectuees, apres: valeur } })
+  revalidatePath(`/dashboard/poei/${c.poei_id}`)
+  return { success: true, data: { heures: valeur } }
+}

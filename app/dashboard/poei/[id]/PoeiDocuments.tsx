@@ -13,6 +13,7 @@ import {
   generateDevisPerCandidatAction,
   generateDevisPrevisionnelPoeiAction,
   generateFacturesPerCandidatPoeiAction,
+  definirHeuresEffectueesAction,
 } from '../actions'
 
 export interface CandidatDoc {
@@ -23,6 +24,11 @@ export interface CandidatDoc {
   facture?: { id: string; numero: string | null; status: string } | null
   aGrille?: boolean
   certificatSigne?: boolean
+  /** Heures effectuées saisies par l'équipe (portées sur le certificat) ; null = durée du parcours. */
+  heuresEffectuees?: number | null
+  /** Durée prévue du candidat (la sienne, sinon celle du parcours). */
+  heuresParcours?: number | null
+  abandon?: boolean
 }
 
 /**
@@ -217,7 +223,17 @@ export function PoeiDocuments({
               )}
             </div>
 
-            {candidats.length > 0 && (
+            {/* Certificats : une ligne par candidat, avec les heures effectuées saisies par l'équipe */}
+            {f.cle === 'certificats' && candidats.length > 0 && (
+              <div className="divide-y divide-surface-100">
+                <p className="px-4 pt-2.5 pb-1 text-xs text-surface-500">
+                  Heures portées sur le certificat : celles que vous saisissez. Case vide = durée du parcours.
+                </p>
+                {candidats.map((c) => <LigneCertificat key={c.id} c={c} lien={f.lien(c)} />)}
+              </div>
+            )}
+
+            {f.cle !== 'certificats' && candidats.length > 0 && (
               <div className="px-4 py-2.5 flex flex-wrap gap-x-4 gap-y-0 sm:gap-y-1.5">
                 {candidats.map((c) => {
                   const l = f.lien(c)
@@ -237,5 +253,58 @@ export function PoeiDocuments({
       })}
       </div>
     </PoeiSection>
+  )
+}
+
+/** Une ligne de certificat : le candidat, ses heures effectuées (modifiables) et le téléchargement. */
+function LigneCertificat({ c, lien }: { c: CandidatDoc; lien: { href: string; texte: string } | null }) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [valeur, setValeur] = useState(c.heuresEffectuees != null ? String(c.heuresEffectuees).replace('.', ',') : '')
+  const [enCours, setEnCours] = useState(false)
+  const [ok, setOk] = useState(false)
+  const initial = c.heuresEffectuees != null ? String(c.heuresEffectuees).replace('.', ',') : ''
+  const parcours = c.heuresParcours ? `${String(c.heuresParcours).replace('.', ',')} h` : null
+
+  async function enregistrer() {
+    const brut = valeur.trim().replace(',', '.')
+    if (brut === initial.replace(',', '.')) return
+    const heures = brut === '' ? null : Number(brut)
+    if (heures !== null && !Number.isFinite(heures)) { toast('error', 'Indiquez un nombre d’heures, par exemple 70 ou 52,5'); return }
+    setEnCours(true)
+    const r = await definirHeuresEffectueesAction(c.id, heures).catch(() => null)
+    setEnCours(false)
+    if (!r?.success) { toast('error', r?.error || 'Enregistrement impossible'); setValeur(initial); return }
+    setOk(true); setTimeout(() => setOk(false), 1500)
+    router.refresh()
+  }
+
+  return (
+    <div className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <span className="min-w-0 flex-1 basis-[10rem] text-sm text-surface-800 truncate">
+        {c.nom}
+        {c.abandon && <span className="ml-1.5 text-2xs font-semibold text-warning-700">abandon</span>}
+      </span>
+      <label className="inline-flex items-center gap-1.5 text-xs text-surface-500">
+        <span className="sr-only">Heures effectuées par {c.nom}</span>
+        <input
+          type="text" inputMode="decimal" value={valeur} disabled={enCours}
+          onChange={(e) => setValeur(e.target.value)}
+          onBlur={enregistrer}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur() } }}
+          placeholder={parcours ? parcours.replace(' h', '') : '—'}
+          className="input-base !w-20 !py-1 text-right tabular-nums"
+        />
+        <span>h effectuées</span>
+        {enCours ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : ok ? <Check className="h-3.5 w-3.5 text-success-600" /> : null}
+      </label>
+      {valeur.trim() === '' && parcours && <span className="text-2xs text-surface-400">durée du parcours ({parcours})</span>}
+      {lien ? (
+        <a href={lien.href} target="_blank" rel="noreferrer"
+          className="inline-flex items-center gap-1 min-h-[40px] sm:min-h-0 text-xs font-medium text-brand-600 hover:underline whitespace-nowrap">
+          <Download className="h-3.5 w-3.5" /> Certificat
+        </a>
+      ) : <span className="text-xs text-surface-300">Pas de fiche apprenant</span>}
+    </div>
   )
 }

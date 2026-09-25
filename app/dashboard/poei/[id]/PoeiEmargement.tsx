@@ -140,8 +140,8 @@ export function PoeiEmargement({ sessions, candidats, dureeParcours }: {
 
       <p className="text-xs text-surface-500 inline-flex items-start gap-1.5 px-1">
         <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-surface-400" />
-        Le certificat de réalisation porte la durée du parcours{dureeParcours ? ` (${dureeParcours} h)` : ''}, diminuée des heures d&apos;absence déclarées.
-        Une demi-journée simplement non signée ne retire aucune heure : elle reste à faire signer sur la feuille.
+        Le certificat de réalisation porte les heures effectuées que vous saisissez pour chaque candidat (onglet Documents, bloc Certificats),
+        sinon la durée du parcours{dureeParcours ? ` (${dureeParcours} h)` : ''}. Les signatures et les absences de la feuille ne changent pas ce chiffre.
       </p>
     </div>
   )

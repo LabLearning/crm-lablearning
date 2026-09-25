@@ -139,10 +139,9 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       }
     }).sort((a, b) => String(a.date_debut).localeCompare(String(b.date_debut)))
 
-    const { heuresCertificats } = await import('@/lib/certificat-heures')
-    const heures = (p as any).session?.id
-      ? await heuresCertificats(supabase, { sessionId: (p as any).session.id, organizationId: session.organization.id, dureeFormation: (p as any).formation?.duree_heures })
-      : new Map()
+    // Heures des certificats : lues sur le parcours lui-même (heures saisies, sinon durée), session chapeau ou non
+    const { heuresCertificatsPoei } = await import('@/lib/certificat-heures')
+    const heures = await heuresCertificatsPoei(supabase, p as any, (p as any).formation?.duree_heures)
     candidatsEmargement = candidats.map((c: any) => {
       const aid = c.apprenant?.id || c.apprenant_id || ''
       const siennes = ((lignesEm || []) as any[]).filter((x: any) => x.apprenant_id === aid)
@@ -376,6 +375,9 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       facture: facturesByCandidat[c.id] || null,
       aGrille: (grillesParApprenant[String(aid)] || []).some((g: any) => g.semaine == null),
       certificatSigne: !!(aid && sigMap[String(aid)]?.signed_at),
+      heuresEffectuees: c.heures_effectuees != null ? Number(c.heures_effectuees) : null,
+      heuresParcours: Number(c.duree_heures) || Number((p as any).duree_heures) || null,
+      abandon: c.statut === 'abandonne',
     }
   })
 
