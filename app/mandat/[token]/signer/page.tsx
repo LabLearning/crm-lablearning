@@ -20,7 +20,7 @@ export default async function MandatSignerPage({ params }: { params: { token: st
       poei:poei(id, numero, date_debut, date_fin, client_id,
         formation:formation_id(intitule),
         client:client_id(raison_sociale, nom_commercial)),
-      organization:organizations(name, logo_url)
+      organization:organizations(id, name, logo_url)
     `)
     .eq('token', params.token)
     .maybeSingle()
@@ -42,6 +42,12 @@ export default async function MandatSignerPage({ params }: { params: { token: st
 
   const { count: nbCandidats } = await supabase
     .from('poei_candidats').select('id', { count: 'exact', head: true }).eq('poei_id', (mandat as any).poei?.id)
+
+  // Page sur fond clair : logo vert (logo_url peut être la variante blanche des emails)
+  if ((mandat as any).organization) {
+    const { resolveDocumentLogoUrl } = await import('@/lib/pdf/org-logo')
+    ;(mandat as any).organization.logo_url = await resolveDocumentLogoUrl(supabase, (mandat as any).organization)
+  }
 
   return (
     <div className="min-h-screen bg-surface-50">

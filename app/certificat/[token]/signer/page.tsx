@@ -15,7 +15,7 @@ export default async function CertificatSignerPage({ params }: { params: { token
       poei:poei(id, date_debut, date_fin, duree_heures, poste_vise,
         formation:formation_id(intitule, duree_heures),
         client:client_id(raison_sociale, nom_commercial)),
-      organization:organizations(name, logo_url)
+      organization:organizations(id, name, logo_url)
     `)
     .eq('token', params.token)
     .maybeSingle()
@@ -52,6 +52,12 @@ export default async function CertificatSignerPage({ params }: { params: { token
     const h = (await heuresCertificatsPoei(supabase, (sig as any).poei, (sig as any).poei?.formation?.duree_heures))
       .get(String((sig as any).apprenant_id))
     if (h) heuresCandidat = { heures: h.heures, prevues: h.dureeTotale }
+  }
+
+  // Page sur fond clair : logo vert (logo_url peut être la variante blanche des emails)
+  if ((sig as any).organization) {
+    const { resolveDocumentLogoUrl } = await import('@/lib/pdf/org-logo')
+    ;(sig as any).organization.logo_url = await resolveDocumentLogoUrl(supabase, (sig as any).organization)
   }
 
   return (
