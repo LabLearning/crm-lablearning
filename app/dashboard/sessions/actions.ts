@@ -7,6 +7,7 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 import { refusFormationPoei } from '@/lib/poei-garde'
+import { datesDuParcours } from '@/lib/certificat-poei'
 
 /**
  * Apprenants d'un client, chargés à la volée quand on le sélectionne dans le
@@ -744,7 +745,7 @@ export async function sendDocumentToApprenantAction(
   try {
     if (docType === 'attestation') {
       const { AttestationFormationPDF } = await import('@/lib/pdf/attestation-formation-pdf')
-      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: sess, formation, org: orgDoc, assiduite }) as any)
+      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: await datesDuParcours(supabase, sess, session.organization.id), formation, org: orgDoc, assiduite }) as any)
       docDbType = 'attestation_fin'
       docNom = `Attestation de formation — ${formationNom}`
     } else if (docType === 'hygiene') {
@@ -763,7 +764,7 @@ export async function sendDocumentToApprenantAction(
       docNom = `Attestation d'hygiène alimentaire — ${formationNom}`
     } else {
       const { CertificatRealisationPDF } = await import('@/lib/pdf/certificat-realisation-pdf')
-      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: sess, formation, org: orgDoc, assiduite, heuresPresence, dureeTotale }) as any)
+      buffer = await renderToBuffer(createElement(CertificatRealisationPDF, { apprenant, session: await datesDuParcours(supabase, sess, session.organization.id), formation, org: orgDoc, assiduite, heuresPresence, dureeTotale }) as any)
       docDbType = 'certificat_realisation'
       docNom = `Certificat de réalisation — ${formationNom}`
     }

@@ -47,21 +47,7 @@ export async function heuresCertificats(
 
   // ── La session appartient-elle à un parcours POEI ? ──
   const poei = await poeiDeLaSession(supabase, sessionId, organizationId)
-  if (poei) {
-    const dureeParcours = nombre(poei.duree_heures) || dureeFormation
-    const { data: candidats } = await supabase
-      .from('poei_candidats')
-      .select('apprenant_id, duree_heures, heures_effectuees, statut')
-      .eq('poei_id', poei.id)
-    for (const c of (candidats || []) as any[]) {
-      if (!c.apprenant_id) continue
-      const prevu = nombre(c.duree_heures) || dureeParcours
-      // Parcours interrompu : les heures effectuées font foi
-      const heures = nombre(c.heures_effectuees) ?? prevu
-      out.set(String(c.apprenant_id), { heures, dureeTotale: prevu, source: 'poei' })
-    }
-    return out
-  }
+  if (poei) return heuresCertificatsPoei(supabase, poei, dureeFormation)
 
   // ── Session ordinaire : la durée prévue, moins les absences déclarées ──
   const { data: lignes } = await supabase
@@ -90,6 +76,33 @@ export async function heuresCertificats(
       dureeTotale: dureeFormation,
       source: 'emargements',
     })
+  }
+  return out
+}
+
+/**
+ * Heures certifiées des candidats d'un parcours POEI, par apprenant_id : la
+ * durée propre du candidat, sinon celle du parcours ; ses heures effectuées
+ * si le parcours a été interrompu. Ne dépend d'aucune session (un parcours
+ * peut ne pas avoir de session chapeau).
+ */
+export async function heuresCertificatsPoei(
+  supabase: any,
+  poei: { id: string; duree_heures?: number | null },
+  dureeFormation?: number | null,
+): Promise<Map<string, HeuresCertificat>> {
+  const out = new Map<string, HeuresCertificat>()
+  const dureeParcours = nombre(poei.duree_heures) || nombre(dureeFormation) || 0
+  const { data: candidats } = await supabase
+    .from('poei_candidats')
+    .select('apprenant_id, duree_heures, heures_effectuees, statut')
+    .eq('poei_id', poei.id)
+  for (const c of (candidats || []) as any[]) {
+    if (!c.apprenant_id) continue
+    const prevu = nombre(c.duree_heures) || dureeParcours
+    // Parcours interrompu : les heures effectuées font foi
+    const heures = nombre(c.heures_effectuees) ?? prevu
+    out.set(String(c.apprenant_id), { heures, dureeTotale: prevu, source: 'poei' })
   }
   return out
 }

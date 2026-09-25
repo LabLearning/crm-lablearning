@@ -387,10 +387,13 @@ export async function envoyerDocumentsAuReferentAction(
       const composant = type === 'attestation'
         ? (await import('@/lib/pdf/attestation-formation-pdf')).AttestationFormationPDF
         : (await import('@/lib/pdf/certificat-realisation-pdf')).CertificatRealisationPDF
+      // Session d'un parcours POEI : le document porte les dates du parcours entier
+      const { datesDuParcours } = await import('@/lib/certificat-poei')
+      const sessDoc = await datesDuParcours(supabase, sess, session.organization.id)
       for (const a of apprenants) {
         const { assiduite, heures, dureeTotale } = assiduiteDe(a.id)
         const buffer = await renderToBuffer(createElement(composant as any, {
-          apprenant: a, session: sess, formation, org: orgDoc,
+          apprenant: a, session: sessDoc, formation, org: orgDoc,
           assiduite, heuresPresence: heures, dureeTotale,
         }) as any)
         attachments.push({

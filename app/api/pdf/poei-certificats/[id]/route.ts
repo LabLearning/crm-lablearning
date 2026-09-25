@@ -20,21 +20,15 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const supabase = await createServiceRoleClient()
 
-  const { data: poei } = await supabase
-    .from('poei')
-    .select('id, numero, organization_id, session_id, client:clients(raison_sociale)')
-    .eq('id', params.id).eq('organization_id', auth.user.organizationId).single()
-  if (!poei) return NextResponse.json({ error: 'Projet introuvable' }, { status: 404 })
-  if (!poei.session_id) return NextResponse.json({ error: 'Aucune session liée au projet' }, { status: 400 })
-
-  const { data: sess } = await supabase.from('sessions').select('*').eq('id', poei.session_id).single()
-  if (!sess) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
-  const { data: formation } = await supabase.from('formations').select('*').eq('id', sess.formation_id).single()
+  // Le parcours entier (dates, durée, lieu), qu'il ait une session chapeau ou seulement des interventions
+  const { contexteCertificatPoei } = await import('@/lib/certificat-poei')
+  const ctx = await contexteCertificatPoei(supabase, params.id, auth.user.organizationId)
+  if (!ctx) return NextResponse.json({ error: 'Projet introuvable' }, { status: 404 })
+  const { poei, session: sess, formation, entrepriseNom } = ctx
   const { data: orgRaw } = await supabase.from('organizations').select('*').eq('id', poei.organization_id).single()
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
   const org = await withDocumentLogo(supabase, orgRaw)
 
-  const entrepriseNom = (poei as any).client?.raison_sociale || null
   const { data: cands } = await supabase
     .from('poei_candidats')
     .select('apprenant:apprenants(*)')
@@ -53,16 +47,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       .eq('poei_id', params.id).eq('organization_id', poei.organization_id)
     for (const s of sigs || []) sigByAppr.set(String(s.apprenant_id), s)
   } catch { /* table absente avant migration 109 */ }
-  const datePoei = (poei as any).date_fin || (poei as any).date_debut || null
+  const datePoei = ctx.dateParcours
 
   const files: Record<string, Uint8Array> = {}
   const usedNames = new Set<string>()
   // La POEI porte la durée de son parcours : ni prorata de signatures, ni
   // durée de la formation quand elles diffèrent
-  const { heuresCertificats } = await import('@/lib/certificat-heures')
-  const heuresParApprenant = await heuresCertificats(supabase, {
-    sessionId: sess.id, organizationId: poei.organization_id, dureeFormation: formation?.duree_heures,
-  })
+  const heuresParApprenant = ctx.heures
 
   for (const a of apprenants) {
     const h = heuresParApprenant.get(String(a.id))
@@ -86,7 +77,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 
   const zipped = zipSync(files, { level: 0 })
-  const zipName = `Certificats POEI - ${safeName((poei as any).client?.raison_sociale || poei.numero || 'projet')}.zip`
+  const zipName = `Certificats POEI - ${safeName(entrepriseNom || poei.numero || 'projet')}.zip`
 
   return new NextResponse(new Uint8Array(zipped), {
     headers: {
