@@ -16,7 +16,7 @@ import {
   HeartHandshakeIcon, Award01Icon, BookOpen01Icon, ListViewIcon, BulbIcon,
   ManagerIcon, CleaningBucketIcon, FirstAidKitIcon, GraduationScrollIcon,
   StarIcon, ArrowDown01Icon,
-  AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon,
+  AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon, PlayIcon,
 } from '@hugeicons/core-free-icons'
 
 type P = { className?: string; strokeWidth?: number }
@@ -55,6 +55,7 @@ export const HeartHandshake = make(HeartHandshakeIcon)  // proximité
 
 // ── E-learning ──
 export const MonitorPlay = make(ComputerVideoIcon)      // e-learning
+export const Play = make(PlayIcon)                      // lecture du film de présentation
 export const Laptop = make(LaptopIcon)                  // plateforme Learnexa
 export const Monitor = make(ComputerIcon)               // modalité distanciel
 

@@ -12,6 +12,7 @@ import { Reveal } from './Reveal'
 import { Kicker } from './Kicker'
 import { Marquee } from './Marquee'
 import { PhotoStrip } from './PhotoStrip'
+import { FilmPresentation } from './FilmPresentation'
 import { BRANCHES } from './branches'
 
 export const dynamic = 'force-dynamic'
@@ -130,6 +131,18 @@ export default async function SiteHome() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── FILM DE PRÉSENTATION : nos métiers, nos leviers, nos résultats ── */}
+      <section className="bg-[#0B221B] py-16 md:py-24">
+        <div className="max-w-6xl mx-auto px-5 md:px-8">
+          <div className="text-center mb-10 md:mb-12">
+            <Kicker tone="light" center className="mb-4 justify-center">Découvrir Lab Learning</Kicker>
+            <h2 className="ll-display ll-fluid-h2 text-white tracking-heading text-balance">Nos métiers, nos leviers, nos résultats</h2>
+            <p className="mt-3 text-white/70 max-w-xl mx-auto">42 secondes pour voir comment on accompagne vos équipes, du recrutement à la rentabilité.</p>
+          </div>
+          <FilmPresentation src="/site/video/lab-learning-presentation.mp4" poster="/site/video/lab-learning-presentation.jpg" duree="42 secondes" />
         </div>
       </section>
 

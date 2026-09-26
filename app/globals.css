@@ -380,6 +380,10 @@
 
 /* Marquee (bandeau de logos franchises) */
 @keyframes ll-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+/* Film de présentation : halo qui pulse autour du bouton lecture */
+.ll-film-pulse { animation: ll-film-pulse 2.2s cubic-bezier(.22,1,.36,1) infinite; }
+@keyframes ll-film-pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(1.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ll-film-pulse { animation: none; opacity: 0; } }
 .ll-marquee-mask { -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
 .ll-marquee-track { display: flex; width: max-content; animation: ll-marquee 42s linear infinite; }
 .ll-marquee-track:hover { animation-play-state: paused; }
