@@ -34,10 +34,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const org = await withDocumentLogo(supabase, orgRaw)
 
   const { participantsFeuille } = await import('@/lib/emargement-participants')
-  const apprenants = await participantsFeuille(supabase, params.id)
+  // ?vide=1 : feuille sans aucun nom, tout à remplir à la main ; ?lignes=N : lignes libres sous les inscrits (3 par défaut)
+  const sp = new URL(req.url).searchParams
+  const vide = sp.get('vide') === '1'
+  const lignes = Math.min(25, Math.max(0, Number(sp.get('lignes') ?? (vide ? 12 : 3)) || 0))
+  const apprenants = vide ? [] : await participantsFeuille(supabase, params.id)
 
   const buffer = await renderToBuffer(
-    createElement(EmargementPDF, { session, formation, org, formateur: (session as any).formateur, apprenants }) as any
+    createElement(EmargementPDF, { session, formation, org, formateur: (session as any).formateur, apprenants, lignesVierges: lignes }) as any
   )
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

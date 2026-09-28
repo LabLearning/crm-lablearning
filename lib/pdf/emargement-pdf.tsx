@@ -8,6 +8,8 @@ interface EmargementProps {
   org: any
   formateur: any
   apprenants: any[]
+  /** Lignes libres ajoutées sous les inscrits, à remplir à la main (stagiaire arrivé au dernier moment). */
+  lignesVierges?: number
 }
 
 function buildCreneaux(dateDebut: string, dateFin: string, inclureWeekend = false) {
@@ -32,7 +34,7 @@ function buildCreneaux(dateDebut: string, dateFin: string, inclureWeekend = fals
   return out
 }
 
-export function EmargementPDF({ session, formation, org, formateur, apprenants }: EmargementProps) {
+export function EmargementPDF({ session, formation, org, formateur, apprenants, lignesVierges = 3 }: EmargementProps) {
   // Les jours RÉELS de la session (horaires_jours, ex. 3 jours par semaine)
   // priment sur le déroulé continu entre les bornes : sinon la feuille
   // fabrique des colonnes pour des jours sans formation.
@@ -56,7 +58,9 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants }
   for (let i = 0; i < allCreneaux.length; i += 2) {
     jours.push(allCreneaux.slice(i, i + 2))
   }
-  const chunk: any[] = apprenants.length > 0 ? apprenants : Array(5).fill(null)
+  const chunk: any[] = apprenants.length > 0
+    ? [...apprenants, ...Array(Math.max(0, lignesVierges)).fill(null)]
+    : Array(Math.max(5, lignesVierges)).fill(null)
 
   // Portrait A4 : 595 - 90 = 505 pt utiles ; nom 140 → 365 / 2 = 182 pt par créneau
   const pageWidth = 505
