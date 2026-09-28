@@ -4,6 +4,7 @@
  * stagiaire, voir lib/convocations.ts). Un stagiaire ajouté tardivement, ou
  * une session créée la veille, est donc rattrapé au passage suivant.
  * Le formateur reçoit sa fiche mission une seule fois par session.
+ * Candidats POEI (lib/convocations-poei.ts) : convocation à J-3, rappel à J-1.
  *
  *   GET /api/cron/convocations  (Authorization: Bearer CRON_SECRET)
  */
@@ -11,6 +12,7 @@ import { NextResponse } from 'next/server'
 import { verifyCronSecret } from '@/lib/cron-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { envoyerConvocationsManquantes, JOURS_AVANT } from '@/lib/convocations'
+import { envoyerConvocationsPoei } from '@/lib/convocations-poei'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -69,5 +71,9 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, fenetre: `${iso(aujourdhui)} → ${iso(limite)}`, ...total })
+  // Candidats POEI : convocation à J-3 (J-2 en rattrapage), rappel à J-1
+  let poei: any = null
+  try { poei = await envoyerConvocationsPoei(supabase, { apercu }) } catch (e: any) { poei = { erreur: e?.message || String(e) } }
+
+  return NextResponse.json({ success: true, fenetre: `${iso(aujourdhui)} → ${iso(limite)}`, ...total, poei })
 }
