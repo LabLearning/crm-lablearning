@@ -1,12 +1,16 @@
 /**
  * Calcul des commissions franchise.
  *
- * Deux modes (configurés par franchise via apporteurs_affaires.commission_type) :
+ * Deux modes (configurés sur la fiche franchise, table franchises) :
  *   - 'budget_debloque' : taux% × montant_prise_en_charge        (ex: 10%)
  *   - 'budget_net'      : taux% × (prise_en_charge - cout_formateur) (ex: 40%)
  *
  * Le montant obtenu est un montant TTC : c'est ce que la franchise facture,
  * elle n'ajoute pas de TVA par-dessus.
+ *
+ * Franchises et apporteurs d'affaires sont indépendants : la commission d'un
+ * apporteur (table commissions, lib/commission-apporteur.ts) n'entre jamais
+ * dans ce calcul et n'apparaît jamais côté franchise.
  */
 
 export type CommissionType = 'budget_debloque' | 'budget_net'

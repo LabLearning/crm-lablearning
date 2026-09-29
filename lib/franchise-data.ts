@@ -5,6 +5,10 @@ import type { CommissionStatus } from '@/lib/commission'
  * des établissements rattachés (l'unité réelle de l'activité), et sur les
  * commissions par session (commissions_sessions).
  * Tout est scopé par franchise_id + organization_id.
+ *
+ * Règle : rien de ce qui touche aux apporteurs d'affaires (clients.apporteur_id,
+ * table commissions, apporteurs_affaires) ne sort vers le portail franchise.
+ * Les établissements sont renvoyés champ par champ, jamais tels quels.
  */
 
 export interface FranchiseStats {
