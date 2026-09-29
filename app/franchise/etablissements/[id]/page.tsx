@@ -56,7 +56,7 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
 
   const [{ data: sessionsBrutes }, { data: apprenants }, { data: lignes }, { data: poeis }] = await Promise.all([
     supabase.from('sessions')
-      .select('id, reference, intitule, date_debut, date_fin, poei_intervention_id, formation:formation_id(intitule, categorie)')
+      .select('id, reference, intitule, date_debut, date_fin, poei_intervention_id, dendreo_id, formation:formation_id(intitule, categorie)')
       .eq('client_id', client.id).eq('organization_id', orgId).neq('status', 'annulee'),
     supabase
       .from('apprenants')
@@ -98,6 +98,10 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
     cle: string; titre: string; debut: string | null; fin: string | null; etat: 'a_venir' | 'en_cours' | 'terminee'
     stagiaires: number; base: number; commission: number | null; statutCommission: string | null
     hygiene: string | null; comptesRendus: { sessionId: string; formateur: string; le: string | null }[]
+    /** Formation d'hygiène (session d'hygiène ou parcours POEI) */
+    estHygiene: boolean
+    /** Formation venue de Dendreo : ses documents y ont été produits et sont importés à part */
+    dendreo: boolean
   }
   const groupes = new Map<string, any[]>()
   for (const x of sessions) {
@@ -114,6 +118,8 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
     const fin = poei?.date_fin || ss.map((x) => x.date_fin || x.date_debut).filter(Boolean).sort().pop() || rep.date_fin
     const etat = etatSession({ date_debut: debut, date_fin: fin }, aujourdhui)
     const lignesGroupe = ss.map((x) => ligneDe.get(x.id)).filter(Boolean) as any[]
+    const dendreo = ss.some((x) => x.dendreo_id || /^ADF_/i.test(String(x.reference || '')))
+    const estHygiene = !!poei || estFormationHygiene(f)
     return {
       cle,
       titre: `${poei ? 'POEI · ' : ''}${f?.intitule || rep.intitule || 'Formation'}`,
@@ -124,7 +130,9 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
       statutCommission: lignesGroupe[0]?.status || null,
       // Attestations d'hygiène, une fois la formation terminée : le module
       // hygiène d'une POEI, ou une session d'hygiène alimentaire
-      hygiene: etat !== 'terminee' || !ss.some((x) => (inscritsDe.get(x.id) || 0) > 0) ? null
+      estHygiene,
+      dendreo,
+      hygiene: etat !== 'terminee' || dendreo || !ss.some((x) => (inscritsDe.get(x.id) || 0) > 0) ? null
         : poei ? `/api/pdf/attestation-hygiene?poei=${poei.id}`
           : estFormationHygiene(f) ? `/api/pdf/attestation-hygiene?session=${rep.id}` : null,
       comptesRendus: ((rapports || []) as any[]).filter((r) => ss.some((x) => x.id === r.session_id)).map((r) => ({
@@ -291,10 +299,16 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
                           <Download className="h-3 w-3 text-surface-400" />
                         </a>
                       ))}
-                      {f.etat === 'terminee' && f.comptesRendus.length === 0 && (
-                        // Certains formateurs envoient leur bilan par mail : il est importé à la main
+                      {f.etat === 'terminee' && f.estHygiene && !f.hygiene && (
+                        // Formation venue de Dendreo : ses attestations y ont été produites et sont importées à part
                         <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 font-medium text-amber-700">
-                          <ClipboardList className="h-3.5 w-3.5" /> Compte rendu : import manuel en cours
+                          <ShieldCheck className="h-3.5 w-3.5" /> Attestations d&apos;hygiène : en cours d&apos;importation
+                        </span>
+                      )}
+                      {f.etat === 'terminee' && f.comptesRendus.length === 0 && (
+                        // Bilan envoyé par mail ou resté dans Dendreo : il est importé à la main
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 font-medium text-amber-700">
+                          <ClipboardList className="h-3.5 w-3.5" /> Compte rendu : en cours d&apos;importation
                         </span>
                       )}
                       {f.commission != null && (
