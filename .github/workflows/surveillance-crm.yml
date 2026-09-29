@@ -1,0 +1,132 @@
+# Surveillance extérieure du CRM, indépendante de Vercel et de Supabase.
+#
+# La tâche Vercel /api/cron/sante surveille la base toutes les 2 minutes ;
+# celle-ci voit en plus une panne du site lui-même (Vercel), qui empêcherait
+# la première de tourner. Même clé d'idempotence Resend que lib/sante.ts
+# (clePanne : demi-heure UTC + services en panne) : une même panne ne donne
+# qu'un e-mail par demi-heure, qui que ce soit qui la voie.
+# Dépôt public : rien de sensible dans les journaux.
+name: Surveillance du CRM
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      essai:
+        description: "Envoyer un e-mail d'essai"
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: surveillance-crm
+  cancel-in-progress: false
+
+jobs:
+  sante:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Vérifier le CRM
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERTES_EMAILS: ${{ vars.ALERTES_EMAILS }}
+          ESSAI: ${{ inputs.essai }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys, time, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from zoneinfo import ZoneInfo
+
+          URL = 'https://crm.lab-learning.fr/api/sante'
+          LIBELLES = {'base': 'Base de données', 'connexion': 'Connexion des utilisateurs', 'stockage': 'Stockage des documents'}
+          IMPACTS = {
+              'base': "Le CRM ne peut plus lire ses données : les pages ne s'affichent plus.",
+              'connexion': 'Les utilisateurs ne peuvent plus se connecter.',
+              'stockage': 'Les documents (PDF, pièces jointes) ne s’ouvrent plus.',
+              'site': 'Le site crm.lab-learning.fr ne répond pas normalement (Vercel ou réseau).',
+          }
+
+          # Sans le secret, pas d'e-mail : le passage en rouge pendant une panne reste
+          # l'alerte (notification GitHub). Signalé à chaque passage, sans le faire échouer.
+          cle_api = os.environ.get('RESEND_API_KEY', '')
+          destinataires = [d for d in os.environ.get('ALERTES_EMAILS', '').replace(';', ',').replace(' ', ',').replace('\n', ',').split(',') if d] or ['digital@lab-learning.fr']
+          if not cle_api:
+              print('::warning::Secret RESEND_API_KEY absent : en cas de panne, seule la notification GitHub préviendra')
+
+          def verifier():
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(URL, headers={'Cache-Control': 'no-store'}), timeout=25) as r:
+                      return r.status, json.loads(r.read() or b'{}')
+              except urllib.error.HTTPError as e:
+                  try: corps = json.loads(e.read() or b'{}')
+                  except Exception: corps = {}
+                  return e.code, corps
+              except Exception as e:
+                  return 0, {'erreur': type(e).__name__}
+
+          essai = os.environ.get('ESSAI') == 'true'
+          code, corps = verifier()
+          # Trois échecs sur une minute avant d'alerter : un raté isolé n'est pas une panne
+          for attente in (30, 30):
+              if code == 200 or essai: break
+              time.sleep(attente)
+              code, corps = verifier()
+          if code == 200 and not essai:
+              print('CRM OK'); sys.exit(0)
+
+          # Services en panne, au même format que lib/sante.ts (servicesEnPanne)
+          services = corps.get('services') if isinstance(corps, dict) else None
+          if code == 503 and isinstance(services, dict):
+              en_panne = sorted(k for k, s in services.items() if not s.get('ok'))
+          elif code == 200:
+              en_panne = []
+          else:
+              en_panne = ['site']
+          critique = any(s != 'stockage' for s in en_panne) or not en_panne
+          print('CRM en panne :', code, '+'.join(en_panne))
+
+          maintenant = datetime.now(timezone.utc)
+          heure = maintenant.astimezone(ZoneInfo('Europe/Paris')).strftime('%H h %M')
+          sujet = ('Essai : ' if essai else 'URGENT : ' if critique else 'Alerte : ') + (
+              'le CRM Lab Learning est inaccessible' if critique else 'stockage des documents du CRM indisponible')
+          constats = ''.join(f'<p style="margin:6px 0">{IMPACTS[s]}</p>' for s in en_panne if s in IMPACTS)
+          if code not in (0, 200, 503):
+              constats += f'<p style="margin:6px 0">Réponse du site : HTTP {code}.</p>'
+          intro = '<p><b>Ceci est un essai de la surveillance, le CRM fonctionne.</b></p>' if essai else ''
+          html = f"""<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#1e293b;max-width:560px">
+          <div style="background:{'#b42318' if critique else '#b54708'};color:#fff;padding:16px 20px;border-radius:10px 10px 0 0;font-weight:bold;font-size:18px">{sujet}</div>
+          <div style="border:1px solid #e2e8f0;border-top:0;padding:18px 20px;border-radius:0 0 10px 10px">{intro}
+          <p>Panne constatée à <b>{heure}</b> par la surveillance extérieure (GitHub).</p>
+          {constats}
+          <p><b>Ce qu'il faut faire</b></p><ol style="padding-left:18px">
+          <li>Base en panne : ouvrir le projet Supabase, Settings, General, Restart project, puis « Fast database reboot ».</li>
+          <li>Site muet : vérifier le déploiement sur vercel.com et <a href="https://www.vercel-status.com">vercel-status.com</a>.</li>
+          <li>Vérifier <a href="https://status.supabase.com">status.supabase.com</a>.</li></ol>
+          <p>Tant que la panne dure, un rappel part toutes les 30 minutes.</p>
+          <p style="font-size:12px;color:#64748b">Surveillance automatique du CRM Lab Learning.</p></div></div>"""
+          texte = f"{sujet}\n\nPanne constatée à {heure}.\n" + '\n'.join(IMPACTS[s] for s in en_panne if s in IMPACTS)
+
+          if essai:
+              cle = 'crm-essai-' + maintenant.strftime('%Y-%m-%dT%H:%M')
+          else:
+              cle = 'crm-panne-' + maintenant.strftime('%Y-%m-%dT%H') + '-' + ('00' if maintenant.minute < 30 else '30') + '-' + ('+'.join(en_panne) or 'aucun')
+          if not cle_api:
+              print('::error::CRM en panne, e-mail impossible : secret RESEND_API_KEY absent'); sys.exit(1)
+          requete = urllib.request.Request('https://api.resend.com/emails', method='POST',
+              data=json.dumps({'from': 'Surveillance CRM <noreply@lab-learning.fr>', 'to': destinataires, 'subject': sujet, 'html': html, 'text': texte}).encode(),
+              headers={'Authorization': 'Bearer ' + cle_api, 'Content-Type': 'application/json', 'Idempotency-Key': cle, 'User-Agent': 'surveillance-crm'})
+          try:
+              with urllib.request.urlopen(requete, timeout=20) as r:
+                  print('Alerte envoyée', r.status)
+          except urllib.error.HTTPError as e:
+              # 409 : cette alerte est déjà partie (tâche Vercel ou passage précédent)
+              if e.code == 409: print('Alerte déjà partie')
+              else: print(f'::error::Envoi refusé par Resend : HTTP {e.code}'); sys.exit(1)
+          except Exception as e:
+              print(f'::error::Resend injoignable : {type(e).__name__}'); sys.exit(1)
+          # Passage en rouge pendant une panne : GitHub prévient aussi par sa propre notification
+          sys.exit(0 if essai else 1)
+          PY

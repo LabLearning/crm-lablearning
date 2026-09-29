@@ -4,6 +4,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/sante",
+      "schedule": "*/2 * * * *"
+    },
+    {
       "path": "/api/cron/keep-warm",
       "schedule": "*/5 * * * *"
     },

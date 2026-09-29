@@ -15,6 +15,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/devenir-formateur') ||
     pathname.startsWith('/site') ||
     pathname.startsWith('/auth') ||
+    // Surveillance et tâches planifiées : elles doivent tourner même quand
+    // Supabase ne répond plus (elles vérifient elles-mêmes leur secret)
+    pathname.startsWith('/api/sante') ||
+    pathname.startsWith('/api/cron') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
