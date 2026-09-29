@@ -56,7 +56,7 @@ export default async function PortalQuestionnairesPage({ params }: { params: { t
   const graine = (id: string) => { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0 }
   const melanger = <T,>(liste: T[], id: string): T[] => {
     const l = [...liste]; let x = graine(id) || 1
-    for (let i = l.length - 1; i > 0; i--) { x = Math.imul(x ^ (x >>> 15), 2246822507) >>> 0; x ^= x >>> 13; const j = x % (i + 1); [l[i], l[j]] = [l[j], l[i]] }
+    for (let i = l.length - 1; i > 0; i--) { x = Math.imul(x ^ (x >>> 15), 2246822507) >>> 0; x = (x ^ (x >>> 13)) >>> 0; const j = x % (i + 1); [l[i], l[j]] = [l[j], l[i]] }
     return l
   }
   const sansCorrige = (pendingReponses || []).map((r: any) => !r.qcm ? r : ({
