@@ -1,4 +1,5 @@
 import { getSession } from '@/lib/auth'
+import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { SessionDetailClient } from './SessionDetailClient'
@@ -410,7 +411,7 @@ export default async function SessionDetailPage({ params, searchParams }: { para
         qcmReponses={(qcmReponses || []) as any[]}
         qcmBank={(qcmBank || []) as any[]}
         conventions={((conventions || []) as any[]).map((c: any) => ({
-          ...c, certificat_signature: (conventionsSigneesElec || []).some((x: any) => x.id === c.id),
+          ...c, certificat_signature: CERTIFICAT_SIGNATURE_CONVENTION && (conventionsSigneesElec || []).some((x: any) => x.id === c.id),
         }))}
         contratFormateur={contratFormateur as any}
         formationsRef={(formationsRef || []) as any[]}

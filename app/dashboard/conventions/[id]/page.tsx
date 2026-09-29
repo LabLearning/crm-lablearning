@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui'
 import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
 import { formatDate, formatDateTime, companyLabel } from '@/lib/utils'
 import { ConventionSignatureBlock } from './ConventionSignatureBlock'
+import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { ConventionDetailsEditor } from './ConventionDetailsEditor'
 import { ConventionHistory } from './ConventionHistory'
 
@@ -96,7 +97,7 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         signatureOfDate={c.signature_of_date}
         signatureOfNom={c.signature_of_nom}
         signatureTokenExpiresAt={c.signature_token_expires_at}
-        certificatDisponible={!!c.signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)}
+        certificatDisponible={CERTIFICAT_SIGNATURE_CONVENTION && !!c.signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)}
       />
 
       {/* Historique (créée, envoyée, signée, annulée, AKTO…) */}

@@ -7,6 +7,7 @@ import {
   FileSignature, Building2, Euro, Clock, PenTool, Download, Link2, Copy, ShieldCheck,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast, RowMenu } from '@/components/ui'
+import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { createConventionAction, updateConventionStatusAction, deleteConventionAction } from './actions'
 import { annulerConventionSigneeAction } from './signature-actions'
 import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
@@ -208,7 +209,7 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
                   width={208}
                   items={[
                     { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/convention/${c.id}`, target: '_blank' },
-                    { label: 'Certificat de signature', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, href: `/api/pdf/preuve-signature/convention/${c.id}`, hidden: !((c as any).signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)) },
+                    { label: 'Certificat de signature', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, href: `/api/pdf/preuve-signature/convention/${c.id}`, hidden: !(CERTIFICAT_SIGNATURE_CONVENTION && (c as any).signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)) },
                     { label: 'Lien de signature électronique', icon: <Link2 className="h-4 w-4 text-brand-600" />, onClick: () => handleGenerateSignatureLink(c.id) },
                     { label: 'Marquer envoyée', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(c.id, 'envoyee'), hidden: c.status !== 'brouillon' },
                     { label: 'Signée par le client', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatus(c.id, 'signee_client'), hidden: c.status !== 'envoyee' },

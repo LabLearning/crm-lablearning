@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
 import { sha256 } from '@/lib/preuve-signature-convention'
+import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import {
   CertificatSignatureConventionPDF, decrireAppareil,
   type EvenementPreuve, type PreuveSignatureConvention,
@@ -16,6 +17,9 @@ import {
  * client, et ne présente que les preuves réellement enregistrées.
  */
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  if (!CERTIFICAT_SIGNATURE_CONVENTION) {
+    return NextResponse.json({ error: 'Le certificat de signature est désactivé.' }, { status: 404 })
+  }
   const auth = await requireApiUser()
   if ('error' in auth) return auth.error
   const orgId = auth.user.organizationId
