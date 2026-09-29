@@ -88,19 +88,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Aucun stagiaire sur cette session' }, { status: 404 })
   }
 
-  // La durée attestée est celle réellement suivie : c'est elle qui est
-  // opposable lors d'un contrôle, pas la durée prévue au programme.
-  const { data: em } = await supabase.from('emargements')
-    .select('apprenant_id, est_present').eq('session_id', sessionId)
+  // La durée attestée est celle réellement suivie, selon la règle commune des
+  // certificats (lib/certificat-heures) : une demi-journée non signée n'est
+  // pas une absence (feuille tenue sur papier), seule compte l'absence
+  // déclarée par le formateur. L'envoi automatique, lui, attend les signatures.
   const dureePrevue = Number(formation?.duree_heures || 0)
+  const { heuresCertificats } = await import('@/lib/certificat-heures')
+  const heures = await heuresCertificats(supabase, { sessionId, organizationId: orgId, dureeFormation: dureePrevue })
   const heuresParApprenant: Record<string, number> = {}
-  for (const a of apprenants) {
-    const lignes = (em || []).filter((e: any) => e.apprenant_id === a.id)
-    const presents = lignes.filter((e: any) => e.est_present).length
-    heuresParApprenant[a.id] = lignes.length > 0
-      ? Math.round((dureePrevue * presents / lignes.length) * 100) / 100
-      : dureePrevue
-  }
+  for (const a of apprenants) heuresParApprenant[a.id] = heures.get(a.id)?.heures ?? dureePrevue
 
   // Comme pour l'envoi automatique, aucune attestation à 0 heure une fois la
   // session passée. Avant sa fin, la grille n'est pas encore signée : le pack
