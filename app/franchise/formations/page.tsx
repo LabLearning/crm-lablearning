@@ -3,7 +3,7 @@ import { getFranchiseSession } from '@/lib/franchise-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getFranchiseFormations, LIBELLES_ETATS, type EtatFormation, type FormationFranchise } from '@/lib/franchise-data'
 import { syncFranchiseCommissions } from '@/lib/commission'
-import { GraduationCap, Play, CalendarClock, CheckCircle, Users } from '@/components/ui/icons'
+import { GraduationCap, Play, CalendarClock, CheckCircle, Users, ShieldCheck, ClipboardList, Download } from '@/components/ui/icons'
 
 export const dynamic = 'force-dynamic'
 
@@ -136,6 +136,7 @@ function Ligne({ f }: { f: FormationFranchise }) {
           )}
           <EtatCommission f={f} />
         </div>
+        {f.etat === 'terminee' && <Documents f={f} />}
       </div>
       <div className="text-right shrink-0">
         <div className={`text-sm font-bold tabular-nums ${f.commission ? 'text-amber-600' : 'text-surface-300'}`}>
@@ -143,6 +144,36 @@ function Ligne({ f }: { f: FormationFranchise }) {
         </div>
         {f.base > 0 && <div className="text-[11px] text-surface-400 tabular-nums">sur {fmtEuro(f.base)}</div>}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Documents d'une formation terminée : attestations d'hygiène et comptes rendus
+ * des formateurs. Ceux qui ne sont pas encore dans le CRM (formation venue de
+ * Dendreo, bilan envoyé par mail) sont annoncés en cours d'importation.
+ */
+function Documents({ f }: { f: FormationFranchise }) {
+  const lien = 'inline-flex items-center gap-1.5 rounded-lg border border-surface-200 px-2.5 py-1.5 font-medium text-surface-700 hover:bg-surface-50'
+  const attente = 'inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 font-medium text-amber-700'
+  return (
+    <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
+      {f.hygiene ? (
+        <a href={f.hygiene} className={lien}>
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Attestations d&apos;hygiène
+          <Download className="h-3 w-3 text-surface-400" />
+        </a>
+      ) : f.estHygiene && f.nbParticipants > 0 && (
+        <span className={attente}><ShieldCheck className="h-3.5 w-3.5" /> Attestations d&apos;hygiène : en cours d&apos;importation</span>
+      )}
+      {f.comptesRendus.length > 0 ? f.comptesRendus.map((c) => (
+        <a key={c.sessionId} href={`/api/pdf/compte-rendu/${c.sessionId}`} className={lien}>
+          <ClipboardList className="h-3.5 w-3.5 text-brand-600" /> Compte rendu de {c.formateur}
+          <Download className="h-3 w-3 text-surface-400" />
+        </a>
+      )) : f.nbParticipants > 0 && (
+        <span className={attente}><ClipboardList className="h-3.5 w-3.5" /> Compte rendu : en cours d&apos;importation</span>
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import type { CommissionStatus } from '@/lib/commission'
+import { estFormationHygiene } from '@/lib/formation-hygiene'
 
 /**
  * Agrégations de données pour le portail franchise, assises sur les SESSIONS
@@ -389,6 +390,13 @@ export interface FormationFranchise {
   poei: boolean
   horsPartenariat: boolean
   etat: EtatFormation
+  /** Formation d'hygiène alimentaire (session d'hygiène ou parcours POEI). */
+  estHygiene: boolean
+  /** Lien des attestations d'hygiène, une fois la formation terminée ; null si
+   *  elles n'existent pas encore dans le CRM (formation venue de Dendreo). */
+  hygiene: string | null
+  /** Comptes rendus transmis par les formateurs. */
+  comptesRendus: { sessionId: string; formateur: string }[]
 }
 
 export interface GroupeFormations {
@@ -430,28 +438,57 @@ export async function getFranchiseFormations(
   for (let i = 0; i < ids.length; i += 30) {
     const { data } = await supabase
       .from('sessions')
-      .select('id, reference, intitule, client_id, status, date_debut, date_fin, poei_intervention_id, formation:formation_id(intitule)')
+      .select('id, reference, intitule, client_id, status, date_debut, date_fin, poei_intervention_id, dendreo_id, formation:formation_id(intitule, categorie)')
       .eq('organization_id', orgId).in('client_id', ids.slice(i, i + 30)).neq('status', 'annulee')
     sessions.push(...((data || []) as any[]))
   }
   if (!sessions.length) return []
 
-  const [{ data: poeiRows }, { data: lignes }] = await Promise.all([
-    supabase.from('poei').select('session_id').eq('organization_id', orgId),
+  const ivIds = sessions.map((s) => s.poei_intervention_id).filter(Boolean)
+  const [{ data: poeiRows }, { data: lignes }, { data: interventions }] = await Promise.all([
+    supabase.from('poei').select('id, session_id').eq('organization_id', orgId),
     supabase.from('commissions_sessions')
       .select('session_id, base_montant, commission_montant, status')
       .eq('organization_id', orgId).eq('franchise_id', franchiseId).neq('status', 'annulee'),
+    ivIds.length
+      ? supabase.from('poei_interventions').select('id, poei_id').in('id', ivIds)
+      : Promise.resolve({ data: [] as any[] }),
   ])
   const poeiSet = new Set(((poeiRows || []) as any[]).map((p) => p.session_id))
+  // Parcours POEI de chaque session : la session chapeau et les interventions
+  const poeiDe = new Map<string, string>()
+  for (const p of (poeiRows || []) as any[]) if (p.session_id) poeiDe.set(p.session_id, p.id)
+  const poeiDeIv = new Map(((interventions || []) as any[]).map((i) => [i.id, i.poei_id]))
+  for (const s of sessions) if (s.poei_intervention_id && poeiDeIv.get(s.poei_intervention_id)) poeiDe.set(s.id, poeiDeIv.get(s.poei_intervention_id))
   const parSession = new Map(((lignes || []) as any[]).map((l) => [l.session_id, l]))
 
   const inscrits = new Map<string, number>()
+  const rapportsDe = new Map<string, { sessionId: string; formateur: string }[]>()
   const sessionIds = sessions.map((s) => s.id)
-  for (let i = 0; i < sessionIds.length; i += 100) {
-    const { data } = await supabase.from('inscriptions').select('session_id')
-      .in('session_id', sessionIds.slice(i, i + 100)).not('status', 'in', '("annule","abandonne")')
+  await Promise.all(Array.from({ length: Math.ceil(sessionIds.length / 100) }, async (_, k) => {
+    const tranche = sessionIds.slice(k * 100, k * 100 + 100)
+    const [{ data }, { data: rapports }] = await Promise.all([
+      supabase.from('inscriptions').select('session_id')
+        .in('session_id', tranche).not('status', 'in', '("annule","abandonne")'),
+      supabase.from('rapports_session').select('session_id, formateur:formateur_id(prenom, nom)')
+        .in('session_id', tranche).in('status', ['soumis', 'valide']),
+    ])
     for (const r of (data || []) as any[]) inscrits.set(r.session_id, (inscrits.get(r.session_id) || 0) + 1)
+    for (const r of (rapports || []) as any[]) {
+      const f = Array.isArray(r.formateur) ? r.formateur[0] : r.formateur
+      rapportsDe.set(r.session_id, [...(rapportsDe.get(r.session_id) || []), {
+        sessionId: r.session_id,
+        formateur: f ? `${f.prenom || ''} ${f.nom || ''}`.trim() || 'Formateur' : 'Formateur',
+      }])
+    }
+  }))
+  // Toutes les sessions d'un parcours POEI, pour réunir ses comptes rendus sur sa ligne
+  const sessionsDuParcours = new Map<string, any[]>()
+  for (const s of sessions) {
+    const p = poeiDe.get(s.id)
+    if (p) sessionsDuParcours.set(p, [...(sessionsDuParcours.get(p) || []), s])
   }
+  const estDendreo = (s: any) => !!s.dendreo_id || /^ADF_/i.test(String(s.reference || ''))
 
   const aujourdhui = aujourdhuiParis()
   // Un parcours POEI = une ligne : les modules qui ne portent pas sa commission
@@ -463,6 +500,15 @@ export async function getFranchiseFormations(
     const estPoei = !!s.poei_intervention_id || poeiSet.has(s.id)
     const horsPartenariat = !!c?.franchise_hors_partenariat
       || !!(debutPartenariat && s.date_debut && s.date_debut < debutPartenariat)
+    const etat = etatSession(s, aujourdhui)
+    // Documents de fin de formation : un parcours POEI les réunit sur toutes ses sessions
+    const parcours = poeiDe.get(s.id) || null
+    const groupe = parcours ? sessionsDuParcours.get(parcours) || [s] : [s]
+    const estHygiene = !!parcours || estFormationHygiene(formation)
+    const avecStagiaires = groupe.some((x) => (inscrits.get(x.id) || 0) > 0)
+    // Formation venue de Dendreo : ses attestations y ont été produites, elles sont importées à part
+    const hygiene = etat !== 'terminee' || !estHygiene || !avecStagiaires || groupe.some(estDendreo) ? null
+      : parcours ? `/api/pdf/attestation-hygiene?poei=${parcours}` : `/api/pdf/attestation-hygiene?session=${s.id}`
     return {
       id: s.id,
       reference: s.reference,
@@ -478,7 +524,10 @@ export async function getFranchiseFormations(
       base: Number(l?.base_montant || 0),
       poei: estPoei,
       horsPartenariat,
-      etat: etatSession(s, aujourdhui),
+      etat,
+      estHygiene,
+      hygiene,
+      comptesRendus: groupe.flatMap((x) => rapportsDe.get(x.id) || []),
     }
   })
 
