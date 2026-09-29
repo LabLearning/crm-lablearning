@@ -124,7 +124,7 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
       statutCommission: lignesGroupe[0]?.status || null,
       // Attestations d'hygiène, une fois la formation terminée : le module
       // hygiène d'une POEI, ou une session d'hygiène alimentaire
-      hygiene: etat !== 'terminee' ? null
+      hygiene: etat !== 'terminee' || !ss.some((x) => (inscritsDe.get(x.id) || 0) > 0) ? null
         : poei ? `/api/pdf/attestation-hygiene?poei=${poei.id}`
           : estFormationHygiene(f) ? `/api/pdf/attestation-hygiene?session=${rep.id}` : null,
       comptesRendus: ((rapports || []) as any[]).filter((r) => ss.some((x) => x.id === r.session_id)).map((r) => ({
@@ -133,7 +133,10 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
         le: r.submitted_at,
       })),
     }
-  }).sort((a, b) => String(b.debut || '').localeCompare(String(a.debut || '')))
+  })
+    // Une session terminée sans aucun stagiaire n'est pas une formation délivrée (doublon d'import)
+    .filter((f) => !(f.etat === 'terminee' && f.stagiaires === 0))
+    .sort((a, b) => String(b.debut || '').localeCompare(String(a.debut || '')))
 
   const apps = apprenants || []
   const pec = formations.reduce((t, f) => t + f.base, 0)
