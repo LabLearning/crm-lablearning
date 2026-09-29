@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
 import { CompteRenduFormationPDF } from '@/lib/pdf/compte-rendu-formation-pdf'
+import { compteRenduStocke } from '@/lib/compte-rendu'
 
 /**
  * Compte rendu de formation d'une session, en PDF, pour le dossier. Réservé à
@@ -52,10 +53,10 @@ export async function GET(_req: NextRequest, { params }: { params: { sessionId: 
       lieu: [ss.lieu, ss.adresse, [ss.code_postal, ss.ville].filter(Boolean).join(' ')].map((x: any) => String(x || '').trim()).filter(Boolean).join(', ') || null,
       duree: heures ? `${Number(heures).toLocaleString('fr-FR')} h` : null,
       formateur: r.formateur ? `${r.formateur.prenom || ''} ${r.formateur.nom || ''}`.trim() : null,
-      transmisLe: r.submitted_at ? jour(r.submitted_at) : null,
+      transmisLe: r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }) : null,
       statut: r.status === 'valide' ? 'Validé' : r.status === 'soumis' ? 'Transmis' : 'Brouillon',
     },
-    cr: r.compte_rendu || null,
+    cr: compteRenduStocke(r),
     ancien: [
       ['Contenu abordé', r.contenu_aborde], ['Objectifs atteints', r.objectifs_atteints],
       ['Objectifs non atteints', r.objectifs_non_atteints], ['Difficultés rencontrées', r.difficultes_rencontrees],

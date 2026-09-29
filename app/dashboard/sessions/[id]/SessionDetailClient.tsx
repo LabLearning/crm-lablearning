@@ -1,6 +1,7 @@
 'use client'
 
 import { CompteRenduVue } from './CompteRenduVue'
+import { compteRenduStocke } from '@/lib/compte-rendu'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -1160,7 +1161,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 </Badge>
               </div>
               {/* Compte rendu détaillé, sinon l'ancien rapport rubrique par rubrique */}
-              {rapport.compte_rendu ? <CompteRenduVue cr={rapport.compte_rendu} /> : (
+              {compteRenduStocke(rapport) ? <CompteRenduVue cr={compteRenduStocke(rapport)!} /> : (
               <div className="grid gap-3 md:grid-cols-2 pt-1">
                 {[
                   ['Contenu abordé', rapport.contenu_aborde],

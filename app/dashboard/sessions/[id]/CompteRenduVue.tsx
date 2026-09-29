@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import {
-  LIBELLES_ACQUIS, LIBELLES_OBJECTIF, libelleDemiJournee,
+  LIBELLES_ACQUIS, LIBELLES_OBJECTIF, LIBELLES_STATUT_DEMI_JOURNEE, libelleDemiJournee,
   type CompteRendu, type Acquis, type NiveauObjectif,
 } from '@/lib/compte-rendu'
 
@@ -40,7 +40,7 @@ function Ligne({ label, valeur }: { label: string; valeur?: string | null }) {
 export function CompteRenduVue({ cr }: { cr: CompteRendu }) {
   const objectifs = cr.objectifs.filter((o) => o.niveau)
   const atteints = objectifs.filter((o) => o.niveau === 'atteint').length
-  const stagiaires = cr.stagiaires.filter((s) => s.acquis)
+  const stagiaires = cr.stagiaires.filter((s) => s.acquis && !s.retire)
   const acquis = stagiaires.filter((s) => s.acquis === 'acquis').length
 
   return (
@@ -48,7 +48,7 @@ export function CompteRenduVue({ cr }: { cr: CompteRendu }) {
       {/* L'essentiel en un coup d'œil */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
-          ['Demi-journées décrites', `${cr.deroule.filter((d) => d.contenu.trim()).length} / ${cr.deroule.length}`],
+          ['Demi-journées décrites', `${cr.deroule.filter((d) => !d.statut && d.contenu.trim()).length} / ${cr.deroule.filter((d) => !d.statut).length}`],
           ['Objectifs atteints', objectifs.length ? `${atteints} / ${objectifs.length}` : 'Non renseigné'],
           ['Stagiaires ayant acquis', stagiaires.length ? `${acquis} / ${stagiaires.length}` : 'Non renseigné'],
           ['Participation', cr.groupe.participation || 'Non renseignée'],
@@ -65,8 +65,8 @@ export function CompteRenduVue({ cr }: { cr: CompteRendu }) {
           {cr.deroule.map((d) => (
             <li key={`${d.date}-${d.creneau}`} className="rounded-xl border border-surface-100 p-3">
               <div className="text-xs font-semibold text-surface-700 first-letter:uppercase">{libelleDemiJournee(d)}</div>
-              <div className={cn('text-sm mt-1 whitespace-pre-line', d.contenu.trim() ? 'text-surface-800' : 'text-surface-400 italic')}>
-                {d.contenu.trim() || 'Non décrit'}
+              <div className={cn('text-sm mt-1 whitespace-pre-line', !d.statut && d.contenu.trim() ? 'text-surface-800' : 'text-surface-400 italic')}>
+                {d.statut ? LIBELLES_STATUT_DEMI_JOURNEE[d.statut] : d.contenu.trim() || 'Non décrit'}
               </div>
               {d.methodes.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
@@ -117,7 +117,9 @@ export function CompteRenduVue({ cr }: { cr: CompteRendu }) {
           <div className="rounded-xl border border-surface-100 divide-y divide-surface-100">
             {cr.stagiaires.map((s) => (
               <div key={s.apprenant_id} className="flex flex-wrap items-center gap-2 px-3 py-2">
-                <span className="text-sm text-surface-900 flex-1 min-w-[140px]">{s.nom}</span>
+                <span className="text-sm text-surface-900 flex-1 min-w-[140px]">
+                  {s.nom}{s.retire && <span className="text-2xs text-surface-400"> (inscription annulée)</span>}
+                </span>
                 <span className={cn('rounded-md border px-1.5 py-0.5 text-2xs font-semibold', s.acquis ? TON_ACQUIS[s.acquis] : 'bg-surface-50 text-surface-400 border-surface-100')}>
                   {s.acquis ? LIBELLES_ACQUIS[s.acquis] : 'Non évalué'}
                 </span>

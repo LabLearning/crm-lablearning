@@ -32,11 +32,21 @@ export default async function RapportPage({ params }: { params: { sessionId: str
     .select('*').eq('session_id', params.sessionId).eq('formateur_id', formateurId).maybeSingle()
 
   // Compte rendu prérempli avec les demi-journées, les objectifs et les
-  // stagiaires de la session ; un ancien brouillon en texte libre est repris
+  // stagiaires de la session. Un remplaçant reprend le brouillon laissé sur la
+  // session par un autre formateur ; un ancien rapport en texte libre est repris
+  // dans les rubriques correspondantes.
   const { compteRenduSession } = await import('@/lib/compte-rendu-data')
+  const { compteRenduStocke } = await import('@/lib/compte-rendu')
   const r: any = rapport
-  const compteRendu = await compteRenduSession(supabase, sess as any, r?.compte_rendu || null)
-  if (r && !r.compte_rendu) {
+  let stocke = compteRenduStocke(r)
+  if (!r) {
+    const { data: autres } = await supabase.from('rapports_session').select('*')
+      .eq('session_id', params.sessionId).neq('formateur_id', formateurId)
+      .order('updated_at', { ascending: false }).limit(1)
+    stocke = compteRenduStocke(autres?.[0])
+  }
+  const compteRendu = await compteRenduSession(supabase, sess as any, stocke)
+  if (r && !stocke) {
     if (r.contenu_aborde && compteRendu.deroule[0] && !compteRendu.deroule[0].contenu) compteRendu.deroule[0].contenu = r.contenu_aborde
     compteRendu.conditions.difficultes ||= r.difficultes_rencontrees || ''
     compteRendu.bilan.points_positifs ||= r.points_positifs || ''

@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, Loader2, Save, Send, Plus } from '@/components/ui/icons'
+import { CheckCircle2, Loader2, Save, Send, Plus, X } from '@/components/ui/icons'
 import { useToast } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import {
   METHODES, MODALITES_EVALUATION, NIVEAUX_GROUPE, PARTICIPATIONS, SALLES,
-  LIBELLES_ACQUIS, LIBELLES_OBJECTIF, libelleDemiJournee, manquesCompteRendu,
+  LIBELLES_ACQUIS, LIBELLES_OBJECTIF, LIBELLES_STATUT_DEMI_JOURNEE, libelleDemiJournee, manquesCompteRendu,
   type CompteRendu, type Acquis, type NiveauObjectif,
 } from '@/lib/compte-rendu'
 import { enregistrerCompteRenduAction } from '../actions'
@@ -33,21 +33,42 @@ export function RapportForm({ sessionId, initial, transmis }: {
   const [modifie, setModifie] = useState(false)
   const [sauveA, setSauveA] = useState<Date | null>(null)
   const enVol = useRef(false)
+  // Numéro de la dernière modification : un enregistrement ne vaut « à jour »
+  // que si rien n'a été tapé pendant qu'il partait
+  const version = useRef(0)
+  const dernier = useRef<CompteRendu>(initial)
 
-  const maj = (f: (c: CompteRendu) => CompteRendu) => { setCr((c) => f(structuredClone(c))); setModifie(true) }
+  const maj = (f: (c: CompteRendu) => CompteRendu) => {
+    version.current++
+    setCr((c) => { const n = f(structuredClone(c)); dernier.current = n; return n })
+    setModifie(true)
+  }
 
-  // Brouillon enregistré tout seul, 20 s après la dernière frappe
+  async function sauverBrouillon() {
+    if (enVol.current || fait) return
+    enVol.current = true
+    const v = version.current
+    const r = await enregistrerCompteRenduAction(sessionId, dernier.current, false).catch(() => null)
+    enVol.current = false
+    if (r?.success && version.current === v) { setModifie(false); setSauveA(new Date()) }
+  }
+
+  // Brouillon enregistré tout seul, 10 s après la dernière frappe, et quand la
+  // page passe en arrière-plan (changement d'onglet, téléphone verrouillé)
   useEffect(() => {
     if (!modifie || fait) return
-    const t = setTimeout(async () => {
-      if (enVol.current) return
-      enVol.current = true
-      const r = await enregistrerCompteRenduAction(sessionId, cr, false).catch(() => null)
-      enVol.current = false
-      if (r?.success) { setModifie(false); setSauveA(new Date()) }
-    }, 20_000)
+    const t = setTimeout(sauverBrouillon, 10_000)
     return () => clearTimeout(t)
-  }, [cr, modifie, fait, sessionId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cr, modifie, fait])
+  useEffect(() => {
+    const cache = () => { if (document.visibilityState === 'hidden' && modifie) void sauverBrouillon() }
+    const quitter = (e: BeforeUnloadEvent) => { if (modifie && !fait) { void sauverBrouillon(); e.preventDefault(); e.returnValue = '' } }
+    document.addEventListener('visibilitychange', cache)
+    window.addEventListener('beforeunload', quitter)
+    return () => { document.removeEventListener('visibilitychange', cache); window.removeEventListener('beforeunload', quitter) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modifie, fait])
 
   async function envoyer(transmettre: boolean) {
     if (transmettre) {
@@ -56,14 +77,20 @@ export function RapportForm({ sessionId, initial, transmis }: {
       if (m.length) { toast('error', 'Il manque des éléments avant de transmettre'); return }
     }
     setEnCours(transmettre ? 'transmettre' : 'brouillon')
+    const v = version.current
     try {
       const r = await enregistrerCompteRenduAction(sessionId, cr, transmettre)
       if (r.success) {
-        setModifie(false); setSauveA(new Date())
+        if (version.current === v) { setModifie(false); setSauveA(new Date()) }
         if (transmettre) { setFait(true); toast('success', 'Compte rendu transmis au gestionnaire') }
         else toast('success', 'Brouillon enregistré')
         router.refresh()
-      } else toast('error', r.error || 'Erreur')
+      } else {
+        // Refus du serveur : la saisie est gardée en brouillon, il dit ce qui manque
+        const m = (r.data as any)?.manques
+        if (Array.isArray(m)) { setManques(m); if (version.current === v) { setModifie(false); setSauveA(new Date()) } }
+        toast('error', r.error || 'Erreur')
+      }
     } catch {
       toast('error', 'La connexion a été interrompue : réessayez.')
     } finally {
@@ -90,21 +117,37 @@ export function RapportForm({ sessionId, initial, transmis }: {
         <div className="space-y-4">
           {cr.deroule.map((d, i) => (
             <div key={`${d.date}-${d.creneau}`} className="rounded-xl border border-surface-200 p-3 sm:p-4">
-              <div className="text-sm font-semibold text-surface-900 first-letter:uppercase">{libelleDemiJournee(d)}</div>
-              <textarea
-                rows={3}
-                value={d.contenu}
-                onChange={(e) => maj((c) => { c.deroule[i].contenu = e.target.value; return c })}
-                placeholder="Notions abordées, exercices, démonstrations, mises en pratique réalisées…"
-                aria-label={`Contenu, ${libelleDemiJournee(d)}`}
-                className="input-base mt-2 font-normal"
-              />
-              <Puces
-                label="Méthodes utilisées"
-                options={METHODES}
-                valeurs={d.methodes}
-                onChange={(v) => maj((c) => { c.deroule[i].methodes = v; return c })}
-              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-surface-900 first-letter:uppercase">{libelleDemiJournee(d)}</div>
+                <Choix
+                  compact
+                  label={`Qui a animé : ${libelleDemiJournee(d)}`}
+                  options={[{ v: '', l: 'Animée par moi' }, { v: 'autre_formateur', l: 'Autre formateur' }, { v: 'non_realisee', l: 'Pas de formation' }]}
+                  valeur={d.statut || ''}
+                  onChange={(v) => maj((c) => { c.deroule[i].statut = (v || undefined) as any; return c })}
+                  toujours
+                />
+              </div>
+              {d.statut ? (
+                <p className="text-xs text-surface-500 mt-2">{LIBELLES_STATUT_DEMI_JOURNEE[d.statut]} : rien à décrire.</p>
+              ) : (
+                <>
+                  <textarea
+                    rows={3}
+                    value={d.contenu}
+                    onChange={(e) => maj((c) => { c.deroule[i].contenu = e.target.value; return c })}
+                    placeholder="Notions abordées, exercices, démonstrations, mises en pratique réalisées…"
+                    aria-label={`Contenu, ${libelleDemiJournee(d)}`}
+                    className="input-base mt-2 font-normal"
+                  />
+                  <Puces
+                    label="Méthodes utilisées"
+                    options={METHODES}
+                    valeurs={d.methodes}
+                    onChange={(v) => maj((c) => { c.deroule[i].methodes = v; return c })}
+                  />
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -117,7 +160,16 @@ export function RapportForm({ sessionId, initial, transmis }: {
         <div className="space-y-3">
           {cr.objectifs.map((o, i) => (
             <div key={i} className="rounded-xl border border-surface-200 p-3">
-              <div className="text-sm text-surface-800">{o.objectif}</div>
+              <div className="flex items-start gap-2">
+                <div className="text-sm text-surface-800 flex-1">{o.objectif}</div>
+                {o.perso && (
+                  <button type="button" aria-label={`Retirer l’objectif « ${o.objectif} »`}
+                    onClick={() => maj((c) => { c.objectifs.splice(i, 1); return c })}
+                    className="shrink-0 rounded-md p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-700">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <Choix
                 options={Object.entries(LIBELLES_OBJECTIF).map(([v, l]) => ({ v, l }))}
                 valeur={o.niveau}
@@ -139,7 +191,7 @@ export function RapportForm({ sessionId, initial, transmis }: {
           <input value={nouvelObjectif} onChange={(e) => setNouvelObjectif(e.target.value)}
             placeholder="Ajouter un objectif travaillé" className="input-base font-normal flex-1" />
           <button type="button" disabled={nouvelObjectif.trim().length < 3}
-            onClick={() => { const o = nouvelObjectif.trim(); maj((c) => { c.objectifs.push({ objectif: o, niveau: '', commentaire: '' }); return c }); setNouvelObjectif('') }}
+            onClick={() => { const o = nouvelObjectif.trim(); maj((c) => { c.objectifs.push({ objectif: o, niveau: '', commentaire: '', perso: true }); return c }); setNouvelObjectif('') }}
             className="btn-secondary inline-flex items-center gap-1.5 !px-3 text-sm disabled:opacity-50">
             <Plus className="h-4 w-4" /> Ajouter
           </button>
@@ -176,7 +228,10 @@ export function RapportForm({ sessionId, initial, transmis }: {
             {cr.stagiaires.map((s, i) => (
               <div key={s.apprenant_id} className="p-3 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-surface-900">{s.nom}</span>
+                  <span className="text-sm font-medium text-surface-900">
+                    {s.nom}
+                    {s.retire && <span className="block text-2xs font-normal text-surface-400">Inscription annulée après émargement, évaluation facultative</span>}
+                  </span>
                   <Choix options={Object.entries(LIBELLES_ACQUIS).map(([v, l]) => ({ v, l }))} valeur={s.acquis}
                     onChange={(v) => maj((c) => { c.stagiaires[i].acquis = v as Acquis; return c })} label={`Acquis de ${s.nom}`} compact />
                 </div>
@@ -281,14 +336,16 @@ function Texte({ label, valeur, onChange, rows = 2, placeholder }: {
 }
 
 /** Choix unique en boutons : un second clic sur le choix actif le retire. */
-function Choix({ options, valeur, onChange, label, compact }: {
+function Choix({ options, valeur, onChange, label, compact, toujours }: {
   options: { v: string; l: string }[]; valeur: string; onChange: (v: string) => void; label: string; compact?: boolean
+  /** Un choix reste toujours actif : pas de retrait au second clic */
+  toujours?: boolean
 }) {
   return (
     <div role="group" aria-label={label} className={cn('flex flex-wrap gap-1.5', !compact && 'mt-2')}>
       {options.map((o) => (
         <button key={o.v} type="button" aria-pressed={valeur === o.v}
-          onClick={() => onChange(valeur === o.v ? '' : o.v)}
+          onClick={() => onChange(valeur === o.v && !toujours ? '' : o.v)}
           className={cn(
             'rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors min-h-[36px]',
             valeur === o.v

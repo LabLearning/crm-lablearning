@@ -4,7 +4,7 @@ import {
   PdfDocHeader, PdfDocFooter, PdfSectionTitle, shared,
   BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
-import { LIBELLES_ACQUIS, LIBELLES_OBJECTIF, libelleDemiJournee, type CompteRendu } from '../compte-rendu'
+import { LIBELLES_ACQUIS, LIBELLES_OBJECTIF, LIBELLES_STATUT_DEMI_JOURNEE, libelleDemiJournee, type CompteRendu } from '../compte-rendu'
 
 /**
  * Compte rendu de formation rédigé par le formateur, pour le dossier de la
@@ -28,7 +28,7 @@ const P = ({ children, couleur = SURFACE_700 }: { children: React.ReactNode; cou
 )
 const Ligne = ({ label, valeur }: { label: string; valeur?: string | null }) =>
   valeur && valeur.trim() ? (
-    <View style={{ flexDirection: 'row', marginBottom: 4 }} wrap={false}>
+    <View style={{ flexDirection: 'row', marginBottom: 4 }} wrap={(valeur || '').length > 300}>
       <Text style={{ fontSize: 8.3, color: SURFACE_500, width: 125 }}>{label}</Text>
       <Text style={{ fontSize: 8.6, color: SURFACE_900, flex: 1, lineHeight: 1.45 }}>{valeur}</Text>
     </View>
@@ -68,12 +68,12 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
             <View style={shared.section}>
               <View minPresenceAhead={70}><PdfSectionTitle icon="calendar">Déroulé de la formation</PdfSectionTitle></View>
               {cr.deroule.map((d) => (
-                <View key={`${d.date}-${d.creneau}`} wrap={false} style={{ borderLeftWidth: 2, borderLeftColor: SURFACE_200, paddingLeft: 9, marginBottom: 8 }}>
+                <View key={`${d.date}-${d.creneau}`} wrap={d.contenu.length > 600} style={{ borderLeftWidth: 2, borderLeftColor: SURFACE_200, paddingLeft: 9, marginBottom: 8 }}>
                   <Text style={{ fontSize: 8.6, fontWeight: 700, color: SURFACE_900, marginBottom: 2 }}>
                     {libelleDemiJournee(d).replace(/^./, (c) => c.toUpperCase())}
                   </Text>
-                  <P couleur={d.contenu.trim() ? SURFACE_700 : SURFACE_400}>{d.contenu.trim() || 'Non décrit'}</P>
-                  {d.methodes.length > 0 && <Text style={{ fontSize: 7.6, color: SURFACE_500, marginTop: 2 }}>Méthodes : {d.methodes.join(', ')}</Text>}
+                  <P couleur={!d.statut && d.contenu.trim() ? SURFACE_700 : SURFACE_400}>{d.statut ? LIBELLES_STATUT_DEMI_JOURNEE[d.statut] : d.contenu.trim() || 'Non décrit'}</P>
+                  {!d.statut && d.methodes.length > 0 && <Text style={{ fontSize: 7.6, color: SURFACE_500, marginTop: 2 }}>Méthodes : {d.methodes.join(', ')}</Text>}
                 </View>
               ))}
             </View>
@@ -97,8 +97,8 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
               </View>
             )}
 
-            <View style={shared.section} wrap={false}>
-              <PdfSectionTitle icon="users">Le groupe</PdfSectionTitle>
+            <View style={shared.section}>
+              <View minPresenceAhead={50}><PdfSectionTitle icon="users">Le groupe</PdfSectionTitle></View>
               <Ligne label="Niveau à l’entrée" valeur={cr.groupe.niveau} />
               <Ligne label="Participation" valeur={cr.groupe.participation} />
               <Ligne label="Dynamique" valeur={cr.groupe.dynamique} />
@@ -116,7 +116,7 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
                 <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, marginTop: 4 }}>
                   {cr.stagiaires.map((s, i) => (
                     <View key={s.apprenant_id} wrap={false} style={{ flexDirection: 'row', gap: 8, paddingVertical: 5, paddingHorizontal: 9, borderTopWidth: i ? 0.5 : 0, borderTopColor: SURFACE_200 }}>
-                      <Text style={{ fontSize: 8.4, color: SURFACE_900, width: 150 }}>{s.nom}</Text>
+                      <Text style={{ fontSize: 8.4, color: SURFACE_900, width: 150 }}>{s.nom}{s.retire ? ' (inscription annulée)' : ''}</Text>
                       <View style={{ width: 118 }}>
                         {s.acquis
                           ? <Pastille texte={LIBELLES_ACQUIS[s.acquis]} {...TONS[s.acquis]} />
@@ -129,15 +129,15 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
               )}
             </View>
 
-            <View style={shared.section} wrap={false}>
-              <PdfSectionTitle icon="building">Conditions de réalisation</PdfSectionTitle>
+            <View style={shared.section}>
+              <View minPresenceAhead={50}><PdfSectionTitle icon="building">Conditions de réalisation</PdfSectionTitle></View>
               <Ligne label="Salle et équipements" valeur={cr.conditions.salle} />
               <Ligne label="Précisions" valeur={cr.conditions.commentaire} />
               <Ligne label="Difficultés ou incidents" valeur={cr.conditions.difficultes} />
             </View>
 
-            <View style={shared.section} wrap={false}>
-              <PdfSectionTitle icon="award">Bilan et suites</PdfSectionTitle>
+            <View style={shared.section}>
+              <View minPresenceAhead={50}><PdfSectionTitle icon="award">Bilan et suites</PdfSectionTitle></View>
               <Ligne label="Points positifs" valeur={cr.bilan.points_positifs} />
               <Ligne label="Retours des stagiaires" valeur={cr.bilan.retours_stagiaires} />
               <Ligne label="Besoins détectés" valeur={cr.bilan.besoins_detectes} />

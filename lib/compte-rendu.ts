@@ -20,11 +20,15 @@ export interface DemiJournee {
   creneau: Creneau
   contenu: string
   methodes: string[]
+  /** Absent : animée par l'auteur du compte rendu */
+  statut?: 'autre_formateur' | 'non_realisee'
 }
 
-export interface ObjectifEvalue { objectif: string; niveau: NiveauObjectif | ''; commentaire: string }
+/** perso : objectif ajouté par le formateur (absent de la fiche formation) */
+export interface ObjectifEvalue { objectif: string; niveau: NiveauObjectif | ''; commentaire: string; perso?: boolean }
 
-export interface AcquisStagiaire { apprenant_id: string; nom: string; acquis: Acquis | ''; commentaire: string }
+/** retire : inscription annulée après avoir émargé, évaluation facultative */
+export interface AcquisStagiaire { apprenant_id: string; nom: string; acquis: Acquis | ''; commentaire: string; retire?: boolean }
 
 export interface CompteRendu {
   version: 1
@@ -52,6 +56,11 @@ export const PARTICIPATIONS = ['Très active', 'Active', 'Moyenne', 'Faible']
 export const SALLES = ['Adaptées', 'Partiellement adaptées', 'Inadaptées']
 
 export const LIBELLES_CRENEAU: Record<Creneau, string> = { matin: 'Matin', apres_midi: 'Après-midi' }
+export const LIBELLES_STATUT_DEMI_JOURNEE = { autre_formateur: 'Animée par un autre formateur', non_realisee: 'Pas de formation sur ce créneau' } as const
+
+/** Ordre chronologique : le matin avant l'après-midi (l'ordre alphabétique les inverserait). */
+export const ordreDemiJournee = (a: { date: string; creneau: string }, b: { date: string; creneau: string }) =>
+  a.date.localeCompare(b.date) || (a.creneau === 'matin' ? 0 : 1) - (b.creneau === 'matin' ? 0 : 1)
 export const LIBELLES_OBJECTIF: Record<NiveauObjectif, string> = { atteint: 'Atteint', partiel: 'Partiellement atteint', non_atteint: 'Non atteint' }
 export const LIBELLES_ACQUIS: Record<Acquis, string> = { acquis: 'Acquis', en_cours: 'En cours d’acquisition', non_acquis: 'Non acquis' }
 
@@ -67,7 +76,7 @@ export function objectifsFormation(v: unknown): string[] {
 export function compteRenduVierge(p: {
   creneaux: { date: string; creneau: Creneau }[]
   objectifs: string[]
-  stagiaires: { id: string; nom: string }[]
+  stagiaires: { id: string; nom: string; retire?: boolean }[]
 }): CompteRendu {
   return {
     version: 1,
@@ -75,49 +84,93 @@ export function compteRenduVierge(p: {
     objectifs: p.objectifs.map((objectif) => ({ objectif, niveau: '', commentaire: '' })),
     groupe: { niveau: '', participation: '', dynamique: '', assiduite: '' },
     evaluation: { modalites: [], synthese: '' },
-    stagiaires: p.stagiaires.map((s) => ({ apprenant_id: s.id, nom: s.nom, acquis: '', commentaire: '' })),
+    stagiaires: p.stagiaires.map((s) => ({ apprenant_id: s.id, nom: s.nom, acquis: '', commentaire: '', ...(s.retire ? { retire: true } : {}) })),
     conditions: { salle: '', commentaire: '', difficultes: '' },
     bilan: { points_positifs: '', retours_stagiaires: '', besoins_detectes: '', recommandations: '', commentaires: '' },
   }
 }
 
+/** Un compte rendu enregistré, complété champ par champ : un JSON partiel ou d'une autre version ne casse aucun écran. */
+export function normaliserCompteRendu(v: unknown): CompteRendu | null {
+  if (!v || typeof v !== 'object' || (v as any).version !== 1) return null
+  const x = v as any
+  const txt = (t: unknown) => (typeof t === 'string' ? t : '')
+  const liste = (l: unknown) => (Array.isArray(l) ? l : [])
+  return {
+    version: 1,
+    deroule: liste(x.deroule).filter((d: any) => d && typeof d.date === 'string').map((d: any): DemiJournee => ({
+      date: d.date.slice(0, 10), creneau: d.creneau === 'apres_midi' ? 'apres_midi' : 'matin',
+      contenu: txt(d.contenu), methodes: liste(d.methodes).filter((m: unknown) => typeof m === 'string'),
+      ...(d.statut === 'autre_formateur' || d.statut === 'non_realisee' ? { statut: d.statut } : {}),
+    })).sort(ordreDemiJournee),
+    objectifs: liste(x.objectifs).filter((o: any) => o && typeof o.objectif === 'string').map((o: any) => ({
+      objectif: o.objectif, niveau: ['atteint', 'partiel', 'non_atteint'].includes(o.niveau) ? o.niveau : '',
+      commentaire: txt(o.commentaire), ...(o.perso ? { perso: true } : {}),
+    })),
+    groupe: { niveau: txt(x.groupe?.niveau), participation: txt(x.groupe?.participation), dynamique: txt(x.groupe?.dynamique), assiduite: txt(x.groupe?.assiduite) },
+    evaluation: { modalites: liste(x.evaluation?.modalites).filter((m: unknown) => typeof m === 'string'), synthese: txt(x.evaluation?.synthese) },
+    stagiaires: liste(x.stagiaires).filter((s: any) => s && typeof s.apprenant_id === 'string').map((s: any) => ({
+      apprenant_id: s.apprenant_id, nom: txt(s.nom), acquis: ['acquis', 'en_cours', 'non_acquis'].includes(s.acquis) ? s.acquis : '',
+      commentaire: txt(s.commentaire), ...(s.retire ? { retire: true } : {}),
+    })),
+    conditions: { salle: txt(x.conditions?.salle), commentaire: txt(x.conditions?.commentaire), difficultes: txt(x.conditions?.difficultes) },
+    bilan: {
+      points_positifs: txt(x.bilan?.points_positifs), retours_stagiaires: txt(x.bilan?.retours_stagiaires),
+      besoins_detectes: txt(x.bilan?.besoins_detectes), recommandations: txt(x.bilan?.recommandations), commentaires: txt(x.bilan?.commentaires),
+    },
+  }
+}
+
 /**
- * Reprend un compte rendu enregistré en l'alignant sur la session d'aujourd'hui :
- * une demi-journée, un objectif ou un stagiaire ajoutés depuis apparaissent,
- * ce qui avait déjà été écrit est conservé.
+ * Compte rendu détaillé d'une ligne rapports_session : la colonne dédiée, ou
+ * son repli dans commentaires_apprenants tant que la migration 162 manque.
+ */
+export function compteRenduStocke(r: any): CompteRendu | null {
+  return normaliserCompteRendu(r?.compte_rendu) || normaliserCompteRendu(r?.commentaires_apprenants?.compte_rendu)
+}
+
+/**
+ * Reprend un compte rendu enregistré en l'alignant sur la session : les
+ * demi-journées, objectifs et stagiaires de référence sont ceux d'aujourd'hui,
+ * ce qui avait déjà été écrit pour eux est conservé. Une demi-journée hors de
+ * la session n'est pas reprise ; un objectif ajouté par le formateur l'est.
  */
 export function fusionnerCompteRendu(enregistre: Partial<CompteRendu> | null | undefined, vierge: CompteRendu): CompteRendu {
-  if (!enregistre || typeof enregistre !== 'object') return vierge
+  const e = normaliserCompteRendu(enregistre ? { version: 1, ...enregistre } : null)
+  if (!e) return vierge
   const cle = (d: { date: string; creneau: string }) => `${d.date}|${d.creneau}`
-  const deroule = vierge.deroule.map((d) => (enregistre.deroule || []).find((x) => cle(x) === cle(d)) || d)
-  for (const x of enregistre.deroule || []) if (!deroule.some((d) => cle(d) === cle(x))) deroule.push(x)
-  deroule.sort((a, b) => cle(a).localeCompare(cle(b)))
-  const objectifs = vierge.objectifs.map((o) => (enregistre.objectifs || []).find((x) => x.objectif === o.objectif) || o)
-  for (const x of enregistre.objectifs || []) if (!objectifs.some((o) => o.objectif === x.objectif)) objectifs.push(x)
-  const stagiaires = vierge.stagiaires.map((s) => (enregistre.stagiaires || []).find((x) => x.apprenant_id === s.apprenant_id) || s)
+  const deroule = vierge.deroule.map((d) => e.deroule.find((x) => cle(x) === cle(d)) || d)
+  const objectifs = vierge.objectifs.map((o) => e.objectifs.find((x) => x.objectif === o.objectif) || o)
+  for (const x of e.objectifs) {
+    if (objectifs.some((o) => o.objectif === x.objectif)) continue
+    // Ajouté par le formateur, ou retiré de la fiche mais déjà évalué
+    if (x.perso || x.niveau || x.commentaire.trim()) objectifs.push({ ...x, perso: true })
+  }
+  const stagiaires = vierge.stagiaires.map((s) => {
+    const x = e.stagiaires.find((y) => y.apprenant_id === s.apprenant_id)
+    return x ? { ...x, nom: s.nom, ...(s.retire ? { retire: true } : { retire: undefined }) } : s
+  })
   return {
     version: 1,
     deroule, objectifs, stagiaires,
-    groupe: { ...vierge.groupe, ...(enregistre.groupe || {}) },
-    evaluation: { ...vierge.evaluation, ...(enregistre.evaluation || {}) },
-    conditions: { ...vierge.conditions, ...(enregistre.conditions || {}) },
-    bilan: { ...vierge.bilan, ...(enregistre.bilan || {}) },
+    groupe: e.groupe, evaluation: e.evaluation, conditions: e.conditions, bilan: e.bilan,
   }
 }
 
 /** Ce qui manque pour transmettre : le compte rendu doit décrire toute la session. */
 export function manquesCompteRendu(cr: CompteRendu): string[] {
   const manques: string[] = []
-  const vides = cr.deroule.filter((d) => d.contenu.trim().length < 10)
+  const animees = cr.deroule.filter((d) => !d.statut)
+  const vides = animees.filter((d) => d.contenu.trim().length < 10)
   if (vides.length) manques.push(`le contenu de ${vides.length} demi-journée${vides.length > 1 ? 's' : ''}`)
-  const sansMethode = cr.deroule.filter((d) => !d.methodes.length)
+  const sansMethode = animees.filter((d) => !d.methodes.length)
   if (sansMethode.length) manques.push(`les méthodes de ${sansMethode.length} demi-journée${sansMethode.length > 1 ? 's' : ''}`)
   const objectifs = cr.objectifs.filter((o) => !o.niveau)
   if (objectifs.length) manques.push(`l’atteinte de ${objectifs.length} objectif${objectifs.length > 1 ? 's' : ''}`)
   if (!cr.groupe.niveau) manques.push('le niveau du groupe')
   if (!cr.groupe.participation) manques.push('la participation')
   if (!cr.evaluation.modalites.length) manques.push('les modalités d’évaluation')
-  const stagiaires = cr.stagiaires.filter((s) => !s.acquis)
+  const stagiaires = cr.stagiaires.filter((s) => !s.acquis && !s.retire)
   if (stagiaires.length) manques.push(`les acquis de ${stagiaires.length} stagiaire${stagiaires.length > 1 ? 's' : ''}`)
   if (!cr.conditions.salle) manques.push('les conditions matérielles')
   return manques
@@ -130,7 +183,9 @@ export const libelleDemiJournee = (d: { date: string; creneau: Creneau }) => `${
 export function syntheseTexte(cr: CompteRendu) {
   const lignes = (l: (string | false | null | undefined)[]) => l.filter(Boolean).join('\n') || null
   return {
-    contenu_aborde: lignes(cr.deroule.map((d) => d.contenu.trim() && `${libelleDemiJournee(d)} : ${d.contenu.trim()}${d.methodes.length ? ` (${d.methodes.join(', ')})` : ''}`)),
+    contenu_aborde: lignes(cr.deroule.map((d) => d.statut
+      ? `${libelleDemiJournee(d)} : ${LIBELLES_STATUT_DEMI_JOURNEE[d.statut].toLowerCase()}`
+      : d.contenu.trim() && `${libelleDemiJournee(d)} : ${d.contenu.trim()}${d.methodes.length ? ` (${d.methodes.join(', ')})` : ''}`)),
     objectifs_atteints: lignes(cr.objectifs.filter((o) => o.niveau === 'atteint' || o.niveau === 'partiel')
       .map((o) => `${o.objectif}${o.niveau === 'partiel' ? ' (partiellement)' : ''}${o.commentaire ? ` : ${o.commentaire}` : ''}`)),
     objectifs_non_atteints: lignes(cr.objectifs.filter((o) => o.niveau === 'non_atteint')

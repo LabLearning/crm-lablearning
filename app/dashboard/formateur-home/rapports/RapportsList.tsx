@@ -140,7 +140,7 @@ export function RapportsList({ sessions, rapports, inscriptions }: RapportsListP
                     <label className="text-sm font-medium text-surface-700 mb-2 block">Commentaires par apprenant</label>
                     <div className="space-y-2">
                       {apprenants.map((a: any) => {
-                        const existing = (rapport?.commentaires_apprenants || []).find((c: any) => c.apprenant_id === a.id)
+                        const existing = (Array.isArray(rapport?.commentaires_apprenants) ? rapport.commentaires_apprenants : (rapport as any)?.commentaires_apprenants?.stagiaires || []).find((c: any) => c.apprenant_id === a.id)
                         return (
                           <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-50">
                             <div className="text-sm font-medium text-surface-800 w-32 shrink-0 pt-2">{a.prenom} {a.nom}</div>
