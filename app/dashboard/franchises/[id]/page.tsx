@@ -80,7 +80,9 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
   // Totaux financiers (sessions non annulées)
   const actives = lignes.filter((l) => l.status !== 'annulee')
   const pecTotal = actives.reduce((s, l) => s + Number(l.base_montant || 0), 0)
-  const caTotal = actives.filter((l) => l.session?.status === 'terminee').reduce((s, l) => s + Number(l.base_montant || 0), 0)
+  // Réalisé au sens des dates de formation, pas du statut de la session
+  const { etatSession } = await import('@/lib/franchise-data')
+  const caTotal = actives.filter((l) => l.session && etatSession(l.session) === 'terminee').reduce((s, l) => s + Number(l.base_montant || 0), 0)
   const coutFormateurTotal = actives.reduce((s, l) => s + Number(l.cout_formateur || 0), 0)
   // Couverture : établissements formés = ceux qui ont au moins une session
   const nbFormes = new Set(actives.map((l) => l.client?.id).filter(Boolean)).size

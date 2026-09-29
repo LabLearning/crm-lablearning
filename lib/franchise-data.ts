@@ -15,20 +15,19 @@ import type { CommissionStatus } from '@/lib/commission'
 export const aujourdhuiParis = () => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date())
 
 /**
- * État d'une session lu dans ses dates : son statut n'est pas tenu à jour
- * au jour le jour (« validée » à la signature, « confirmée »…). Une session
- * « terminée » l'est quoi qu'il arrive ; sinon, avant sa date de début elle
- * est à venir, entre ses dates en cours, après sa date de fin terminée.
+ * État d'une session lu uniquement dans ses dates de formation, jamais dans
+ * son statut (qui n'est pas tenu au jour le jour : « validée » à la
+ * signature, « confirmée »…). Avant la date de début : à venir ; entre le
+ * début et la fin : en cours ; après la fin : terminée. Les sessions annulées
+ * sont écartées en amont.
  */
 export function etatSession(
-  s: { status?: string | null; date_debut?: string | null; date_fin?: string | null },
+  s: { date_debut?: string | null; date_fin?: string | null },
   aujourdhui = aujourdhuiParis(),
 ): 'a_venir' | 'en_cours' | 'terminee' {
-  if (s.status === 'terminee') return 'terminee'
   const debut = s.date_debut ? String(s.date_debut).slice(0, 10) : null
   const fin = s.date_fin ? String(s.date_fin).slice(0, 10) : debut
-  if (!debut) return s.status === 'en_cours' ? 'en_cours' : 'a_venir'
-  if (debut > aujourdhui) return 'a_venir'
+  if (!debut || debut > aujourdhui) return 'a_venir'
   if (fin && fin < aujourdhui) return 'terminee'
   return 'en_cours'
 }
