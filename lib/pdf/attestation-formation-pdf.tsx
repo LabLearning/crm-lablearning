@@ -19,13 +19,43 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
   const today = new Date(session?.date_fin || Date.now()).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const numero = `ATT-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
 
+  // L'attestation tient sur une page : les listes longues passent sur deux
+  // colonnes et les modalités d'évaluation en un seul paragraphe
+  const objectifs: string[] = (formation.objectifs_pedagogiques || [])
+    .map((o: string) => String(o).trim()).filter((o: string) => o && !/:$/.test(o))
+  const competences: string[] = (formation.competences_visees || []).map((c: string) => String(c).trim()).filter(Boolean)
+  const modalites = String(formation.modalites_evaluation || 'Évaluation des acquis en cours et en fin de formation (QCM, mise en situation pratique).')
+    .split(/\r?\n/).map((l) => l.replace(/^[\s\-•*·]+/, '').trim()).filter(Boolean)
+    .map((l, i, t) => (i < t.length - 1 && !/[.:;]$/.test(l) ? `${l} ;` : l)).join(' ')
+  // Plus le programme est long, plus le texte se resserre
+  const volume = objectifs.join(' ').length + competences.join(' ').length + modalites.length
+  const taille = volume <= 1100 ? 7.4 : volume <= 1600 ? 6.8 : 6.2
+  const interligne = volume <= 1100 ? 1.35 : volume <= 1600 ? 1.28 : 1.2
+  const Liste = ({ items }: { items: string[] }) => {
+    const deux = items.length > 5
+    const moitie = Math.ceil(items.length / 2)
+    const colonnes = deux ? [items.slice(0, moitie), items.slice(moitie)] : [items]
+    return (
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        {colonnes.map((col, k) => (
+          <View key={k} style={{ flex: 1 }}>
+            {col.map((t, i) => (
+              <Text key={i} style={{ fontSize: taille, color: SURFACE_700, lineHeight: interligne, paddingLeft: 8, marginBottom: 1.2 }}>- {t}</Text>
+            ))}
+          </View>
+        ))}
+      </View>
+    )
+  }
+  const bloc = { marginBottom: volume <= 1100 ? 10 : 7 }
+
   return (
     <Document>
-      <Page size="A4" style={shared.page}>
+      <Page size="A4" style={{ ...shared.page, paddingTop: 36, paddingBottom: 48 }}>
         <PdfDocHeader docTitle="Attestation de fin de formation" numero={numero} org={org} />
 
-        <View style={shared.section}>
-          <Text style={{ fontSize: 10, color: SURFACE_700, lineHeight: 1.8, marginBottom: 10 }}>
+        <View style={bloc}>
+          <Text style={{ fontSize: 9.5, color: SURFACE_700, lineHeight: 1.45 }}>
             {`Je soussigné(e), représentant(e) de ${org.name}, organisme de formation certifié Qualiopi, atteste que :`}
           </Text>
         </View>
@@ -42,13 +72,13 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
           {apprenant.entreprise && <Text style={shared.infoBoxText}>Entreprise : {apprenant.entreprise}</Text>}
         </View>
 
-        <View style={shared.section}>
-          <Text style={{ fontSize: 10, color: SURFACE_700, lineHeight: 1.8 }}>
+        <View style={bloc}>
+          <Text style={{ fontSize: 9.5, color: SURFACE_700, lineHeight: 1.45 }}>
             a suivi la formation suivante :
           </Text>
         </View>
 
-        <View style={shared.section}>
+        <View style={bloc}>
           <PdfSectionTitle>Formation suivie</PdfSectionTitle>
           <View style={shared.row}><Text style={shared.label}>Intitulé :</Text><Text style={{ ...shared.value, fontFamily: 'Satoshi', fontWeight: 700 }}>{formation.intitule}</Text></View>
           {formation.reference && <View style={shared.row}><Text style={shared.label}>Référence :</Text><Text style={shared.value}>{formation.reference}</Text></View>}
@@ -63,38 +93,28 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
           {assiduite != null && <View style={shared.row}><Text style={shared.label}>Assiduité :</Text><Text style={shared.value}>{assiduite}%</Text></View>}
         </View>
 
-        {formation.objectifs_pedagogiques && formation.objectifs_pedagogiques.length > 0 && (
-          <View style={shared.section}>
+        {objectifs.length > 0 && (
+          <View style={bloc}>
             <PdfSectionTitle>Objectifs pédagogiques atteints</PdfSectionTitle>
-            {formation.objectifs_pedagogiques.map((obj: string, i: number) => (
-              <Text key={i} style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, paddingLeft: 10 }}>
-                - {obj}
-              </Text>
-            ))}
+            <Liste items={objectifs} />
           </View>
         )}
 
-        {formation.competences_visees && formation.competences_visees.length > 0 && (
-          <View style={shared.section}>
+        {competences.length > 0 && (
+          <View style={bloc}>
             <PdfSectionTitle>Compétences acquises</PdfSectionTitle>
-            {formation.competences_visees.map((comp: string, i: number) => (
-              <Text key={i} style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, paddingLeft: 10 }}>
-                - {comp}
-              </Text>
-            ))}
+            <Liste items={competences} />
           </View>
         )}
 
-        <View style={shared.section}>
+        <View style={bloc}>
           <PdfSectionTitle>Modalités d'évaluation</PdfSectionTitle>
-          <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
-            {formation.modalites_evaluation || 'Évaluation des acquis en cours et en fin de formation (QCM, mise en situation pratique).'}
-          </Text>
+          <Text style={{ fontSize: taille, color: SURFACE_700, lineHeight: interligne }}>{modalites}</Text>
         </View>
 
-        <View style={shared.section}>
+        <View style={bloc}>
           <PdfSectionTitle>Résultats de l'évaluation des acquis</PdfSectionTitle>
-          <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
+          <Text style={{ fontSize: 7.8, color: SURFACE_700, lineHeight: 1.4 }}>
             {heuresSuivies != null
               ? `Parcours suivi partiellement (${heuresSuivies.toLocaleString('fr-FR')} heures sur ${formation.duree_heures || 0} prévues). Les acquis sont attestés à hauteur du parcours réellement effectué.${assiduite != null ? ` Assiduité constatée : ${assiduite}%.` : ''}`
               : assiduite != null
@@ -103,18 +123,19 @@ export function AttestationFormationPDF({ apprenant, session, formation, org, as
           </Text>
         </View>
 
-        <View style={{ marginTop: 30 }}>
-          <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}</Text>
-          <View style={{ marginTop: 15 }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginBottom: 6 }}>Pour {org.name}</Text>
-            <View style={{ height: 80, width: 200, position: 'relative' }}>
-              {org.tampon_signature_url ? (
-                <Image src={org.tampon_signature_url} style={{ position: 'absolute', top: 0, left: 0, width: 160, height: 80, objectFit: 'contain' }} />
-              ) : (
-                <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#CBD3DB', width: 200 }} />
-              )}
-            </View>
-            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 4 }}>Signature et cachet</Text>
+        {/* Date et cachet côte à côte : le bloc reste sur la même page */}
+        <View wrap={false} style={{ marginTop: 6, flexDirection: 'row', alignItems: 'flex-start', gap: 20 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 8, color: SURFACE_500 }}>Fait à {org.city || '___________'}, le {today}</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, marginTop: 6 }}>Pour {org.name}</Text>
+            <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 2 }}>Signature et cachet</Text>
+          </View>
+          <View style={{ height: 60, width: 150, position: 'relative' }}>
+            {org.tampon_signature_url ? (
+              <Image src={org.tampon_signature_url} style={{ position: 'absolute', top: 0, left: 0, width: 150, height: 60, objectFit: 'contain' }} />
+            ) : (
+              <View style={{ height: 50, borderBottomWidth: 0.5, borderBottomColor: '#CBD3DB', width: 150 }} />
+            )}
           </View>
         </View>
 
