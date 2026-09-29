@@ -34,13 +34,12 @@ export async function GET(req: NextRequest) {
   ])
   if (!sess) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
 
-  const [{ data: formation }, { data: inscriptions }, { data: em }] = await Promise.all([
+  const [{ data: formation }, { data: inscriptions }] = await Promise.all([
     supabase.from('formations').select('*').eq('id', (sess as any).formation_id).maybeSingle(),
     supabase.from('inscriptions')
       .select('apprenant:apprenants(*)')
       .eq('session_id', sessionId)
       .not('status', 'in', '("annule","abandonne")'),
-    supabase.from('emargements').select('apprenant_id, est_present').eq('session_id', sessionId),
   ])
 
   const apprenants = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
@@ -49,18 +48,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Aucun stagiaire sur cette session' }, { status: 404 })
   }
 
-  // Assiduité de chacun, comme sur le certificat individuel.
+  // Heures et assiduité de chacun, comme sur le certificat individuel : une
+  // demi-journée non signée n'est pas une absence, seule l'absence déclarée compte.
   const duree = Number((formation as any)?.duree_heures || 0)
+  const { heuresCertificats } = await import('@/lib/certificat-heures')
+  const heures = await heuresCertificats(supabase, { sessionId, organizationId: orgId, dureeFormation: duree })
   const stagiaires = apprenants.map((a: any) => {
-    const lignes = (em || []).filter((e: any) => e.apprenant_id === a.id)
-    if (lignes.length === 0) return { apprenant: a }
-    const presents = lignes.filter((e: any) => e.est_present).length
-    const assiduite = Math.round((presents / lignes.length) * 100)
-    return {
-      apprenant: a,
-      assiduite,
-      heuresPresence: duree ? Math.round(duree * assiduite) / 100 : undefined,
-    }
+    const h = heures.get(a.id)
+    if (!h) return { apprenant: a }
+    return { apprenant: a, assiduite: h.assiduite, heuresPresence: h.heures }
   })
 
   const org = await withDocumentLogo(supabase, orgRow)

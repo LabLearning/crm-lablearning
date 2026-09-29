@@ -166,3 +166,146 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
     </Document>
   )
 }
+
+// ─── Fiche papier à remplir à la main ────────────────────────────────────────
+
+/** Case à cocher dessinée (les glyphes de case ne sont pas dans la police). */
+const Case = ({ label }: { label: string }) => (
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 10, marginBottom: 4 }}>
+    <View style={{ width: 8, height: 8, borderWidth: 0.8, borderColor: SURFACE_500, borderRadius: 1.5 }} />
+    <Text style={{ fontSize: 7.8, color: SURFACE_700 }}>{label}</Text>
+  </View>
+)
+const Cases = ({ options }: { options: string[] }) => (
+  <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>{options.map((o) => <Case key={o} label={o} />)}</View>
+)
+/** Lignes d'écriture. */
+const Lignes = ({ n }: { n: number }) => (
+  <View>{Array.from({ length: n }).map((_, i) => <View key={i} style={{ height: 18, borderBottomWidth: 0.6, borderBottomColor: '#BCC6D0' }} />)}</View>
+)
+const Question = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <View style={{ marginBottom: 8 }} wrap={false}>
+    <Text style={{ fontSize: 8.4, fontWeight: 700, color: SURFACE_900, marginBottom: 3 }}>{label}</Text>
+    {children}
+  </View>
+)
+
+/**
+ * Compte rendu vierge, sur la structure du formulaire en ligne : le formateur
+ * le remplit à la main pendant ou après la session, puis le reporte (ou le
+ * dépose au dossier). Demi-journées, objectifs et stagiaires sont imprimés.
+ */
+export function CompteRenduPapierPDF({ org, entete, cr, listes }: {
+  org: any
+  entete: EnteteCompteRendu
+  /** Compte rendu vierge de la session (demi-journées, objectifs, stagiaires) */
+  cr: CompteRendu
+  listes: { methodes: string[]; modalites: string[]; niveaux: string[]; participations: string[]; salles: string[] }
+}) {
+  return (
+    <Document title={`Compte rendu à remplir ${entete.reference}`} author={org?.name || 'Lab Learning'}>
+      <Page size="A4" style={shared.page}>
+        <PdfDocHeader docTitle="Compte rendu de formation" numero={entete.reference} statut="À remplir par le formateur" org={org} />
+
+        <View style={[shared.section, { backgroundColor: BRAND_ULTRA_LIGHT, borderRadius: 6, padding: 12 }]}>
+          <Ligne label="Formation" valeur={entete.formation} />
+          <Ligne label="Entreprise" valeur={entete.client} />
+          <Ligne label="Dates" valeur={entete.periode} />
+          <Ligne label="Durée" valeur={entete.duree} />
+          <Ligne label="Lieu" valeur={entete.lieu} />
+          <Ligne label="Formateur" valeur={entete.formateur} />
+        </View>
+
+        <View style={shared.section}>
+          <View minPresenceAhead={150}><PdfSectionTitle icon="calendar">Déroulé de la formation</PdfSectionTitle></View>
+          <Text style={{ fontSize: 7.8, color: SURFACE_500, marginBottom: 6 }}>Pour chaque demi-journée : ce que vous avez fait avec le groupe, et comment.</Text>
+          {cr.deroule.map((d) => (
+            <View key={`${d.date}-${d.creneau}`} wrap={false} style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 9, marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <Text style={{ fontSize: 8.8, fontWeight: 700, color: SURFACE_900 }}>{libelleDemiJournee(d).replace(/^./, (c) => c.toUpperCase())}</Text>
+                <View style={{ flexDirection: 'row' }}><Case label="Autre formateur" /><Case label="Pas de formation" /></View>
+              </View>
+              <Lignes n={4} />
+              <Text style={{ fontSize: 7.4, color: SURFACE_500, marginTop: 5, marginBottom: 3 }}>Méthodes utilisées</Text>
+              <Cases options={listes.methodes} />
+            </View>
+          ))}
+        </View>
+
+        <View style={shared.section}>
+          <View minPresenceAhead={150}><PdfSectionTitle icon="target">Objectifs de la formation</PdfSectionTitle></View>
+          {cr.objectifs.map((o, i) => (
+            <View key={i} wrap={false} style={{ borderBottomWidth: 0.5, borderBottomColor: SURFACE_200, paddingVertical: 5 }}>
+              <Text style={{ fontSize: 8.4, color: SURFACE_900, marginBottom: 3 }}>{o.objectif}</Text>
+              <Cases options={['Atteint', 'Partiellement atteint', 'Non atteint']} />
+              <Text style={{ fontSize: 7.2, color: SURFACE_400 }}>Si partiel ou non atteint, pourquoi :</Text>
+              <Lignes n={1} />
+            </View>
+          ))}
+          <Question label="Autres objectifs travaillés"><Lignes n={2} /></Question>
+        </View>
+
+        <View style={shared.section}>
+          <View minPresenceAhead={150}><PdfSectionTitle icon="users">Le groupe</PdfSectionTitle></View>
+          <Question label="Niveau du groupe à l’entrée"><Cases options={listes.niveaux} /></Question>
+          <Question label="Participation"><Cases options={listes.participations} /></Question>
+          <Question label="Dynamique et ambiance"><Lignes n={2} /></Question>
+          <Question label="Assiduité (retards, absences, départs anticipés)"><Lignes n={2} /></Question>
+        </View>
+
+        <View style={shared.section}>
+          <View minPresenceAhead={150}><PdfSectionTitle icon="clipboardCheck">Évaluation des acquis</PdfSectionTitle></View>
+          <Question label="Modalités d’évaluation"><Cases options={listes.modalites} /></Question>
+          <Question label="Résultats d’ensemble"><Lignes n={2} /></Question>
+          <Text style={{ fontSize: 8.4, fontWeight: 700, color: SURFACE_900, marginBottom: 4 }}>Acquis de chaque stagiaire</Text>
+          <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6 }}>
+            <View style={{ flexDirection: 'row', backgroundColor: SURFACE_50, paddingVertical: 4, paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 7.2, color: SURFACE_500, width: 130 }}>Stagiaire</Text>
+              <Text style={{ fontSize: 7.2, color: SURFACE_500, width: 44, textAlign: 'center' }}>Acquis</Text>
+              <Text style={{ fontSize: 7.2, color: SURFACE_500, width: 44, textAlign: 'center' }}>En cours</Text>
+              <Text style={{ fontSize: 7.2, color: SURFACE_500, width: 50, textAlign: 'center' }}>Non acquis</Text>
+              <Text style={{ fontSize: 7.2, color: SURFACE_500, flex: 1, paddingLeft: 6 }}>Commentaire</Text>
+            </View>
+            {[...cr.stagiaires, ...Array.from({ length: 2 }).map((_, i) => ({ apprenant_id: `vide-${i}`, nom: '', retire: false }))].map((s: any) => (
+              <View key={s.apprenant_id} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', minHeight: 22, paddingHorizontal: 8, borderTopWidth: 0.5, borderTopColor: SURFACE_200 }}>
+                <Text style={{ fontSize: 8.2, color: SURFACE_900, width: 130 }}>{s.nom}{s.retire ? ' (annulé)' : ''}</Text>
+                {[44, 44, 50].map((w, k) => (
+                  <View key={k} style={{ width: w, alignItems: 'center' }}>
+                    <View style={{ width: 9, height: 9, borderWidth: 0.8, borderColor: SURFACE_500, borderRadius: 1.5 }} />
+                  </View>
+                ))}
+                <View style={{ flex: 1, height: 14, marginLeft: 6, borderBottomWidth: 0.6, borderBottomColor: '#BCC6D0' }} />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={shared.section}>
+          <View minPresenceAhead={150}><PdfSectionTitle icon="building">Conditions de réalisation</PdfSectionTitle></View>
+          <Question label="Salle et équipements"><Cases options={listes.salles} /></Question>
+          <Question label="Précisions sur les locaux et le matériel"><Lignes n={2} /></Question>
+          <Question label="Difficultés ou incidents"><Lignes n={2} /></Question>
+        </View>
+
+        <View style={shared.section}>
+          <View minPresenceAhead={150}><PdfSectionTitle icon="award">Bilan et suites</PdfSectionTitle></View>
+          <Question label="Points positifs"><Lignes n={2} /></Question>
+          <Question label="Retours des stagiaires"><Lignes n={2} /></Question>
+          <Question label="Besoins détectés (autres salariés à former, formation complémentaire…)"><Lignes n={2} /></Question>
+          <Question label="Recommandations"><Lignes n={2} /></Question>
+        </View>
+
+        <View wrap={false} style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
+          <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10, height: 70 }}>
+            <Text style={{ fontSize: 7.8, color: SURFACE_500 }}>Date</Text>
+          </View>
+          <View style={{ flex: 2, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 10, height: 70 }}>
+            <Text style={{ fontSize: 7.8, color: SURFACE_500 }}>Signature du formateur</Text>
+          </View>
+        </View>
+
+        <PdfDocFooter numero={`Compte rendu · ${entete.reference}`} org={org} />
+      </Page>
+    </Document>
+  )
+}

@@ -27,36 +27,25 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { withDocumentLogo } = await import('@/lib/pdf/org-logo')
   const org = await withDocumentLogo(supabase, orgRaw)
 
-  // Calculer assiduité
-  const { data: emargements } = await supabase.from('emargements').select('est_present').eq('session_id', sessionId).eq('apprenant_id', params.id)
-  const total = (emargements || []).length
-  const present = (emargements || []).filter(e => e.est_present).length
-  const assiduite = total > 0 ? Math.round((present / total) * 100) : undefined
-
-  // Heures RÉELLEMENT suivies : l'attestation dit la vérité du parcours.
-  // Priorité au relevé explicite (abandon POEI, heures de présence saisies),
-  // sinon prorata de l'assiduité sur la durée de la formation.
+  // Heures et assiduité selon la règle commune des certificats : une
+  // demi-journée non signée n'est pas une absence (feuille papier, signature
+  // oubliée), seule compte l'absence déclarée par le formateur ; une POEI porte
+  // la durée de son parcours ou les heures effectuées du candidat.
   const dureeTheorique = Number(formation?.duree_heures) || null
-  let heuresSuivies: number | null = null
-  try {
-    const { data: candPoei } = await supabase.from('poei_candidats')
-      .select('heures_effectuees, statut, poei:poei_id(session_id)')
-      .eq('apprenant_id', params.id).eq('statut', 'abandonne')
-      .not('heures_effectuees', 'is', null)
-    const lie = (candPoei || []).find((c: any) => c.poei?.session_id === sessionId)
-    if (lie) heuresSuivies = Number((lie as any).heures_effectuees)
-  } catch { /* colonnes absentes avant migration 140 */ }
-  if (heuresSuivies == null) {
-    const { data: insc } = await supabase.from('inscriptions')
-      .select('heures_presence').eq('session_id', sessionId).eq('apprenant_id', params.id).maybeSingle()
-    if (insc?.heures_presence != null) heuresSuivies = Number(insc.heures_presence)
-  }
-  if (heuresSuivies == null && dureeTheorique && assiduite != null && assiduite < 100) {
-    heuresSuivies = Math.round(dureeTheorique * assiduite) / 100
-  }
+  const { heuresCertificats } = await import('@/lib/certificat-heures')
+  const h = (await heuresCertificats(supabase, {
+    sessionId, organizationId: auth.user.organizationId, dureeFormation: dureeTheorique,
+  })).get(params.id)
+  const assiduite = h?.assiduite
+  // Heures de présence saisies à la main sur l'inscription : elles priment
+  const { data: insc } = await supabase.from('inscriptions')
+    .select('heures_presence').eq('session_id', sessionId).eq('apprenant_id', params.id).maybeSingle()
+  const saisies = Number(insc?.heures_presence) > 0 ? Number(insc!.heures_presence) : null
+  let heuresSuivies: number | null = saisies ?? (h ? h.heures : null)
   // Une valeur égale (ou supérieure) à la durée prévue n'apporte rien : on
   // n'affiche le distinguo que quand le parcours est réellement partiel.
-  if (heuresSuivies != null && dureeTheorique && heuresSuivies >= dureeTheorique) heuresSuivies = null
+  const reference = h?.dureeTotale || dureeTheorique
+  if (heuresSuivies != null && reference && heuresSuivies >= reference) heuresSuivies = null
 
   const buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session, formation, org, assiduite, heuresSuivies }) as any)
   return new NextResponse(new Uint8Array(buffer), {

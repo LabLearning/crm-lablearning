@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowLeft, ClipboardList } from '@/components/ui/icons'
+import { ArrowLeft, ClipboardList, Printer } from '@/components/ui/icons'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { resolveFormateur } from '../../_formateur/guard'
 import { formatDate } from '@/lib/utils'
@@ -70,6 +70,10 @@ export default async function RapportPage({ params }: { params: { sessionId: str
           {s.date_debut ? ` · ${formatDate(s.date_debut, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
           {s.reference ? ` · ${s.reference}` : ''}
         </p>
+        <a href={`/api/pdf/compte-rendu/${params.sessionId}?vierge=1`}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-surface-500 hover:text-brand-600">
+          <Printer className="h-3.5 w-3.5" /> Imprimer la fiche papier à remplir pendant la session
+        </a>
       </div>
 
       <RapportForm

@@ -1185,6 +1185,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                   <Download className="h-4 w-4" /> Télécharger le compte rendu (PDF)
                 </a>
               )}
+              {!isFormateur && rapport.status === 'brouillon' && (
+                <a href={`/api/pdf/compte-rendu/${session.id}?vierge=1`}
+                  className="btn-secondary inline-flex items-center gap-2 text-sm ml-2">
+                  <Printer className="h-4 w-4" /> Fiche papier à remplir
+                </a>
+              )}
               {rapport.status === 'brouillon' && !isFormateur && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                   Le formateur n&apos;a pas encore transmis ce bilan : le contenu peut encore changer.
@@ -1200,12 +1206,18 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
           ) : (
             <div className="card p-8 text-center">
               <FileText className="h-8 w-8 text-surface-300 mx-auto mb-3" />
-              <div className="text-sm font-medium text-surface-700 mb-1">Aucun rapport rédigé</div>
+              <div className="text-sm font-medium text-surface-700 mb-1">Aucun compte rendu rédigé</div>
               <p className="text-xs text-surface-500 mb-4">
                 {isFormateur
                   ? 'Rédigez votre bilan pédagogique pour cette session.'
-                  : 'Le formateur n\'a pas encore soumis de rapport.'}
+                  : 'Le formateur n\'a pas encore transmis son compte rendu.'}
               </p>
+              {!isFormateur && (
+                <a href={`/api/pdf/compte-rendu/${session.id}?vierge=1`}
+                  className="btn-secondary inline-flex items-center gap-2 text-sm mb-2">
+                  <Printer className="h-4 w-4" /> Fiche papier à remplir (PDF)
+                </a>
+              )}
               {isFormateur && ['en_cours', 'terminee'].includes(session.status) && (
                 <Link href="/dashboard/formateur-home/rapports"
                   className="btn-primary inline-flex items-center gap-2 text-sm">
