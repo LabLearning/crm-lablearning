@@ -9,8 +9,6 @@ import {
   type EvenementPreuve, type PreuveSignatureConvention,
 } from '@/lib/pdf/certificat-signature-convention-pdf'
 
-/** Le certificat porte l'IP et le navigateur du signataire : réservé à l'équipe de gestion. */
-const ROLES_EXCLUS = ['formateur', 'apprenant', 'apporteur_affaires', 'franchise', 'client']
 
 /**
  * Certificat de signature électronique d'une convention (dossier de preuve).
@@ -20,9 +18,17 @@ const ROLES_EXCLUS = ['formateur', 'apprenant', 'apporteur_affaires', 'franchise
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireApiUser()
   if ('error' in auth) return auth.error
-  if (ROLES_EXCLUS.includes(auth.user.role)) return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
   const orgId = auth.user.organizationId
   const supabase = await createServiceRoleClient()
+
+  // Le certificat porte l'IP, le navigateur et la signature du client : mêmes
+  // droits que la page Conventions, selon les permissions de l'organisation
+  const { data: permissions } = await supabase.from('permissions').select('*')
+    .eq('organization_id', orgId).eq('role', auth.user.role)
+  const { checkDashboardAccess } = await import('@/lib/dashboard-guard')
+  if (!checkDashboardAccess('/dashboard/conventions', auth.user.role as any, (permissions || []) as any).allowed) {
+    return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+  }
 
   const { data: c } = await supabase.from('conventions')
     .select(`id, organization_id, numero, objet, status, created_at, created_by,
@@ -60,7 +66,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const org = await withDocumentLogo(supabase, orgRaw)
 
   // Noms des utilisateurs cités par le journal
-  const userIds = Array.from(new Set([c.created_by, ...(audits || []).map((a: any) => a.user_id)].filter(Boolean))) as string[]
+  const userIds = Array.from(new Set([
+    c.created_by, ...(audits || []).map((a: any) => a.user_id), ...evenements.map((e) => e.details?.par),
+  ].filter(Boolean))) as string[]
   const { data: users } = userIds.length
     ? await supabase.from('users').select('id, first_name, last_name, email').in('id', userIds)
     : { data: [] as any[] }
@@ -94,12 +102,31 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   // Exemplaire figé : relu pour vérifier son empreinte
   let exemplaire: PreuveSignatureConvention['document']['exemplaire'] = { etat: 'non_fige' }
+  const msFichier = (chemin: string) => Number((chemin.match(/signee-(\d+)\.pdf$/) || [])[1]) || 0
   if (p.signature_document_path && p.signature_document_sha256) {
     let verifie: boolean | null = null
     const { data: fichier } = await supabase.storage.from('documents').download(p.signature_document_path)
     if (fichier) verifie = sha256(Buffer.from(await fichier.arrayBuffer())) === p.signature_document_sha256
-    const ms = Number((String(p.signature_document_path).match(/signee-(\d+)\.pdf$/) || [])[1])
-    exemplaire = { etat: 'fige', sha256: p.signature_document_sha256, figeLe: ms ? new Date(ms).toISOString() : null, verifie }
+    const ms = msFichier(String(p.signature_document_path))
+    exemplaire = { etat: 'fige', sha256: p.signature_document_sha256, figeLe: ms ? new Date(ms).toISOString() : null, verifie, empreinteEnregistree: true }
+  } else {
+    // Exemplaire déposé mais dont le chemin n'a pas pu être noté (colonnes
+    // absentes) : le fichier de la signature en cours se retrouve dans le dossier
+    const dossier = `${orgId}/conventions/${c.id}`
+    const { data: fichiers } = await supabase.storage.from('documents').list(dossier, { limit: 100 })
+    const dernier = (fichiers || [])
+      .map((f: any) => ({ nom: f.name as string, ms: msFichier(f.name) }))
+      .filter((f) => f.ms && new Date(f.ms).toISOString() > derniereAnnulation)
+      .sort((a, b) => b.ms - a.ms)[0]
+    if (dernier) {
+      const { data: fichier } = await supabase.storage.from('documents').download(`${dossier}/${dernier.nom}`)
+      if (fichier) {
+        exemplaire = {
+          etat: 'fige', sha256: sha256(Buffer.from(await fichier.arrayBuffer())),
+          figeLe: new Date(dernier.ms).toISOString(), verifie: null, empreinteEnregistree: false,
+        }
+      }
+    }
   }
 
   const ipUa = (ip?: string | null, ua?: string | null) => [ip ? `IP ${ip}` : null, decrireAppareil(ua)].filter(Boolean).join(' · ') || null
@@ -127,9 +154,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     })
   }
   for (const e of evenements) {
-    if (e.evenement === 'lien_ouvert') journal.push({ at: e.survenu_at, libelle: 'Page de signature ouverte', detail: ipUa(e.ip_address, e.user_agent) })
-    else if (e.evenement === 'document_consulte') journal.push({ at: e.survenu_at, libelle: particulier ? 'Contrat complet consulté (PDF)' : 'Convention complète consultée (PDF)', detail: ipUa(e.ip_address, e.user_agent) })
-    else if (e.evenement === 'signature') journal.push({ at: e.survenu_at, libelle: `Signature par ${e.details?.signataire || c.signature_client_nom}`, detail: ipUa(e.ip_address, e.user_agent) })
+    // Une ouverture depuis un poste de l'équipe n'est pas celle du signataire
+    const equipe = e.details?.compte_crm ? `depuis un compte du CRM (${e.details.compte_crm})` : null
+    const detail = [equipe, ipUa(e.ip_address, e.user_agent)].filter(Boolean).join(' · ') || null
+    if (e.evenement === 'lien_ouvert') journal.push({ at: e.survenu_at, libelle: 'Page de signature ouverte', detail })
+    else if (e.evenement === 'document_consulte') journal.push({ at: e.survenu_at, libelle: particulier ? 'Contrat complet consulté (PDF)' : 'Convention complète consultée (PDF)', detail })
+    else if (e.evenement === 'signature') journal.push({ at: e.survenu_at, libelle: `Signature par ${e.details?.signataire || c.signature_client_nom}`, detail })
+    else if (e.evenement === 'annulation') journal.push({ at: e.survenu_at, libelle: 'Signature annulée par l’organisme', detail: nomUser(e.details?.par) ? `par ${nomUser(e.details?.par)}` : null })
   }
   if (!evtSignature && horodatage) {
     journal.push({

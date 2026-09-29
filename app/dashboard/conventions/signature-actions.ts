@@ -178,6 +178,30 @@ export async function annulerConventionSigneeAction(conventionId: string): Promi
   return { success: true }
 }
 
+/**
+ * Action publique : la page de signature s'est affichée dans un navigateur (son
+ * script a tourné, ce que ne font pas les aperçus de liens). C'est la preuve
+ * d'ouverture du lien ; une visite depuis un compte du CRM est notée comme telle.
+ */
+export async function signalerOuvertureConventionAction(token: string): Promise<void> {
+  if (!token || token.length > 128) return
+  const supabase = await createServiceRoleClient()
+  const { data: conv } = await supabase.from('conventions')
+    .select('id, organization_id, status, signature_token_expires_at')
+    .eq('signature_token', token).maybeSingle()
+  if (!conv || ['signee_client', 'signee_complete'].includes(conv.status)) return
+  if (conv.signature_token_expires_at && new Date(conv.signature_token_expires_at) < new Date()) return
+
+  const { origineRequete, journaliserEvenementConvention, estRobot, compteCrmConnecte } = await import('@/lib/preuve-signature-convention')
+  const origine = await origineRequete()
+  if (estRobot(origine.userAgent)) return
+  const compte = await compteCrmConnecte(supabase)
+  await journaliserEvenementConvention(supabase, {
+    organizationId: conv.organization_id, conventionId: conv.id, evenement: 'lien_ouvert',
+    ip: origine.ip, userAgent: origine.userAgent, details: compte ? { compte_crm: compte } : undefined,
+  })
+}
+
 /** Action publique : enregistre la signature client (depuis la page /convention/[token]/signer) */
 export async function signConventionPublicAction(
   token: string,
@@ -185,11 +209,14 @@ export async function signConventionPublicAction(
   meta: { ip?: string; userAgent?: string },
 ): Promise<ActionResult> {
   if (!data.nom?.trim()) return { success: false, error: 'Nom requis pour la signature' }
+  if (data.nom.length > 200) return { success: false, error: 'Nom trop long' }
   if (!data.signatureDataUrl?.startsWith('data:image/')) {
     return { success: false, error: 'Signature manquante' }
   }
+  if (data.signatureDataUrl.length > 2_000_000) return { success: false, error: 'Signature trop lourde, effacez-la et recommencez.' }
   if (!data.consentement) {
-    return { success: false, error: 'Cochez la case indiquant que vous avez pris connaissance de la convention.' }
+    // Une page ouverte avant la mise à jour n'a pas encore la case à cocher
+    return { success: false, error: 'Cochez la case indiquant que vous avez pris connaissance du document. Si elle n’apparaît pas, rechargez la page.' }
   }
 
   const supabase = await createServiceRoleClient()

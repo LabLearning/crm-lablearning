@@ -29,7 +29,7 @@ export interface PreuveSignatureConvention {
     organismeSiret: string | null
     organismeNda: string | null
     exemplaire:
-      | { etat: 'fige'; sha256: string; figeLe: string | null; verifie: boolean | null }
+      | { etat: 'fige'; sha256: string; figeLe: string | null; verifie: boolean | null; empreinteEnregistree: boolean }
       | { etat: 'non_fige' }
   }
   signataire: { nom: string; qualite: string; entreprise: string | null; emailLien: string | null }
@@ -206,7 +206,9 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                 </Ligne>
                 <Ligne label="Empreinte SHA-256" mono>{doc.exemplaire.sha256}</Ligne>
                 <Ligne label="Contrôle">
-                  {doc.exemplaire.verifie === true
+                  {!doc.exemplaire.empreinteEnregistree
+                    ? 'Empreinte calculée à l’émission de ce certificat : elle n’a pas pu être enregistrée au moment de la signature.'
+                    : doc.exemplaire.verifie === true
                     ? 'L’exemplaire conservé a été relu à l’émission de ce certificat : son empreinte est identique.'
                     : doc.exemplaire.verifie === false
                       ? 'Attention : l’exemplaire conservé ne correspond plus à l’empreinte enregistrée.'

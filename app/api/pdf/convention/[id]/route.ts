@@ -24,12 +24,6 @@ export async function GET(
       return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 401 })
     }
     orgId = c.organization_id
-    const { origineRequete, journaliserEvenementConvention } = await import('@/lib/preuve-signature-convention')
-    const origine = await origineRequete()
-    await journaliserEvenementConvention(supabase, {
-      organizationId: c.organization_id, conventionId: c.id, evenement: 'document_consulte',
-      ip: origine.ip, userAgent: origine.userAgent,
-    })
   } else {
     const auth = await requireApiUser()
     if ('error' in auth) return auth.error
@@ -49,6 +43,17 @@ export async function GET(
   // ── Contrôle de complétude : blocage si mention obligatoire manquante ──
   const { checkConventionCompleteness } = await import('@/lib/convention-checklist')
   const check = await checkConventionCompleteness(supabase, params.id)
+  if (check && !check.ok && token) {
+    // Le signataire n'a pas à lire la liste interne des champs manquants
+    return new NextResponse(
+      `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Document indisponible</title></head>
+      <body style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:60px auto;padding:0 20px;color:#1C1917">
+      <h1 style="font-size:20px">Document momentanément indisponible</h1>
+      <p style="color:#57534E;font-size:14px;line-height:1.6">La convention complète est en cours de mise à jour par l’organisme de formation. Réessayez un peu plus tard ou contactez-le.</p>
+      </body></html>`,
+      { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+    )
+  }
   if (check && !check.ok) {
     const items = check.blocking
       .map((i) => `<li><strong>${i.section}</strong> — ${i.label}</li>`)
@@ -70,6 +75,19 @@ export async function GET(
   const buffer = await renderToBuffer(
     createElement(ConventionPDF, { convention, org }) as any
   )
+
+  // Preuve de lecture, une fois le document réellement remis au signataire
+  if (token) {
+    const { origineRequete, journaliserEvenementConvention, estRobot, compteCrmConnecte } = await import('@/lib/preuve-signature-convention')
+    const origine = await origineRequete()
+    if (!estRobot(origine.userAgent)) {
+      const compte = await compteCrmConnecte(supabase)
+      await journaliserEvenementConvention(supabase, {
+        organizationId: orgId, conventionId: params.id, evenement: 'document_consulte',
+        ip: origine.ip, userAgent: origine.userAgent, details: compte ? { compte_crm: compte } : undefined,
+      })
+    }
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

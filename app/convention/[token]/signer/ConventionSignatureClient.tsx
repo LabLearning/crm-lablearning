@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { Pen, CheckCircle2, RotateCcw, FileText } from '@/components/ui/icons'
-import { signConventionPublicAction } from '@/app/dashboard/conventions/signature-actions'
+import { signConventionPublicAction, signalerOuvertureConventionAction } from '@/app/dashboard/conventions/signature-actions'
 import { texteConsentement } from '@/lib/consentement-convention'
 
 interface ConventionInfo {
@@ -36,6 +36,12 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signed, setSigned] = useState(['signee_client', 'signee_complete'].includes(convention.status))
+
+  // Preuve d'ouverture : envoyée par le navigateur une fois la page affichée
+  useEffect(() => {
+    if (!signed) signalerOuvertureConventionAction(token).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -93,11 +99,16 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
     if (!hasDrawn) { setError('Veuillez signer dans le cadre'); return }
     if (!consentement) { setError(`Cochez la case indiquant que vous avez pris connaissance de ${nomDocument}.`); return }
     setError(null); setSubmitting(true)
-    const dataUrl = canvasRef.current!.toDataURL('image/png')
-    const r = await signConventionPublicAction(token, { nom: signataireNom, signatureDataUrl: dataUrl, consentement }, { userAgent: navigator.userAgent })
-    if (r.success) setSigned(true)
-    else setError(r.error || 'Erreur')
-    setSubmitting(false)
+    try {
+      const dataUrl = canvasRef.current!.toDataURL('image/png')
+      const r = await signConventionPublicAction(token, { nom: signataireNom, signatureDataUrl: dataUrl, consentement }, { userAgent: navigator.userAgent })
+      if (r.success) setSigned(true)
+      else setError(r.error || 'Erreur')
+    } catch {
+      setError('La connexion a été interrompue. Rechargez la page : si la convention apparaît signée, votre signature est bien enregistrée.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (signed) {

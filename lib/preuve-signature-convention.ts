@@ -32,6 +32,30 @@ export async function origineRequete(): Promise<{ ip: string | null; userAgent: 
   }
 }
 
+/**
+ * Aperçus automatiques de liens (messageries, antivirus, moteurs) : ils ouvrent
+ * la page sans personne derrière, ce n'est pas une preuve d'ouverture.
+ */
+export const estRobot = (ua: string | null | undefined) =>
+  !ua || /bot|crawl|spider|preview|facebookexternalhit|whatsapp|slack|telegram|discord|skypeuri|headless|lighthouse|google-read-aloud|microsoft office|outlook|bingpreview|safelinks|proofpoint|mimecast|barracuda/i.test(ua)
+
+/**
+ * Compte du CRM connecté dans ce navigateur, s'il y en a un : une ouverture ou
+ * une signature faite depuis un poste de l'équipe doit se lire comme telle.
+ */
+export async function compteCrmConnecte(supabase: any): Promise<string | null> {
+  try {
+    const { createServerSupabaseClient } = await import('@/lib/supabase/server')
+    const anon = await createServerSupabaseClient()
+    const { data: { user } } = await anon.auth.getUser()
+    if (!user) return null
+    const { data: u } = await supabase.from('users').select('first_name, last_name, email').eq('id', user.id).maybeSingle()
+    return (u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email : null) || user.email || user.id
+  } catch {
+    return null
+  }
+}
+
 /** Ajoute un événement au journal de signature de la convention. */
 export async function journaliserEvenementConvention(
   supabase: any,
