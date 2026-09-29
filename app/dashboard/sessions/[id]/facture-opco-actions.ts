@@ -229,8 +229,45 @@ export async function enregistrerFinancementOpcoAction(
   }
 
   await logAudit({ action: 'update', entity_type: 'session', entity_id: sessionId, details: { financement_opco: true } })
+  await alignerFactureBrouillon(supabase, session.organization.id, sessionId)
   revalidatePath(`/dashboard/sessions/${sessionId}`)
+  revalidatePath('/dashboard/factures')
   return { success: true }
+}
+
+/**
+ * Une facture générée puis restée en brouillon suit le financement de la
+ * session : l'OPCO saisi après coup la fait passer à l'OPCO, avec le numéro
+ * de dossier, et son retrait la renvoie à l'entreprise. Sans cela, une
+ * facture créée quelques secondes avant la saisie de l'OPCO restait adressée
+ * à l'entreprise (FA-2026-0255). Une facture émise n'est jamais touchée.
+ */
+async function alignerFactureBrouillon(supabase: any, orgId: string, sessionId: string) {
+  const [{ data: s }, { data: f }] = await Promise.all([
+    supabase.from('sessions')
+      .select('opco_id, numero_dossier_opco, client:client_id(opco_id)')
+      .eq('id', sessionId).eq('organization_id', orgId).maybeSingle(),
+    supabase.from('factures')
+      .select('id, status, financeur_type, subrogation, numero_prise_en_charge, notes_internes')
+      .eq('organization_id', orgId).ilike('notes_internes', `%${marqueur(sessionId)}%`).maybeSingle(),
+  ])
+  if (!s || !f || f.status !== 'brouillon') return
+
+  const directe = !((s as any).opco_id || (s as any).client?.opco_id)
+  const patch = {
+    financeur_type: directe ? null : 'opco',
+    subrogation: !directe,
+    numero_prise_en_charge: directe ? null : ((s as any).numero_dossier_opco || null),
+    notes_internes: String(f.notes_internes || '').replace(/^Facture (directe|OPCO)/, directe ? 'Facture directe' : 'Facture OPCO'),
+  }
+  const inchange = (Object.keys(patch) as (keyof typeof patch)[]).every((k) => (f[k] ?? null) === (patch[k] ?? null))
+  if (inchange) return
+
+  const { error } = await supabase.from('factures')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', f.id).eq('status', 'brouillon')
+  if (error) { console.error('[facture brouillon — financement]', error); return }
+  await logAudit({ action: 'update', entity_type: 'facture', entity_id: f.id, details: { session: sessionId, directe, suit_financement: true } })
 }
 
 /**
