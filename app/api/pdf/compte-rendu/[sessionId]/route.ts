@@ -24,7 +24,16 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
 
   // Le formateur n'accède qu'aux sessions qu'il anime ; l'équipe, selon ses droits
   let formateurId: string | null = null
-  if (auth.user.role === 'formateur') {
+  let transmisSeulement = false
+  if (auth.user.role === 'franchise') {
+    // La franchise lit les comptes rendus transmis de ses établissements
+    const { franchiseDuCompte, sessionDeLaFranchise } = await import('@/lib/franchise-acces')
+    const franchiseId = await franchiseDuCompte(supabase, auth.user.id)
+    if (vierge || !franchiseId || !(await sessionDeLaFranchise(supabase, params.sessionId, franchiseId, orgId))) {
+      return NextResponse.json({ error: 'Document introuvable' }, { status: 404 })
+    }
+    transmisSeulement = true
+  } else if (auth.user.role === 'formateur') {
     const { data: f } = await supabase.from('formateurs').select('id').eq('user_id', auth.user.id).maybeSingle()
     if (!f) return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     formateurId = f.id
@@ -47,7 +56,9 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
   const [{ data: rapports }, { data: orgRaw }] = await Promise.all([
     vierge
       ? Promise.resolve({ data: [] as any[] })
-      : supabase.from('rapports_session').select('*, formateur:formateur_id(prenom, nom)')
+      : (transmisSeulement
+        ? supabase.from('rapports_session').select('*, formateur:formateur_id(prenom, nom)').in('status', ['soumis', 'valide'])
+        : supabase.from('rapports_session').select('*, formateur:formateur_id(prenom, nom)'))
         .eq('session_id', s.id).eq('organization_id', orgId)
         .order('submitted_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false }).limit(1),
     supabase.from('organizations').select('*').eq('id', orgId).single(),

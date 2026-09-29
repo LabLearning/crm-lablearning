@@ -44,6 +44,16 @@ export async function GET(req: NextRequest) {
 
   const supabase = await createServiceRoleClient()
 
+  // Compte franchise : seulement les sessions et parcours de ses établissements
+  if (auth.user.role === 'franchise') {
+    const { franchiseDuCompte, sessionDeLaFranchise, poeiDeLaFranchise } = await import('@/lib/franchise-acces')
+    const franchiseId = await franchiseDuCompte(supabase, auth.user.id)
+    const autorise = !!franchiseId && (poeiId
+      ? await poeiDeLaFranchise(supabase, poeiId, franchiseId, orgId)
+      : await sessionDeLaFranchise(supabase, sessionId, franchiseId, orgId))
+    if (!autorise) return NextResponse.json({ error: 'Document introuvable' }, { status: 404 })
+  }
+
   if (poeiId) return attestationsPoei(supabase, orgId, poeiId, candidatId, req.nextUrl.searchParams.get('heures'))
 
   const [{ data: orgRow }, { data: sess }] = await Promise.all([

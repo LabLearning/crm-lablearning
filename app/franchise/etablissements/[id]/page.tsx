@@ -3,9 +3,11 @@ import { notFound } from 'next/navigation'
 import { getFranchiseSession } from '@/lib/franchise-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { commissionStatusLabel } from '@/lib/commission'
+import { estFormationHygiene } from '@/lib/formation-hygiene'
+import { etatSession, aujourdhuiParis } from '@/lib/franchise-data'
 import {
   ArrowLeft, Building2, MapPin, GraduationCap, Banknote, Users, FileText,
-  Calendar, Hash, BadgeCheck, ShieldCheck,
+  Calendar, BadgeCheck, ShieldCheck, Download, ClipboardList,
 } from '@/components/ui/icons'
 
 export const dynamic = 'force-dynamic'
@@ -20,30 +22,14 @@ const STATUS_STYLE: Record<string, string> = {
   annulee: 'bg-rose-50 text-rose-700',
 }
 
-const OPCO_LABEL: Record<string, { label: string; bg: string; text: string }> = {
-  a_constituer: { label: 'À constituer', bg: 'bg-surface-100', text: 'text-surface-600' },
-  pret_a_envoyer: { label: 'Prêt à envoyer', bg: 'bg-surface-100', text: 'text-surface-600' },
-  envoye_opco: { label: 'Transmis OPCO', bg: 'bg-amber-50', text: 'text-amber-700' },
-  en_attente_opco: { label: 'En attente', bg: 'bg-amber-50', text: 'text-amber-700' },
-  valide_opco: { label: 'Accordé', bg: 'bg-blue-50', text: 'text-blue-700' },
-  refuse_opco: { label: 'Refusé', bg: 'bg-rose-50', text: 'text-rose-700' },
-  mise_en_paiement: { label: 'Mise en paiement', bg: 'bg-indigo-50', text: 'text-indigo-700' },
-  paye: { label: 'Payé', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+const ETAT_STYLE: Record<string, { label: string; cls: string }> = {
+  a_venir: { label: 'À venir', cls: 'bg-violet-50 text-violet-700' },
+  en_cours: { label: 'En cours', cls: 'bg-blue-50 text-blue-700' },
+  terminee: { label: 'Terminée', cls: 'bg-emerald-50 text-emerald-700' },
 }
 
-// notes import : "Formation — dates — N stagiaires — ADF_xxx — état AKTO: X"
-function parseNote(notes: string | null) {
-  if (!notes) return { formation: 'Formation', dates: null, nbStag: null, adf: null, etat: null }
-  const p = notes.split(' — ')
-  const etatPart = p.find((x) => x.startsWith('état AKTO:'))
-  return {
-    formation: p[0] || 'Formation',
-    dates: p[1] || null,
-    nbStag: p[2] || null,
-    adf: p.find((x) => /^ADF_/.test(x)) || null,
-    etat: etatPart ? etatPart.replace('état AKTO:', '').trim() : null,
-  }
-}
+const jourCourt = (d: string | null) => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '')
+const periode = (a: string | null, b: string | null) => (!a ? 'Dates à venir' : b && b !== a ? `${jourCourt(a)} au ${jourCourt(b)}` : jourCourt(a))
 
 function initials(nom: string | null, prenom: string | null) {
   return ((nom?.[0] || '') + (prenom?.[0] || '')).toUpperCase() || '?'
@@ -68,25 +54,90 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
   const auditsReseau = await getFranchiseAudits(supabase, franchise.id, orgId)
   const audits = auditsReseau.get(client.id) || null
 
-  const [{ data: dossiers }, { data: apprenants }] = await Promise.all([
-    supabase
-      .from('dossiers_formation')
-      .select('id, numero, status, montant_prise_en_charge, numero_prise_en_charge, opco_workflow_status, commission_montant, commission_status, date_creation, notes')
-      .eq('client_id', client.id)
-      .eq('organization_id', orgId)
-      .order('date_creation', { ascending: false }),
+  const [{ data: sessionsBrutes }, { data: apprenants }, { data: lignes }, { data: poeis }] = await Promise.all([
+    supabase.from('sessions')
+      .select('id, reference, intitule, date_debut, date_fin, poei_intervention_id, formation:formation_id(intitule, categorie)')
+      .eq('client_id', client.id).eq('organization_id', orgId).neq('status', 'annulee'),
     supabase
       .from('apprenants')
       .select('id, nom, prenom, civilite, poste')
       .eq('client_id', client.id)
       .eq('organization_id', orgId)
       .order('nom'),
+    supabase.from('commissions_sessions').select('session_id, base_montant, commission_montant, status')
+      .eq('client_id', client.id).eq('organization_id', orgId).neq('status', 'annulee'),
+    supabase.from('poei').select('id, numero, session_id, date_debut, date_fin')
+      .eq('client_id', client.id).eq('organization_id', orgId),
+  ])
+  const sessions = (sessionsBrutes || []) as any[]
+  const ids = sessions.map((x) => x.id)
+  const ivIds = sessions.map((x) => x.poei_intervention_id).filter(Boolean)
+  const [{ data: rapports }, { data: inscriptions }, { data: interventions }] = await Promise.all([
+    ids.length
+      ? supabase.from('rapports_session').select('session_id, submitted_at, formateur:formateur_id(prenom, nom)').in('session_id', ids).in('status', ['soumis', 'valide'])
+      : Promise.resolve({ data: [] as any[] }),
+    ids.length
+      ? supabase.from('inscriptions').select('session_id').in('session_id', ids).not('status', 'in', '("annule","abandonne")')
+      : Promise.resolve({ data: [] as any[] }),
+    ivIds.length
+      ? supabase.from('poei_interventions').select('id, poei_id').in('id', ivIds)
+      : Promise.resolve({ data: [] as any[] }),
   ])
 
-  const ds = dossiers || []
+  // Regroupement : une formation par session, un parcours POEI pour toutes ses sessions
+  const poeiDeSession = new Map<string, string>()
+  for (const p of (poeis || []) as any[]) if (p.session_id) poeiDeSession.set(p.session_id, p.id)
+  const poeiDeIv = new Map(((interventions || []) as any[]).map((i) => [i.id, i.poei_id]))
+  for (const x of sessions) if (x.poei_intervention_id && poeiDeIv.get(x.poei_intervention_id)) poeiDeSession.set(x.id, poeiDeIv.get(x.poei_intervention_id))
+  const ligneDe = new Map(((lignes || []) as any[]).map((l) => [l.session_id, l]))
+  const inscritsDe = new Map<string, number>()
+  for (const i of (inscriptions || []) as any[]) inscritsDe.set(i.session_id, (inscritsDe.get(i.session_id) || 0) + 1)
+  const aujourdhui = aujourdhuiParis()
+
+  type Formation = {
+    cle: string; titre: string; debut: string | null; fin: string | null; etat: 'a_venir' | 'en_cours' | 'terminee'
+    stagiaires: number; base: number; commission: number | null; statutCommission: string | null
+    hygiene: string | null; comptesRendus: { sessionId: string; formateur: string; le: string | null }[]
+  }
+  const groupes = new Map<string, any[]>()
+  for (const x of sessions) {
+    const cle = poeiDeSession.get(x.id) ? `poei:${poeiDeSession.get(x.id)}` : `s:${x.id}`
+    if (!groupes.has(cle)) groupes.set(cle, [])
+    groupes.get(cle)!.push(x)
+  }
+  const formations: Formation[] = Array.from(groupes.entries()).map(([cle, ss]) => {
+    const poei = cle.startsWith('poei:') ? ((poeis || []) as any[]).find((p) => p.id === cle.slice(5)) : null
+    const premiere = [...ss].sort((a, b) => String(a.date_debut || '9').localeCompare(String(b.date_debut || '9')))[0]
+    const rep = (poei && ss.find((x) => x.id === poei.session_id)) || premiere
+    const f = Array.isArray(rep.formation) ? rep.formation[0] : rep.formation
+    const debut = poei?.date_debut || rep.date_debut
+    const fin = poei?.date_fin || ss.map((x) => x.date_fin || x.date_debut).filter(Boolean).sort().pop() || rep.date_fin
+    const etat = etatSession({ date_debut: debut, date_fin: fin }, aujourdhui)
+    const lignesGroupe = ss.map((x) => ligneDe.get(x.id)).filter(Boolean) as any[]
+    return {
+      cle,
+      titre: `${poei ? 'POEI · ' : ''}${f?.intitule || rep.intitule || 'Formation'}`,
+      debut, fin, etat,
+      stagiaires: Math.max(0, ...ss.map((x) => inscritsDe.get(x.id) || 0)),
+      base: lignesGroupe.reduce((t, l) => t + Number(l.base_montant || 0), 0),
+      commission: lignesGroupe.length ? lignesGroupe.reduce((t, l) => t + Number(l.commission_montant || 0), 0) : null,
+      statutCommission: lignesGroupe[0]?.status || null,
+      // Attestations d'hygiène, une fois la formation terminée : le module
+      // hygiène d'une POEI, ou une session d'hygiène alimentaire
+      hygiene: etat !== 'terminee' ? null
+        : poei ? `/api/pdf/attestation-hygiene?poei=${poei.id}`
+          : estFormationHygiene(f) ? `/api/pdf/attestation-hygiene?session=${rep.id}` : null,
+      comptesRendus: ((rapports || []) as any[]).filter((r) => ss.some((x) => x.id === r.session_id)).map((r) => ({
+        sessionId: r.session_id,
+        formateur: r.formateur ? `${r.formateur.prenom || ''} ${r.formateur.nom || ''}`.trim() : 'Formateur',
+        le: r.submitted_at,
+      })),
+    }
+  }).sort((a, b) => String(b.debut || '').localeCompare(String(a.debut || '')))
+
   const apps = apprenants || []
-  const pec = ds.reduce((s, d) => s + Number(d.montant_prise_en_charge || 0), 0)
-  const comm = ds.reduce((s, d) => s + Number(d.commission_montant || 0), 0)
+  const pec = formations.reduce((t, f) => t + f.base, 0)
+  const comm = formations.reduce((t, f) => t + (f.commission || 0), 0)
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -112,9 +163,9 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat icon={GraduationCap} tint="brand" value={String(ds.length)} label="Formations" />
+        <Stat icon={GraduationCap} tint="brand" value={String(formations.length)} label="Formations" />
         <Stat icon={Users} tint="violet" value={String(apps.length)} label="Stagiaires" />
-        <Stat icon={FileText} tint="blue" value={fmtEuro(pec)} label="Prise en charge" />
+        <Stat icon={FileText} tint="blue" value={fmtEuro(pec)} label="Budget des formations" />
         <Stat icon={Banknote} tint="amber" value={fmtEuro(comm)} label="Commission générée TTC" />
       </div>
 
@@ -167,43 +218,57 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
         </div>
       )}
 
-      {/* Dossiers détaillés */}
+      {/* Formations de l'établissement, avec leurs documents */}
       <div>
-        <div className="text-sm font-heading font-semibold text-surface-900 mb-2">Dossiers de formation ({ds.length})</div>
-        {ds.length === 0 ? (
-          <div className="card p-6 text-center text-sm text-surface-400">Aucun dossier pour cet établissement.</div>
+        <div className="text-sm font-heading font-semibold text-surface-900 mb-2">Formations ({formations.length})</div>
+        {formations.length === 0 ? (
+          <div className="card p-6 text-center text-sm text-surface-400">Aucune formation pour cet établissement.</div>
         ) : (
           <div className="space-y-2">
-            {ds.map((d) => {
-              const n = parseNote(d.notes)
-              const opco = d.opco_workflow_status ? OPCO_LABEL[d.opco_workflow_status] : null
-              const cs = STATUS_STYLE[d.commission_status || 'a_venir']
+            {formations.map((f) => {
+              const e = ETAT_STYLE[f.etat]
+              const cs = STATUS_STYLE[f.statutCommission || 'a_venir'] || STATUS_STYLE.a_venir
               return (
-                <div key={d.id} className="card p-4">
+                <div key={f.cle} className="card p-4">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-surface-900">{n.formation}</span>
-                        {opco && <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${opco.bg} ${opco.text}`}>{opco.label}</span>}
+                        <span className="text-sm font-semibold text-surface-900">{f.titre}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${e.cls}`}>{e.label}</span>
                       </div>
                       <div className="text-xs text-surface-500 mt-1 flex items-center gap-3 flex-wrap">
-                        {n.dates && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{n.dates}</span>}
-                        {n.nbStag && <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{n.nbStag}</span>}
-                        {d.numero_prise_en_charge && <span className="inline-flex items-center gap-1"><Hash className="h-3 w-3" />Dossier OPCO {d.numero_prise_en_charge}</span>}
+                        <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{periode(f.debut, f.fin)}</span>
+                        {f.stagiaires > 0 && <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{f.stagiaires} stagiaire{f.stagiaires > 1 ? 's' : ''}</span>}
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-amber-600 tabular-nums">{fmtEuro(d.commission_montant)}</div>
-                      <div className="text-[11px] text-surface-400">votre commission</div>
+                    {f.commission != null && (
+                      <div className="text-right shrink-0">
+                        <div className="text-sm font-bold text-amber-600 tabular-nums">{fmtEuro(f.commission)}</div>
+                        <div className="text-[11px] text-surface-400">votre commission</div>
+                      </div>
+                    )}
+                  </div>
+                  {(f.hygiene || f.comptesRendus.length > 0 || f.commission != null) && (
+                    <div className="mt-3 pt-3 border-t border-surface-100 flex items-center gap-2 text-xs flex-wrap">
+                      {f.hygiene && (
+                        <a href={f.hygiene} className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 px-2.5 py-1.5 font-medium text-surface-700 hover:bg-surface-50">
+                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Attestations d&apos;hygiène (PDF)
+                        </a>
+                      )}
+                      {f.comptesRendus.map((c) => (
+                        <a key={c.sessionId} href={`/api/pdf/compte-rendu/${c.sessionId}`}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 px-2.5 py-1.5 font-medium text-surface-700 hover:bg-surface-50">
+                          <ClipboardList className="h-3.5 w-3.5 text-brand-600" /> Compte rendu de {c.formateur}
+                          <Download className="h-3 w-3 text-surface-400" />
+                        </a>
+                      ))}
+                      {f.commission != null && (
+                        <span className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${cs}`}>
+                          <BadgeCheck className="h-3 w-3" /> Commission {commissionStatusLabel(f.statutCommission as any).toLowerCase()}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-surface-100 flex items-center gap-4 text-xs flex-wrap">
-                    <span className="text-surface-500">Prise en charge : <strong className="text-surface-800 tabular-nums">{fmtEuro(d.montant_prise_en_charge)}</strong></span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${cs}`}>
-                      <BadgeCheck className="h-3 w-3" /> Commission {commissionStatusLabel(d.commission_status).toLowerCase()}
-                    </span>
-                    <span className="text-surface-300 font-mono ml-auto">{d.numero}</span>
-                  </div>
+                  )}
                 </div>
               )
             })}
