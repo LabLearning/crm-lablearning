@@ -1,6 +1,6 @@
 'use client'
 
-import type { AuditEtablissement } from '@/lib/audit-hygiene-synthese'
+import { bilanAudit, type AuditEtablissement } from '@/lib/audit-hygiene-synthese'
 
 const jour = (d: string | null) => (d ? new Date(`${d.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
 
@@ -14,7 +14,7 @@ function Resume({ titre, a }: { titre: string; a: AuditEtablissement }) {
       <div className="min-w-0">
         <div className="text-sm font-semibold text-surface-900">{titre}{a.numRapport ? ` · ${a.numRapport}` : ''}</div>
         <div className="text-xs text-surface-500">{jour(a.date)}{a.auditeur ? ` · ${a.auditeur}` : ''}</div>
-        <div className="text-xs text-surface-500">{a.conformes} conformes · {a.partiels} partiels · {a.nonConformes} non conformes</div>
+        <div className="text-xs text-surface-500">{bilanAudit(a)}</div>
       </div>
     </div>
   )

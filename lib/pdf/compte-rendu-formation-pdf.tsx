@@ -5,7 +5,7 @@ import {
   BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
 import { LIBELLES_ACQUIS, LIBELLES_OBJECTIF, LIBELLES_STATUT_DEMI_JOURNEE, libelleDemiJournee, type CompteRendu } from '../compte-rendu'
-import type { AuditEtablissement } from '../audit-hygiene-synthese'
+import { bilanAudit, type AuditEtablissement } from '../audit-hygiene-synthese'
 
 /**
  * Compte rendu de formation rédigé par le formateur, pour le dossier de la
@@ -332,7 +332,7 @@ function ResumeAudit({ titre, a }: { titre: string; a: AuditEtablissement }) {
           {[jourAudit(a.date), a.auditeur ? `par ${a.auditeur}` : null].filter(Boolean).join(' ')}
         </Text>
         <Text style={{ fontSize: 7.6, color: SURFACE_500, marginTop: 1.5 }}>
-          {a.conformes} conformes · {a.partiels} partiels · {a.nonConformes} non conformes
+          {bilanAudit(a)}
         </Text>
       </View>
     </View>

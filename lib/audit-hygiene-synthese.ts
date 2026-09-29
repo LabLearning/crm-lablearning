@@ -72,7 +72,8 @@ export function lireAudit(a: any): AuditEtablissement {
     const observation = String(v.note ?? v.comment ?? '').trim() || null
     ecarts.push({ section, ref, niveau: v.val === 'ko' ? 'non_conforme' : 'partiel', observation })
   }
-  const ordre = SECTIONS.map(([, s]) => s)
+  // Ordre de la grille d'audit (la liste des motifs, elle, teste Nu et Tr avant N et T)
+  const ordre = ['Locaux', 'Équipements', 'Hygiène du personnel', 'Matières premières', 'Températures', 'Nettoyage et désinfection', 'Nuisibles et déchets', 'Traçabilité', 'Autre']
   ecarts.sort((x, y) => ordre.indexOf(x.section) - ordre.indexOf(y.section) || x.ref.localeCompare(y.ref, 'fr', { numeric: true }))
 
   const liste = a?.checklist && typeof a.checklist === 'object' ? a.checklist : {}
@@ -119,3 +120,7 @@ export function auditsDeLaSession(audits: AuditEtablissement[], session: { date_
   const apres = audits.filter((a) => a.date && a.date > fin)
   return { entree: avant[avant.length - 1] || null, sortie: apres[0] || null }
 }
+
+/** « 53 conformes · 1 partiel · 11 non conformes », accordé. */
+export const bilanAudit = (a: AuditEtablissement) =>
+  `${a.conformes} conforme${a.conformes > 1 ? 's' : ''} · ${a.partiels} partiel${a.partiels > 1 ? 's' : ''} · ${a.nonConformes} non conforme${a.nonConformes > 1 ? 's' : ''}`
