@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Send, CheckCircle2, AlertCircle, Copy, ExternalLink, PenTool } from '@/components/ui/icons'
+import { Send, CheckCircle2, AlertCircle, Copy, ExternalLink, PenTool, ShieldCheck } from '@/components/ui/icons'
 import { Button, useToast } from '@/components/ui'
 import { generateSignatureLinkAction } from '../signature-actions'
 import { formatDate, formatDateTime } from '@/lib/utils'
@@ -15,11 +15,13 @@ interface Props {
   signatureOfDate: string | null
   signatureOfNom: string | null
   signatureTokenExpiresAt: string | null
+  /** Signée électroniquement par le client : le certificat de signature peut être délivré. */
+  certificatDisponible?: boolean
 }
 
 export function ConventionSignatureBlock({
   conventionId, status, signatureUrl, signatureClientDate, signatureClientNom,
-  signatureOfDate, signatureOfNom, signatureTokenExpiresAt,
+  signatureOfDate, signatureOfNom, signatureTokenExpiresAt, certificatDisponible,
 }: Props) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -57,8 +59,16 @@ export function ConventionSignatureBlock({
   if (isSigned) {
     return (
       <div className="card p-5 space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 uppercase tracking-wider">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Signatures
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 uppercase tracking-wider">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Signatures
+          </div>
+          {certificatDisponible && (
+            <a href={`/api/pdf/preuve-signature/convention/${conventionId}`}
+              className="btn-secondary text-xs inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5" /> Certificat de signature
+            </a>
+          )}
         </div>
         <div className="grid sm:grid-cols-2 gap-4 text-sm">
           <div className="flex items-start gap-2">

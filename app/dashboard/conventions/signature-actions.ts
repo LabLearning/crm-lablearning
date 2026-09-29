@@ -155,6 +155,17 @@ export async function annulerConventionSigneeAction(conventionId: string): Promi
     .eq('id', conventionId).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: "Impossible d'annuler la convention" }
 
+  // L'exemplaire figé et le journal de signature sont conservés : seule la
+  // convention repart vierge
+  const { journaliserEvenementConvention } = await import('@/lib/preuve-signature-convention')
+  await supabase.from('conventions')
+    .update({ signature_client_signed_at: null, signature_consentement: null, signature_document_path: null, signature_document_sha256: null })
+    .eq('id', conventionId).eq('organization_id', session.organization.id)
+  await journaliserEvenementConvention(supabase, {
+    organizationId: session.organization.id, conventionId, evenement: 'annulation',
+    details: { par: session.user.id, numero: conv.numero },
+  })
+
   // La signature avait pu valider la session liée → on revient à 'confirmee'
   if (conv.session_id) {
     await supabase.from('sessions').update({ status: 'confirmee' })
@@ -170,19 +181,28 @@ export async function annulerConventionSigneeAction(conventionId: string): Promi
 /** Action publique : enregistre la signature client (depuis la page /convention/[token]/signer) */
 export async function signConventionPublicAction(
   token: string,
-  data: { nom: string; signatureDataUrl: string },
+  data: { nom: string; signatureDataUrl: string; consentement?: boolean },
   meta: { ip?: string; userAgent?: string },
 ): Promise<ActionResult> {
   if (!data.nom?.trim()) return { success: false, error: 'Nom requis pour la signature' }
   if (!data.signatureDataUrl?.startsWith('data:image/')) {
     return { success: false, error: 'Signature manquante' }
   }
+  if (!data.consentement) {
+    return { success: false, error: 'Cochez la case indiquant que vous avez pris connaissance de la convention.' }
+  }
 
   const supabase = await createServiceRoleClient()
+  // Preuves lues côté serveur : l'IP et le navigateur de la requête, pas ce
+  // que le navigateur déclare de lui-même
+  const {
+    origineRequete, journaliserEvenementConvention, figerConventionSignee, texteConsentement,
+  } = await import('@/lib/preuve-signature-convention')
+  const origine = await origineRequete()
 
   const { data: conv } = await supabase
     .from('conventions')
-    .select('id, organization_id, signature_token_expires_at, status, session_id, client_id, formation_id')
+    .select('id, organization_id, signature_token_expires_at, status, session_id, client_id, formation_id, client:client_id(type)')
     .eq('signature_token', token)
     .single()
   if (!conv) return { success: false, error: 'Lien invalide' }
@@ -226,15 +246,15 @@ export async function signConventionPublicAction(
   // Statut final : signee_complete si OF auto-signé via tampon, sinon signee_client
   const newStatus = ofSignatureData ? 'signee_complete' : 'signee_client'
 
-  await supabase
+  const { data: ecrite, error: errSignature } = await supabase
     .from('conventions')
     .update({
       status: newStatus,
       signature_client_date: datePortee,
       signature_client_nom: data.nom.trim(),
       signature_client_signature_data: data.signatureDataUrl,
-      signature_client_ip: meta.ip || null,
-      signature_client_user_agent: meta.userAgent || null,
+      signature_client_ip: origine.ip || meta.ip || null,
+      signature_client_user_agent: origine.userAgent || meta.userAgent || null,
       // Auto-signature OF si tampon configuré
       signature_of_date: ofSignatureData ? datePortee : null,
       signature_of_nom: ofSignatureData ? ofSignatureNom : null,
@@ -242,12 +262,37 @@ export async function signConventionPublicAction(
       akto_dossier_status: conv.client_id ? 'pret_a_envoyer' : 'non_envoye',
     })
     .eq('id', conv.id)
+    // Deux validations simultanées : seule la première est retenue
+    .not('status', 'in', '("signee_client","signee_complete")')
+    .select('id')
+  if (errSignature) {
+    console.error('[signature convention]', errSignature)
+    return { success: false, error: 'La signature n’a pas pu être enregistrée. Réessayez dans un instant.' }
+  }
+  if (!ecrite?.length) return { success: false, error: 'Convention déjà signée' }
+
+  // Horodatage réel de l'acte et consentement : la date portée ci-dessus peut
+  // être ramenée à la veille de la session, celle-ci jamais
+  const consentement = texteConsentement((conv as any).client?.type === 'particulier')
+  const { error: errPreuve } = await supabase.from('conventions')
+    .update({ signature_client_signed_at: now, signature_consentement: consentement })
+    .eq('id', conv.id)
+  if (errPreuve) console.error('[preuve convention]', errPreuve.message)
 
   // Si la convention est liée à une session → bascule en 'validee' si contrat formateur OK
   if (conv.session_id) {
     const { maybeValidateSession } = await import('@/app/dashboard/sessions/confirm-actions')
     await maybeValidateSession(supabase, conv.session_id, conv.organization_id)
   }
+
+  // Exemplaire signé figé et empreinte, puis l'événement de signature
+  let fige: Awaited<ReturnType<typeof figerConventionSignee>> = null
+  try { fige = await figerConventionSignee(supabase, conv.id) } catch (e) { console.error('[convention figée]', e) }
+  await journaliserEvenementConvention(supabase, {
+    organizationId: conv.organization_id, conventionId: conv.id, evenement: 'signature',
+    ip: origine.ip || meta.ip || null, userAgent: origine.userAgent || meta.userAgent || null,
+    details: { signataire: data.nom.trim(), consentement, document_sha256: fige?.sha256 || null, date_portee: datePortee },
+  })
 
   // Notifier le créateur de la convention
   const { createNotification } = await import('@/lib/email')
@@ -271,7 +316,7 @@ export async function signConventionPublicAction(
   if (newStatus === 'signee_complete') {
     try {
       const { loadConventionForPdf } = await import('@/lib/pdf/convention-data')
-      const loaded = await loadConventionForPdf(supabase, conv.id)
+      const loaded = fige?.loaded || await loadConventionForPdf(supabase, conv.id)
       const convFull: any = loaded?.convention
       const orgFull: any = loaded?.org
       const cli: any = convFull?.client
@@ -282,10 +327,14 @@ export async function signConventionPublicAction(
       if (orgEmail && !toEmails.includes(orgEmail)) toEmails.push(orgEmail)
 
       if (convFull && toEmails.length > 0) {
-        const { renderToBuffer } = await import('@react-pdf/renderer')
-        const { createElement } = await import('react')
-        const { ConventionPDF } = await import('@/lib/pdf/convention-pdf')
-        const buffer = await renderToBuffer(createElement(ConventionPDF, { convention: convFull as any, org: orgFull }) as any)
+        // L'exemplaire envoyé est celui qui vient d'être figé, à l'octet près
+        let buffer: Buffer | Uint8Array | null = fige?.buffer || null
+        if (!buffer) {
+          const { renderToBuffer } = await import('@react-pdf/renderer')
+          const { createElement } = await import('react')
+          const { ConventionPDF } = await import('@/lib/pdf/convention-pdf')
+          buffer = await renderToBuffer(createElement(ConventionPDF, { convention: convFull as any, org: orgFull }) as any)
+        }
 
         const { sendDocumentEmail } = await import('@/lib/email')
         const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString('fr-FR') : '—'

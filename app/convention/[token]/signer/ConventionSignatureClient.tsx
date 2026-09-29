@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Pen, CheckCircle2, RotateCcw, FileText } from '@/components/ui/icons'
 import { signConventionPublicAction } from '@/app/dashboard/conventions/signature-actions'
+import { texteConsentement } from '@/lib/consentement-convention'
 
 interface ConventionInfo {
   id: string
@@ -20,7 +21,7 @@ interface ConventionInfo {
   signature_client_date: string | null
   signature_client_nom: string | null
   organization: { name: string; logo_url: string | null } | null
-  client: { raison_sociale: string | null; adresse: string | null; code_postal: string | null; ville: string | null; siret: string | null } | null
+  client: { type?: string | null; raison_sociale: string | null; adresse: string | null; code_postal: string | null; ville: string | null; siret: string | null } | null
   formation: { intitule: string | null } | null
 }
 
@@ -29,6 +30,9 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
   const [drawing, setDrawing] = useState(false)
   const [hasDrawn, setHasDrawn] = useState(false)
   const [signataireNom, setSignataireNom] = useState('')
+  const [consentement, setConsentement] = useState(false)
+  const particulier = convention.client?.type === 'particulier'
+  const nomDocument = particulier ? 'le contrat' : 'la convention'
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signed, setSigned] = useState(['signee_client', 'signee_complete'].includes(convention.status))
@@ -87,9 +91,10 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
   async function handleSubmit() {
     if (!signataireNom.trim()) { setError('Veuillez saisir votre nom complet'); return }
     if (!hasDrawn) { setError('Veuillez signer dans le cadre'); return }
+    if (!consentement) { setError(`Cochez la case indiquant que vous avez pris connaissance de ${nomDocument}.`); return }
     setError(null); setSubmitting(true)
     const dataUrl = canvasRef.current!.toDataURL('image/png')
-    const r = await signConventionPublicAction(token, { nom: signataireNom, signatureDataUrl: dataUrl }, { userAgent: navigator.userAgent })
+    const r = await signConventionPublicAction(token, { nom: signataireNom, signatureDataUrl: dataUrl, consentement }, { userAgent: navigator.userAgent })
     if (r.success) setSigned(true)
     else setError(r.error || 'Erreur')
     setSubmitting(false)
@@ -132,6 +137,14 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           </div>
         </div>
         <p className="text-sm text-surface-700">{convention.objet}</p>
+        <a
+          href={`/api/pdf/convention/${convention.id}?token=${encodeURIComponent(token)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary mt-4 inline-flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" /> Lire {particulier ? 'le contrat complet' : 'la convention complète'} (PDF)
+        </a>
       </div>
 
       {/* Détails */}
@@ -227,11 +240,21 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           )}
         </div>
 
+        <label className="flex items-start gap-3 rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={consentement}
+            onChange={(e) => setConsentement(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-300 accent-brand-600"
+          />
+          <span className="text-sm text-surface-700">{texteConsentement(particulier)}</span>
+        </label>
+
         {error && <div className="rounded-xl bg-danger-50 border border-danger-200 px-4 py-3 text-sm text-danger-700">{error}</div>}
 
         <button
           onClick={handleSubmit}
-          disabled={submitting || !hasDrawn || !signataireNom.trim()}
+          disabled={submitting || !hasDrawn || !signataireNom.trim() || !consentement}
           className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? 'Signature en cours…' : 'Signer la convention'}

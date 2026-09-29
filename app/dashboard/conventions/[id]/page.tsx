@@ -96,6 +96,7 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         signatureOfDate={c.signature_of_date}
         signatureOfNom={c.signature_of_nom}
         signatureTokenExpiresAt={c.signature_token_expires_at}
+        certificatDisponible={!!c.signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)}
       />
 
       {/* Historique (créée, envoyée, signée, annulée, AKTO…) */}

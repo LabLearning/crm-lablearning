@@ -7,18 +7,40 @@ import { ConventionPDF } from '@/lib/pdf/convention-pdf'
 import { loadConventionForPdf } from '@/lib/pdf/convention-data'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireApiUser()
-  if ('error' in auth) return auth.error
-
   const supabase = await createServiceRoleClient()
+
+  // Le signataire lit la convention complète depuis sa page de signature :
+  // son lien personnel lui en donne l'accès, et chaque lecture est une preuve
+  const token = req.nextUrl.searchParams.get('token')
+  let orgId: string
+  if (token) {
+    const { data: c } = await supabase.from('conventions')
+      .select('id, organization_id, signature_token, signature_token_expires_at')
+      .eq('id', params.id).eq('signature_token', token).maybeSingle()
+    if (!c || (c.signature_token_expires_at && new Date(c.signature_token_expires_at) < new Date())) {
+      return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 401 })
+    }
+    orgId = c.organization_id
+    const { origineRequete, journaliserEvenementConvention } = await import('@/lib/preuve-signature-convention')
+    const origine = await origineRequete()
+    await journaliserEvenementConvention(supabase, {
+      organizationId: c.organization_id, conventionId: c.id, evenement: 'document_consulte',
+      ip: origine.ip, userAgent: origine.userAgent,
+    })
+  } else {
+    const auth = await requireApiUser()
+    if ('error' in auth) return auth.error
+    orgId = auth.user.organizationId
+  }
+
   const loaded = await loadConventionForPdf(supabase, params.id)
 
   // Contrôle d'org : la convention doit appartenir à l'organisation de l'appelant
   // (loadConventionForPdf ne filtre pas par org, on vérifie ici).
-  if (!loaded || loaded.convention.organization_id !== auth.user.organizationId) {
+  if (!loaded || loaded.convention.organization_id !== orgId) {
     return NextResponse.json({ error: 'Convention introuvable' }, { status: 404 })
   }
 
@@ -52,7 +74,8 @@ export async function GET(
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="convention-${convention.numero}.pdf"`,
+      // Depuis la page de signature, le PDF s'ouvre dans le navigateur
+      'Content-Disposition': `${token ? 'inline' : 'attachment'}; filename="convention-${convention.numero}.pdf"`,
       'Cache-Control': 'private, max-age=0',
     },
   })
