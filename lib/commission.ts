@@ -246,8 +246,9 @@ export function calculerCommissionSession(e: EntreeCommissionSession & { force?:
   const figee = estFigee(e.existante) ? snapshotCommission(e.existante!) : null
 
   if (!e.franchiseId) return { kind: 'aucune', motif: 'sans_franchise', figee }
-  // Les POEI sont HORS commission franchise pour l'instant (décision Brahim,
-  // 08/09/2026 : leur économie demande un calcul spécifique, à traiter à part).
+  // Une session de parcours POEI ne porte pas de commission à elle seule : la
+  // commission du parcours est calculée par calculerCommissionPoei, sur la
+  // session qui représente le parcours (voir syncFranchiseCommissions).
   if (e.estPoei) return { kind: 'aucune', motif: 'poei', figee }
   // Hors accord de commission : établissement écarté, ou formation délivrée
   // avant la date de début du partenariat.
@@ -293,6 +294,55 @@ export function calculerCommissionSession(e: EntreeCommissionSession & { force?:
   return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource, coutFormateur, type, status }, taux }
 }
 
+/** Tout ce que le calcul de la commission d'un parcours POEI doit connaître, déjà lu. */
+export interface EntreeCommissionPoei {
+  franchiseId: string | null
+  franchise: { commission_type: string | null; taux_commission: number | string | null; date_partenariat?: string | null } | null
+  horsPartenariat?: boolean
+  /** Début du parcours (ISO), comparé au début du partenariat */
+  dateDebut?: string | null
+  statutPoei?: string | null
+  /** Candidats encore dans le parcours (ni abandon ni refus) */
+  nbCandidats: number
+  /** Montant du parcours : total du dossier, sinon taux horaire × heures × candidats */
+  montantPoei: number | null
+  /** Contrats formateur de toutes les interventions du parcours (hors annulés) */
+  coutFormateurs: number
+  existante: CommissionSessionExistante | null
+}
+
+/**
+ * Commission franchise d'un parcours POEI : la règle de la franchise (taux du
+ * budget débloqué, ou du budget net des contrats formateur) appliquée au
+ * montant du parcours. Même forme de résultat que calculerCommissionSession.
+ */
+export function calculerCommissionPoei(e: EntreeCommissionPoei & { force?: boolean }): ResultatCommissionSession {
+  const figee = estFigee(e.existante) ? snapshotCommission(e.existante!) : null
+  if (!e.franchiseId) return { kind: 'aucune', motif: 'sans_franchise', figee }
+  if (e.horsPartenariat) return { kind: 'aucune', motif: 'avant_partenariat', figee }
+  if (e.franchise?.date_partenariat && e.dateDebut && e.dateDebut < e.franchise.date_partenariat) {
+    return { kind: 'aucune', motif: 'avant_partenariat', figee }
+  }
+  // Parcours refusé ou abandonné, ou sans candidat : pas de formation délivrée
+  if (['refuse', 'abandonne', 'annule'].includes(String(e.statutPoei || '')) || !e.nbCandidats) {
+    return { kind: 'aucune', motif: 'sans_inscrit', figee }
+  }
+  if (figee && !e.force) {
+    const type: CommissionType = (e.franchise?.commission_type as CommissionType) || figee.type
+    return { kind: 'calculee', fige: true, resultat: figee, taux: Number(e.franchise?.taux_commission || (type === 'budget_net' ? 40 : 10)) }
+  }
+  if (!e.franchise) return { kind: 'aucune', motif: 'franchise_introuvable', figee }
+
+  const type: CommissionType = (e.franchise.commission_type as CommissionType) || 'budget_debloque'
+  const taux = Number(e.franchise.taux_commission || (type === 'budget_net' ? 40 : 10))
+  const base = Math.max(0, Number(e.montantPoei || 0))
+  const coutFormateur = Math.max(0, Number(e.coutFormateurs || 0))
+  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur })
+  const exStatus = e.existante?.status
+  const status: CommissionStatus = exStatus && exStatus !== 'annulee' ? exStatus as CommissionStatus : 'a_venir'
+  return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource: base > 0 ? 'poei' : 'aucune', coutFormateur, type, status }, taux }
+}
+
 /**
  * Recalcule et persiste la commission d'une session.
  * - Franchise déduite de l'établissement (clients.franchise_id) : sans
@@ -319,6 +369,15 @@ export async function recalcSessionCommission(
   if (!sess) return null
 
   const franchiseId: string | null = (sess.client as any)?.franchise_id || null
+  // Session d'un parcours POEI : la commission est celle du parcours, calculée
+  // sur l'ensemble de ses sessions par la synchro de la franchise
+  if (franchiseId && !opts?.force) {
+    const { data: chapeau } = await supabase.from('poei').select('id').eq('session_id', sessionId).maybeSingle()
+    if (chapeau || sess.poei_intervention_id) {
+      await syncFranchiseCommissions(supabase, franchiseId, organizationId)
+      return null
+    }
+  }
   const [{ data: existante }, { data: poei }, { count: nbInscrits }, franchiseRes, { data: factures }, { data: contrats }] = await Promise.all([
     supabase.from('commissions_sessions')
       .select('id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type')
@@ -436,10 +495,10 @@ export async function syncFranchiseCommissions(
     Promise.all(paquets(ids).map((p) => toutLire((f, t) => filtre(supabase.from(table).select(colonnes).in('session_id', p)).range(f, t)))).then((r) => r.flat())
   const [existantes, poeis, inscriptions, factures, contrats] = await Promise.all([
     lire('commissions_sessions', 'id, session_id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type, commission_taux, franchise_id, client_id', (q) => q),
-    lire('poei', 'session_id', (q) => q),
+    lire('poei', 'id, session_id', (q) => q),
     lire('inscriptions', 'session_id', (q) => q.not('status', 'in', '("annule","abandonne")')),
     lire('factures', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","annulee")')),
-    lire('contrats_formateur', 'session_id, montant_ht', (q) => q.neq('status', 'annule')),
+    lire('contrats_formateur', 'id, session_id, montant_ht', (q) => q.neq('status', 'annule')),
   ])
   const parSession = <T,>(l: any[]) => { const m = new Map<string, any[]>(); for (const x of l) { const k = x.session_id; if (!m.has(k)) m.set(k, []); m.get(k)!.push(x) } return m }
   const existanteDe = new Map(existantes.map((e: any) => [e.session_id, e]))
@@ -447,16 +506,79 @@ export async function syncFranchiseCommissions(
   const inscritsDe = parSession(inscriptions), facturesDe = parSession(factures), contratsDe = parSession(contrats)
   const somme = (l: any[] | undefined) => (l || []).reduce((t: number, x: any) => t + Number(x.montant_ht || 0), 0)
 
+  // ── Parcours POEI : une commission par parcours, portée par une seule
+  // session (la session chapeau, sinon la première intervention) ──
+  const interventionIds = Array.from(new Set(sessions.map((x: any) => x.poei_intervention_id).filter(Boolean))) as string[]
+  const interventionsSessions = interventionIds.length
+    ? (await Promise.all(paquets(interventionIds).map((p) => supabase.from('poei_interventions').select('id, poei_id').in('id', p).then((r: any) => r.data || [])))).flat()
+    : []
+  const poeiDeLIntervention = new Map(interventionsSessions.map((i: any) => [i.id, i.poei_id]))
+  const poeiDeSession = new Map<string, string>()
+  for (const p of poeis as any[]) poeiDeSession.set(p.session_id, p.id)
+  for (const x of sessions as any[]) if (x.poei_intervention_id && poeiDeLIntervention.get(x.poei_intervention_id)) poeiDeSession.set(x.id, poeiDeLIntervention.get(x.poei_intervention_id))
+  const poeiIds = Array.from(new Set(poeiDeSession.values()))
+  const infosPoei = new Map<string, { poei: any; candidats: number; couts: number; representative: string }>()
+  if (poeiIds.length) {
+    const [lignesPoei, candidats, toutesInterventions] = await Promise.all([
+      Promise.all(paquets(poeiIds).map((p) => supabase.from('poei')
+        .select('id, session_id, statut, date_debut, montant_total, montant_horaire, duree_heures').in('id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
+      Promise.all(paquets(poeiIds).map((p) => supabase.from('poei_candidats')
+        .select('poei_id').in('poei_id', p).not('statut', 'in', '("abandonne","refuse")').then((r: any) => r.data || []))).then((r) => r.flat()),
+      Promise.all(paquets(poeiIds).map((p) => supabase.from('poei_interventions')
+        .select('id, poei_id').in('poei_id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
+    ])
+    const ivIds = toutesInterventions.map((i: any) => i.id)
+    const contratsIv = ivIds.length
+      ? (await Promise.all(paquets(ivIds).map((p) => supabase.from('contrats_formateur')
+          .select('id, poei_intervention_id, montant_ht').in('poei_intervention_id', p).neq('status', 'annule').then((r: any) => r.data || [])))).flat()
+      : []
+    const poeiDeIv = new Map(toutesInterventions.map((i: any) => [i.id, i.poei_id]))
+    for (const p of lignesPoei as any[]) {
+      const sessionsDuParcours = (sessions as any[]).filter((x) => poeiDeSession.get(x.id) === p.id)
+      const chapeau = sessionsDuParcours.find((x) => x.id === p.session_id)
+      const premiere = [...sessionsDuParcours].sort((a, b) => String(a.date_debut || '9999').localeCompare(String(b.date_debut || '9999')))[0]
+      const representative = (chapeau || premiere)?.id
+      if (!representative) continue
+      infosPoei.set(p.id, {
+        poei: p,
+        candidats: (candidats as any[]).filter((c) => c.poei_id === p.id).length,
+        // Contrats des interventions du parcours ; ceux de la session chapeau
+        // seulement à défaut (la même mission y est souvent contractée deux fois)
+        couts: (() => {
+          const desInterventions = (contratsIv as any[]).filter((c) => poeiDeIv.get(c.poei_intervention_id) === p.id)
+          return somme(desInterventions.length ? desInterventions : (p.session_id ? contratsDe.get(p.session_id) : []))
+        })(),
+        representative,
+      })
+    }
+  }
+
   const aSupprimer: string[] = []
   const aEcrire: any[] = []
   for (const sess of sessions) {
     const existante: any = existanteDe.get(sess.id) || null
     const franchiseSession: string | null = (sess.client as any)?.franchise_id || null
     const nbHoraires = Array.isArray(sess.horaires_jours) ? sess.horaires_jours.length : 0
-    const r = calculerCommissionSession({
+    const poeiId = poeiDeSession.get(sess.id)
+    const infos = poeiId ? infosPoei.get(poeiId) : undefined
+    const r = infos && infos.representative === sess.id
+      ? calculerCommissionPoei({
+          franchiseId: franchiseSession,
+          franchise: franchiseSession === franchiseId ? franchise : null,
+          horsPartenariat: !!(sess.client as any)?.franchise_hors_partenariat,
+          dateDebut: infos.poei.date_debut || sess.date_debut,
+          statutPoei: infos.poei.statut,
+          nbCandidats: infos.candidats,
+          montantPoei: Number(infos.poei.montant_total) > 0
+            ? Number(infos.poei.montant_total)
+            : (Number(infos.poei.montant_horaire) || 0) * (Number(infos.poei.duree_heures) || 0) * infos.candidats || null,
+          coutFormateurs: infos.couts,
+          existante,
+        })
+      : calculerCommissionSession({
       franchiseId: franchiseSession,
       franchise: franchiseSession === franchiseId ? franchise : null,
-      estPoei: poeiDe.has(sess.id) || !!sess.poei_intervention_id,
+      estPoei: poeiDeSession.has(sess.id) || !!sess.poei_intervention_id,
       dateSession: sess.date_debut,
       horsPartenariat: !!(sess.client as any)?.franchise_hors_partenariat,
       nbInscritsActifs: (inscritsDe.get(sess.id) || []).length,

@@ -152,7 +152,9 @@ function EtatCommission({ f }: { f: FormationFranchise }) {
   const puce = (texte: string, cls: string) => (
     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>{texte}</span>
   )
-  if (f.poei) return puce('Parcours POEI, hors commission', 'bg-surface-100 text-surface-500')
+  // Un parcours POEI a sa commission comme toute formation ; sans ligne, son
+  // montant ou ses candidats ne sont pas encore connus
+  if (f.poei && f.commission == null) return puce('Parcours POEI : commission calculée dès que le montant et les candidats sont connus', 'bg-surface-100 text-surface-500')
   if (f.horsPartenariat) return puce('Hors partenariat', 'bg-surface-100 text-surface-500')
   if (f.statutCommission === 'payee') return puce('Commission versée', 'bg-emerald-50 text-emerald-700')
   if (f.statutCommission === 'validee') return puce('Commission à vous verser', 'bg-blue-50 text-blue-700')

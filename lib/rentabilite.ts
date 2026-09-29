@@ -1194,7 +1194,7 @@ export interface ResultatCommissionFranchise {
 
 const MOTIFS_SANS_COMMISSION: Record<string, string> = {
   sans_franchise: 'Établissement sans franchise',
-  poei: 'Session POEI : hors commission franchise',
+  poei: 'Parcours POEI : commission calculée dès que le montant et les candidats sont connus',
   sans_inscrit: 'Aucun inscrit',
   franchise_introuvable: 'Franchise introuvable',
 }
@@ -1308,7 +1308,32 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
   }
 
   if (u.type === 'poei') {
-    lignes.push({ cle: 'cf:poei', famille: 'commission_franchise', libelle: MOTIFS_SANS_COMMISSION.poei, montant: 0, qualite: 'saisi', info: true })
+    // La commission du parcours est calculée et enregistrée sur la session qui
+    // le porte (chapeau, sinon première intervention) ; validée ou payée, elle a
+    // déjà été comptée ci-dessus
+    const porteuse = ctx.sessions.find((s) => {
+      const c = d.idx.commissionParSession.get(s.id)
+      return c && c.base_source === 'poei' && c.status !== 'annulee'
+    })
+    const ligne = porteuse ? d.idx.commissionParSession.get(porteuse.id)! : null
+    if (ligne && !['validee', 'payee'].includes(String(ligne.status))) {
+      const franchise = ligne.franchise_id ? d.idx.franchiseParId.get(ligne.franchise_id) || null : null
+      const nomFr = franchise?.nom || 'franchise'
+      somme += n(ligne.commission_montant)
+      etats.push('a_venir')
+      lignes.push({
+        cle: `cf:${porteuse!.id}`,
+        famille: 'commission_franchise',
+        libelle: `Commission ${nomFr}`,
+        detail: `${commissionTypeLabel(String(ligne.commission_type || 'budget_debloque'))} · parcours de ${euro(n(ligne.base_montant))}${ligne.commission_type === 'budget_net' ? ` moins ${euro(n(ligne.cout_formateur))} de coût formateur` : ''}`,
+        montant: n(ligne.commission_montant),
+        qualite: 'a_venir',
+        sessionId: porteuse!.id,
+        lien: ligne.franchise_id ? { href: `/dashboard/franchises/${ligne.franchise_id}`, label: `Fiche ${nomFr}` } : undefined,
+      })
+    } else if (!ligne && !etats.includes('fige')) {
+      lignes.push({ cle: 'cf:poei', famille: 'commission_franchise', libelle: MOTIFS_SANS_COMMISSION.poei, montant: 0, qualite: 'saisi', info: true })
+    }
   }
   const etat: ResultatCommissionFranchise['etat'] = etats.includes('inconnu') ? 'inconnu'
     : etats.includes('a_venir') ? 'a_venir' : etats.includes('fige') ? 'fige' : 'absente'

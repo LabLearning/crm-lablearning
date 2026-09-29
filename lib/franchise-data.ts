@@ -235,7 +235,7 @@ export const LIBELLES_PHASES: Record<PhaseFranchise, { titre: string; texte: str
   },
   poei: {
     titre: 'Parcours POEI',
-    texte: 'Les POEI sont hors commission franchise : leur économie demande un calcul distinct.',
+    texte: 'Parcours POEI en préparation : la commission se calcule dès que le montant du parcours et ses candidats sont connus.',
   },
   avant_partenariat: {
     titre: 'Formés avant le partenariat',
@@ -307,6 +307,8 @@ export async function getFranchiseParcours(
           statut: s.status as string,
           etat: s.status === 'annulee' ? 'annulee' : etatSession(s, aujourdhui),
           poei: !!s.poei_intervention_id || poeiSet.has(s.id),
+          // La session qui porte la commission d'un parcours POEI compte comme une formation
+          porteCommission: !!l,
           base: Number(l?.base_montant || 0),
           commission: Number(l?.commission_montant || 0),
           statutCommission: (l?.status as string) || 'aucune',
@@ -321,7 +323,7 @@ export async function getFranchiseParcours(
     const avant = horsPerimetre
       ? ss.slice()
       : debutPartenariat ? ss.filter((s) => s.date && s.date < debutPartenariat) : []
-    const eligibles = ss.filter((s) => !s.poei && !avant.includes(s))
+    const eligibles = ss.filter((s) => (!s.poei || s.porteCommission) && !avant.includes(s))
     const due = ss.filter((s) => ['validee', 'payee'].includes(s.statutCommission)).reduce((t, s) => t + s.commission, 0)
     const aVenir = ss.filter((s) => s.statutCommission === 'a_venir').reduce((t, s) => t + s.commission, 0)
 
@@ -344,7 +346,7 @@ export async function getFranchiseParcours(
       commission: ss.reduce((t, s) => t + s.commission, 0),
       due, aVenir,
       nbSansMontant: eligibles.filter((s) => s.base === 0).length,
-      nbPoei: ss.filter((s) => s.poei).length,
+      nbPoei: ss.filter((s) => s.poei && !s.porteCommission).length,
       nbAvantPartenariat: avant.length,
       horsPartenariat: horsPerimetre,
       phase,
@@ -452,16 +454,19 @@ export async function getFranchiseFormations(
   }
 
   const aujourdhui = aujourdhuiParis()
-  const formations: FormationFranchise[] = sessions.map((s) => {
+  // Un parcours POEI = une ligne : les modules qui ne portent pas sa commission
+  // (portée par la session chapeau, sinon la première intervention) sont masqués
+  const formations: FormationFranchise[] = sessions.filter((s) => !(s.poei_intervention_id && !parSession.has(s.id))).map((s) => {
     const c = parClient.get(s.client_id)
     const l = parSession.get(s.id)
     const formation = Array.isArray(s.formation) ? s.formation[0] : s.formation
+    const estPoei = !!s.poei_intervention_id || poeiSet.has(s.id)
     const horsPartenariat = !!c?.franchise_hors_partenariat
       || !!(debutPartenariat && s.date_debut && s.date_debut < debutPartenariat)
     return {
       id: s.id,
       reference: s.reference,
-      titre: formation?.intitule || s.intitule || 'Formation',
+      titre: `${estPoei ? 'POEI · ' : ''}${formation?.intitule || s.intitule || 'Formation'}`,
       clientId: s.client_id || null,
       client: c?.raison_sociale || null,
       ville: c?.ville || null,
@@ -471,7 +476,7 @@ export async function getFranchiseFormations(
       commission: l ? Number(l.commission_montant || 0) : null,
       statutCommission: (l?.status as CommissionStatus) || null,
       base: Number(l?.base_montant || 0),
-      poei: !!s.poei_intervention_id || poeiSet.has(s.id),
+      poei: estPoei,
       horsPartenariat,
       etat: etatSession(s, aujourdhui),
     }
