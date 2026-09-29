@@ -187,7 +187,8 @@ function lienProjetSupabase() {
 export function messagePanne(etat: EtatSante, opts: { dernierOk?: Date | null; essai?: boolean } = {}) {
   const d = new Date(etat.verifieLe)
   const enPanne = servicesEnPanne(etat)
-  const critique = panneCritique(etat)
+  // Essai sans panne : l'e-mail montre l'alerte telle qu'elle arriverait pour la base
+  const critique = enPanne.length === 0 || panneCritique(etat)
   const constat = !critique ? 'stockage des documents du CRM indisponible'
     : enPanne.every((s) => s === 'ecriture' || s === 'stockage') ? 'le CRM ne peut plus rien enregistrer'
       : 'le CRM Lab Learning est inaccessible'
