@@ -40,9 +40,11 @@ export interface CandidatDoc {
  * Ici on PRODUIT et on TÉLÉCHARGE. L'état de chacun se lit dans Pilotage.
  */
 export function PoeiDocuments({
-  poeiId, candidats, devisPrevisionnel, formationTerminee,
+  poeiId, candidats, devisPrevisionnel, formationTerminee, formationId,
 }: {
   poeiId: string
+  /** Formation du parcours : son programme se télécharge avec le planning de la POEI */
+  formationId?: string | null
   candidats: CandidatDoc[]
   devisPrevisionnel?: { id: string; numero: string | null } | null
   formationTerminee: boolean
@@ -174,6 +176,20 @@ export function PoeiDocuments({
           <Download className="h-4 w-4" /> Tout le dossier (ZIP)
         </a>
       </div>
+
+      {formationId && (
+        <div className="card p-4 flex items-center gap-3 flex-wrap">
+          <FileText className="h-4 w-4 text-surface-500 shrink-0" />
+          <div className="min-w-0 flex-1 basis-[calc(100%-2rem)] sm:basis-auto">
+            <div className="text-sm font-heading font-semibold text-surface-900">Programme de la POEI</div>
+            <div className="text-xs text-surface-500">Le programme de la formation, avec les dates, la durée et le planning des interventions du parcours</div>
+          </div>
+          <a href={`/api/pdf/programme/${formationId}?poei=${poeiId}`}
+            className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm w-full sm:w-auto">
+            <Download className="h-4 w-4" /> Télécharger
+          </a>
+        </div>
+      )}
 
       {devisPrevisionnel && (
         <div className="card p-4 flex items-center gap-3 flex-wrap">

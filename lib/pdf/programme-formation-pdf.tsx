@@ -5,7 +5,11 @@ import {
   BRAND_GREEN, BRAND_LIGHT, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
 
-interface ProgrammeFormationProps { formation: any; org: any; session?: any }
+interface ProgrammeFormationProps {
+  formation: any; org: any; session?: any
+  /** Parcours POEI : dates, durée, entreprise et planning des interventions */
+  poei?: any
+}
 
 function fmtLong(s: string | null | undefined): string {
   if (!s) return '—'
@@ -192,7 +196,7 @@ function DureePill({ children }: { children: React.ReactNode }) {
 
 const MODALITE = (m: string) => m === 'presentiel' ? 'Présentiel' : m === 'distanciel' ? 'Distanciel' : 'Mixte'
 
-export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeFormationProps) {
+export function ProgrammeFormationPDF({ formation, org, session, poei }: ProgrammeFormationProps) {
   // Date du document = dernière mise à jour du programme, jamais la date de téléchargement.
   const dateDoc = new Date(formation.date_derniere_maj || formation.updated_at || formation.created_at || Date.now())
     .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -240,8 +244,53 @@ export function ProgrammeFormationPDF({ formation, org, session }: ProgrammeForm
           </View>
         </View>
 
+        {/* Organisation du parcours POEI : dates, durée, entreprise, planning des interventions */}
+        {poei ? (
+          <View style={shared.section}>
+            <PdfSectionTitle icon="calendar">Organisation du parcours POEI</PdfSectionTitle>
+            {poei.numero ? <View style={shared.row}><Text style={shared.label}>Parcours</Text><Text style={shared.value}>{poei.numero}</Text></View> : null}
+            {poei.date_debut ? (
+              <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>
+                {poei.date_fin && poei.date_fin !== poei.date_debut ? `du ${fmtLong(poei.date_debut)} au ${fmtLong(poei.date_fin)}` : `le ${fmtLong(poei.date_debut)}`}
+              </Text></View>
+            ) : null}
+            {poei.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée du parcours</Text><Text style={shared.value}>{Number(poei.duree_heures).toLocaleString('fr-FR')} heures</Text></View> : null}
+            {poei.client ? <View style={shared.row}><Text style={shared.label}>Entreprise</Text><Text style={shared.value}>{poei.client.nom_commercial || poei.client.raison_sociale}{poei.client.ville ? `, ${poei.client.ville}` : ''}</Text></View> : null}
+            {poei.poste_vise ? <View style={shared.row}><Text style={shared.label}>Poste visé</Text><Text style={shared.value}>{poei.poste_vise}</Text></View> : null}
+            {(poei.interventions || []).length > 0 ? (
+              <View style={{ ...shared.table, marginTop: 6 }}>
+                <View style={shared.tableHeader}>
+                  <Text style={{ ...shared.tableHeaderCell, width: '30%' }}>Module</Text>
+                  <Text style={{ ...shared.tableHeaderCell, width: '22%' }}>Dates</Text>
+                  <Text style={{ ...shared.tableHeaderCell, width: '10%' }}>Durée</Text>
+                  <Text style={{ ...shared.tableHeaderCell, width: '20%' }}>Lieu</Text>
+                  <Text style={{ ...shared.tableHeaderCell, width: '18%' }}>Formateur</Text>
+                </View>
+                {poei.interventions.map((iv: any, idx: number) => {
+                  const f = Array.isArray(iv.formateur) ? iv.formateur[0] : iv.formateur
+                  const court = (d: string) => new Date(`${String(d).slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+                  const dates = iv.date_debut ? (iv.date_fin && iv.date_fin !== iv.date_debut ? `${court(iv.date_debut)} au ${court(iv.date_fin)}` : court(iv.date_debut)) : 'À planifier'
+                  const lieu = [iv.lieu, iv.ville].filter(Boolean).join(', ')
+                  return (
+                    <View key={idx} wrap={false} style={{ ...shared.tableRow, ...(idx % 2 === 1 ? shared.tableRowAlt : {}) }}>
+                      <View style={{ width: '30%' }}>
+                        <Text style={shared.tableCell}>{iv.libelle || `Module ${idx + 1}`}</Text>
+                        {iv.horaires ? <Text style={{ ...shared.tableCell, fontSize: 6.8, color: SURFACE_500 as any }}>{iv.horaires}</Text> : null}
+                      </View>
+                      <Text style={{ ...shared.tableCell, width: '22%' }}>{dates}</Text>
+                      <Text style={{ ...shared.tableCell, width: '10%' }}>{iv.nb_heures ? `${Number(iv.nb_heures).toLocaleString('fr-FR')} h` : ''}</Text>
+                      <Text style={{ ...shared.tableCell, width: '20%' }}>{lieu}</Text>
+                      <Text style={{ ...shared.tableCell, width: '18%' }}>{f ? `${f.prenom || ''} ${f.nom || ''}`.trim() : 'À affecter'}</Text>
+                    </View>
+                  )
+                })}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Organisation de la session (uniquement si programme tiré d'une session) */}
-        {session ? (
+        {!poei && session ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="calendar">Organisation de la session</PdfSectionTitle>
             <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>du {fmtLong(session.date_debut)} au {fmtLong(session.date_fin)}</Text></View>

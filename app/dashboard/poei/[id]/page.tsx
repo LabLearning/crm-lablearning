@@ -502,6 +502,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
               candidats={candidatsDocs}
               devisPrevisionnel={devisByCandidat['previsionnel'] || null}
               formationTerminee={formationTerminee}
+              formationId={(p as any).formation_id || null}
             />
           </>
         }
