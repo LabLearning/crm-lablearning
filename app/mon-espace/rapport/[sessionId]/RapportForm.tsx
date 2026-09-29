@@ -84,7 +84,7 @@ export function RapportForm({ sessionId, initial, transmis }: {
   }
 
   return (
-    <div className="space-y-4 pb-20 md:pb-0">
+    <div className="space-y-4">
       <Section titre="Déroulé de la formation" aide="Pour chaque demi-journée : ce que vous avez fait avec le groupe, et comment.">
         {cr.deroule.length === 0 && <p className="text-sm text-surface-500">Aucune demi-journée n’est planifiée pour cette session.</p>}
         <div className="space-y-4">
@@ -224,10 +224,9 @@ export function RapportForm({ sessionId, initial, transmis }: {
         </div>
       )}
 
-      {/* Barre d'actions, toujours à portée de main */}
-      {/* Sur téléphone, juste au-dessus de la barre d'onglets de l'espace formateur */}
-      <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-30 border-t border-surface-200 bg-white/95 backdrop-blur px-4 py-3 md:static md:rounded-2xl md:border md:bg-white">
-        <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+      {/* Actions en fin de formulaire : le brouillon s'enregistre de lui-même en cours de route */}
+      <div className="card px-4 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           <span className="text-2xs text-surface-400 mr-auto">
             {modifie ? 'Modifications non enregistrées' : sauveA ? `Brouillon enregistré à ${sauveA.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Brouillon enregistré automatiquement'}
           </span>
