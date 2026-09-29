@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   FileSignature, Send, Download, Eye, Loader2, Check, Copy, Clock,
-  CheckCircle2, AlertCircle, Mail, FileText, XCircle,
+  CheckCircle2, AlertCircle, Mail, FileText, XCircle, ShieldCheck,
 } from '@/components/ui/icons'
 import { Button, Modal, useToast } from '@/components/ui'
 import { sendConventionForSignatureAction, sendContratToFormateurAction } from './actions'
@@ -14,6 +14,8 @@ interface Convention {
   id: string; numero: string | null; status: string | null
   sent_at: string | null; signature_client_date: string | null; signature_client_nom: string | null
   signature_of_date: string | null; signature_token: string | null
+  /** Signée électroniquement par le client : certificat de signature disponible */
+  certificat_signature?: boolean
 }
 interface Contrat {
   id: string; numero: string | null; status: string | null
@@ -46,7 +48,7 @@ interface Props {
   typeSession?: string | null
   participants?: { id: string; prenom: string | null; nom: string | null; email: string | null; client_id?: string | null }[]
   clientsApprenants?: { id: string; type: string | null; raison_sociale: string | null; nom_commercial: string | null }[]
-  conventionsSession?: { id: string; numero: string; client_id: string | null; sent_at: string | null; signature_client_date: string | null; participants_snapshot: { apprenant_id?: string }[] | null }[]
+  conventionsSession?: { id: string; numero: string; client_id: string | null; sent_at: string | null; signature_client_date: string | null; certificat_signature?: boolean; participants_snapshot: { apprenant_id?: string }[] | null }[]
 }
 
 function fmtDateHeure(d: string | null | undefined): string {
@@ -259,7 +261,7 @@ export function SessionDocuments(props: Props) {
 
   // ── Ligne document ──
   function DocRow({
-    icon, titre, sousTitre, etat, date, onPreview, onSend, sendLabel, downloadUrl, disabled, disabledReason, busyKey, onCancel, envois, onLink,
+    icon, titre, sousTitre, etat, date, onPreview, onSend, sendLabel, downloadUrl, disabled, disabledReason, busyKey, onCancel, envois, onLink, certificatUrl,
   }: {
     icon: React.ReactNode; titre: string; sousTitre: string
     etat: 'absent' | 'attente' | 'partiel' | 'signe'; date?: string | null
@@ -268,6 +270,8 @@ export function SessionDocuments(props: Props) {
     onCancel?: () => void; envois: EnvoiDoc[]
     /** Génère le lien de signature sans envoyer d'email */
     onLink?: () => void
+    /** Certificat de signature électronique du document signé */
+    certificatUrl?: string | null
   }) {
     const ouvert = histo === busyKey
     return (
@@ -309,6 +313,13 @@ export function SessionDocuments(props: Props) {
               title={etat === 'signe' ? 'Télécharger le document signé' : 'Télécharger le document'}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50">
               <Download className="h-3.5 w-3.5" /> {etat === 'signe' ? 'Signé' : 'PDF'}
+            </a>
+          )}
+          {certificatUrl && (
+            <a href={certificatUrl}
+              title="Certificat de signature électronique (dossier de preuve)"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50">
+              <ShieldCheck className="h-3.5 w-3.5" /> Certificat
             </a>
           )}
           {onCancel && etat === 'attente' && (
@@ -415,6 +426,13 @@ export function SessionDocuments(props: Props) {
                         </a>
                       </>
                     )}
+                    {c?.certificat_signature && (
+                      <a href={`/api/pdf/preuve-signature/convention/${c.id}`}
+                        title="Certificat de signature électronique (dossier de preuve)"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Certificat
+                      </a>
+                    )}
                     {!c?.signature_client_date && (
                       <>
                         <button disabled={envoiContrat === `lien:${cid}`} onClick={() => genererLienEntreprise(cid)}
@@ -450,6 +468,13 @@ export function SessionDocuments(props: Props) {
                         <Download className="h-3.5 w-3.5" /> {c.signature_client_date ? 'Signé' : 'PDF'}
                       </a>
                     )}
+                    {c?.certificat_signature && (
+                      <a href={`/api/pdf/preuve-signature/convention/${c.id}`}
+                        title="Certificat de signature électronique (dossier de preuve)"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Certificat
+                      </a>
+                    )}
                     {!c?.signature_client_date && (
                       <button disabled={!a.email || envoiContrat === a.id} onClick={() => envoyerContratParticulier(a.id)}
                         className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
@@ -477,6 +502,7 @@ export function SessionDocuments(props: Props) {
           onCancel={() => setConfirmCancelOpen(true)}
           sendLabel="Envoyer en signature"
           downloadUrl={convention ? `/api/pdf/convention/${convention.id}` : null}
+          certificatUrl={convention?.certificat_signature ? `/api/pdf/preuve-signature/convention/${convention.id}` : null}
           disabled={!hasClient} disabledReason="Aucun client entreprise rattaché à la session"
           busyKey="conv"
           envois={envoisConvention}

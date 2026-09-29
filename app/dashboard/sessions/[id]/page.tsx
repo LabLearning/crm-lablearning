@@ -95,6 +95,7 @@ export default async function SessionDetailPage({ params, searchParams }: { para
     { data: conventions },
     { data: evaluationsAppr },
     { data: feuillesEmargement },
+    { data: conventionsSigneesElec },
   ] = await Promise.all([
     // Récupérer les émargements (y compris ceux qu'on vient de créer)
     supabase
@@ -160,6 +161,14 @@ export default async function SessionDetailPage({ params, searchParams }: { para
       .from('emargement_feuilles')
       .select('date, creneau, validated_at')
       .eq('session_id', params.id),
+    // Conventions signées électroniquement par le client : leur certificat de
+    // signature peut être délivré (l'image elle-même n'est pas chargée ici)
+    supabase
+      .from('conventions')
+      .select('id')
+      .eq('session_id', params.id)
+      .in('status', ['signee_client', 'signee_complete'])
+      .not('signature_client_signature_data', 'is', null),
   ])
 
   // Listes de référence pour le formulaire « Modifier la session »
@@ -400,7 +409,9 @@ export default async function SessionDetailPage({ params, searchParams }: { para
         qcmSessions={(qcmSessions || []) as any[]}
         qcmReponses={(qcmReponses || []) as any[]}
         qcmBank={(qcmBank || []) as any[]}
-        conventions={(conventions || []) as any[]}
+        conventions={((conventions || []) as any[]).map((c: any) => ({
+          ...c, certificat_signature: (conventionsSigneesElec || []).some((x: any) => x.id === c.id),
+        }))}
         contratFormateur={contratFormateur as any}
         formationsRef={(formationsRef || []) as any[]}
         formateursRef={(formateursRef || []) as any[]}

@@ -1620,6 +1620,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
               conventionsSession={(conventions as any[]).map((c: any) => ({
                 id: c.id, numero: c.numero, client_id: c.client_id || null, sent_at: c.sent_at || null,
                 signature_client_date: c.signature_client_date || null,
+                certificat_signature: !!c.certificat_signature,
                 participants_snapshot: Array.isArray(c.participants_snapshot) ? c.participants_snapshot : null,
               }))}
               contrat={contratFormateur || null}
