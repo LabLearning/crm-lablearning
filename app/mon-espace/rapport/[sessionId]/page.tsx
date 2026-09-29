@@ -8,16 +8,16 @@ import { RapportForm } from './RapportForm'
 export const dynamic = 'force-dynamic'
 
 /**
- * Rapport de fin de session, rempli par le formateur depuis son espace et
- * transmis au gestionnaire — il rejoint le dossier de la session (fiche
- * session, onglet rapport) et nourrit l'amélioration continue.
+ * Compte rendu de formation, rempli par le formateur depuis son espace et
+ * transmis au gestionnaire : il rejoint le dossier de la session (onglet
+ * Bilan) et nourrit l'amélioration continue.
  */
 export default async function RapportPage({ params }: { params: { sessionId: string } }) {
   const { formateurId } = await resolveFormateur()
   const supabase = await createServiceRoleClient()
 
   const { data: sess } = await supabase.from('sessions')
-    .select('id, reference, intitule, date_debut, date_fin, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial)')
+    .select('id, reference, intitule, date_debut, date_fin, formation_id, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial)')
     .eq('id', params.sessionId).eq('formateur_id', formateurId).maybeSingle()
 
   if (!sess) {
@@ -31,6 +31,19 @@ export default async function RapportPage({ params }: { params: { sessionId: str
   const { data: rapport } = await supabase.from('rapports_session')
     .select('*').eq('session_id', params.sessionId).eq('formateur_id', formateurId).maybeSingle()
 
+  // Compte rendu prérempli avec les demi-journées, les objectifs et les
+  // stagiaires de la session ; un ancien brouillon en texte libre est repris
+  const { compteRenduSession } = await import('@/lib/compte-rendu-data')
+  const r: any = rapport
+  const compteRendu = await compteRenduSession(supabase, sess as any, r?.compte_rendu || null)
+  if (r && !r.compte_rendu) {
+    if (r.contenu_aborde && compteRendu.deroule[0] && !compteRendu.deroule[0].contenu) compteRendu.deroule[0].contenu = r.contenu_aborde
+    compteRendu.conditions.difficultes ||= r.difficultes_rencontrees || ''
+    compteRendu.bilan.points_positifs ||= r.points_positifs || ''
+    compteRendu.bilan.recommandations ||= r.recommandations || ''
+    compteRendu.bilan.commentaires ||= [r.objectifs_atteints && `Objectifs atteints : ${r.objectifs_atteints}`, r.objectifs_non_atteints && `Objectifs non atteints : ${r.objectifs_non_atteints}`, r.commentaires_generaux].filter(Boolean).join('\n')
+  }
+
   const s: any = sess
   return (
     <div className="space-y-5 animate-fade-in max-w-3xl">
@@ -39,7 +52,7 @@ export default async function RapportPage({ params }: { params: { sessionId: str
           <ArrowLeft className="h-3.5 w-3.5" /> Mes sessions
         </Link>
         <h1 className="text-xl font-heading font-bold text-surface-900 flex items-center gap-2 mt-1">
-          <ClipboardList className="h-5 w-5 text-brand-500" /> Rapport de session
+          <ClipboardList className="h-5 w-5 text-brand-500" /> Compte rendu de formation
         </h1>
         <p className="text-sm text-surface-500 mt-1">
           {s.formation?.intitule || s.intitule || 'Session'}
@@ -51,7 +64,7 @@ export default async function RapportPage({ params }: { params: { sessionId: str
 
       <RapportForm
         sessionId={params.sessionId}
-        initial={rapport as any}
+        initial={compteRendu}
         transmis={rapport?.status === 'soumis' || rapport?.status === 'valide'}
       />
     </div>

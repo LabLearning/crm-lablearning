@@ -115,7 +115,8 @@ export default async function SessionDetailPage({ params, searchParams }: { para
     // reste visible côté gestionnaire.
     supabase
       .from('rapports_session')
-      .select('id, status, submitted_at, created_at, formateur_id, contenu_aborde, objectifs_atteints, objectifs_non_atteints, difficultes_rencontrees, recommandations, points_positifs, commentaires_generaux, formateur:formateur_id(prenom, nom)')
+      // '*' : le compte rendu détaillé (compte_rendu) n'existe qu'après la migration 162
+      .select('*, formateur:formateur_id(prenom, nom)')
       .eq('session_id', params.id)
       .eq('organization_id', session.organization.id)
       .order('submitted_at', { ascending: false, nullsFirst: false })

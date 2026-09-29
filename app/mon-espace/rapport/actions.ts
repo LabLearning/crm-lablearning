@@ -4,13 +4,18 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
+import type { CompteRendu } from '@/lib/compte-rendu'
 
 /**
- * Rapport de fin de session du formateur (espace connecté) : brouillon
- * enregistrable, puis transmission au gestionnaire — le rapport transmis
- * apparaît sur la fiche session du dashboard et notifie l'équipe.
+ * Compte rendu de formation du formateur (espace connecté) : brouillon
+ * enregistrable, puis transmission au gestionnaire. Le compte rendu transmis
+ * apparaît dans l'onglet Bilan de la session et notifie l'équipe.
  */
-export async function enregistrerRapportAction(formData: FormData): Promise<ActionResult> {
+export async function enregistrerCompteRenduAction(
+  sessionId: string,
+  saisie: CompteRendu,
+  transmettre: boolean,
+): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
@@ -18,47 +23,81 @@ export async function enregistrerRapportAction(formData: FormData): Promise<Acti
     .select('id, prenom, nom').eq('user_id', session.user.id).single()
   if (!formateur) return { success: false, error: 'Fiche formateur introuvable' }
 
-  const sessionId = String(formData.get('session_id') || '')
-  const transmettre = formData.get('transmettre') === 'true'
-
   // La session doit être à ce formateur.
   const { data: sess } = await supabase.from('sessions')
-    .select('id, reference, intitule, formation:formation_id(intitule)')
+    .select('id, reference, intitule, date_debut, date_fin, formation_id, formation:formation_id(intitule)')
     .eq('id', sessionId).eq('formateur_id', formateur.id)
     .eq('organization_id', session.organization.id).maybeSingle()
   if (!sess) return { success: false, error: 'Session introuvable' }
 
-  const champ = (n: string) => String(formData.get(n) || '').trim() || null
+  // Un compte rendu déjà transmis ne se réécrit pas depuis l'espace formateur.
+  const { data: existant } = await supabase.from('rapports_session')
+    .select('id, status').eq('session_id', sessionId).eq('formateur_id', formateur.id).maybeSingle()
+  if (existant?.status === 'soumis' || existant?.status === 'valide') {
+    return { success: false, error: 'Ce compte rendu a déjà été transmis.' }
+  }
+
+  // La saisie est recalée sur la session (demi-journées, objectifs, stagiaires)
+  // et chaque texte est borné : rien d'autre n'est enregistré
+  const { compteRenduSession } = await import('@/lib/compte-rendu-data')
+  const { manquesCompteRendu, syntheseTexte, METHODES, MODALITES_EVALUATION } = await import('@/lib/compte-rendu')
+  const t = (v: unknown, max = 4000) => String(v ?? '').slice(0, max)
+  const cr = await compteRenduSession(supabase, sess as any, {
+    deroule: (saisie?.deroule || []).slice(0, 80).map((d) => ({
+      date: t(d.date, 10), creneau: d.creneau === 'apres_midi' ? 'apres_midi' : 'matin',
+      contenu: t(d.contenu), methodes: (d.methodes || []).filter((m) => METHODES.includes(m)),
+    })),
+    objectifs: (saisie?.objectifs || []).slice(0, 60).map((o) => ({
+      objectif: t(o.objectif, 500),
+      niveau: ['atteint', 'partiel', 'non_atteint'].includes(o.niveau) ? o.niveau : '',
+      commentaire: t(o.commentaire, 1000),
+    })),
+    groupe: {
+      niveau: t(saisie?.groupe?.niveau, 60), participation: t(saisie?.groupe?.participation, 60),
+      dynamique: t(saisie?.groupe?.dynamique), assiduite: t(saisie?.groupe?.assiduite),
+    },
+    evaluation: {
+      modalites: (saisie?.evaluation?.modalites || []).filter((m) => MODALITES_EVALUATION.includes(m)),
+      synthese: t(saisie?.evaluation?.synthese),
+    },
+    stagiaires: (saisie?.stagiaires || []).slice(0, 200).map((s) => ({
+      apprenant_id: t(s.apprenant_id, 40), nom: t(s.nom, 200),
+      acquis: ['acquis', 'en_cours', 'non_acquis'].includes(s.acquis) ? s.acquis : '',
+      commentaire: t(s.commentaire, 1000),
+    })),
+    conditions: { salle: t(saisie?.conditions?.salle, 60), commentaire: t(saisie?.conditions?.commentaire), difficultes: t(saisie?.conditions?.difficultes) },
+    bilan: {
+      points_positifs: t(saisie?.bilan?.points_positifs), retours_stagiaires: t(saisie?.bilan?.retours_stagiaires),
+      besoins_detectes: t(saisie?.bilan?.besoins_detectes), recommandations: t(saisie?.bilan?.recommandations),
+      commentaires: t(saisie?.bilan?.commentaires),
+    },
+  } as any)
+
+  if (transmettre) {
+    const manques = manquesCompteRendu(cr)
+    if (manques.length) return { success: false, error: `Avant de transmettre, complétez : ${manques.join(', ')}.` }
+  }
+
   const donnees = {
     organization_id: session.organization.id,
     session_id: sessionId,
     formateur_id: formateur.id,
-    contenu_aborde: champ('contenu_aborde'),
-    objectifs_atteints: champ('objectifs_atteints'),
-    objectifs_non_atteints: champ('objectifs_non_atteints'),
-    difficultes_rencontrees: champ('difficultes_rencontrees'),
-    recommandations: champ('recommandations'),
-    points_positifs: champ('points_positifs'),
-    commentaires_generaux: champ('commentaires_generaux'),
+    ...syntheseTexte(cr),
     status: transmettre ? 'soumis' : 'brouillon',
     submitted_at: transmettre ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
   }
+  const ecrire = (d: Record<string, unknown>) => existant
+    ? supabase.from('rapports_session').update(d).eq('id', existant.id)
+    : supabase.from('rapports_session').insert(d)
 
-  // Un rapport déjà transmis ne se réécrit pas depuis l'espace formateur.
-  const { data: existant } = await supabase.from('rapports_session')
-    .select('id, status').eq('session_id', sessionId).eq('formateur_id', formateur.id).maybeSingle()
-  if (existant?.status === 'soumis' || existant?.status === 'valide') {
-    return { success: false, error: 'Ce rapport a déjà été transmis.' }
-  }
-
-  const { error } = existant
-    ? await supabase.from('rapports_session').update(donnees).eq('id', existant.id)
-    : await supabase.from('rapports_session').insert(donnees)
-  if (error) { console.error('[rapport session]', error.message); return { success: false, error: 'Enregistrement impossible' } }
+  let { error } = await ecrire({ ...donnees, compte_rendu: cr })
+  // Migration 162 pas encore appliquée : la synthèse en texte garde tout
+  if (error && (error.code === '42703' || error.code === 'PGRST204')) ({ error } = await ecrire(donnees))
+  if (error) { console.error('[compte rendu]', error.message); return { success: false, error: 'Enregistrement impossible' } }
 
   if (transmettre) {
-    // Notifier les gestionnaires : le rapport est arrivé.
+    // Notifier les gestionnaires : le compte rendu est arrivé.
     const { createNotifications } = await import('@/lib/email')
     const { data: equipe } = await supabase.from('users')
       .select('id').eq('organization_id', session.organization.id)
@@ -67,8 +106,8 @@ export async function enregistrerRapportAction(formData: FormData): Promise<Acti
     await createNotifications((equipe || []).map((u: any) => ({
       organizationId: session.organization.id,
       userId: u.id,
-      titre: 'Rapport de session transmis',
-      message: `${formateur.prenom} ${formateur.nom} a transmis son rapport pour « ${intitule} »${(sess as any).reference ? ` (${(sess as any).reference})` : ''}.`,
+      titre: 'Compte rendu de formation transmis',
+      message: `${formateur.prenom} ${formateur.nom} a transmis son compte rendu pour « ${intitule} »${(sess as any).reference ? ` (${(sess as any).reference})` : ''}.`,
       type: 'info',
       lienUrl: `/dashboard/sessions/${sessionId}?tab=rapport`,
       lienLabel: 'Voir la session',
@@ -78,6 +117,7 @@ export async function enregistrerRapportAction(formData: FormData): Promise<Acti
   }
 
   revalidatePath('/mon-espace/sessions')
+  revalidatePath(`/mon-espace/rapport/${sessionId}`)
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true }
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { CompteRenduVue } from './CompteRenduVue'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -1145,7 +1146,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 <div className="flex items-center gap-3 min-w-0">
                   <FileText className="h-5 w-5 text-surface-500 shrink-0" />
                   <div>
-                    <div className="text-sm font-semibold text-surface-900">Rapport de session</div>
+                    <div className="text-sm font-semibold text-surface-900">Compte rendu de formation</div>
                     <div className="text-xs text-surface-500">
                       {rapport.formateur ? `${rapport.formateur.prenom || ''} ${rapport.formateur.nom || ''}`.trim() + ' · ' : ''}
                       {rapport.status === 'valide'
@@ -1158,7 +1159,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                   {rapport.status === 'valide' ? 'Validé' : rapport.status === 'soumis' ? 'Soumis' : 'Brouillon'}
                 </Badge>
               </div>
-              {/* Le contenu du rapport, rubrique par rubrique */}
+              {/* Compte rendu détaillé, sinon l'ancien rapport rubrique par rubrique */}
+              {rapport.compte_rendu ? <CompteRenduVue cr={rapport.compte_rendu} /> : (
               <div className="grid gap-3 md:grid-cols-2 pt-1">
                 {[
                   ['Contenu abordé', rapport.contenu_aborde],
@@ -1175,6 +1177,13 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                   </div>
                 ))}
               </div>
+              )}
+              {!isFormateur && (
+                <a href={`/api/pdf/compte-rendu/${session.id}`}
+                  className="btn-secondary inline-flex items-center gap-2 text-sm">
+                  <Download className="h-4 w-4" /> Télécharger le compte rendu (PDF)
+                </a>
+              )}
               {rapport.status === 'brouillon' && !isFormateur && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                   Le formateur n&apos;a pas encore transmis ce bilan : le contenu peut encore changer.

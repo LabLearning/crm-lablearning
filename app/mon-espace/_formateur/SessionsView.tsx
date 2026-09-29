@@ -127,7 +127,7 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
                     {basePath === '/mon-espace' && (
                       ['soumis', 'valide'].includes(s._rapport || '') ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Rapport transmis
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Compte rendu transmis
                         </span>
                       ) : (
                         <Link
@@ -139,7 +139,7 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
                           }`}
                         >
                           <ClipboardList className="h-3.5 w-3.5" />
-                          {s._rapport === 'brouillon' ? 'Rapport — brouillon à transmettre' : s.status === 'terminee' ? 'Rapport à faire' : 'Rapport de session'}
+                          {s._rapport === 'brouillon' ? 'Compte rendu : brouillon à transmettre' : s.status === 'terminee' ? 'Compte rendu à faire' : 'Compte rendu de formation'}
                         </Link>
                       )
                     )}
