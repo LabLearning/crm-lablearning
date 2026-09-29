@@ -30,7 +30,7 @@ export default async function AuditsHygienePage() {
   const etablissements = (etabRes.data as any[]) || []
   const clients = await fetchAllPaged((from, to) =>
     supabase.from('clients')
-      .select('id, raison_sociale, nom_commercial, ville, code_postal')
+      .select('id, raison_sociale, nom_commercial, adresse, ville, code_postal, franchise_id')
       .eq('organization_id', orgId)
       .order('raison_sociale')
       .range(from, to),

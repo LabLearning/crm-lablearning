@@ -4,8 +4,11 @@
  * L'outil terrain (projet Supabase distinct) reste la source de vérité : on ne
  * lui écrit jamais rien. On recopie ici les établissements, les audits hygiène,
  * les DUERP et leur plan d'action, en rattachant chaque établissement à un
- * client du CRM. Le rapprochement automatique se fait sur le SIREN, puis sur
- * nom + ville ; un rapprochement validé à la main n'est jamais écrasé.
+ * client du CRM. Le rapprochement automatique se fait sur le SIRET, puis sur
+ * nom + ville, puis sur l'adresse (numéro, voie, code postal) confirmée par le
+ * nom ou le réseau ; un rapprochement validé à la main n'est jamais écrasé.
+ * Les doublons de l'outil terrain (même établissement saisi deux fois) sont
+ * regroupés sur le même client.
  */
 import { createClient } from '@supabase/supabase-js'
 import { fetchAllPaged } from '@/lib/supabase/fetch-all'
@@ -54,19 +57,96 @@ const siren = (s: unknown) => {
   return d.length >= 9 ? d.slice(0, 9) : ''
 }
 
+// ── Adresses ────────────────────────────────────────────────────────────────
+
+const ABREVIATIONS: Record<string, string> = {
+  av: 'avenue', ave: 'avenue', bd: 'boulevard', bld: 'boulevard', blvd: 'boulevard', boul: 'boulevard',
+  r: 'rue', pl: 'place', st: 'saint', ste: 'saint', sainte: 'saint', chem: 'chemin', rte: 'route',
+  imp: 'impasse', all: 'allee', allees: 'allee', crs: 'cours', fg: 'faubourg', fbg: 'faubourg',
+  qu: 'quai', mal: 'marechal', gal: 'general', pdt: 'president', res: 'residence',
+}
+const VIDES_ADRESSE = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'et', 'a', 'au', 'aux', 'en', 'bis', 'ter'])
+
+export interface Voie { num: string; rue: string }
+export interface Adresse { cp: string; ville: string; voies: Voie[] }
+
+/**
+ * Les voies d'une adresse, numéro à part : « 9 quai Veil Picard 7 rue
+ * d'Arènes » en donne deux. Abréviations dépliées (« bd », « st »), articles
+ * retirés, et ce qui suit le code postal ignoré.
+ */
+export function voiesDe(adresse: unknown): Voie[] {
+  const mots = normaliser(String(adresse || '').replace(/\b\d{5}\b.*$/, '')).split(' ').filter(Boolean)
+  const voies: Voie[] = []
+  let num = ''
+  let rue: string[] = []
+  for (const brut of mots) {
+    if (/^\d+[a-z]?$/.test(brut)) {
+      if (rue.length) { voies.push({ num, rue: rue.join(' ') }); num = ''; rue = [] }
+      if (!num) num = brut.replace(/[a-z]$/, '')
+      continue
+    }
+    const m = ABREVIATIONS[brut] || brut
+    if (!VIDES_ADRESSE.has(m)) rue.push(m)
+  }
+  if (rue.length) voies.push({ num, rue: rue.join(' ') })
+  return voies
+}
+
+/** Code postal, parfois collé à la ville ou à l'adresse dans l'outil terrain. */
+export function codePostal(x: { code_postal?: unknown; ville?: unknown; adresse?: unknown }): string {
+  for (const v of [x.code_postal, x.ville, x.adresse]) {
+    const m = String(v || '').match(/\b\d{5}\b/)
+    if (m) return m[0]
+  }
+  return ''
+}
+
+export const adresseDe = (x: { code_postal?: unknown; ville?: unknown; adresse?: unknown }): Adresse =>
+  ({ cp: codePostal(x), ville: villeSeule(x.ville), voies: voiesDe(x.adresse) })
+
+/** Même voie, à deux fautes de frappe près (« Raymond Giraud » / « Grimaud »). */
+const memeRue = (a: string, b: string) =>
+  a === b || (Math.min(a.length, b.length) >= 8 && Math.abs(a.length - b.length) <= 2 && distance(a, b) <= 2)
+
+/**
+ * Deux adresses désignent-elles le même lieu ? « exacte » : même localité,
+ * même voie, même numéro. « voie » : même voie, mais un numéro manque d'un
+ * côté ; insuffisant seul. Deux numéros différents ne sont jamais le même lieu.
+ */
+export function correspondanceAdresse(a: Adresse, b: Adresse): 'exacte' | 'voie' | null {
+  const memeLocalite = a.cp && b.cp ? a.cp === b.cp : !!a.ville && a.ville === b.ville
+  if (!memeLocalite) return null
+  let resultat: 'voie' | null = null
+  for (const va of a.voies) {
+    for (const vb of b.voies) {
+      if (!memeRue(va.rue, vb.rue)) continue
+      if (va.num && vb.num) { if (va.num === vb.num) return 'exacte'; continue }
+      resultat = 'voie'
+    }
+  }
+  return resultat
+}
+
 export interface ClientIndex {
-  parSiren: Map<string, string>
+  parSiret: Map<string, string>
+  parSiren: Map<string, string[]>
   parNomVille: Map<string, string>
   parNom: Map<string, string | null>   // null = ambigu (plusieurs clients)
+  clients: any[]
+  adresses: { id: string; franchise_id: string | null; adresse: Adresse; client: any }[]
 }
 
 export function indexerClients(clients: any[]): ClientIndex {
-  const parSiren = new Map<string, string>()
+  const parSiret = new Map<string, string>()
+  const parSiren = new Map<string, string[]>()
   const parNomVille = new Map<string, string>()
   const parNom = new Map<string, string | null>()
   for (const c of clients) {
+    const d = String(c.siret || '').replace(/\D/g, '')
+    if (d.length === 14) parSiret.set(d, c.id)
     const s = siren(c.siret)
-    if (s) parSiren.set(s, c.id)
+    if (s) parSiren.set(s, [...(parSiren.get(s) || []), c.id])
     for (const nom of [c.raison_sociale, c.nom_commercial]) {
       if (!nom) continue
       parNomVille.set(`${normaliser(nom)}|${villeSeule(c.ville)}`, c.id)
@@ -74,21 +154,93 @@ export function indexerClients(clients: any[]): ClientIndex {
       parNom.set(k, parNom.has(k) && parNom.get(k) !== c.id ? null : c.id)
     }
   }
-  return { parSiren, parNomVille, parNom }
+  const adresses = clients
+    .map((c) => ({ id: c.id, franchise_id: c.franchise_id || null, adresse: adresseDe(c), client: c }))
+    .filter((c) => c.adresse.voies.length > 0)
+  return { parSiret, parSiren, parNomVille, parNom, clients, adresses }
+}
+
+type EtabARapprocher = { nom?: string | null; ville?: string | null; siret?: string | null; adresse?: string | null; code_postal?: string | null }
+
+/** Un mot rare du nom en commun, ou deux noms identiques à la frappe près. */
+function nomCommun(nom: unknown, client: any, clients: any[]): boolean {
+  const colle = (x: unknown) => normaliser(x).replace(/ /g, '')
+  const a = colle(nom)
+  for (const n of [client.raison_sociale, client.nom_commercial]) {
+    const b = colle(n)
+    if (a && b && (a.includes(b) || b.includes(a) || proche(a, b))) return true
+  }
+  const idf = idfPortefeuille(clients)
+  const seuilRare = Math.log(Math.max(2, clients.length) / 3)
+  const cmots = new Set([...motsDe(client.raison_sociale), ...motsDe(client.nom_commercial)])
+  return motsDe(nom).some((m) => cmots.has(m) && (idf.get(m) ?? Infinity) >= seuilRare)
+}
+
+/**
+ * Client à la même adresse. Un seul client au même numéro de la même voie :
+ * c'est lui, même si sa raison sociale ne ressemble pas à l'enseigne (« Chamas
+ * Tacos Metz » est « B.H RESTAURATION »). Plusieurs (galerie, centre
+ * commercial) ou numéro absent : il faut en plus le nom ou le réseau.
+ */
+function rapprocherParAdresse(etab: EtabARapprocher, idx: ClientIndex, franchiseEtab: string | null, parmi?: Set<string>) {
+  const adr = adresseDe(etab)
+  if (!adr.voies.length) return null
+  const candidats = idx.adresses
+    .filter((c) => !parmi || parmi.has(c.id))
+    .map((c) => ({ c, m: correspondanceAdresse(adr, c.adresse) }))
+    .filter((x) => x.m)
+    // Réseau reconnu d'un côté, autre réseau de l'autre : pas le même établissement
+    .filter((x) => !(franchiseEtab && x.c.franchise_id && x.c.franchise_id !== franchiseEtab))
+    // Deux SIREN connus et différents : une autre société dans les mêmes murs
+    .filter((x) => !(siren(etab.siret) && siren(x.c.client.siret) && siren(etab.siret) !== siren(x.c.client.siret)))
+  const confirme = (c: (typeof candidats)[number]['c']) =>
+    (!!franchiseEtab && c.franchise_id === franchiseEtab) || nomCommun(etab.nom, c.client, idx.clients)
+  const exactes = candidats.filter((x) => x.m === 'exacte')
+  const retenus = exactes.length === 1 ? exactes
+    : exactes.length > 1 ? exactes.filter((x) => confirme(x.c))
+      : candidats.filter((x) => confirme(x.c))
+  return retenus.length === 1 ? retenus[0].c.id : null
 }
 
 export function rapprocher(
-  etab: { nom?: string | null; ville?: string | null; siret?: string | null },
+  etab: EtabARapprocher,
   idx: ClientIndex,
+  franchiseEtab: string | null = null,
 ): { client_id: string | null; methode: string | null } {
+  const d = String(etab.siret || '').replace(/\D/g, '')
+  if (d.length === 14 && idx.parSiret.has(d)) return { client_id: idx.parSiret.get(d)!, methode: 'siren' }
+  // SIREN : une société peut tenir plusieurs établissements, l'adresse ou le nom départage
   const s = siren(etab.siret)
-  if (s && idx.parSiren.has(s)) return { client_id: idx.parSiren.get(s)!, methode: 'siren' }
+  const memeSociete = s ? idx.parSiren.get(s) || [] : []
+  if (memeSociete.length === 1) return { client_id: memeSociete[0], methode: 'siren' }
+  if (memeSociete.length > 1) {
+    const parAdresse = rapprocherParAdresse(etab, idx, franchiseEtab, new Set(memeSociete))
+    if (parAdresse) return { client_id: parAdresse, methode: 'siren' }
+    const kv = `${normaliser(etab.nom)}|${villeSeule(etab.ville)}`
+    const parNom = idx.parNomVille.get(kv)
+    if (parNom && memeSociete.includes(parNom)) return { client_id: parNom, methode: 'siren' }
+    return { client_id: memeSociete[memeSociete.length - 1], methode: 'siren' }
+  }
   const kv = `${normaliser(etab.nom)}|${villeSeule(etab.ville)}`
   if (idx.parNomVille.has(kv)) return { client_id: idx.parNomVille.get(kv)!, methode: 'nom_ville' }
+  const parAdresse = rapprocherParAdresse(etab, idx, franchiseEtab)
+  if (parAdresse) return { client_id: parAdresse, methode: 'adresse' }
   const kn = normaliser(etab.nom)
   const unique = idx.parNom.get(kn)
   if (unique) return { client_id: unique, methode: 'nom' }
   return { client_id: null, methode: null }
+}
+
+/**
+ * Doublons de l'outil terrain : le même établissement saisi deux fois (« Crous't
+ * wok » et « Crous’t wok  », « Krusty chiken » et « Krousty Chiken ») à la même
+ * adresse. Même lieu et noms voisins : un seul établissement.
+ */
+export function memeEtablissementTerrain(a: EtabARapprocher, b: EtabARapprocher): boolean {
+  if (!correspondanceAdresse(adresseDe(a), adresseDe(b))) return false
+  const colle = (x: unknown) => normaliser(x).replace(/ /g, '')
+  const na = colle(a.nom), nb = colle(b.nom)
+  return !!na && !!nb && (na.includes(nb) || nb.includes(na) || proche(na, nb))
 }
 
 /**
@@ -177,11 +329,31 @@ function idfPortefeuille(clients: any[]) {
 }
 
 export function suggestions(
-  etab: { nom?: string | null; ville?: string | null },
+  etab: { nom?: string | null; ville?: string | null; adresse?: string | null; code_postal?: string | null },
   clients: any[],
   max = 5,
   seuil = 0.55,
 ) {
+  // Même adresse : piste sérieuse même quand le nom ne dit rien (raison sociale
+  // du franchisé), et d'autant plus que le numéro est là
+  const adr = adresseDe(etab)
+  const parAdresse = new Map<string, number>()
+  if (adr.voies.length) {
+    for (const c of clients) {
+      const m = correspondanceAdresse(adr, adresseDe(c))
+      if (m) parAdresse.set(c.id, m === 'exacte' ? 0.9 : 0.6)
+    }
+  }
+  const retenir = (liste: { client: any; note: number }[]) => {
+    const vus = new Map(liste.map((x) => [x.client.id, x]))
+    for (const [id, note] of parAdresse) {
+      const c = clients.find((x) => x.id === id)
+      const deja = vus.get(id)
+      if (!deja || deja.note < note) vus.set(id, { client: c, note: Math.max(note, deja?.note || 0) })
+    }
+    return [...vus.values()].sort((a, b) => b.note - a.note).slice(0, max)
+  }
+
   const idf = idfPortefeuille(clients)
   const ville = villeSeule(etab.ville)
   const motsVille = new Set(ville.split(' '))
@@ -189,9 +361,9 @@ export function suggestions(
   const poids = (m: string) => idf.get(m) ?? Math.log(Math.max(1, clients.length))
 
   const mots = motsDe(etab.nom).filter((m) => !motsVille.has(m))
-  if (mots.length === 0) return []
+  if (mots.length === 0) return retenir([])
   const total = mots.reduce((s, m) => s + poids(m), 0)
-  if (total === 0) return []
+  if (total === 0) return retenir([])
 
   // Un mot ne vaut d'être proposé que s'il est rare : présent chez 3 clients au
   // plus. « food », « tacos » ou « street » ne désignent personne.
@@ -219,12 +391,10 @@ export function suggestions(
   const exAequo = notes.filter((n) => n.base >= meilleure - 0.001 && n.base > 0)
   const ambigu = exAequo.length > 1 && !exAequo.some((n) => n.memeVille)
 
-  return notes
+  return retenir(notes
     .map((n) => (ambigu && n.base >= meilleure - 0.001 ? { ...n, note: n.note * 0.6 } : n))
     .filter((n) => n.note >= seuil)
-    .sort((a, b) => b.note - a.note)
-    .slice(0, max)
-    .map(({ client, note }) => ({ client, note }))
+    .map(({ client, note }) => ({ client, note })))
 }
 
 // ── Synchronisation ─────────────────────────────────────────────────────────
@@ -266,7 +436,7 @@ export async function synchroniserAuditHygiene(
     // Clients du CRM pour le rapprochement
     const clients = await fetchAllPaged((from, to) =>
       crm.from('clients')
-        .select('id, raison_sociale, nom_commercial, siret, ville')
+        .select('id, raison_sociale, nom_commercial, siret, adresse, code_postal, ville, franchise_id')
         .eq('organization_id', organizationId)
         .range(from, to),
     )
@@ -294,14 +464,23 @@ export async function synchroniserAuditHygiene(
 
     let rapprochesAuto = 0
     let franchisesReconnues = 0
-    const lignesEtab = etabs.map((e) => {
+    const reseauDuNom = (e: any) => rapprocherFranchise(e, (franchises || []) as any[])
+    const rapproches = etabs.map((e) => {
       const anterieur: any = dejaLa.get(e.id)
-      const manuel = anterieur?.match_valide_at || anterieur?.ignore_rapprochement
-      const auto = manuel ? null : rapprocher(e, idx)
-      if (auto?.client_id) rapprochesAuto++
-      const clientId = manuel ? anterieur.client_id : auto!.client_id
+      const manuel = !!(anterieur?.match_valide_at || anterieur?.ignore_rapprochement)
+      const auto = manuel ? null : rapprocher(e, idx, reseauDuNom(e))
+      return { e, manuel, client_id: manuel ? anterieur.client_id : auto!.client_id, methode: manuel ? anterieur.match_methode : auto!.methode }
+    })
+    // Doublons de l'outil terrain : l'établissement sans client prend celui de son jumeau
+    for (const r of rapproches) {
+      if (r.manuel || r.client_id) continue
+      const jumeaux = new Set(rapproches.filter((x) => x !== r && x.client_id && memeEtablissementTerrain(r.e, x.e)).map((x) => x.client_id))
+      if (jumeaux.size === 1) { r.client_id = [...jumeaux][0]; r.methode = 'regroupement' }
+    }
+    const lignesEtab = rapproches.map(({ e, manuel, client_id: clientId, methode }) => {
+      if (!manuel && clientId) rapprochesAuto++
       const franchiseId = (clientId ? franchiseDuClient.get(clientId) : null)
-        || rapprocherFranchise(e, (franchises || []) as any[])
+        || reseauDuNom(e)
       if (franchiseId) franchisesReconnues++
       return {
         organization_id: organizationId,
@@ -318,7 +497,7 @@ export async function synchroniserAuditHygiene(
         latitude: e.latitude ?? null,
         longitude: e.longitude ?? null,
         client_id: clientId,
-        match_methode: manuel ? anterieur.match_methode : auto!.methode,
+        match_methode: methode,
         franchise_id: franchiseId,
         source_created_at: e.created_at || null,
         synced_at: new Date().toISOString(),
