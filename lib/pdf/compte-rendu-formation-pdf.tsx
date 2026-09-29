@@ -5,6 +5,7 @@ import {
   BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
 import { LIBELLES_ACQUIS, LIBELLES_OBJECTIF, LIBELLES_STATUT_DEMI_JOURNEE, libelleDemiJournee, type CompteRendu } from '../compte-rendu'
+import type { AuditEtablissement } from '../audit-hygiene-synthese'
 
 /**
  * Compte rendu de formation rédigé par le formateur, pour le dossier de la
@@ -42,12 +43,14 @@ const TONS: Record<string, { fond: string; couleur: string }> = {
   non_atteint: { fond: '#FBE4E2', couleur: '#9B2C22' }, non_acquis: { fond: '#FBE4E2', couleur: '#9B2C22' },
 }
 
-export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
+export function CompteRenduFormationPDF({ org, entete, cr, ancien, audits }: {
   org: any
   entete: EnteteCompteRendu
   cr: CompteRendu | null
   /** Ancien rapport en texte libre, quand il n'y a pas de compte rendu détaillé */
   ancien?: [string, string | null][]
+  /** Audits hygiène de l'établissement autour de la session */
+  audits?: { entree: AuditEtablissement | null; sortie: AuditEtablissement | null } | null
 }) {
   return (
     <Document title={`Compte rendu de formation ${entete.reference}`} author={org?.name || 'Lab Learning'}>
@@ -156,6 +159,8 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien }: {
             ))}
           </View>
         )}
+
+        {audits && (audits.entree || audits.sortie) ? <SectionAudits audits={audits} /> : null}
 
         <Text style={{ fontSize: 7.6, color: SURFACE_500, marginTop: 6 }}>
           {entete.formateur ? `Compte rendu rédigé par ${entete.formateur}` : 'Compte rendu rédigé par le formateur'}
@@ -307,5 +312,77 @@ export function CompteRenduPapierPDF({ org, entete, cr, listes }: {
         <PdfDocFooter numero={`Compte rendu · ${entete.reference}`} org={org} />
       </Page>
     </Document>
+  )
+}
+
+// ─── Audit hygiène de l'établissement ───────────────────────────────────────
+
+const jourAudit = (d: string | null) => (d ? new Date(`${d.slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '')
+
+function ResumeAudit({ titre, a }: { titre: string; a: AuditEtablissement }) {
+  return (
+    <View wrap={false} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 9, marginBottom: 6 }}>
+      <View style={{ width: 58, alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, fontWeight: 700, color: SURFACE_900 }}>{a.score != null ? `${a.score} %` : '—'}</Text>
+        {a.mention ? <Text style={{ fontSize: 6.6, color: SURFACE_500, textAlign: 'center' }}>{a.mention}</Text> : null}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 8.6, fontWeight: 700, color: SURFACE_900 }}>{titre}{a.numRapport ? ` · ${a.numRapport}` : ''}</Text>
+        <Text style={{ fontSize: 7.8, color: SURFACE_700, marginTop: 1.5 }}>
+          {[jourAudit(a.date), a.auditeur ? `par ${a.auditeur}` : null].filter(Boolean).join(' ')}
+        </Text>
+        <Text style={{ fontSize: 7.6, color: SURFACE_500, marginTop: 1.5 }}>
+          {a.conformes} conformes · {a.partiels} partiels · {a.nonConformes} non conformes
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * L'audit hygiène fait à l'entrée (et à la sortie) de l'établissement : ses
+ * écarts nourrissent le compte rendu et la suite à donner.
+ */
+function SectionAudits({ audits }: { audits: { entree: AuditEtablissement | null; sortie: AuditEtablissement | null } }) {
+  const { entree, sortie } = audits
+  const reference = sortie || entree!
+  return (
+    <View style={shared.section}>
+      <View minPresenceAhead={120}><PdfSectionTitle icon="clipboardCheck">Audit hygiène de l’établissement</PdfSectionTitle></View>
+      {entree ? <ResumeAudit titre="Audit d’entrée" a={entree} /> : null}
+      {sortie ? <ResumeAudit titre="Audit de sortie" a={sortie} /> : (
+        <Text style={{ fontSize: 7.8, color: SURFACE_500, marginBottom: 6 }}>Audit de sortie : en cours d’importation.</Text>
+      )}
+      {entree && sortie && entree.score != null && sortie.score != null ? (
+        <Text style={{ fontSize: 8.2, color: SURFACE_700, marginBottom: 6 }}>
+          Évolution : {entree.score} % à {sortie.score} % ({sortie.score - entree.score >= 0 ? '+' : ''}{sortie.score - entree.score} points).
+        </Text>
+      ) : null}
+      {reference.ecarts.length > 0 ? (
+        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, marginTop: 2 }}>
+          <View style={{ flexDirection: 'row', backgroundColor: SURFACE_50, paddingVertical: 4, paddingHorizontal: 8 }}>
+            <Text style={{ fontSize: 7.2, color: SURFACE_500, width: 120 }}>Écarts relevés {sortie ? '(sortie)' : '(entrée)'}</Text>
+            <Text style={{ fontSize: 7.2, color: SURFACE_500, flex: 1 }}>Observation de l’auditeur</Text>
+          </View>
+          {reference.ecarts.map((e, i) => (
+            <View key={i} wrap={false} style={{ flexDirection: 'row', gap: 6, paddingVertical: 4.5, paddingHorizontal: 8, borderTopWidth: 0.5, borderTopColor: SURFACE_200 }}>
+              <View style={{ width: 114 }}>
+                <Text style={{ fontSize: 7.8, color: SURFACE_900 }}>{e.section} · {e.ref}</Text>
+                <Pastille texte={e.niveau === 'non_conforme' ? 'Non conforme' : 'Partiel'} {...(e.niveau === 'non_conforme' ? TONS.non_atteint : TONS.partiel)} />
+              </View>
+              <Text style={{ fontSize: 7.8, color: SURFACE_700, flex: 1, lineHeight: 1.4 }}>{e.observation || 'Sans observation'}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {reference.documentsManquants.length > 0 ? (
+        <View style={{ marginTop: 6 }} wrap={false}>
+          <Text style={{ fontSize: 8.2, fontWeight: 700, color: SURFACE_900, marginBottom: 2 }}>Documents obligatoires manquants</Text>
+          {reference.documentsManquants.map((d, i) => (
+            <Text key={i} style={{ fontSize: 7.8, color: SURFACE_700, lineHeight: 1.4 }}>- {d}</Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
   )
 }

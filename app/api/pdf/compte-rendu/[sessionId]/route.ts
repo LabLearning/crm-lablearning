@@ -47,7 +47,7 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
   }
 
   const { data: s } = await supabase.from('sessions')
-    .select('id, reference, intitule, date_debut, date_fin, lieu, adresse, code_postal, ville, formation_id, formateur_id, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale, nom_commercial), formateur:formateur_id(prenom, nom)')
+    .select('id, reference, intitule, date_debut, date_fin, lieu, adresse, code_postal, ville, formation_id, formateur_id, client_id, formation:formation_id(intitule, duree_heures), client:client_id(raison_sociale, nom_commercial), formateur:formateur_id(prenom, nom)')
     .eq('id', params.sessionId).eq('organization_id', orgId).maybeSingle()
   if (!s || (formateurId && (s as any).formateur_id !== formateurId)) {
     return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
@@ -94,8 +94,11 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
       listes: { methodes: METHODES, modalites: MODALITES_EVALUATION, niveaux: NIVEAUX_GROUPE, participations: PARTICIPATIONS, salles: SALLES },
     }) as any)
   } else {
+    // Audits hygiène de l'établissement autour de la session
+    const { auditsDuClient, auditsDeLaSession } = await import('@/lib/audit-hygiene-synthese')
+    const audits = ss.client_id ? auditsDeLaSession(await auditsDuClient(supabase, ss.client_id, orgId), ss) : null
     buffer = await renderToBuffer(createElement(CompteRenduFormationPDF, {
-      org, entete,
+      org, entete, audits,
       cr: compteRenduStocke(r),
       ancien: [
         ['Contenu abordé', r.contenu_aborde], ['Objectifs atteints', r.objectifs_atteints],

@@ -1,6 +1,7 @@
 'use client'
 
 import { CompteRenduVue } from './CompteRenduVue'
+import { AuditVue } from './AuditVue'
 import { compteRenduStocke } from '@/lib/compte-rendu'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -101,6 +102,8 @@ interface Props {
   piecesTableManquante?: boolean
   estHygiene?: boolean
   rentabilite?: any
+  /** Audits hygiène de l'établissement autour de la session (entrée, sortie) */
+  auditsSession?: { entree: import('@/lib/audit-hygiene-synthese').AuditEtablissement | null; sortie: import('@/lib/audit-hygiene-synthese').AuditEtablissement | null } | null
 }
 
 const QCM_TYPE_LABELS: Record<string, string> = {
@@ -132,7 +135,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
     « facturation » n'y montre que la rentabilité et les frais annexes. */
 const ONGLETS_POEI: string[] = ['presences', 'apprenants', 'qcm', 'rapport', 'facturation']
 
-export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, poeiLien = null, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, poeiLien = null, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null, auditsSession = null }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -1226,6 +1229,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
               )}
             </div>
           )}
+
+          {!isFormateur && auditsSession && <AuditVue entree={auditsSession.entree} sortie={auditsSession.sortie} />}
 
           {/* Le second regard sur la même session : ce que le CLIENT en dit,
               recueilli par téléphone — sous le rapport du formateur. */}

@@ -172,6 +172,32 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
         <Stat icon={Banknote} tint="amber" value={fmtEuro(comm)} label="Commission générée TTC" />
       </div>
 
+      {/* Un audit d'entrée et un audit de sortie par établissement formé */}
+      {formations.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([['Audit d’entrée', audits?.entree || null], ['Audit de sortie', audits?.sortie || null]] as const).map(([titre, a]) => (
+            <div key={titre} className="card p-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-surface-900">{titre}</div>
+                  <div className="text-xs text-surface-500">
+                    {a ? [a.date ? new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null, a.mention].filter(Boolean).join(' · ') : 'Pas encore dans votre espace'}
+                  </div>
+                </div>
+              </div>
+              {a ? (
+                <div className="text-sm font-heading font-bold text-surface-900 tabular-nums shrink-0">{a.score != null ? `${a.score}/100` : '—'}</div>
+              ) : (
+                <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">En cours d’importation</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Audits hygiène : la photo d'entrée, puis ce qui a bougé */}
       {audits && audits.historique.length > 0 && (
         <div>
@@ -251,7 +277,7 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
                       </div>
                     )}
                   </div>
-                  {(f.hygiene || f.comptesRendus.length > 0 || f.commission != null) && (
+                  {(f.hygiene || f.comptesRendus.length > 0 || f.commission != null || f.etat === 'terminee') && (
                     <div className="mt-3 pt-3 border-t border-surface-100 flex items-center gap-2 text-xs flex-wrap">
                       {f.hygiene && (
                         <a href={f.hygiene} className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 px-2.5 py-1.5 font-medium text-surface-700 hover:bg-surface-50">
@@ -265,6 +291,12 @@ export default async function FranchiseEtablissementDetail({ params }: { params:
                           <Download className="h-3 w-3 text-surface-400" />
                         </a>
                       ))}
+                      {f.etat === 'terminee' && f.comptesRendus.length === 0 && (
+                        // Certains formateurs envoient leur bilan par mail : il est importé à la main
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 font-medium text-amber-700">
+                          <ClipboardList className="h-3.5 w-3.5" /> Compte rendu : import manuel en cours
+                        </span>
+                      )}
                       {f.commission != null && (
                         <span className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${cs}`}>
                           <BadgeCheck className="h-3 w-3" /> Commission {commissionStatusLabel(f.statutCommission as any).toLowerCase()}

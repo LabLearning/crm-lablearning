@@ -198,6 +198,11 @@ export default async function SessionDetailPage({ params, searchParams }: { para
     .maybeSingle()
   // Le bilan transmis prime sur un brouillon, quel que soit son auteur
   const rapports = ((rapportRes as any) || []) as any[]
+  // Audits hygiène de l'établissement autour de la session (onglet Bilan)
+  const { auditsDuClient, auditsDeLaSession } = await import('@/lib/audit-hygiene-synthese')
+  const auditsSession = (sessionData as any).client_id
+    ? auditsDeLaSession(await auditsDuClient(supabase, (sessionData as any).client_id, session.organization.id), sessionData as any)
+    : { entree: null, sortie: null }
   const rapport = rapports.find((r) => r.status === 'valide')
     || rapports.find((r) => r.status === 'soumis')
     || rapports[0]
@@ -411,6 +416,7 @@ export default async function SessionDetailPage({ params, searchParams }: { para
         qcmSessions={(qcmSessions || []) as any[]}
         qcmReponses={(qcmReponses || []) as any[]}
         qcmBank={(qcmBank || []) as any[]}
+        auditsSession={auditsSession}
         conventions={((conventions || []) as any[]).map((c: any) => ({
           ...c, certificat_signature: CERTIFICAT_SIGNATURE_CONVENTION && (conventionsSigneesElec || []).some((x: any) => x.id === c.id),
         }))}
