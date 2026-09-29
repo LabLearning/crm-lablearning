@@ -66,12 +66,15 @@ export async function journaliserEvenementConvention(
     ip?: string | null
     userAgent?: string | null
     details?: Record<string, unknown>
+    /** Instant de l'acte, quand l'écriture arrive après coup (la signature, après le rendu de l'exemplaire) */
+    survenuAt?: string
   },
 ) {
   const { error } = await supabase.from('convention_signature_evenements').insert({
     organization_id: e.organizationId,
     convention_id: e.conventionId,
     evenement: e.evenement,
+    ...(e.survenuAt ? { survenu_at: e.survenuAt } : {}),
     ip_address: e.ip || null,
     user_agent: e.userAgent || null,
     details: e.details || null,

@@ -306,22 +306,8 @@ export async function signConventionPublicAction(
     .eq('id', conv.id)
   if (errPreuve) console.error('[preuve convention]', errPreuve.message)
 
-  // Si la convention est liée à une session → bascule en 'validee' si contrat formateur OK
-  if (conv.session_id) {
-    const { maybeValidateSession } = await import('@/app/dashboard/sessions/confirm-actions')
-    await maybeValidateSession(supabase, conv.session_id, conv.organization_id)
-  }
-
-  // Exemplaire signé figé et empreinte, puis l'événement de signature
-  let fige: Awaited<ReturnType<typeof figerConventionSignee>> = null
-  try { fige = await figerConventionSignee(supabase, conv.id) } catch (e) { console.error('[convention figée]', e) }
-  await journaliserEvenementConvention(supabase, {
-    organizationId: conv.organization_id, conventionId: conv.id, evenement: 'signature',
-    ip: origine.ip || meta.ip || null, userAgent: origine.userAgent || meta.userAgent || null,
-    details: { signataire: data.nom.trim(), consentement, document_sha256: fige?.sha256 || null, date_portee: datePortee },
-  })
-
-  // Notifier le créateur de la convention
+  // Notifier le créateur de la convention, aussitôt : l'heure de cette
+  // notification sert aussi de trace de l'instant de la signature
   const { createNotification } = await import('@/lib/email')
   const { data: createdBy } = await supabase
     .from('conventions').select('created_by').eq('id', conv.id).single()
@@ -338,6 +324,22 @@ export async function signConventionPublicAction(
       entityId: conv.id,
     })
   }
+
+  // Si la convention est liée à une session → bascule en 'validee' si contrat formateur OK
+  if (conv.session_id) {
+    const { maybeValidateSession } = await import('@/app/dashboard/sessions/confirm-actions')
+    await maybeValidateSession(supabase, conv.session_id, conv.organization_id)
+  }
+
+  // Exemplaire signé figé et empreinte, puis l'événement de signature
+  let fige: Awaited<ReturnType<typeof figerConventionSignee>> = null
+  try { fige = await figerConventionSignee(supabase, conv.id) } catch (e) { console.error('[convention figée]', e) }
+  await journaliserEvenementConvention(supabase, {
+    organizationId: conv.organization_id, conventionId: conv.id, evenement: 'signature', survenuAt: now,
+    ip: origine.ip || meta.ip || null, userAgent: origine.userAgent || meta.userAgent || null,
+    details: { canal: 'lien', signataire: data.nom.trim(), consentement, document_sha256: fige?.sha256 || null, date_portee: datePortee },
+  })
+
 
   // Email avec convention signée (copie PDF) → client + équipe (si signature complète des deux côtés)
   if (newStatus === 'signee_complete') {

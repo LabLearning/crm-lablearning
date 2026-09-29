@@ -46,6 +46,10 @@ export async function signConventionAction(
     }
   }
 
+  // Preuves lues côté serveur, comme sur la page de signature par lien
+  const { origineRequete, journaliserEvenementConvention, figerConventionSignee } = await import('@/lib/preuve-signature-convention')
+  const origine = await origineRequete()
+
   // Update convention status to signed by client
   const { error: updateError } = await supabase
     .from('conventions')
@@ -53,13 +57,26 @@ export async function signConventionAction(
       status: 'signee_client',
       signature_client_date: datePortee,
       signature_client_nom: signataireName,
+      signature_client_ip: origine.ip,
+      signature_client_user_agent: origine.userAgent,
       ...(signatureDataUrl ? { signature_client_signature_data: signatureDataUrl } : {}),
     })
     .eq('id', conventionId)
+    .eq('status', 'envoyee')
 
   if (updateError) {
     return { success: false, error: 'Erreur lors de la signature. Veuillez reessayer.' }
   }
+
+  // Horodatage réel, exemplaire figé et journal (tolérés sans la migration 161)
+  await supabase.from('conventions').update({ signature_client_signed_at: now }).eq('id', conventionId)
+  let fige: Awaited<ReturnType<typeof figerConventionSignee>> = null
+  try { fige = await figerConventionSignee(supabase, conventionId) } catch (e) { console.error('[convention figée]', e) }
+  await journaliserEvenementConvention(supabase, {
+    organizationId: context.organization.id, conventionId, evenement: 'signature', survenuAt: now,
+    ip: origine.ip, userAgent: origine.userAgent,
+    details: { canal: 'portail', signataire: signataireName, document_sha256: fige?.sha256 || null, date_portee: datePortee },
+  })
 
   // Try to log into signatures table — may fail due to NOT NULL document_id constraint
   // We skip if it fails; convention is already signed above

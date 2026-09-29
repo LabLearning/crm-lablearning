@@ -25,14 +25,19 @@ export interface PreuveSignatureConvention {
     session: string | null
     client: string | null
     clientSiret: string | null
+    /** « Entreprise cliente », ou « Stagiaire » pour un contrat de particulier */
+    clientLibelle: string
     organisme: string
     organismeSiret: string | null
     organismeNda: string | null
+    /** Nom du document dans les phrases : « la convention » ou « le contrat » */
+    nomCourt: string
     exemplaire:
-      | { etat: 'fige'; sha256: string; figeLe: string | null; verifie: boolean | null; empreinteEnregistree: boolean }
-      | { etat: 'non_fige' }
+      | { etat: 'fige'; sha256: string; figeLe: string | null; verifie: boolean | null; empreinteEnregistree: boolean; introuvable: boolean }
+      /** anterieure : signature d'avant l'archivage ; echec : archivage raté, empreinte éventuellement notée à la signature */
+      | { etat: 'non_fige'; raison: 'anterieure' | 'echec'; sha256Note: string | null }
   }
-  signataire: { nom: string; qualite: string; entreprise: string | null; emailLien: string | null }
+  signataire: { nom: string; qualite: string; entreprise: string | null; emailLien: string; procede: string }
   signature: {
     horodatage: string | null
     /** signature : enregistré à l'acte ; notification : journal créé au même instant ; copie : envoi automatique de l'exemplaire signé, juste après */
@@ -40,7 +45,7 @@ export interface PreuveSignatureConvention {
     ip: string | null
     appareil: string | null
     userAgent: string | null
-    consentement: string | null
+    consentement: { etat: 'coche'; texte: string } | { etat: 'coche_non_conserve' } | { etat: 'absent' }
     image: string
     imageSha256: string
   }
@@ -103,7 +108,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
             {doc.objet ? <Ligne label="Objet">{doc.objet}</Ligne> : null}
             {doc.formation ? <Ligne label="Formation">{doc.formation}</Ligne> : null}
             {doc.session ? <Ligne label="Session">{doc.session}</Ligne> : null}
-            {doc.client ? <Ligne label="Entreprise cliente">{[doc.client, doc.clientSiret ? `SIRET ${doc.clientSiret}` : null].filter(Boolean).join(' · ')}</Ligne> : null}
+            {doc.client ? <Ligne label={doc.clientLibelle}>{[doc.client, doc.clientSiret ? `SIRET ${doc.clientSiret}` : null].filter(Boolean).join(' · ')}</Ligne> : null}
             <Ligne label="Organisme de formation">
               {[doc.organisme, doc.organismeSiret ? `SIRET ${doc.organismeSiret}` : null, doc.organismeNda ? `NDA ${doc.organismeNda}` : null].filter(Boolean).join(' · ')}
             </Ligne>
@@ -117,10 +122,8 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
             <Ligne label="Nom déclaré">{signataire.nom}</Ligne>
             <Ligne label="Qualité">{signataire.qualite}</Ligne>
             {signataire.entreprise ? <Ligne label="Pour le compte de">{signataire.entreprise}</Ligne> : null}
-            <Ligne label="Lien de signature transmis à">{signataire.emailLien || 'Adresse non journalisée (lien remis hors messagerie du CRM)'}</Ligne>
-            <Ligne label="Procédé">
-              Lien personnel et confidentiel (jeton aléatoire de 256 bits) ouvrant une page de signature, puis signature manuscrite tracée à l’écran.
-            </Ligne>
+            <Ligne label="Lien de signature transmis à">{signataire.emailLien}</Ligne>
+            <Ligne label="Procédé">{signataire.procede}</Ligne>
           </Carte>
         </View>
 
@@ -138,7 +141,11 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                 <Ligne label="Adresse IP">{signature.ip || 'Non enregistrée'}</Ligne>
                 <Ligne label="Appareil">{signature.appareil || 'Non enregistré'}</Ligne>
                 <Ligne label="Consentement">
-                  {signature.consentement ? `Case cochée : « ${signature.consentement} »` : 'Non recueilli par une case dédiée'}
+                  {signature.consentement.etat === 'coche'
+                    ? `Case cochée : « ${signature.consentement.texte} »`
+                    : signature.consentement.etat === 'coche_non_conserve'
+                      ? 'Case cochée (obligatoire pour signer depuis le 29 septembre 2026) ; texte non conservé'
+                      : 'Non recueilli par une case dédiée'}
                 </Ligne>
                 {signature.sourceHorodatage === 'notification' ? (
                   <Note>
@@ -206,7 +213,9 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                 </Ligne>
                 <Ligne label="Empreinte SHA-256" mono>{doc.exemplaire.sha256}</Ligne>
                 <Ligne label="Contrôle">
-                  {!doc.exemplaire.empreinteEnregistree
+                  {doc.exemplaire.introuvable
+                    ? 'Attention : l’exemplaire est introuvable dans l’archive à l’émission de ce certificat.'
+                    : !doc.exemplaire.empreinteEnregistree
                     ? 'Empreinte calculée à l’émission de ce certificat : elle n’a pas pu être enregistrée au moment de la signature.'
                     : doc.exemplaire.verifie === true
                     ? 'L’exemplaire conservé a été relu à l’émission de ce certificat : son empreinte est identique.'
@@ -216,10 +225,14 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                 </Ligne>
               </>
             ) : (
-              <Ligne label="Exemplaire signé">
-                Non figé : la signature est antérieure à l’archivage automatique des exemplaires signés (29 septembre 2026).
-                Le PDF de la convention est reconstitué à partir des données enregistrées et intègre les avenants éventuels.
-              </Ligne>
+              <>
+                <Ligne label="Exemplaire signé">
+                  {doc.exemplaire.raison === 'anterieure'
+                    ? `Non figé : la signature est antérieure à l’archivage automatique des exemplaires signés (29 septembre 2026). Le PDF de ${doc.nomCourt} est reconstitué à partir des données enregistrées et intègre les avenants éventuels.`
+                    : 'Non conservé : l’archivage de l’exemplaire a échoué au moment de la signature.'}
+                </Ligne>
+                {doc.exemplaire.sha256Note ? <Ligne label="Empreinte notée à la signature" mono>{doc.exemplaire.sha256Note}</Ligne> : null}
+              </>
             )}
             <Ligne label="Empreinte des preuves" mono>{preuve.empreinteDossier}</Ligne>
             <Note>
@@ -249,10 +262,12 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
 /** Appareil et navigateur, en clair, à partir de l'en-tête user-agent. */
 export function decrireAppareil(ua: string | null | undefined): string | null {
   if (!ua) return null
+  // Pas de version du système : Safari et Chrome la figent ou la réduisent dans
+  // cet en-tête, elle serait souvent fausse (l'en-tête brut reste imprimé)
   const systeme =
-    /iPhone/.test(ua) ? `iPhone (iOS ${(ua.match(/OS (\d+)[._](\d+)/) || []).slice(1, 3).join('.') || '?'})`
+    /iPhone/.test(ua) ? 'iPhone'
     : /iPad/.test(ua) ? 'iPad'
-    : /Android/.test(ua) ? `Android ${(ua.match(/Android (\d+(\.\d+)?)/) || [])[1] || ''}`.trim()
+    : /Android/.test(ua) ? 'Android'
     : /Macintosh|Mac OS X/.test(ua) ? 'Mac'
     : /Windows/.test(ua) ? 'Windows'
     : /Linux/.test(ua) ? 'Linux'
