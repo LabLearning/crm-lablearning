@@ -35,7 +35,8 @@ export interface PreuveSignatureConvention {
   signataire: { nom: string; qualite: string; entreprise: string | null; emailLien: string | null }
   signature: {
     horodatage: string | null
-    sourceHorodatage: 'signature' | 'notification' | null
+    /** signature : enregistré à l'acte ; notification : journal créé au même instant ; copie : envoi automatique de l'exemplaire signé, juste après */
+    sourceHorodatage: 'signature' | 'notification' | 'copie' | null
     ip: string | null
     appareil: string | null
     userAgent: string | null
@@ -70,6 +71,9 @@ const Ligne = ({ label, children, mono }: { label: string; children: React.React
 const Note = ({ children }: { children: React.ReactNode }) => (
   <Text style={{ fontSize: 7.4, color: SURFACE_500, lineHeight: 1.45, marginTop: 3 }}>{children}</Text>
 )
+/** Une empreinte SHA-256 en deux lignes : en police à chasse fixe, elle ne se coupe pas d'elle-même. */
+const enDeux = (h: string) => `${h.slice(0, 32)}\n${h.slice(32)}`
+
 const Carte = ({ children }: { children: React.ReactNode }) => (
   <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 12 }}>{children}</View>
 )
@@ -126,7 +130,9 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
             <View style={{ flex: 1.6 }}>
               <Carte>
                 <Ligne label="Date et heure">
-                  {signature.horodatage ? horodatageLisible(signature.horodatage) : 'Non enregistrées'}
+                  {signature.horodatage
+                    ? `${signature.sourceHorodatage === 'copie' ? 'Au plus tard le ' : ''}${horodatageLisible(signature.horodatage)}`
+                    : 'Non enregistrées'}
                 </Ligne>
                 {signature.horodatage ? <Ligne label="Temps universel" mono>{utc(signature.horodatage)}</Ligne> : null}
                 <Ligne label="Adresse IP">{signature.ip || 'Non enregistrée'}</Ligne>
@@ -138,6 +144,12 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                   <Note>
                     Horodatage relevé dans le journal du CRM : la notification « Convention signée par le client » est créée
                     par le serveur à l’instant même de la signature.
+                  </Note>
+                ) : null}
+                {signature.sourceHorodatage === 'copie' ? (
+                  <Note>
+                    Seul horodatage conservé pour cette signature : l’envoi automatique de l’exemplaire signé, que le serveur
+                    déclenche quelques secondes après la validation du signataire.
                   </Note>
                 ) : null}
                 {!signature.ip ? (
@@ -155,11 +167,13 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                 </View>
               </View>
               <Text style={{ fontSize: 6.6, color: SURFACE_400, marginTop: 4 }}>Empreinte SHA-256 de l’image</Text>
-              <Text style={{ fontSize: 6.4, color: SURFACE_500, fontFamily: 'Courier' }}>{signature.imageSha256}</Text>
+              <Text style={{ fontSize: 6.4, color: SURFACE_500, fontFamily: 'Courier' }}>{enDeux(signature.imageSha256)}</Text>
             </View>
           </View>
           {signature.userAgent ? (
-            <Text style={{ fontSize: 6.6, color: SURFACE_400, marginTop: 5, fontFamily: 'Courier' }}>Navigateur : {signature.userAgent}</Text>
+            <View style={{ marginTop: 5, width: '100%' }}>
+              <Text style={{ fontSize: 6.6, color: SURFACE_400, lineHeight: 1.4 }}>En-tête du navigateur : {signature.userAgent}</Text>
+            </View>
           ) : null}
         </View>
 

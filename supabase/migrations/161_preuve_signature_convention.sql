@@ -58,6 +58,12 @@ FROM (
 ) n
 WHERE n.entity_id::text = c.id::text
   AND c.signature_client_signed_at IS NULL
-  AND c.signature_client_signature_data IS NOT NULL;
+  AND c.signature_client_signature_data IS NOT NULL
+  -- une notification antérieure à une annulation date une signature effacée
+  AND NOT EXISTS (
+    SELECT 1 FROM public.audit_logs a
+    WHERE a.entity_type = 'convention' AND a.entity_id::text = c.id::text
+      AND a.action = 'cancel_signed_convention' AND a.created_at > n.created_at
+  );
 
 NOTIFY pgrst, 'reload schema';

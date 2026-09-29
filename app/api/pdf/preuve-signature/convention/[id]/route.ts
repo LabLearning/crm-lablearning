@@ -71,9 +71,26 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   // Horodatage réel : enregistré à la signature, sinon celui de la notification
   // créée au même instant ; la date portée sur la convention n'est jamais utilisée
-  const evtSignature = [...evenements].reverse().find((e) => e.evenement === 'signature') || null
-  const horodatage: string | null = p.signature_client_signed_at || evtSignature?.survenu_at || notifs?.[0]?.created_at || null
-  const sourceHorodatage = evtSignature ? 'signature' : horodatage ? 'notification' : null
+  // (à défaut, l'envoi automatique de l'exemplaire signé : la signature est
+  // antérieure de quelques secondes, c'est donc un « au plus tard »)
+  const particulier = (c as any).client?.type === 'particulier'
+  const demandes = (mails || []).filter((m: any) => !/copie ex[ée]cut[ée]e/i.test(m.subject || '') && /signer|signature/i.test(m.subject || ''))
+  const copies = (mails || []).filter((m: any) => /copie ex[ée]cut[ée]e/i.test(m.subject || ''))
+  // Une trace antérieure à la dernière annulation appartient à une signature
+  // effacée : elle ne date jamais la signature actuelle
+  const derniereAnnulation = [
+    ...(audits || []).filter((a: any) => a.action === 'cancel_signed_convention').map((a: any) => a.created_at),
+    ...evenements.filter((e) => e.evenement === 'annulation').map((e) => e.survenu_at),
+  ].sort().pop() || ''
+  const apres = (t: string | null | undefined) => (t && t > derniereAnnulation ? t : null)
+  const evtSignature = [...evenements].reverse().find((e) => e.evenement === 'signature' && apres(e.survenu_at)) || null
+  const notif = apres(notifs?.[0]?.created_at)
+  const derniereCopie = copies.length ? apres(copies[copies.length - 1].sent_at || copies[copies.length - 1].created_at) : null
+  const horodatage: string | null = p.signature_client_signed_at || evtSignature?.survenu_at || notif || derniereCopie || null
+  const sourceHorodatage: PreuveSignatureConvention['signature']['sourceHorodatage'] =
+    evtSignature ? 'signature'
+    : (p.signature_client_signed_at || notif) ? 'notification'
+    : derniereCopie ? 'copie' : null
 
   // Exemplaire figé : relu pour vérifier son empreinte
   let exemplaire: PreuveSignatureConvention['document']['exemplaire'] = { etat: 'non_fige' }
@@ -85,9 +102,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     exemplaire = { etat: 'fige', sha256: p.signature_document_sha256, figeLe: ms ? new Date(ms).toISOString() : null, verifie }
   }
 
-  const particulier = (c as any).client?.type === 'particulier'
-  const demandes = (mails || []).filter((m: any) => !/copie ex[ée]cut[ée]e/i.test(m.subject || '') && /signer|signature/i.test(m.subject || ''))
-  const copies = (mails || []).filter((m: any) => /copie ex[ée]cut[ée]e/i.test(m.subject || ''))
   const ipUa = (ip?: string | null, ua?: string | null) => [ip ? `IP ${ip}` : null, decrireAppareil(ua)].filter(Boolean).join(' · ') || null
 
   // ── Journal ──
@@ -118,7 +132,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     else if (e.evenement === 'signature') journal.push({ at: e.survenu_at, libelle: `Signature par ${e.details?.signataire || c.signature_client_nom}`, detail: ipUa(e.ip_address, e.user_agent) })
   }
   if (!evtSignature && horodatage) {
-    journal.push({ at: horodatage, libelle: `Signature par ${c.signature_client_nom}`, detail: ipUa(c.signature_client_ip, c.signature_client_user_agent) })
+    journal.push({
+      at: horodatage,
+      libelle: `Signature par ${c.signature_client_nom}${sourceHorodatage === 'copie' ? ' (au plus tard)' : ''}`,
+      detail: ipUa(c.signature_client_ip, c.signature_client_user_agent),
+    })
   }
   if (exemplaire.etat === 'fige' && exemplaire.figeLe) {
     journal.push({ at: exemplaire.figeLe, libelle: 'Exemplaire signé figé et archivé', detail: `empreinte SHA-256 ${exemplaire.sha256.slice(0, 16)}…` })
