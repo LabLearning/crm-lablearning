@@ -48,7 +48,32 @@ export default async function PortalQuestionnairesPage({ params }: { params: { t
     : { data: [] as any[] }
   const finPar = new Map((sessionsFin || []).map((s: any) => [s.id, s.date_fin]))
   const aujourdhui = new Date().toISOString().slice(0, 10)
-  const pendingAvecVerrou = (pendingReponses || []).map((r: any) => {
+  // Les bonnes réponses et leurs explications ne partent jamais vers le
+  // navigateur du stagiaire (la note est calculée côté serveur), et les
+  // réponses d'une question de connaissances sont mélangées : dans la banque,
+  // la bonne est presque toujours la première. Ordre stable pour un même
+  // questionnaire, différent d'un stagiaire à l'autre.
+  const graine = (id: string) => { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0 }
+  const melanger = <T,>(liste: T[], id: string): T[] => {
+    const l = [...liste]; let x = graine(id) || 1
+    for (let i = l.length - 1; i > 0; i--) { x = Math.imul(x ^ (x >>> 15), 2246822507) >>> 0; x ^= x >>> 13; const j = x % (i + 1); [l[i], l[j]] = [l[j], l[i]] }
+    return l
+  }
+  const sansCorrige = (pendingReponses || []).map((r: any) => !r.qcm ? r : ({
+    ...r,
+    qcm: {
+      ...r.qcm,
+      questions: (r.qcm.questions || []).map((q: any) => {
+        const ordonnes = [...(q.choix || [])].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+        const connaissance = ordonnes.some((c: any) => c.est_correct) && ordonnes.length > 2
+        const choix = (connaissance ? melanger(ordonnes, `${q.id}|${r.id}`) : ordonnes)
+          .map((c: any, i: number) => ({ id: c.id, texte: c.texte, position: i, est_correct: false }))
+        return { ...q, explication: null, choix }
+      }),
+    },
+  }))
+
+  const pendingAvecVerrou = sansCorrige.map((r: any) => {
     if (r.qcm?.type !== 'satisfaction_froid') return r
     const fin = finPar.get(r.session_id)
     if (!fin) return r
