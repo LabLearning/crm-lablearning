@@ -393,19 +393,105 @@ export async function recalcSessionCommission(
  * ligne par session de ses établissements (créée ou recalculée si non figée).
  * @returns le nombre de sessions traitées.
  */
-export async function syncFranchiseCommissions(supabase: any, franchiseId: string, organizationId: string): Promise<number> {
-  const { data: clients } = await supabase
-    .from('clients').select('id').eq('franchise_id', franchiseId).eq('organization_id', organizationId)
+export async function syncFranchiseCommissions(
+  supabase: any,
+  franchiseId: string,
+  organizationId: string,
+  opts?: { essai?: boolean },
+): Promise<number> {
+  // Tout est lu en quelques requêtes groupées, puis chaque session passe par
+  // le même calcul que recalcSessionCommission (calculerCommissionSession) ;
+  // seules les lignes qui changent sont écrites. Session par session, il
+  // fallait ~8 allers-retours chacune : 15 s pour Chamas Tacos à chaque
+  // ouverture des onglets Formations et Commissions du portail.
+  const [{ data: clients }, { data: franchise }] = await Promise.all([
+    supabase.from('clients').select('id').eq('franchise_id', franchiseId).eq('organization_id', organizationId),
+    // select('*') : date_partenariat n'existe qu'après la migration 150
+    supabase.from('franchises').select('*').eq('id', franchiseId).maybeSingle(),
+  ])
   const clientIds = (clients || []).map((c: any) => c.id)
   if (!clientIds.length) return 0
-  const sessions: any[] = []
-  for (let from = 0; ; from += 1000) {
-    const { data } = await supabase.from('sessions').select('id')
-      .eq('organization_id', organizationId).in('client_id', clientIds).range(from, from + 999)
-    if (!data?.length) break
-    sessions.push(...data)
-    if (data.length < 1000) break
+
+  const paquets = <T,>(l: T[], n = 100) => Array.from({ length: Math.ceil(l.length / n) }, (_, i) => l.slice(i * n, i * n + n))
+  const toutLire = async (construire: (from: number, to: number) => any) => {
+    const out: any[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data } = await construire(from, from + 999)
+      if (!data?.length) break
+      out.push(...data)
+      if (data.length < 1000) break
+    }
+    return out
   }
-  for (const s of sessions) await recalcSessionCommission(supabase, s.id, organizationId)
+
+  const sessions = (await Promise.all(paquets(clientIds).map((ids) => toutLire((f, t) =>
+    supabase.from('sessions')
+      // client:client_id(*) : franchise_hors_partenariat n'existe qu'après la migration 150
+      .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formation:formation_id(duree_jours), client:client_id(*)')
+      .eq('organization_id', organizationId).in('client_id', ids).range(f, t))))).flat()
+  if (!sessions.length) return 0
+  const ids = sessions.map((x: any) => x.id)
+
+  const lire = (table: string, colonnes: string, filtre: (q: any) => any) =>
+    Promise.all(paquets(ids).map((p) => toutLire((f, t) => filtre(supabase.from(table).select(colonnes).in('session_id', p)).range(f, t)))).then((r) => r.flat())
+  const [existantes, poeis, inscriptions, factures, contrats] = await Promise.all([
+    lire('commissions_sessions', 'id, session_id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type, commission_taux, franchise_id, client_id', (q) => q),
+    lire('poei', 'session_id', (q) => q),
+    lire('inscriptions', 'session_id', (q) => q.not('status', 'in', '("annule","abandonne")')),
+    lire('factures', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","annulee")')),
+    lire('contrats_formateur', 'session_id, montant_ht', (q) => q.neq('status', 'annule')),
+  ])
+  const parSession = <T,>(l: any[]) => { const m = new Map<string, any[]>(); for (const x of l) { const k = x.session_id; if (!m.has(k)) m.set(k, []); m.get(k)!.push(x) } return m }
+  const existanteDe = new Map(existantes.map((e: any) => [e.session_id, e]))
+  const poeiDe = new Set(poeis.map((p: any) => p.session_id))
+  const inscritsDe = parSession(inscriptions), facturesDe = parSession(factures), contratsDe = parSession(contrats)
+  const somme = (l: any[] | undefined) => (l || []).reduce((t: number, x: any) => t + Number(x.montant_ht || 0), 0)
+
+  const aSupprimer: string[] = []
+  const aEcrire: any[] = []
+  for (const sess of sessions) {
+    const existante: any = existanteDe.get(sess.id) || null
+    const franchiseSession: string | null = (sess.client as any)?.franchise_id || null
+    const nbHoraires = Array.isArray(sess.horaires_jours) ? sess.horaires_jours.length : 0
+    const r = calculerCommissionSession({
+      franchiseId: franchiseSession,
+      franchise: franchiseSession === franchiseId ? franchise : null,
+      estPoei: poeiDe.has(sess.id) || !!sess.poei_intervention_id,
+      dateSession: sess.date_debut,
+      horsPartenariat: !!(sess.client as any)?.franchise_hors_partenariat,
+      nbInscritsActifs: (inscritsDe.get(sess.id) || []).length,
+      sessionAnnulee: sess.status === 'annulee',
+      montantFinanceOpco: sess.montant_finance_opco,
+      prixHt: sess.prix_ht,
+      totalFacturesSession: somme(facturesDe.get(sess.id)),
+      coutContratsHt: somme(contratsDe.get(sess.id)),
+      coutFormateurManuelJour: existante?.cout_formateur_manuel ?? null,
+      nbJours: Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1),
+      coutFormateurSession: sess.cout_formateur,
+      existante,
+    })
+    if (r.kind === 'aucune') {
+      if (r.motif !== 'franchise_introuvable' && existante && !['validee', 'payee'].includes(existante.status)) aSupprimer.push(existante.id)
+      continue
+    }
+    if (r.fige) continue
+    const { montant, base, baseSource, coutFormateur, type, status } = r.resultat
+    const ligne = {
+      organization_id: organizationId, franchise_id: franchiseSession, session_id: sess.id, client_id: sess.client_id,
+      base_montant: base, base_source: baseSource, cout_formateur: coutFormateur, commission_type: type,
+      commission_taux: r.taux, commission_montant: montant, status,
+    }
+    // Rien n'a changé : pas d'écriture
+    const identique = existante
+      && Number(existante.base_montant) === base && existante.base_source === baseSource
+      && Number(existante.cout_formateur) === coutFormateur && existante.commission_type === type
+      && Number(existante.commission_taux) === r.taux && Number(existante.commission_montant) === montant
+      && existante.status === status && existante.franchise_id === franchiseSession && existante.client_id === sess.client_id
+    if (!identique) aEcrire.push({ ...ligne, calculee_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+  }
+
+  if (opts?.essai) return aEcrire.length + aSupprimer.length
+  for (const p of paquets(aSupprimer)) await supabase.from('commissions_sessions').delete().in('id', p)
+  for (const p of paquets(aEcrire, 200)) await supabase.from('commissions_sessions').upsert(p, { onConflict: 'session_id' })
   return sessions.length
 }

@@ -181,7 +181,8 @@ export function FranchiseShell({
         <nav className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/97 backdrop-blur-md border-t border-surface-200/80"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         >
-          <div className="grid grid-cols-6">
+          {/* Une colonne par onglet : avec 6 colonnes pour 7 onglets, le dernier passait à la ligne */}
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
             {nav.map((item) => {
               const active = isActive(item.href)
               return (
@@ -189,7 +190,7 @@ export function FranchiseShell({
                   className="relative flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] transition-all duration-200 active:scale-95">
                   {active && <span className="absolute top-0 left-3 right-3 h-[2px] rounded-full" style={{ backgroundColor: PORTAL_GREEN }} />}
                   <item.icon className="h-[22px] w-[22px]" style={{ color: active ? PORTAL_GREEN : '#a8a29e' }} />
-                  <span className="text-[10px] font-medium leading-none" style={{ color: active ? PORTAL_GREEN : '#a8a29e' }}>{item.short}</span>
+                  <span className="text-[9.5px] font-medium leading-none truncate max-w-full px-0.5" style={{ color: active ? PORTAL_GREEN : '#a8a29e' }}>{item.short}</span>
                 </Link>
               )
             })}
