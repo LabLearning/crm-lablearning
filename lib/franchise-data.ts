@@ -11,6 +11,28 @@ import type { CommissionStatus } from '@/lib/commission'
  * Les établissements sont renvoyés champ par champ, jamais tels quels.
  */
 
+/** Date du jour à Paris, « AAAA-MM-JJ ». */
+export const aujourdhuiParis = () => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date())
+
+/**
+ * État d'une session lu dans ses dates : son statut n'est pas tenu à jour
+ * au jour le jour (« validée » à la signature, « confirmée »…). Une session
+ * « terminée » l'est quoi qu'il arrive ; sinon, avant sa date de début elle
+ * est à venir, entre ses dates en cours, après sa date de fin terminée.
+ */
+export function etatSession(
+  s: { status?: string | null; date_debut?: string | null; date_fin?: string | null },
+  aujourdhui = aujourdhuiParis(),
+): 'a_venir' | 'en_cours' | 'terminee' {
+  if (s.status === 'terminee') return 'terminee'
+  const debut = s.date_debut ? String(s.date_debut).slice(0, 10) : null
+  const fin = s.date_fin ? String(s.date_fin).slice(0, 10) : debut
+  if (!debut) return s.status === 'en_cours' ? 'en_cours' : 'a_venir'
+  if (debut > aujourdhui) return 'a_venir'
+  if (fin && fin < aujourdhui) return 'terminee'
+  return 'en_cours'
+}
+
 export interface FranchiseStats {
   nbEtablissements: number
   nbEtablissementsFormes: number
@@ -59,13 +81,13 @@ export async function getFranchiseStats(
   // coût d'un parcours) en sont exclus par le calcul.
   const { data: lignesCommission } = await supabase
     .from('commissions_sessions')
-    .select('session_id, client_id, base_montant, commission_montant, status, session:session_id(status)')
+    .select('session_id, client_id, base_montant, commission_montant, status, session:session_id(status, date_debut, date_fin)')
     .eq('organization_id', orgId).eq('franchise_id', franchiseId).neq('status', 'annulee')
   const sessions = ((lignesCommission || []) as any[])
-    .map((l) => ({ id: l.session_id, client_id: l.client_id, status: (Array.isArray(l.session) ? l.session[0] : l.session)?.status, base: Number(l.base_montant || 0), commission: Number(l.commission_montant || 0), statut_commission: l.status }))
+    .map((l) => { const se = Array.isArray(l.session) ? l.session[0] : l.session; return { id: l.session_id, client_id: l.client_id, status: se?.status, date_debut: se?.date_debut, date_fin: se?.date_fin, base: Number(l.base_montant || 0), commission: Number(l.commission_montant || 0), statut_commission: l.status } })
     .filter((s) => s.status !== 'annulee')
   const sessionIds = sessions.map((s: any) => s.id)
-  const realisees = sessions.filter((s: any) => s.status === 'terminee')
+  const realisees = sessions.filter((s: any) => etatSession(s) === 'terminee')
   const etablissementsFormes = new Set(sessions.map((s: any) => s.client_id).filter(Boolean))
   const baseDe = (s: any) => Number(s.base || 0)
 
@@ -250,7 +272,7 @@ export async function getFranchiseParcours(
   const sessions: any[] = []
   for (let i = 0; i < ids.length; i += 30) {
     const { data } = await supabase
-      .from('sessions').select('id, client_id, status, date_debut, poei_intervention_id')
+      .from('sessions').select('id, client_id, status, date_debut, date_fin, poei_intervention_id')
       .eq('organization_id', orgId).in('client_id', ids.slice(i, i + 30))
     sessions.push(...((data || []) as any[]))
   }
@@ -275,6 +297,7 @@ export async function getFranchiseParcours(
     }
   }
 
+  const aujourdhui = aujourdhuiParis()
   const etabs: EtablissementPhase[] = liste.map((c) => {
     const ss = sessions
       .filter((s) => s.client_id === c.id)
@@ -283,6 +306,7 @@ export async function getFranchiseParcours(
         return {
           date: s.date_debut as string | null,
           statut: s.status as string,
+          etat: s.status === 'annulee' ? 'annulee' : etatSession(s, aujourdhui),
           poei: !!s.poei_intervention_id || poeiSet.has(s.id),
           base: Number(l?.base_montant || 0),
           commission: Number(l?.commission_montant || 0),
@@ -306,7 +330,8 @@ export async function getFranchiseParcours(
     if (!ss.length) phase = horsPerimetre ? 'avant_partenariat' : 'jamais'
     else if (!eligibles.length) phase = avant.length ? 'avant_partenariat' : 'poei'
     else if (due > 0) phase = 'regle'
-    else if (eligibles.some((s) => s.statut === 'en_cours' || s.statut === 'planifiee' || s.statut === 'confirmee')) phase = 'encours'
+    // En cours ou programmée, au sens des dates (le statut n'est pas tenu au jour le jour)
+    else if (eligibles.some((s) => s.etat === 'en_cours' || s.etat === 'a_venir')) phase = 'encours'
     else if (aVenir > 0) phase = 'attente'
     else phase = 'sans_montant'
 
@@ -380,13 +405,6 @@ export const LIBELLES_ETATS: Record<EtatFormation, { titre: string; texte: strin
   terminee: { titre: 'Terminées', texte: 'Formations délivrées. Leur commission suit le règlement du dossier.' },
 }
 
-const ETAT_DE: Record<string, EtatFormation> = {
-  terminee: 'terminee',
-  en_cours: 'en_cours',
-  planifiee: 'a_venir',
-  confirmee: 'a_venir',
-  brouillon: 'a_venir',
-}
 
 /**
  * Les formations du réseau, groupées par état, avec l'état de leur commission.
@@ -434,6 +452,7 @@ export async function getFranchiseFormations(
     for (const r of (data || []) as any[]) inscrits.set(r.session_id, (inscrits.get(r.session_id) || 0) + 1)
   }
 
+  const aujourdhui = aujourdhuiParis()
   const formations: FormationFranchise[] = sessions.map((s) => {
     const c = parClient.get(s.client_id)
     const l = parSession.get(s.id)
@@ -455,7 +474,7 @@ export async function getFranchiseFormations(
       base: Number(l?.base_montant || 0),
       poei: !!s.poei_intervention_id || poeiSet.has(s.id),
       horsPartenariat,
-      etat: ETAT_DE[s.status as string] || 'a_venir',
+      etat: etatSession(s, aujourdhui),
     }
   })
 

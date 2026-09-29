@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getFranchiseSession } from '@/lib/franchise-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { getFranchiseAudits, syntheseAudits } from '@/lib/franchise-data'
+import { getFranchiseAudits, syntheseAudits, etatSession, aujourdhuiParis } from '@/lib/franchise-data'
 import { Building2, MapPin, GraduationCap, ChevronRight, ShieldCheck } from '@/components/ui/icons'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +25,7 @@ export default async function FranchiseEtablissementsPage() {
   const { data: sessions } = clientIds.length
     ? await supabase
         .from('sessions')
-        .select('id, client_id, status')
+        .select('id, client_id, status, date_debut, date_fin')
         .eq('organization_id', orgId)
         .in('client_id', clientIds)
         .neq('status', 'annulee')
@@ -35,9 +35,11 @@ export default async function FranchiseEtablissementsPage() {
   const audits = await getFranchiseAudits(supabase, franchise.id, orgId)
   const bilan = syntheseAudits(audits)
 
+  const aujourdhui = aujourdhuiParis()
   const countFor = (cid: string) => {
     const ss = (sessions || []).filter((s: any) => s.client_id === cid)
-    const realises = ss.filter((s: any) => s.status === 'terminee').length
+    // Réalisée au sens des dates : le statut n'est pas tenu au jour le jour
+    const realises = ss.filter((s: any) => etatSession(s, aujourdhui) === 'terminee').length
     const enCours = ss.length - realises
     return { total: ss.length, realises, enCours }
   }
