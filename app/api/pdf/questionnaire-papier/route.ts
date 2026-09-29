@@ -17,6 +17,11 @@ export const dynamic = 'force-dynamic'
  * à déposer au dossier.
  *
  *   /api/pdf/questionnaire-papier?session=<uuid>&qcm=<uuid>
+ *   &corrige=1 : le corrigé seul, réservé au formateur
+ *
+ * Les réponses d'une question de connaissances sont mélangées (dans la banque,
+ * la bonne réponse est presque toujours la première) et repérées par une
+ * lettre ; l'ordre est le même sur tous les exemplaires, pour un seul corrigé.
  */
 export async function GET(req: NextRequest) {
   const auth = await requireApiUser()
@@ -48,7 +53,7 @@ export async function GET(req: NextRequest) {
 
   const [{ data: questions }, { data: inscriptions }] = await Promise.all([
     supabase.from('qcm_questions')
-      .select('id, texte, type, section, position, choix:qcm_choix(texte, position)')
+      .select('id, texte, type, section, position, choix:qcm_choix(texte, position, est_correct)')
       .eq('qcm_id', qcmId).order('position', { ascending: true }),
     supabase.from('inscriptions')
       .select('apprenant:apprenants(prenom, nom)')
@@ -56,14 +61,26 @@ export async function GET(req: NextRequest) {
       .not('status', 'in', '("annule","abandonne")'),
   ])
 
-  const lignes: QuestionPapier[] = (questions || []).map((q: any) => ({
-    texte: q.texte,
-    type: q.type,
-    section: q.section,
-    choix: [...(q.choix || [])]
-      .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
-      .map((c: any) => c.texte),
-  }))
+  // Mélange stable : graine tirée de l'identifiant de la question
+  const graine = (id: string) => { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0 }
+  const melanger = <T,>(liste: T[], id: string): T[] => {
+    const l = [...liste]; let x = graine(id) || 1
+    for (let i = l.length - 1; i > 0; i--) { x = Math.imul(x ^ (x >>> 15), 2246822507) >>> 0; x ^= x >>> 13; const j = x % (i + 1); [l[i], l[j]] = [l[j], l[i]] }
+    return l
+  }
+  const lignes: QuestionPapier[] = (questions || []).map((q: any) => {
+    const ordonnes = [...(q.choix || [])].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
+    // Question de connaissances (une bonne réponse existe) : réponses mélangées
+    const connaissance = ordonnes.some((c: any) => c.est_correct) && ordonnes.length > 2
+    const choix = connaissance ? melanger(ordonnes, String(q.id)) : ordonnes
+    return {
+      texte: q.texte,
+      type: q.type,
+      section: q.section,
+      choix: choix.map((c: any) => c.texte),
+      correctes: connaissance ? choix.map((c: any, i: number) => (c.est_correct ? i : -1)).filter((i: number) => i >= 0) : undefined,
+    }
+  })
 
   const stagiaires = (inscriptions || [])
     .map((i: any) => `${i.apprenant?.prenom || ''} ${i.apprenant?.nom || ''}`.trim())
@@ -94,10 +111,11 @@ export async function GET(req: NextRequest) {
       },
       org,
       editeLe: new Date().toLocaleDateString('fr-FR'),
+      corrige: req.nextUrl.searchParams.get('corrige') === '1',
     }) as any,
   )
 
-  const nomFichier = `${(qcm as any).titre} - ${s.reference || 'session'}`
+  const nomFichier = `${req.nextUrl.searchParams.get('corrige') === '1' ? 'Corrigé - ' : ''}${(qcm as any).titre} - ${s.reference || 'session'}`
     .replace(/[^\w\s.-]/g, '').replace(/\s+/g, '_').slice(0, 90)
 
   return new NextResponse(buffer as any, {

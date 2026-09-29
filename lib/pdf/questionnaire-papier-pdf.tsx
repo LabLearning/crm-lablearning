@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import {
   shared, PdfDocHeader, PdfDocFooter,
-  BRAND_GREEN, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_900,
+  BRAND_GREEN, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
 
 export interface QuestionPapier {
@@ -11,6 +11,8 @@ export interface QuestionPapier {
   type: string
   section?: string | null
   choix: string[]
+  /** Rang des bonnes réponses dans `choix` (questions de connaissances) */
+  correctes?: number[]
 }
 
 export interface StagiairePapier {
@@ -31,7 +33,11 @@ export interface QuestionnairePapier {
   }
   org?: any
   editeLe: string
+  /** Le corrigé seul, pour le formateur */
+  corrige?: boolean
 }
+
+const LETTRES = 'ABCDEFGHIJ'
 
 /** Consigne propre à chaque questionnaire, écrite pour le stagiaire. */
 const CONSIGNE: Record<string, string> = {
@@ -98,7 +104,8 @@ function Question({ q, numero }: { q: QuestionPapier; numero: number }) {
             {q.choix.map((c, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3.5 }}>
                 <Case />
-                <Text style={{ fontSize: 9, color: SURFACE_900, marginLeft: 6, flex: 1 }}>{c}</Text>
+                {q.correctes && <Text style={{ fontSize: 8.5, color: SURFACE_500, marginLeft: 6, width: 10 }}>{LETTRES[i]}.</Text>}
+                <Text style={{ fontSize: 9, color: SURFACE_900, marginLeft: q.correctes ? 2 : 6, flex: 1 }}>{c}</Text>
               </View>
             ))}
             {/* Un questionnaire sans choix saisis reste utilisable à la main. */}
@@ -124,8 +131,9 @@ function Question({ q, numero }: { q: QuestionPapier; numero: number }) {
  * ramassée en fin de journée reste rattachable à son dossier.
  */
 export function QuestionnairePapierPDF({
-  titre, type, questions, stagiaires, session, org, editeLe,
+  titre, type, questions, stagiaires, session, org, editeLe, corrige,
 }: QuestionnairePapier) {
+  if (corrige) return <CorrigePDF titre={titre} questions={questions} session={session} org={org} editeLe={editeLe} />
   const consigne = CONSIGNE[type] || "À remplir avec le stagiaire, puis à déposer au dossier de la session."
   // Sans stagiaire rattaché, on imprime tout de même un exemplaire vierge.
   const exemplaires = stagiaires.length > 0 ? stagiaires : [{ nom: '' }]
@@ -214,6 +222,38 @@ export function QuestionnairePapierPDF({
           <PdfDocFooter numero={`${session.reference} · édité le ${editeLe}`} org={org} />
         </Page>
       ))}
+    </Document>
+  )
+}
+
+/** Corrigé réservé au formateur : la bonne lettre de chaque question. */
+function CorrigePDF({ titre, questions, session, org, editeLe }: Pick<QuestionnairePapier, 'titre' | 'questions' | 'session' | 'org' | 'editeLe'>) {
+  const notees = questions.map((q, i) => ({ q, n: i + 1 })).filter(({ q }) => q.correctes && q.correctes.length)
+  return (
+    <Document>
+      <Page size="A4" style={shared.page}>
+        <PdfDocHeader docTitle={`Corrigé — ${titre}`} numero={session.reference} date={session.dates} statut="Réservé au formateur" org={org} />
+        <Text style={{ fontSize: 8.5, color: SURFACE_500, marginBottom: 12, lineHeight: 1.4 }}>
+          À conserver par le formateur, ne pas distribuer. Une bonne réponse vaut un point ; la note se reporte ensuite dans le CRM.
+        </Text>
+        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4 }}>
+          {notees.map(({ q, n }, i) => (
+            <View key={n} wrap={false} style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 8, borderTopWidth: i ? 0.5 : 0, borderTopColor: SURFACE_200 }}>
+              <Text style={{ fontSize: 9, color: SURFACE_400, width: 22 }}>{n}.</Text>
+              <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN, width: 44 }}>
+                {(q.correctes || []).map((k) => LETTRES[k]).join(', ')}
+              </Text>
+              <Text style={{ fontSize: 8, color: SURFACE_700, flex: 1 }}>
+                {q.correctes!.map((k) => q.choix[k]).join(' / ')}
+              </Text>
+            </View>
+          ))}
+        </View>
+        <Text style={{ fontSize: 8.5, color: SURFACE_700, marginTop: 12 }}>
+          Note sur {notees.length}. Les questions sans bonne réponse (appréciation, texte libre) ne sont pas notées.
+        </Text>
+        <PdfDocFooter numero={`${session.reference} · corrigé édité le ${editeLe}`} org={org} />
+      </Page>
     </Document>
   )
 }
