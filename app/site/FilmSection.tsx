@@ -66,12 +66,12 @@ export function FilmSection({ src, poster, titre }: { src: string; poster: strin
     else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen() // iPhone
   }
 
-  const bouton = 'flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm ring-1 ring-white/15 transition-colors hover:bg-black/65 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]'
+  const bouton = 'flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm ring-1 ring-white/15 transition-colors hover:bg-black/65 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]'
 
   return (
     <section aria-label={titre} className="relative bg-[#0B221B]">
       <h2 className="sr-only">{titre}</h2>
-      <div className="relative w-full aspect-video max-h-[100svh]">
+      <div className="group/film relative w-full aspect-video max-h-[100svh]">
         <video
           ref={video}
           src={src}
@@ -97,8 +97,10 @@ export function FilmSection({ src, poster, titre }: { src: string; poster: strin
           </button>
         )}
 
-        {/* En bas à gauche : le bouton WhatsApp flotte en bas à droite */}
-        <div className="absolute left-4 bottom-4 md:left-6 md:bottom-6 flex gap-2">
+        {/* En bas à gauche (le bouton WhatsApp flotte en bas à droite). Sur
+            ordinateur, visibles au survol, au clavier ou en pause, pour ne
+            pas masquer le texte du film ; toujours visibles au toucher. */}
+        <div className={`absolute left-3 bottom-3 md:left-6 md:bottom-6 flex gap-2 transition-opacity duration-300 ${enLecture ? '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/film:opacity-100 focus-within:opacity-100' : ''}`}>
           <button type="button" onClick={basculer} aria-label={enLecture ? 'Mettre le film en pause' : 'Lire le film'} className={bouton}>
             {enLecture ? <Pause className="h-4 w-4" strokeWidth={2.2} /> : <Play className="h-4 w-4 translate-x-px" strokeWidth={2.2} />}
           </button>
