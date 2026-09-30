@@ -119,14 +119,6 @@ export default async function SiteHome() {
                   </div>
                 </Link>
               ))}
-              {/* Badge flottant preuve */}
-              <div className="hidden sm:flex absolute -left-6 bottom-2 items-center gap-3 rounded-2xl bg-white shadow-lg shadow-black/10 ring-1 ring-black/5 px-4 py-3">
-                <span className="h-9 w-9 rounded-xl bg-[#205040]/10 flex items-center justify-center"><GraduationCap className="h-5 w-5 text-[#205040]" /></span>
-                <span className="leading-tight">
-                  <span className="block font-heading font-black text-lg text-[#14110F] tabular-nums">{fmt(stats.apprenants)}</span>
-                  <span className="block text-[11px] text-[#78716C]">stagiaires formés</span>
-                </span>
-              </div>
             </div>
           )}
         </div>
