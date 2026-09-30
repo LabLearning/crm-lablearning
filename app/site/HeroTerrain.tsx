@@ -56,22 +56,22 @@ export function HeroTerrain({ video, poster }: { video: string; poster: string }
 
       {/* Spécialité */}
       <div className="absolute left-0 top-6 sm:top-10 ll-carte-entree" style={{ animationDelay: '.35s' }}>
-        <div className={`ll-carte-flotte ${carte} flex items-center gap-3 px-3.5 py-3 sm:px-4`} style={{ animationDuration: '6.5s' }}>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#205040] text-[#5CD9A0]">
-            <Sandwich className="h-5 w-5" />
+        <div className={`ll-carte-flotte ${carte} flex items-center gap-2.5 sm:gap-3 px-3 py-2.5 sm:px-4 sm:py-3`} style={{ animationDuration: '6.5s' }}>
+          <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-[#205040] text-[#5CD9A0]">
+            <Sandwich className="h-4 w-4 sm:h-5 sm:w-5" />
           </span>
           <span className="leading-tight">
             <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#205040]">Spécialiste</span>
-            <span className="block font-heading font-bold text-sm sm:text-[15px] text-[#14110F]">Restauration rapide</span>
+            <span className="block font-heading font-bold text-[13px] sm:text-[15px] text-[#14110F]">Restauration rapide</span>
           </span>
         </div>
       </div>
 
       {/* Formations qui défilent */}
       <div className="absolute right-0 top-[44%] ll-carte-entree" style={{ animationDelay: '.6s' }}>
-        <div className={`ll-carte-flotte ${carte} w-[196px] sm:w-[220px] px-4 py-3.5`} style={{ animationDuration: '7s', animationDelay: '-2s' }}>
+        <div className={`ll-carte-flotte ${carte} w-[164px] sm:w-[220px] px-3 py-2.5 sm:px-4 sm:py-3.5`} style={{ animationDuration: '7s', animationDelay: '-2s' }}>
           <span className="inline-flex rounded-full bg-[#5CD9A0]/20 px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#205040]">Formation</span>
-          <span key={index} className="ll-titre-defile mt-2 block min-h-[2.5rem] font-heading font-bold text-sm sm:text-[15px] leading-snug text-[#14110F]">
+          <span key={index} className="ll-titre-defile mt-1.5 sm:mt-2 block min-h-[2.25rem] sm:min-h-[2.5rem] font-heading font-bold text-[13px] sm:text-[15px] leading-snug text-[#14110F]">
             {FORMATIONS[index]}
           </span>
           <span className="mt-2 flex gap-1" aria-hidden="true">
@@ -84,13 +84,13 @@ export function HeroTerrain({ video, poster }: { video: string; poster: string }
 
       {/* Sur place */}
       <div className="absolute left-0 bottom-8 sm:bottom-12 ll-carte-entree" style={{ animationDelay: '.85s' }}>
-        <div className={`ll-carte-flotte ${carte} flex items-center gap-3 px-3.5 py-3 sm:px-4`} style={{ animationDuration: '6s', animationDelay: '-4s' }}>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#5CD9A0]/20 text-[#205040]">
-            <MapPin className="h-5 w-5" />
+        <div className={`ll-carte-flotte ${carte} flex items-center gap-2.5 sm:gap-3 px-3 py-2.5 sm:px-4 sm:py-3`} style={{ animationDuration: '6s', animationDelay: '-4s' }}>
+          <span className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-[#5CD9A0]/20 text-[#205040]">
+            <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
           </span>
           <span className="leading-tight">
-            <span className="block font-heading font-bold text-sm sm:text-[15px] text-[#14110F]">Le formateur vient chez vous</span>
-            <span className="block text-xs text-[#57534E]">Sur votre poste, sans fermer</span>
+            <span className="block font-heading font-bold text-[13px] sm:text-[15px] text-[#14110F]">Le formateur vient chez vous</span>
+            <span className="block text-[11px] sm:text-xs text-[#57534E]">Sur votre poste, sans fermer</span>
           </span>
         </div>
       </div>
