@@ -40,7 +40,7 @@ export function SiteFooter() {
             <li><Link href="/site/branches/boucherie-charcuterie" className="text-[#D6D3D1] hover:text-white transition-colors">Boucherie-charcuterie</Link></li>
             <li><Link href="/site/branches/boulangerie-patisserie" className="text-[#D6D3D1] hover:text-white transition-colors">Boulangerie-pâtisserie</Link></li>
             <li><Link href="/site/formations" className="text-[#D6D3D1] hover:text-white transition-colors">Tout le catalogue</Link></li>
-            <li><Link href="/site/financements" className="text-[#D6D3D1] hover:text-white transition-colors">Financements OPCO &amp; France Travail</Link></li>
+            <li><Link href="/site/financements" className="text-[#D6D3D1] hover:text-white transition-colors">Financements</Link></li>
           </ul>
         </div>
 

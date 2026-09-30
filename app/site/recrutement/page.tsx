@@ -4,7 +4,7 @@ import { Hygiene, FirstAid, ChefHat, Management, UserCheck, CheckCircle2, Mail, 
 export const metadata: Metadata = {
   title: 'Devenez formateur',
   description:
-    "Lab Learning recrute des formateurs indépendants : hygiène alimentaire HACCP, prévention et sécurité au travail, métiers de bouche, management en restauration, POEI. Fiches de poste et candidature.",
+    "Lab Learning recrute des formateurs indépendants : hygiène alimentaire HACCP, prévention et sécurité au travail, métiers de bouche, management en restauration, accompagnement à la prise de poste. Fiches de poste et candidature.",
   alternates: { canonical: '/recrutement' },
 }
 
@@ -93,17 +93,17 @@ const POSTES: Poste[] = [
   },
   {
     icone: UserCheck,
-    titre: 'Formateur·rice-accompagnateur·rice POEI',
-    pdf: '/site/documents/fiches-poste/formateur-accompagnateur-poei.pdf',
-    accroche: "Vous préparez des demandeurs d'emploi à leur prise de poste d'équipier polyvalent en restauration rapide, en lien avec France Travail et l'employeur.",
+    titre: 'Formateur·rice-accompagnateur·rice prise de poste',
+    pdf: '/site/documents/fiches-poste/formateur-accompagnateur-prise-de-poste.pdf',
+    accroche: "Vous préparez des candidats à leur prise de poste d'équipier polyvalent en restauration rapide, en lien avec l'employeur.",
     missions: [
-      "Animer le parcours POEI (300 h max) : hygiène, sécurité, gestes métier, posture professionnelle",
+      "Animer des parcours de plusieurs semaines : hygiène, sécurité, gestes métier, posture professionnelle",
       "Évaluer chaque semaine la progression des candidats (grilles hebdomadaires) et conduire le bilan final avec le tuteur et l'employeur",
-      "Coordonner avec le gestionnaire Lab Learning le suivi France Travail",
+      "Coordonner avec le gestionnaire Lab Learning le suivi administratif du parcours",
     ],
     profil: [
       'Expérience en restauration rapide (management ou exploitation) ET en formation/insertion',
-      'Rigueur documentaire : le dispositif France Travail exige un suivi précis',
+      'Rigueur documentaire : ces parcours exigent un suivi précis',
       'Goût pour les publics en insertion professionnelle',
     ],
     zones: 'Missions longues (4 à 6 semaines) sur site, France entière selon les ouvertures',

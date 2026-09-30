@@ -48,6 +48,14 @@ export interface PublicSiteData {
   franchises: { nom: string; logo_url: string | null; secteur: string | null; nombre_etablissements: number | null }[]
 }
 
+/*
+ * Les formations POEI (formations.is_poei) ne paraissent nulle part sur le
+ * site public : Lab Learning ne met pas en avant la POEI, dispositif de
+ * France Travail dont il n'est pas partenaire (courrier de France Travail
+ * Auvergne-Rhône-Alpes du 30/09/2026). Filtre .not('is_poei', 'is', true)
+ * sur chaque requête du catalogue, et au sitemap.
+ */
+
 /**
  * Données LIVE du CRM pour le site vitrine : catalogue de formations (dédoublonné
  * par intitulé), partenaires franchise, et compteurs temps réel. Chaque formation
@@ -59,7 +67,7 @@ export async function getPublicSiteData(): Promise<PublicSiteData> {
   const [formationsRes, franchisesRes, apprC, sessC, cliC, catalogueC, resPub] = await Promise.all([
     supabase.from('formations')
       .select('id, intitule, categorie, duree_heures, modalite, objectifs_pedagogiques, tarif_inter_ht, tarif_intra_ht')
-      .eq('organization_id', ORG).eq('is_active', true).order('intitule'),
+      .eq('organization_id', ORG).eq('is_active', true).not('is_poei', 'is', true).order('intitule'),
     supabase.from('franchises')
       .select('nom, logo_url, secteur, nombre_etablissements')
       .eq('organization_id', ORG).eq('is_active', true).not('logo_url', 'is', null)
@@ -70,7 +78,7 @@ export async function getPublicSiteData(): Promise<PublicSiteData> {
     // Le chiffre "programmes au catalogue" doit être celui du catalogue
     // effectivement publié sur le site, pas le total interne des fiches.
     supabase.from('formations').select('id', { count: 'exact', head: true })
-      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true),
+      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true),
     // "Apprenants formés" et "sessions réalisées" s'alignent sur l'indicateur
     // publié (page Résultats) : mêmes chiffres partout sur le site, calés sur
     // la période auditée — le comptage live inclut des sessions tout juste
@@ -140,10 +148,10 @@ export async function getBranchesData(): Promise<BrancheData[]> {
   // Tente les colonnes branche ; si absentes (avant migration), on refait sans.
   const withCols = await supabase.from('formations')
     .select(`${base}, branches, est_transverse, site_publie`)
-    .eq('organization_id', ORG).eq('is_active', true).order('intitule')
+    .eq('organization_id', ORG).eq('is_active', true).not('is_poei', 'is', true).order('intitule')
   if (withCols.error) {
     const basic = await supabase.from('formations')
-      .select(base).eq('organization_id', ORG).eq('is_active', true).order('intitule')
+      .select(base).eq('organization_id', ORG).eq('is_active', true).not('is_poei', 'is', true).order('intitule')
     rows = basic.data || []
   } else {
     rows = withCols.data || []
@@ -204,7 +212,7 @@ export async function getPublicFormation(id: string): Promise<PublicFormationDet
   const supabase = await createServiceRoleClient()
   const { data: f } = await supabase.from('formations')
     .select('id, intitule, sous_titre, categorie, duree_heures, duree_jours, modalite, objectifs_pedagogiques, competences_visees, public_vise, prerequis, programme_detaille, methodes_pedagogiques, modalites_evaluation, accessibilite_handicap, tarif_intra_ht, tarif_inter_ht, modalites_admission, date_derniere_maj, branches, version, historique_versions, taux_satisfaction, taux_reussite, nombre_apprenants_total')
-    .eq('id', id).eq('organization_id', ORG).eq('is_active', true).maybeSingle()
+    .eq('id', id).eq('organization_id', ORG).eq('is_active', true).not('is_poei', 'is', true).maybeSingle()
   if (!f) return null
   // Le délai d'accès est une politique de l'organisme, pas de la formation.
   const { data: org } = await supabase.from('organizations').select('delai_acces').eq('id', ORG).maybeSingle()
@@ -271,7 +279,7 @@ export async function getFormationsPopulaires(limit = 3): Promise<any[]> {
     const supabase = await createServiceRoleClient()
     const { data } = await supabase.from('formations')
       .select('id, intitule, categorie, duree_heures, duree_jours, tarif_inter_ht, tarif_intra_ht, taux_satisfaction, nombre_apprenants_total')
-      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true)
+      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true)
       .not('nombre_apprenants_total', 'is', null)
       .order('nombre_apprenants_total', { ascending: false }).limit(limit)
     return data || []
@@ -287,7 +295,7 @@ export async function getFormationsLiees(excludeId: string, categorie: string | 
     const supabase = await createServiceRoleClient()
     let q = supabase.from('formations')
       .select('id, intitule, categorie, duree_heures, taux_satisfaction')
-      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true)
+      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true)
       .neq('id', excludeId)
       .order('nombre_apprenants_total', { ascending: false, nullsFirst: false })
       .limit(limit)
@@ -297,7 +305,7 @@ export async function getFormationsLiees(excludeId: string, categorie: string | 
     // Pas assez dans la catégorie : on complète toutes catégories confondues
     const { data: autres } = await supabase.from('formations')
       .select('id, intitule, categorie, duree_heures, taux_satisfaction')
-      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true)
+      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true)
       .neq('id', excludeId)
       .order('nombre_apprenants_total', { ascending: false, nullsFirst: false })
       .limit(limit)

@@ -12,7 +12,6 @@ import { Reveal } from './Reveal'
 import { Kicker } from './Kicker'
 import { Marquee } from './Marquee'
 import { PhotoStrip } from './PhotoStrip'
-import { FilmPresentation } from './FilmPresentation'
 import { BRANCHES } from './branches'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +24,7 @@ const fmt = (n: number) => n.toLocaleString('fr-FR')
 
 const POURQUOI = [
   { Icon: UserCheck, t: 'Des formateurs de terrain', d: 'Des praticiens du métier qui transmettent le geste réel, pas de la théorie hors-sol.' },
-  { Icon: Banknote, t: 'Financement accompagné', d: 'On vous guide dans votre dossier OPCO / France Travail et on fait en sorte que la formation soit prise en charge.' },
+  { Icon: Banknote, t: 'Financement accompagné', d: 'On vous guide dans votre dossier OPCO et on fait en sorte que la formation soit prise en charge.' },
   { Icon: ShieldCheck, t: 'Qualité certifiée Qualiopi', d: 'Des parcours évalués et tracés, du positionnement à l’attestation.' },
   { Icon: SlidersHorizontal, t: 'Sur-mesure', d: 'Programmes adaptés à votre établissement, vos équipes et vos contraintes d’exploitation.' },
 ]
@@ -38,12 +37,15 @@ export default async function SiteHome() {
 
   const chapitres = [
     {
-      index: 1, eyebrow: 'Recrutement & ouverture', title: 'On vous ouvre avec une équipe déjà prête, grâce à la POEI',
-      desc: 'Avant même l’ouverture, on recrute et on forme vos futurs salariés via la POEI (Préparation Opérationnelle à l’Emploi), financée par France Travail. Vous démarrez avec une équipe opérationnelle dès le premier jour.',
-      bullets: ['POEI financée par France Travail', 'Recrutement + formation avant l’ouverture', 'Équipe opérationnelle dès le jour 1'],
+      // Ni POEI ni France Travail sur le site : Lab Learning n'est pas partenaire
+      // de France Travail et ne met pas en avant ses dispositifs (courrier de
+      // France Travail Auvergne-Rhône-Alpes du 30/09/2026).
+      index: 1, eyebrow: 'Ouverture', title: 'On vous aide à ouvrir avec une équipe déjà prête',
+      desc: 'Avant l’ouverture, on forme votre équipe aux gestes du métier, à l’hygiène et au service. Vous démarrez avec une équipe opérationnelle dès le premier jour.',
+      bullets: ['Formation avant l’ouverture', 'Gestes métier, hygiène et service', 'Équipe opérationnelle dès le jour 1'],
       Icon: DoorOpen, from: '#134E4A', to: '#0F766E',
       img: '/site/formations/ef4c5ead-d029-4734-9c51-93d248a30d0e.webp',
-      chips: [{ Icon: Briefcase, label: 'POEI · France Travail' }, { Icon: Users, label: 'Recrutement inclus' }],
+      chips: [{ Icon: Briefcase, label: 'Avant l’ouverture' }, { Icon: Users, label: 'Équipe prête au jour 1' }],
     },
     {
       index: 2, eyebrow: 'Exploitation', title: 'On fait grandir vos équipes pendant l’exploitation',
@@ -83,8 +85,8 @@ export default async function SiteHome() {
               <span className="italic inline-block bg-gradient-to-r from-[#205040] to-[#38C588] bg-clip-text text-transparent px-2 -mx-2 pb-3 -mb-3">geste juste</span>.
             </h1>
             <p className="mt-7 text-lg md:text-xl text-[#57534E] max-w-xl leading-relaxed">
-              Du recrutement à la rentabilité, on est à vos côtés : ouverture avec la POEI, montée en compétence
-              de vos équipes pendant l’exploitation, puis formation continue en e-learning avec Learnexa.
+              Du recrutement à la rentabilité, on est à vos côtés : formation de votre équipe dès l’ouverture, montée en compétence
+              pendant l’exploitation, puis formation continue en e-learning avec Learnexa.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link href="/site/formations" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] ll-lift">
@@ -129,17 +131,9 @@ export default async function SiteHome() {
         </div>
       </section>
 
-      {/* ── FILM DE PRÉSENTATION : nos métiers, nos leviers, nos résultats ── */}
-      <section className="bg-[#0B221B] py-16 md:py-24">
-        <div className="max-w-6xl mx-auto px-5 md:px-8">
-          <div className="text-center mb-10 md:mb-12">
-            <Kicker tone="light" center className="mb-4 justify-center">Découvrir Lab Learning</Kicker>
-            <h2 className="ll-display ll-fluid-h2 text-white tracking-heading text-balance">Nos métiers, nos leviers, nos résultats</h2>
-            <p className="mt-3 text-white/70 max-w-xl mx-auto">42 secondes pour voir comment on accompagne vos équipes, du recrutement à la rentabilité.</p>
-          </div>
-          <FilmPresentation src="/site/video/lab-learning-presentation.mp4" poster="/site/video/lab-learning-presentation.jpg" duree="42 secondes" />
-        </div>
-      </section>
+      {/* Film de présentation supprimé le 30/09/2026 (un plan annonçait « POEI ·
+          France Travail ») ; un nouveau film est en préparation. Le lecteur
+          reste disponible : app/site/FilmPresentation.tsx. */}
 
       {/* ── PREUVES / FRANCHISES (marquee live) ── */}
       {franchises.length > 0 && (
@@ -268,7 +262,7 @@ export default async function SiteHome() {
             Du recrutement à la rentabilité, <span className="text-[#205040]">on est avec vous</span>.
           </h2>
           <p className="mt-5 text-lg md:text-xl text-[#57534E] leading-relaxed">
-            De l’ouverture avec la POEI, à la montée en compétence de vos équipes, jusqu’à la formation continue
+            De l’ouverture à la montée en compétence de vos équipes, jusqu’à la formation continue
             en e-learning : un partenaire unique sur tout le cycle de vie de votre établissement.
           </p>
         </Reveal>
@@ -350,7 +344,7 @@ export default async function SiteHome() {
             { q: 'Combien coûte une formation, et qui la finance ?', r: "Dans la plupart des cas, votre OPCO prend en charge tout ou partie de la formation : nos tarifs sont calés sur les barèmes de votre branche, le reste à charge est souvent nul. On vous accompagne dans le dossier." },
             { q: 'La formation a-t-elle lieu dans mon établissement ?', r: "Oui, c'est notre spécialité : le formateur vient chez vous, forme vos équipes sur leur poste, avec votre matériel, sans fermer et sur vos horaires." },
             { q: 'Sous quel délai peut-on démarrer ?', r: "Une session se planifie généralement sous 2 à 4 semaines après validation du devis et de la prise en charge." },
-            { q: 'Êtes-vous certifiés Qualiopi ?', r: "Oui : certification Qualiopi actions de formation, condition du financement OPCO et France Travail. Nous sommes aussi inscrits sur la liste DRAAF pour l'hygiène alimentaire." },
+            { q: 'Êtes-vous certifiés Qualiopi ?', r: "Oui : certification Qualiopi au titre des actions de formation, condition du financement par les OPCO. Nous sommes aussi inscrits sur la liste DRAAF pour l'hygiène alimentaire." },
           ].map((f, i) => (
             <details key={i} className="group rounded-2xl bg-white ring-1 ring-black/5 open:ring-[#205040]/20 open:shadow-lg open:shadow-black/5 transition-shadow">
               <summary className="flex items-center justify-between gap-4 cursor-pointer list-none px-5 py-4">

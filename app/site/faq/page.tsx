@@ -5,7 +5,7 @@ import { Reveal } from '../Reveal'
 
 export const metadata = {
   title: 'Questions fréquentes',
-  description: 'Financement OPCO, POEI France Travail, formations en établissement, délais, Qualiopi, accessibilité : les réponses aux questions les plus posées.',
+  description: 'Financement OPCO, formations en établissement, délais, Qualiopi, accessibilité : les réponses aux questions les plus posées.',
   alternates: { canonical: '/faq' },
 }
 
@@ -23,16 +23,12 @@ const FAQ: { q: string; r: string }[] = [
     r: "Oui, c'est notre spécialité. Le formateur vient dans votre établissement et forme vos équipes sur leur poste de travail, avec votre matériel et vos produits. Pas de déplacement, pas de fermeture : les sessions sont calées sur vos horaires d'exploitation.",
   },
   {
-    q: "Qu'est-ce que la POEI et comment en bénéficier ?",
-    r: "La Préparation Opérationnelle à l'Emploi Individuelle (POEI) finance la formation de vos futurs salariés AVANT l'embauche, jusqu'à 300 heures prises en charge par France Travail. C'est le dispositif idéal pour une ouverture ou un recrutement : vous démarrez avec une équipe déjà formée. Nous gérons le recrutement, le dossier France Travail, la formation et le bilan final.",
-  },
-  {
     q: 'Sous quel délai peut-on démarrer une formation ?',
-    r: "Après validation de votre devis et de la prise en charge, une session se planifie généralement sous 2 à 4 semaines, selon vos contraintes d'exploitation et le délai de réponse de votre financeur. Pour une POEI, comptez le temps d'instruction du dossier France Travail.",
+    r: "Après validation de votre devis et de la prise en charge, une session se planifie généralement sous 2 à 4 semaines, selon vos contraintes d'exploitation et le délai de réponse de votre financeur.",
   },
   {
     q: 'Êtes-vous certifiés Qualiopi ?',
-    r: "Oui. Lab Learning est certifié Qualiopi au titre des actions de formation (certificat CERT_S1024_0345_1, délivré par CEVA SOLUTION, valable jusqu'au 04/11/2027). Cette certification est la condition pour que vos formations soient finançables par les OPCO et France Travail. Nous sommes également inscrits sur la liste DRAAF pour la formation hygiène alimentaire (HACCP).",
+    r: "Oui. Lab Learning est certifié Qualiopi au titre des actions de formation (certificat CERT_S1024_0345_1, délivré par CEVA SOLUTION, valable jusqu'au 04/11/2027). Cette certification est la condition pour que vos formations soient finançables par les OPCO. Nous sommes également inscrits sur la liste DRAAF pour la formation hygiène alimentaire (HACCP).",
   },
   {
     q: "L'attestation d'hygiène alimentaire est-elle officielle ?",

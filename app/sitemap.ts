@@ -38,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // les doublons dépubliés ferait concurrencer les fiches entre elles.
     const { data } = await supabase.from('formations')
       .select('id, date_derniere_maj, updated_at')
-      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).limit(500)
+      .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true).limit(500)
     formations = (data || []).map((f: any) => ({
       url: `${BASE}/formations/${f.id}`,
       lastModified: f.date_derniere_maj || f.updated_at || undefined,

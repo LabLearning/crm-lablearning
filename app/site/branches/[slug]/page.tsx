@@ -132,7 +132,7 @@ export default async function SiteBranche({ params }: { params: { slug: string }
         <div className="rounded-[28px] bg-[#205040] text-white px-6 md:px-14 py-14 md:flex items-center justify-between gap-8">
           <div>
             <h2 className="ll-display text-2xl md:text-4xl text-balance text-white">Un besoin précis pour votre équipe ?</h2>
-            <p className="mt-3 text-white/70 max-w-xl">On construit le parcours et on vous accompagne dans le financement (POEI, OPCO).</p>
+            <p className="mt-3 text-white/70 max-w-xl">On construit le parcours et on vous accompagne dans la prise en charge par votre OPCO.</p>
           </div>
           <Link href="/site/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] ll-lift">
             Demander un devis <ArrowRight className="h-4 w-4" />

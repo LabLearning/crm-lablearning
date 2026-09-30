@@ -5,7 +5,7 @@ import { Kicker } from '../Kicker'
 export const metadata = {
   title: 'Contact',
   description:
-    'Contactez Lab Learning pour former vos équipes : étude de votre besoin, accompagnement au financement OPCO ou France Travail, réponse sous 24 à 48 h ouvrées.',
+    'Contactez Lab Learning pour former vos équipes : étude de votre besoin, accompagnement au financement OPCO, réponse sous 24 à 48 h ouvrées.',
   alternates: { canonical: '/contact' },
 }
 
@@ -36,7 +36,7 @@ export default function SiteContact() {
           </a>
           {[
             { Icon: ShieldCheck, t: 'Certifié Qualiopi', d: 'Actions de formation conformes aux exigences qualité.' },
-            { Icon: Banknote, t: 'Financements', d: 'OPCO, France Travail, plan de développement des compétences.' },
+            { Icon: Banknote, t: 'Financements', d: 'OPCO, AGEFICE, CPF, plan de développement des compétences.' },
             { Icon: Clock, t: 'Réactivité', d: 'Réponse sous 24 à 48 h ouvrées, sessions planifiées rapidement.' },
           ].map((x) => (
             <div key={x.t} className="flex items-start gap-3 rounded-2xl border border-[#205040]/10 bg-white p-5">

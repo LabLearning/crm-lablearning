@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Hygiene, FirstAid, Management, UserCheck, Bulb, CheckCircle2 } from '../icons'
+import { ArrowRight, Hygiene, FirstAid, Management, Bulb, CheckCircle2 } from '../icons'
 import { getBranchesData } from '@/lib/public-site-data'
 import { BRANCHES } from '../branches'
 import { MetierVisual } from '../MetierVisual'
@@ -17,7 +17,7 @@ export const metadata = {
 /**
  * La page présente L'OFFRE, pas le catalogue : ce que Lab Learning fait le
  * plus (hygiène alimentaire et prévention des risques, déclinées par
- * secteur), puis les parcours POEI, le management et l'IA. Le détail complet
+ * secteur), puis le management et l'IA. Le détail complet
  * reste accessible par métier.
  */
 const SECTEURS = [
@@ -47,16 +47,6 @@ const PHARES = [
     points: ['Document unique construit avec vous', 'Formations SST et incendie certifiées', 'Déclinée par secteur d’activité'],
     secteurs: true,
     accent: '#B45309',
-  },
-  {
-    Icon: UserCheck,
-    photo: '/site/formations/5ddb8e71-17a7-46cc-a907-8858ddbdfaac.webp',
-    titre: 'POEI : Équipier polyvalent en restauration rapide',
-    texte:
-      "Vous ouvrez ou vous recrutez ? La Préparation Opérationnelle à l'Emploi forme vos futurs équipiers AVANT l'embauche, financée par France Travail. Nous gérons tout : recrutement, formation, suivi hebdomadaire, bilan avec le tuteur.",
-    points: ['Jusqu’à 300 h financées par France Travail', 'Accompagnement complet dans la démarche France Travail', 'Bilan de compétences signé employeur / tuteur / candidat'],
-    lien: { href: '/site/contact', label: 'Monter un projet POEI' },
-    accent: '#0F766E',
   },
   {
     Icon: Management,
@@ -95,8 +85,7 @@ export default async function SiteFormations() {
           </h1>
           <p className="mt-7 text-lg md:text-xl text-[#57534E] leading-relaxed max-w-2xl">
             Hygiène alimentaire, prévention des risques, montée en compétences des équipes :
-            des formations en établissement, adaptées à votre secteur, financées par votre OPCO
-            ou France Travail.
+            des formations en établissement, adaptées à votre secteur, financées par votre OPCO.
           </p>
         </div>
       </section>

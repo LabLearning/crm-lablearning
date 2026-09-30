@@ -6,7 +6,7 @@ import { Reveal } from '../Reveal'
 export const metadata = {
   title: 'Financements',
   description:
-    'POEI, OPCO, CPF, AGEFICE : les dispositifs qui financent vos formations, du recrutement à la formation continue. On vous accompagne pour que chaque formation soit prise en charge.',
+    'OPCO, AGEFICE, CPF : les dispositifs qui financent vos formations professionnelles. On vous accompagne pour que chaque formation soit prise en charge.',
   alternates: { canonical: '/financements' },
 }
 
@@ -26,16 +26,6 @@ interface Dispositif {
   photo: string
   href?: string
   cta?: string
-}
-
-const POEI: Dispositif = {
-  t: 'POEI',
-  sous: 'Préparation Opérationnelle à l’Emploi Individuelle',
-  pourQui: 'Recrutement & ouverture',
-  d: 'France Travail finance la formation de vos futurs salariés avant leur prise de poste. Idéale à l’ouverture : vous recrutez et nous formons une équipe déjà opérationnelle dès le premier jour.',
-  points: ['Formation financée avant l’embauche', 'Recrutement + formation avant l’ouverture', 'Équipe opérationnelle dès le jour 1'],
-  logos: [{ src: '/site/logos/financeurs/france-travail.svg', alt: 'France Travail' }],
-  photo: '/site/metiers/rapide.webp',
 }
 
 const OPCO: Dispositif = {
@@ -74,8 +64,10 @@ const CPF: Dispositif = {
   cta: 'Voir la formation éligible',
 }
 
+// Financeurs dont les logos sont affichés. Ni France Travail ni la POEI sur le
+// site : Lab Learning n'est pas partenaire de France Travail et ne met pas en
+// avant ses dispositifs (courrier de France Travail Auvergne-Rhône-Alpes du 30/09/2026).
 const FINANCEURS = [
-  { src: '/site/logos/financeurs/france-travail.svg', alt: 'France Travail' },
   { src: '/site/logos/financeurs/akto.png', alt: 'AKTO' },
   { src: '/site/logos/financeurs/opco-ep.svg', alt: 'OPCO EP' },
   { src: '/site/logos/financeurs/opcommerce.svg', alt: "L'Opcommerce" },
@@ -86,12 +78,13 @@ const FINANCEURS = [
 /** Comment on vous accompagne jusqu'à la prise en charge, étape par étape. */
 const PARCOURS = [
   { Icon: PhoneCall, t: 'On échange sur votre besoin', d: 'Objectifs, équipe à former, calendrier : un premier point suffit pour cadrer.' },
-  { Icon: Banknote, t: 'On identifie le bon dispositif', d: 'POEI, OPCO, AGEFICE ou CPF : on repère le financeur et le barème de votre branche.' },
+  { Icon: Banknote, t: 'On identifie le bon dispositif', d: 'OPCO, AGEFICE ou CPF : on repère le financeur et le barème de votre branche.' },
   { Icon: FileCheck2, t: 'On prépare le dossier avec vous', d: 'Programme, devis et convention conformes Qualiopi : tout est prêt pour votre demande de prise en charge.' },
   { Icon: GraduationCap, t: 'On forme, vous êtes pris en charge', d: 'La prise en charge accordée, la session est planifiée et nos formateurs interviennent chez vous.' },
 ]
 
 function PlaqueLogos({ logos }: { logos: { src: string; alt: string }[] }) {
+  if (!logos.length) return null
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {logos.map((l) => (
@@ -180,7 +173,7 @@ export default function SiteFinancements() {
             Vos formations, <span className="text-[#205040]">financées</span>.
           </h1>
           <p className="mt-7 text-lg md:text-xl text-[#57534E] leading-relaxed max-w-2xl">
-            Du recrutement à la formation continue, il existe un dispositif pour chaque situation.
+            Salariés en poste, dirigeants, projets personnels : il existe un dispositif pour chaque situation.
             On identifie le bon financeur et on vous accompagne pour que votre formation soit prise en charge.
           </p>
           {/* Le mur des financeurs : la preuve avant l'argumentaire */}
@@ -197,21 +190,16 @@ export default function SiteFinancements() {
       </section>
 
       {/* ── Les types de financement possibles ──
-          Rythme : POEI en vedette, puis OPCO (large) + AGEFICE sur une ligne,
-          puis CPF seule en pleine largeur. */}
+          Rythme : OPCO en vedette, puis AGEFICE et CPF côte à côte. */}
       <section className="max-w-6xl mx-auto px-5 md:px-8 pb-16">
         <Kicker className="mb-4">Les dispositifs</Kicker>
         <h2 className="ll-display ll-fluid-h2 text-[#14110F] mb-10">Les types de financement possibles</h2>
 
-        <CarteHorizontale x={POEI} />
+        <CarteHorizontale x={OPCO} />
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-3">
-          <CarteDispositif x={OPCO} className="lg:col-span-2" />
-          <CarteDispositif x={AGEFICE} delay={110} />
-        </div>
-
-        <div className="mt-5">
-          <CarteHorizontale x={CPF} imageADroite={false} delay={80} />
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <CarteDispositif x={AGEFICE} delay={80} />
+          <CarteDispositif x={CPF} delay={160} />
         </div>
       </section>
 

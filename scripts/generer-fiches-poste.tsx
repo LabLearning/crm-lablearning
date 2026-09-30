@@ -34,7 +34,7 @@ const POSTES = [
       'Formation HACCP attestée (ROFHYA apprécié) ; expérience de la formation pour adultes.',
       'Aisance avec les publics de terrain, y compris en français langue seconde.',
     ],
-    conditions: 'Statut indépendant, contrat de prestation par session. Interventions dans toute la France — fortes demandes en Occitanie, Île-de-France, Auvergne-Rhône-Alpes.',
+    conditions: 'Statut indépendant, contrat de prestation par session. Interventions dans toute la France, fortes demandes en Occitanie, Île-de-France, Auvergne-Rhône-Alpes.',
   },
   {
     fichier: 'formateur-prevention-securite',
@@ -46,7 +46,7 @@ const POSTES = [
       'Évaluer les acquis et documenter la session dans les outils Lab Learning.',
     ],
     profil: [
-      'Certification de formateur SST (INRS) ou équivalent pour les modules concernés — habilitations à jour.',
+      'Certification de formateur SST (INRS) ou équivalent pour les modules concernés, habilitations à jour.',
       'Expérience en prévention des risques (IPRP, HSE, ergonomie…).',
       'Pédagogie active, cas concrets tirés du secteur CHR.',
     ],
@@ -85,20 +85,21 @@ const POSTES = [
     conditions: 'Statut indépendant, contrat de prestation par session. Interventions dans toute la France.',
   },
   {
-    fichier: 'formateur-accompagnateur-poei',
-    titre: 'Formateur·rice-accompagnateur·rice POEI',
-    accroche: "Préparer des demandeurs d'emploi à leur prise de poste d'équipier polyvalent en restauration rapide, en lien avec France Travail et l'employeur.",
+    // Ni POEI ni France Travail : voir le courrier de France Travail du 30/09/2026
+    fichier: 'formateur-accompagnateur-prise-de-poste',
+    titre: 'Formateur·rice-accompagnateur·rice prise de poste',
+    accroche: "Préparer des candidats à leur prise de poste d'équipier polyvalent en restauration rapide, en lien avec l'employeur.",
     missions: [
-      'Animer le parcours POEI (300 h max) : hygiène, sécurité, gestes métier, posture professionnelle.',
+      'Animer des parcours de plusieurs semaines : hygiène, sécurité, gestes métier, posture professionnelle.',
       'Évaluer chaque semaine la progression des candidats (grilles hebdomadaires) et conduire le bilan final avec le tuteur et l’employeur.',
-      'Coordonner avec le gestionnaire Lab Learning le suivi France Travail.',
+      'Coordonner avec le gestionnaire Lab Learning le suivi administratif du parcours.',
     ],
     profil: [
       'Expérience en restauration rapide (management ou exploitation) ET en formation ou insertion.',
-      'Rigueur documentaire — le dispositif France Travail exige un suivi précis.',
+      'Rigueur documentaire : ces parcours exigent un suivi précis.',
       'Goût pour les publics en insertion professionnelle.',
     ],
-    conditions: 'Statut indépendant. Missions longues (4 à 6 semaines) sur site — France entière selon les ouvertures.',
+    conditions: 'Statut indépendant. Missions longues (4 à 6 semaines) sur site, France entière selon les ouvertures.',
   },
 ]
 
