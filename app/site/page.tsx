@@ -132,23 +132,14 @@ export default async function SiteHome() {
         </div>
       </section>
 
-      {/* ── FILM DE PRÉSENTATION (v2, muet, 1 min 14) ──
+      {/* ── FILM DE PRÉSENTATION (v2, muet, 1 min 14), en pleine largeur ──
           Ancien film supprimé le 30/09/2026 : un plan annonçait « POEI ·
           France Travail ». Tout nouveau film est relu image par image avant
-          publication (ni POEI, ni France Travail, mention Qualiopi complète),
-          et ses chapitres sont recalés sur ses séquences. */}
+          publication (ni POEI, ni France Travail, mention Qualiopi complète). */}
       <FilmSection
         src="/site/video/lab-learning-presentation-v2.mp4"
         poster="/site/video/lab-learning-presentation-v2-affiche.jpg"
-        duree="1 min 14"
-        chapitres={[
-          { t: 4, titre: 'Nos métiers' },
-          { t: 12, titre: 'Notre spécialité : la restauration rapide' },
-          { t: 28, titre: 'Le formateur vient chez vous' },
-          { t: 37, titre: 'Qualité certifiée' },
-          { t: 44, titre: 'Partout en France' },
-          { t: 52, titre: 'Nos résultats' },
-        ]}
+        titre="Lab Learning en une minute"
       />
 
       {/* ── PREUVES / FRANCHISES (marquee live) ── */}
