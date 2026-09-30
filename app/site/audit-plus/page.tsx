@@ -54,18 +54,19 @@ const OUTILS = [
       'Les 14 allergènes réglementaires, plat par plat',
       'Le code-barres des produits scanné sur place',
       'Ou l’étiquette photographiée : l’IA propose, le formateur valide',
+      'Un tableau indicatif, à relire avant tout affichage',
     ],
     ia: true,
   },
 ]
 
 const TERRAIN = [
-  { Icon: Network, t: 'Réseau coupé ? L’audit continue', d: 'En cuisine ou en réserve, l’audit en cours se poursuit même sans connexion.' },
-  { Icon: Laptop, t: 'Ordinateur, tablette, smartphone', d: 'Le même outil sur tous les écrans, pensé d’abord pour le terrain.' },
+  { Icon: Network, t: 'Réseau coupé ? L’audit continue', d: 'Les réponses et les photos de l’audit hygiène en cours restent sur l’appareil, puis se synchronisent au retour du réseau.' },
+  { Icon: Laptop, t: 'Smartphone, tablette, ordinateur', d: 'Une application web, pensée d’abord pour le terrain, sur tous les écrans.' },
   { Icon: Monitor, t: 'S’installe sur l’écran d’accueil', d: 'Audit+ s’ouvre comme une application, sans passer par un magasin d’applications.' },
   { Icon: Building2, t: 'La fiche remplie depuis le SIRET', d: 'Tapez le SIRET : les informations de l’établissement se remplissent.' },
   { Icon: Users, t: 'Toute l’équipe, un seul tableau de bord', d: 'Chaque auditeur a son accès personnel, avec des droits par outil.' },
-  { Icon: TrendingUp, t: 'Suivi établissement par établissement', d: 'Les réseaux franchisés retrouvent les audits de chaque établissement dans leur espace Lab Learning.' },
+  { Icon: TrendingUp, t: 'Entrée, sortie : le compte rendu', d: 'Audit d’entrée et audit de sortie comparés : progression par domaine, non-conformités levées ou restantes.' },
 ]
 
 const kickerSombre = (label: string) => (
@@ -104,12 +105,26 @@ export default function SiteAuditPlus() {
               </a>
             </div>
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/55">
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> Ordinateur, tablette, smartphone</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> Même sans réseau</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> Smartphone, tablette, ordinateur</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> L’audit continue si le réseau coupe</span>
             </div>
           </div>
           <div className="lg:col-span-7 ll-rise" style={{ animationDelay: '0.12s' }}>
             <AuditPlusFilm src="/site/video/audit-plus-presentation.mp4" poster="/site/video/audit-plus-affiche.jpg" duree="1 min 16" />
+            <details className="mt-4 text-sm text-white/55">
+              <summary className="cursor-pointer select-none hover:text-white/80">Lire le texte de la vidéo</summary>
+              <p className="mt-3 leading-relaxed">
+                Grilles papier, photos éparpillées, rapports retapés le soir, et le DUERP repart de zéro.
+                Audit+ : HACCP, DUERP, allergènes, une seule application. Audit hygiène HACCP : 71 points de
+                contrôle, 8 domaines, grille guidée domaine par domaine. Score de conformité calculé en direct.
+                Réseau coupé ? L’audit en cours continue. Rapport PDF détaillé et envoi par e-mail, en un clic.
+                Document unique : 11 trames métiers pré-remplies, gravité et probabilité, criticité calculée,
+                plan d’actions avec responsable, échéance et statut. Allergènes : scannez le code-barres ou
+                photographiez l’étiquette, l’IA propose et le formateur valide ; 14 allergènes, plat par plat.
+                Entrée, sortie : la progression mesurée. Tapez le SIRET, la fiche se remplit. Toute l’équipe,
+                un seul tableau de bord. Ordinateur, tablette, smartphone. L’audit terrain, sans la paperasse.
+              </p>
+            </details>
           </div>
         </div>
       </section>
