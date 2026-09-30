@@ -315,17 +315,6 @@
   .ll-orb-a, .ll-orb-b, .ll-rise { animation: none !important; }
 }
 
-/* ── Accueil : cartes flottantes autour du film du formateur ── */
-@keyframes ll-carte-entree { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: none; } }
-@keyframes ll-carte-flotte { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
-@keyframes ll-titre-defile { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.ll-carte-entree { animation: ll-carte-entree .9s cubic-bezier(.22,1,.36,1) both; }
-.ll-carte-flotte { animation: ll-carte-flotte 6s ease-in-out infinite; }
-.ll-titre-defile { animation: ll-titre-defile .5s cubic-bezier(.22,1,.36,1) both; }
-@media (prefers-reduced-motion: reduce) {
-  .ll-carte-entree, .ll-carte-flotte, .ll-titre-defile { animation: none !important; }
-}
-
 /* ── Site vitrine — motion premium (scroll reveal + transition de page) ── */
 .ll-reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1); will-change: opacity, transform; }
 .ll-reveal-in { opacity: 1; transform: none; }
