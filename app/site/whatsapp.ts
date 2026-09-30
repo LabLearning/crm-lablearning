@@ -1,11 +1,10 @@
 /**
- * WhatsApp de Lab Learning pour le site public : le numéro professionnel
- * 07 80 95 01 47, utilisé aujourd'hui dans l'application WhatsApp. Si ce
- * numéro passe un jour sur l'API WhatsApp Cloud (voir lib/whatsapp.ts), les
- * messages reçus arriveront sur l'API et non plus dans l'application.
+ * WhatsApp de Lab Learning pour le site public : +33 6 24 48 62 04, numéro
+ * donné par Brahim le 30/09/2026. Distinct du numéro prévu pour l'API
+ * WhatsApp Cloud (lib/whatsapp.ts), qui sert aux envois automatiques.
  */
-export const WHATSAPP_NUMERO = '33780950147'
-export const WHATSAPP_AFFICHE = '07 80 95 01 47'
+export const WHATSAPP_NUMERO = '33624486204'
+export const WHATSAPP_AFFICHE = '06 24 48 62 04'
 
 /** Lien « cliquer pour discuter » avec un premier message déjà rédigé. */
 export const lienWhatsapp = (message: string) =>
