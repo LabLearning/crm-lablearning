@@ -71,7 +71,7 @@ export function FilmSection({ src, poster, duree, chapitres }: {
       />
 
       <div className="relative max-w-6xl mx-auto px-5 md:px-8 grid gap-8 lg:grid-cols-12 lg:gap-x-12 lg:gap-y-8">
-        <div className="lg:col-start-1 lg:col-span-4 lg:row-start-1 lg:self-end">
+        <div className="lg:col-start-1 lg:col-span-5 lg:row-start-1 lg:self-end">
           <Kicker tone="light" className="mb-4">Découvrir Lab Learning</Kicker>
           <h2 className="ll-display ll-fluid-h2 text-white tracking-heading text-balance">
             Lab Learning <span className="text-[#5CD9A0]">en une minute</span>
@@ -81,7 +81,7 @@ export function FilmSection({ src, poster, duree, chapitres }: {
           </p>
         </div>
 
-        <div className="lg:col-start-5 lg:col-span-8 lg:row-start-1 lg:row-span-2 lg:self-center">
+        <div className="lg:col-start-6 lg:col-span-7 lg:row-start-1 lg:row-span-2 lg:self-center">
           <div className="relative aspect-video overflow-hidden rounded-3xl bg-[#07170F] ring-1 ring-white/10 shadow-2xl shadow-black/50">
             <video
               ref={video}
@@ -115,7 +115,7 @@ export function FilmSection({ src, poster, duree, chapitres }: {
           </div>
         </div>
 
-        <ol className="lg:col-start-1 lg:col-span-4 lg:row-start-2 lg:self-start border-t border-white/10" aria-label="Chapitres du film">
+        <ol className="lg:col-start-1 lg:col-span-5 lg:row-start-2 lg:self-start border-t border-white/10" aria-label="Chapitres du film">
           {chapitres.map((c, i) => {
             const enCours = i === actif
             return (
@@ -124,9 +124,9 @@ export function FilmSection({ src, poster, duree, chapitres }: {
                   type="button"
                   onClick={() => lire(c.t)}
                   aria-current={enCours ? 'true' : undefined}
-                  className={`group flex w-full items-center gap-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]/70 rounded-md ${enCours ? 'text-white' : 'text-white/60 hover:text-white'}`}
+                  className={`group flex w-full items-center gap-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]/70 rounded-md ${enCours ? 'text-white' : 'text-white/75 hover:text-white'}`}
                 >
-                  <span className={`w-10 shrink-0 font-mono text-xs tabular-nums ${enCours ? 'text-[#5CD9A0]' : 'text-white/35 group-hover:text-[#5CD9A0]'}`}>{mmss(c.t)}</span>
+                  <span className={`w-10 shrink-0 font-mono text-xs tabular-nums ${enCours ? 'text-[#5CD9A0]' : 'text-white/55 group-hover:text-[#5CD9A0]'}`}>{mmss(c.t)}</span>
                   <span className="flex-1 text-sm font-medium">{c.titre}</span>
                   <Play className={`h-3.5 w-3.5 shrink-0 transition-opacity ${enCours ? 'opacity-100 text-[#5CD9A0]' : 'opacity-0 group-hover:opacity-60'}`} strokeWidth={2.4} />
                 </button>
