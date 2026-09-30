@@ -101,10 +101,6 @@ export default async function SiteHome() {
                 La certification qualité a été délivrée au titre de la catégorie d&apos;actions suivante : ACTIONS DE FORMATION
               </p>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#78716C]">
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#205040]" /> Financement OPCO &amp; France Travail</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#205040]" /> Formateurs praticiens du métier</span>
-            </div>
           </div>
 
           {/* Collage métier (données live) — asymétrique */}
