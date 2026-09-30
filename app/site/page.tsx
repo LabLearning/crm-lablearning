@@ -95,9 +95,9 @@ export default async function SiteHome() {
               </Link>
             </div>
             {/* Qualiopi : logo officiel + mention obligatoire, sous l'appel à l'action */}
-            <div className="mt-6 flex w-fit max-w-full items-center gap-4 rounded-2xl bg-white shadow-lg shadow-black/10 ring-1 ring-black/5 px-4 py-3">
-              <img src="/site/logos/qualiopi.png" alt="Qualiopi, processus certifié, République française" className="h-12 w-auto shrink-0" />
-              <p className="max-w-[200px] text-[10px] leading-snug text-[#78716C]">
+            <div className="mt-8 flex w-fit max-w-full items-center gap-5 rounded-2xl bg-white shadow-lg shadow-black/10 ring-1 ring-black/5 px-5 py-4 sm:px-6 sm:py-5">
+              <img src="/site/logos/qualiopi.png" alt="Qualiopi, processus certifié, République française" className="h-14 sm:h-[76px] w-auto shrink-0" />
+              <p className="max-w-[250px] text-[11px] sm:text-[13px] leading-snug text-[#57534E]">
                 La certification qualité a été délivrée au titre de la catégorie d&apos;actions suivante : ACTIONS DE FORMATION
               </p>
             </div>
