@@ -61,12 +61,12 @@ const OUTILS = [
 ]
 
 const TERRAIN = [
-  { Icon: Network, t: 'Réseau coupé ? L’audit continue', d: 'Les réponses et les photos de l’audit hygiène en cours restent sur l’appareil, puis se synchronisent au retour du réseau.' },
+  { Icon: Network, t: 'Réseau coupé\u00A0? L’audit continue', d: 'Les réponses et les photos de l’audit hygiène en cours restent sur l’appareil, puis se synchronisent au retour du réseau.' },
   { Icon: Laptop, t: 'Smartphone, tablette, ordinateur', d: 'Une application web, pensée d’abord pour le terrain, sur tous les écrans.' },
   { Icon: Monitor, t: 'S’installe sur l’écran d’accueil', d: 'Audit+ s’ouvre comme une application, sans passer par un magasin d’applications.' },
   { Icon: Building2, t: 'La fiche remplie depuis le SIRET', d: 'Tapez le SIRET : les informations de l’établissement se remplissent.' },
   { Icon: Users, t: 'Toute l’équipe, un seul tableau de bord', d: 'Chaque auditeur a son accès personnel, avec des droits par outil.' },
-  { Icon: TrendingUp, t: 'Entrée, sortie : le compte rendu', d: 'Audit d’entrée et audit de sortie comparés : progression par domaine, non-conformités levées ou restantes.' },
+  { Icon: TrendingUp, t: 'Entrée, sortie\u00A0: le compte rendu', d: 'Audit d’entrée et audit de sortie comparés : progression par domaine, non-conformités levées ou restantes.' },
 ]
 
 const kickerSombre = (label: string) => (
@@ -90,7 +90,7 @@ export default function SiteAuditPlus() {
               Audit<span className="bg-gradient-to-r from-[#5CD9A0] to-[#38C588] bg-clip-text text-transparent">+</span>
             </h1>
             <p className="mt-5 font-heading font-bold text-2xl md:text-3xl text-white text-balance">
-              HACCP, DUERP, allergènes : <span className="text-[#5CD9A0]">une seule application.</span>
+              HACCP, DUERP, allergènes{'\u00A0'}: <span className="text-[#5CD9A0]">une seule application.</span>
             </p>
             <p className="mt-5 text-lg text-white/70 leading-relaxed">
               Nos formateurs auditent vos établissements sur tablette ou smartphone : grille guidée,
