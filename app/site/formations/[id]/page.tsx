@@ -203,7 +203,7 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
               ) : (
                 <div className="flex items-center justify-between"><span className="text-[#78716C]">Tarif</span><span className="font-medium text-[#14110F]">Sur devis</span></div>
               )}
-              <div className="flex items-center justify-between"><span className="text-[#78716C]">Financement</span><span className="font-medium text-[#14110F]">{tarifsOpco.length > 0 ? `Pris en charge ${[...new Set(tarifsOpco.map((t) => t.opco))].join(' / ')}` : 'OPCO éligible'}</span></div>
+              <div className="flex items-center justify-between"><span className="text-[#78716C]">Financement</span><span className="font-medium text-[#14110F]">{tarifsOpco.length > 0 ? `Possible par ${[...new Set(tarifsOpco.map((t) => t.opco))].join(' / ')}, sous réserve d’accord` : 'Possible par votre OPCO, sous réserve d’accord'}</span></div>
               <div className="flex items-center justify-between gap-3"><span className="text-[#78716C] shrink-0">Dates</span><span className="font-medium text-[#14110F] text-right">Planifiées avec votre établissement</span></div>
               {f.delai_acces ? <div className="flex items-start justify-between gap-3"><span className="text-[#78716C] shrink-0">Délai d’accès</span><span className="font-medium text-[#14110F] text-right">{f.delai_acces}</span></div> : null}
             </div>

@@ -43,7 +43,7 @@ export default async function AppreciationPage({ params, searchParams }: { param
       logo: await resolveDocumentLogoUrl(supabase, org),
     } : {
       type: 'financeur',
-      titre: 'Votre appréciation sur notre collaboration',
+      titre: 'Votre appréciation sur nos dossiers',
       sous: `${(org as any).name} sollicite votre regard de financeur sur la qualité de la relation et des dossiers.`,
       orgNom: (org as any).name,
       logo: await resolveDocumentLogoUrl(supabase, org),

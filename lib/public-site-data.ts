@@ -212,7 +212,7 @@ export async function getPublicFormation(id: string): Promise<PublicFormationDet
   const supabase = await createServiceRoleClient()
   const { data: f } = await supabase.from('formations')
     .select('id, intitule, sous_titre, categorie, duree_heures, duree_jours, modalite, objectifs_pedagogiques, competences_visees, public_vise, prerequis, programme_detaille, methodes_pedagogiques, modalites_evaluation, accessibilite_handicap, tarif_intra_ht, tarif_inter_ht, modalites_admission, date_derniere_maj, branches, version, historique_versions, taux_satisfaction, taux_reussite, nombre_apprenants_total')
-    .eq('id', id).eq('organization_id', ORG).eq('is_active', true).not('is_poei', 'is', true).maybeSingle()
+    .eq('id', id).eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true).maybeSingle()
   if (!f) return null
   // Le délai d'accès est une politique de l'organisme, pas de la formation.
   const { data: org } = await supabase.from('organizations').select('delai_acces').eq('id', ORG).maybeSingle()

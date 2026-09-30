@@ -24,7 +24,7 @@ const PARTENAIRES: { nom: string; logo: string; cover: string; type: string; des
     desc: 'Formation des équipiers et référentiels de marque : des parcours calés sur les recettes et les process du réseau.' },
   { nom: 'Chickeez', logo: '/site/logos/partenaires/chickeez.png', cover: '/site/photos/partenaires/chickeez.jpg',
     type: 'Réseau de franchise · chicken',
-    desc: 'Parcours équipier polyvalent : nous formons les équipes avant chaque ouverture.' },
+    desc: 'Formation des équipes à chaque ouverture : hygiène, gestes métier et service.' },
   { nom: 'Kassia Food', logo: '/site/logos/partenaires/kassia-food.png', cover: '/site/photos/partenaires/kassia-food.jpg',
     type: 'Réseau · restauration rapide',
     desc: "Accompagnement des établissements du réseau : hygiène alimentaire, sécurité et formation continue des équipes." },

@@ -34,7 +34,7 @@ export async function envoyerQuestionnaireFinanceurAction(
     recipientName: 'Madame, Monsieur',
     subject: `Votre appréciation ${annee} — ${(org as any)?.name || 'Lab Learning'} (organisme de formation)`,
     docTitle: `Questionnaire d'appréciation — ${financeur}`,
-    intro: `Dans le cadre de notre démarche qualité Qualiopi, ${(org as any)?.name || 'Lab Learning'} recueille chaque année l'appréciation de ses financeurs. En tant que partenaire ${financeur}, votre regard sur la qualité de nos dossiers, notre réactivité et notre collaboration nous est précieux — quatre questions, deux minutes.`,
+    intro: `Dans le cadre de notre démarche qualité Qualiopi, ${(org as any)?.name || 'Lab Learning'} recueille chaque année l'appréciation de ses financeurs. En tant que financeur de certaines de nos actions, votre regard sur la qualité de nos dossiers et notre réactivité nous est précieux — quatre questions, deux minutes.`,
     ctaLabel: 'Donner notre appréciation',
     ctaUrl: url,
     footerNote: 'Questionnaire anonyme possible — les coordonnées sont facultatives.',

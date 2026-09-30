@@ -240,7 +240,6 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
             <Chip icon="clock">{formation.duree_heures} h{formation.duree_jours ? ` · ${formation.duree_jours} j` : ''}</Chip>
             <Chip icon="monitor">{MODALITE(formation.modalite)}</Chip>
             {formation.categorie ? <Chip icon="list">{formation.categorie}</Chip> : null}
-            {formation.is_poei ? <Chip icon="userCheck">Éligible POEI</Chip> : null}
           </View>
         </View>
 

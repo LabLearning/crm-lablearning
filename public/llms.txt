@@ -3,9 +3,10 @@
 > Organisme de formation professionnelle certifié Qualiopi (actions de formation),
 > spécialiste des métiers de bouche : restauration rapide, hôtellerie-restauration,
 > boucherie-charcuterie, boulangerie-pâtisserie. Formations en intra-entreprise
-> partout en France, prises en charge par les OPCO (AKTO, OPCO EP) et France
-> Travail (POEI). Siège : 6b boulevard Berthelot, Bureau 3, 34000 Montpellier.
-> N° de déclaration d'activité 76341315134 — certificat Qualiopi CERT_S1024_0345_1
+> partout en France, finançables selon les cas par l'OPCO de l'entreprise (AKTO,
+> OPCO EP) ou par l'AGEFICE pour les dirigeants non salariés, sous réserve de
+> l'accord du financeur. Siège : 6b boulevard Berthelot, Bureau 3, 34000 Montpellier.
+> N° de déclaration d'activité 76341315134 · certificat Qualiopi CERT_S1024_0345_1
 > (CEVA Solution), valable jusqu'au 04/11/2027.
 
 ## Pages principales
@@ -16,7 +17,7 @@
 - [Restaurant & hôtellerie (HCR)](https://crm.lab-learning.fr/site/branches/restaurant-hcr)
 - [Boucherie-charcuterie](https://crm.lab-learning.fr/site/branches/boucherie-charcuterie)
 - [Boulangerie-pâtisserie](https://crm.lab-learning.fr/site/branches/boulangerie-patisserie)
-- [Financements](https://crm.lab-learning.fr/site/financements) : OPCO, POEI France Travail, plan de développement des compétences
+- [Financements](https://crm.lab-learning.fr/site/financements) : OPCO (plan de développement des compétences) et AGEFICE ; la décision de prise en charge appartient au financeur
 - [Nos résultats](https://crm.lab-learning.fr/site/resultats) : indicateurs de résultats publiés (satisfaction, réussite)
 - [Contact](https://crm.lab-learning.fr/site/contact)
 
@@ -33,4 +34,4 @@
 Hygiène alimentaire et HACCP (formation obligatoire des établissements de
 restauration commerciale, arrêté du 12 février 2024), sécurité (DUERP, incendie,
 SST), management en restauration, techniques métier (pizza, pâtisserie,
-boucherie), POEI de recrutement pour les enseignes de restauration rapide.
+boucherie), formation des équipes des enseignes de restauration rapide.

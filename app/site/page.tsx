@@ -41,8 +41,8 @@ export default async function SiteHome() {
       // de France Travail et ne met pas en avant ses dispositifs (courrier de
       // France Travail Auvergne-Rhône-Alpes du 30/09/2026).
       index: 1, eyebrow: 'Ouverture', title: 'On vous aide à ouvrir avec une équipe déjà prête',
-      desc: 'Avant l’ouverture, on forme votre équipe aux gestes du métier, à l’hygiène et au service. Vous démarrez avec une équipe opérationnelle dès le premier jour.',
-      bullets: ['Formation avant l’ouverture', 'Gestes métier, hygiène et service', 'Équipe opérationnelle dès le jour 1'],
+      desc: 'Dès l’embauche, avant l’ouverture, on forme votre nouvelle équipe aux gestes du métier, à l’hygiène et au service. Vous démarrez avec une équipe opérationnelle dès le premier jour.',
+      bullets: ['Formation de vos nouveaux salariés', 'Gestes métier, hygiène et service', 'Équipe opérationnelle dès le jour 1'],
       Icon: DoorOpen, from: '#134E4A', to: '#0F766E',
       img: '/site/formations/ef4c5ead-d029-4734-9c51-93d248a30d0e.webp',
       chips: [{ Icon: Briefcase, label: 'Avant l’ouverture' }, { Icon: Users, label: 'Équipe prête au jour 1' }],

@@ -70,19 +70,19 @@ export function tarifsOpcoPourFormation(f: {
       lignes.push({
         branche: b.label, opco: b.opco,
         montant: `${euros(b.tauxHoraire * heures)} / stagiaire`,
-        detail: `${b.tauxHoraire} €/h — barème ${b.opco}`,
+        detail: `${b.tauxHoraire} €/h · barème ${b.opco}`,
       })
     } else if (b.forfaitJour && jours) {
       lignes.push({
         branche: b.label, opco: b.opco,
         montant: `${euros(b.forfaitJour * jours)} / groupe`,
-        detail: `forfait ${b.forfaitJour.toLocaleString('fr-FR')} €/jour — barème ${b.opco}`,
+        detail: `forfait ${b.forfaitJour.toLocaleString('fr-FR')} €/jour · barème ${b.opco}`,
       })
     } else if (b.tauxHoraireMin && b.tauxHoraireMax && heures) {
       lignes.push({
         branche: b.label, opco: b.opco,
         montant: `${euros(b.tauxHoraireMin * heures)} à ${euros(b.tauxHoraireMax * heures)} / stagiaire`,
-        detail: `${b.tauxHoraireMin} à ${b.tauxHoraireMax} €/h selon le thème — barème ${b.opco}`,
+        detail: `${b.tauxHoraireMin} à ${b.tauxHoraireMax} €/h selon le thème · barème ${b.opco}`,
       })
     }
   }

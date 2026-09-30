@@ -25,7 +25,7 @@ export default async function SiteResultats() {
     supabase
       .from('formations')
       .select('id, intitule, duree_heures, nombre_apprenants_total, taux_satisfaction, taux_reussite')
-      .eq('is_active', true).eq('site_publie', true)
+      .eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true)
       .not('nombre_apprenants_total', 'is', null)
       .gt('nombre_apprenants_total', 0)
       .order('nombre_apprenants_total', { ascending: false }),
