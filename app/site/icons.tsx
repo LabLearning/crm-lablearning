@@ -17,6 +17,7 @@ import {
   ManagerIcon, CleaningBucketIcon, FirstAidKitIcon, GraduationScrollIcon,
   StarIcon, ArrowDown01Icon,
   AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon, PlayIcon,
+  WhatsappIcon,
 } from '@hugeicons/core-free-icons'
 
 type P = { className?: string; strokeWidth?: number }
@@ -74,6 +75,7 @@ export const Bulb = make(BulbIcon)                      // méthodes
 // ── Contact ──
 export const Mail = make(Mail01Icon)
 export const PhoneCall = make(CallIcon)
+export const Whatsapp = make(WhatsappIcon)
 export const MapPin = make(MapPinIcon)
 
 // ── Thématiques formation (cartes catégories) ──
