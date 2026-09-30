@@ -10,6 +10,7 @@ import { MetierVisual } from './MetierVisual'
 import { StoryChapter } from './StoryChapter'
 import { Reveal } from './Reveal'
 import { FilmSection } from './FilmSection'
+import { HeroTerrain } from './HeroTerrain'
 import { Kicker } from './Kicker'
 import { Marquee } from './Marquee'
 import { PhotoStrip } from './PhotoStrip'
@@ -79,6 +80,7 @@ export default async function SiteHome() {
 
         <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-16 md:pb-24 grid lg:grid-cols-12 gap-12 lg:gap-12 items-center">
           <div className="ll-rise lg:col-span-6">
+            <Kicker className="mb-5">Organisme de formation · Restauration rapide</Kicker>
             <h1 className="ll-display ll-fluid-hero text-[#14110F] text-balance">
               Former les métiers de bouche avec l’exigence du{' '}
               {/* inline-block + marges compensées : le clip du dégradé englobe
@@ -106,21 +108,10 @@ export default async function SiteHome() {
             </div>
           </div>
 
-          {/* Collage métier (données live) — asymétrique */}
-          {BRANCHES.length >= 2 && (
-            <div className="ll-rise lg:col-span-6 grid grid-cols-2 gap-4 sm:gap-5 relative" style={{ animationDelay: '0.12s' }}>
-              {BRANCHES.map((b, i) => (
-                <Link key={b.slug} href={`/site/branches/${b.slug}`}
-                  className={`group rounded-3xl overflow-hidden shadow-sm ring-1 ring-black/5 ll-lift ${i % 2 === 1 ? 'translate-y-6 sm:translate-y-10' : ''}`}>
-                  <MetierVisual nom={b.label} label={b.label} height={i % 2 === 1 ? 'h-56 sm:h-72' : 'h-52 sm:h-64'} />
-                  <div className="bg-white px-4 py-3 flex items-center justify-between">
-                    <span className="text-xs text-[#78716C]">{brancheCount.get(b.slug) || 0} formation{(brancheCount.get(b.slug) || 0) > 1 ? 's' : ''}</span>
-                    <ArrowRight className="h-4 w-4 text-[#205040] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          {/* Un formateur en plein fast-food, et nos repères qui flottent autour */}
+          <div className="ll-rise lg:col-span-6" style={{ animationDelay: '0.12s' }}>
+            <HeroTerrain video="/site/video/hero-formateur.mp4" poster="/site/video/hero-formateur.jpg" />
+          </div>
         </div>
       </section>
 
