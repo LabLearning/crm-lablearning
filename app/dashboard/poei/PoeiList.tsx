@@ -144,7 +144,7 @@ export function PoeiList({ poei, previsions, clients, formations, hasPoeiCatalog
           </div>
           <div className="min-w-0">
             <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">POEI</h1>
-            <p className="text-sm text-surface-500 mt-0.5">Préparation Opérationnelle à l'Emploi, projets collectifs France Travail</p>
+            <p className="text-sm text-surface-500 mt-0.5">Préparation opérationnelle à l'emploi individuelle : aide de France Travail à l'employeur</p>
           </div>
         </div>
         {tab === 'projets' && (

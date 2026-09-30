@@ -76,8 +76,9 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-5 md:px-8 py-5 space-y-2 text-xs text-[#78716C]">
           <p className="leading-relaxed">
-            Lab Learning · SAS au capital de 5 000 € · SIRET 931 658 561 00036 · Déclaration d’activité n° 76 34 13151 34
-            (cet enregistrement ne vaut pas agrément de l’État) · TVA FR41931658561
+            {/* Forme imposée par l'article L6352-12 du Code du travail */}
+            Lab Learning · SAS au capital de 5 000 € · SIRET 931 658 561 00036 · TVA FR41931658561 ·
+            Enregistrée sous le numéro 76341315134. Cet enregistrement ne vaut pas agrément de l’État.
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <Link href="/site/mentions-legales" className="hover:text-[#D6D3D1]">Mentions légales</Link>
