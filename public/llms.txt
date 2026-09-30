@@ -19,6 +19,8 @@
 - [Boulangerie-pâtisserie](https://crm.lab-learning.fr/site/branches/boulangerie-patisserie)
 - [Financements](https://crm.lab-learning.fr/site/financements) : OPCO (plan de développement des compétences) et AGEFICE ; la décision de prise en charge appartient au financeur
 - [Nos résultats](https://crm.lab-learning.fr/site/resultats) : indicateurs de résultats publiés (satisfaction, réussite)
+- [Audit+](https://crm.lab-learning.fr/site/audit-plus) : notre outil d'audit terrain (audit hygiène HACCP, document unique DUERP, allergènes)
+- [Starkk](https://crm.lab-learning.fr/site/starkk) : notre assistant IA
 - [Contact](https://crm.lab-learning.fr/site/contact)
 
 ## Informations réglementaires

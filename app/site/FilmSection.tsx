@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Play, Pause, PleinEcran } from './icons'
 
 /**
- * Film de présentation de l'accueil, en pleine largeur, sans texte autour :
- * le film porte ses propres messages. Il est muet : il part tout seul, en
+ * Film de présentation de l'accueil, dans un cadre arrondi aligné sur le
+ * contenu, sans texte autour : le film porte ses propres messages. Il est muet : il part tout seul, en
  * boucle, quand la section arrive à l'écran, et se met en pause quand on la
  * quitte ; rien n'est téléchargé avant. Pause et plein écran restent à
  * portée (tout contenu animé de plus de 5 s doit pouvoir être arrêté).
@@ -69,9 +69,10 @@ export function FilmSection({ src, poster, titre }: { src: string; poster: strin
   const bouton = 'flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm ring-1 ring-white/15 transition-colors hover:bg-black/65 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]'
 
   return (
-    <section aria-label={titre} className="relative bg-[#0B221B]">
+    <section aria-label={titre} className="py-12 md:py-20">
       <h2 className="sr-only">{titre}</h2>
-      <div className="group/film relative w-full aspect-video max-h-[100svh]">
+      <div className="max-w-6xl mx-auto px-5 md:px-8">
+      <div className="group/film relative aspect-video overflow-hidden rounded-3xl bg-[#0B221B] ring-1 ring-black/5 shadow-2xl shadow-[#0B221B]/25">
         <video
           ref={video}
           src={src}
@@ -81,7 +82,7 @@ export function FilmSection({ src, poster, titre }: { src: string; poster: strin
           loop
           playsInline
           aria-label={titre}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 h-full w-full object-cover"
         />
 
         {lectureAuto === false && !enLecture && (
@@ -97,9 +98,9 @@ export function FilmSection({ src, poster, titre }: { src: string; poster: strin
           </button>
         )}
 
-        {/* En bas à gauche (le bouton WhatsApp flotte en bas à droite). Sur
-            ordinateur, visibles au survol, au clavier ou en pause, pour ne
-            pas masquer le texte du film ; toujours visibles au toucher. */}
+        {/* En bas à gauche. Sur ordinateur, visibles au survol, au clavier
+            ou en pause, pour ne pas masquer le texte du film ; toujours
+            visibles au toucher. */}
         <div className={`absolute left-3 bottom-3 md:left-6 md:bottom-6 flex gap-2 transition-opacity duration-300 ${enLecture ? '[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/film:opacity-100 focus-within:opacity-100' : ''}`}>
           <button type="button" onClick={basculer} aria-label={enLecture ? 'Mettre le film en pause' : 'Lire le film'} className={bouton}>
             {enLecture ? <Pause className="h-4 w-4" strokeWidth={2.2} /> : <Play className="h-4 w-4 translate-x-px" strokeWidth={2.2} />}
@@ -108,6 +109,7 @@ export function FilmSection({ src, poster, titre }: { src: string; poster: strin
             <PleinEcran className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
+      </div>
       </div>
     </section>
   )

@@ -3,13 +3,15 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { Menu, X, ArrowRight, ChevronDown, GraduationCap, Banknote, HeartHandshake, TrendingUp, Users, Bulb } from './icons'
+import { Menu, X, ArrowRight, ChevronDown, GraduationCap, Banknote, HeartHandshake, TrendingUp, Users, Bulb, ClipboardCheck, AiChat, Whatsapp } from './icons'
 import { BRANCHES } from './branches'
+import { useLienWhatsapp } from './useLienWhatsapp'
 
 /**
- * Navigation du site : le logo ramène à l'accueil, deux menus déroulants
- * (« Formations » par métier, « L'organisme » pour les pages de preuve),
- * Starkk et Financements en accès direct, un seul CTA contact.
+ * Navigation du site : le logo ramène à l'accueil, trois menus déroulants
+ * (« L'organisme » pour les pages de preuve, « Formations » par métier,
+ * « Nos outils » pour Audit+ et Starkk), Financements et Contact en accès
+ * direct, et le bouton WhatsApp en haut à droite.
  */
 const ORGANISME = [
   { href: '/site/a-propos', label: 'À propos', desc: 'Qui nous sommes, notre pédagogie', Icon: Users },
@@ -18,15 +20,23 @@ const ORGANISME = [
   { href: '/site/faq', label: 'FAQ', desc: 'Les réponses aux questions fréquentes', Icon: Bulb },
 ]
 
+/** Les outils maison de Lab Learning ; d'autres viendront s'ajouter ici. */
+const OUTILS = [
+  { href: '/site/audit-plus', label: 'Audit+', desc: 'Audits hygiène, DUERP et allergènes', Icon: ClipboardCheck },
+  { href: '/site/starkk', label: 'Starkk', desc: 'Notre intelligence artificielle', Icon: AiChat },
+]
+
 export function SiteNav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [dropdown, setDropdown] = useState<null | 'formations' | 'organisme'>(null)
+  const [dropdown, setDropdown] = useState<null | 'formations' | 'organisme' | 'outils'>(null)
+  const lienWhatsapp = useLienWhatsapp()
   const fermeture = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isActive = (h: string) => (h === '/site' ? pathname === '/site' : pathname.startsWith(h))
   const formationsActive = pathname.startsWith('/site/formations') || pathname.startsWith('/site/branches')
   const organismeActive = ORGANISME.some((l) => isActive(l.href))
+  const outilsActive = OUTILS.some((l) => isActive(l.href))
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8)
@@ -37,7 +47,7 @@ export function SiteNav() {
 
   // Petite tolérance à la sortie du survol : le menu ne claque pas
   // quand le curseur traverse l'interstice.
-  const ouvrir = (quel: 'formations' | 'organisme') => { if (fermeture.current) clearTimeout(fermeture.current); setDropdown(quel) }
+  const ouvrir = (quel: 'formations' | 'organisme' | 'outils') => { if (fermeture.current) clearTimeout(fermeture.current); setDropdown(quel) }
   const fermer = () => { fermeture.current = setTimeout(() => setDropdown(null), 150) }
 
   const lienNav = (active: boolean) =>
@@ -140,6 +150,33 @@ export function SiteNav() {
             <span className={soulignement(isActive('/site/financements'))} />
           </Link>
 
+          {/* Nos outils : Audit+, Starkk */}
+          <div className="relative" onMouseEnter={() => ouvrir('outils')} onMouseLeave={fermer}>
+            <button type="button" className={lienNav(outilsActive)}>
+              Nos outils
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${dropdown === 'outils' ? 'rotate-180' : ''}`} />
+              <span className={soulignement(outilsActive)} />
+            </button>
+            {dropdown === 'outils' && (
+              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3">
+                <div className="w-[320px] rounded-3xl bg-white ring-1 ring-black/5 shadow-2xl shadow-black/15 p-2">
+                  {OUTILS.map((l) => (
+                    <Link key={l.href} href={l.href} onClick={() => setDropdown(null)}
+                      className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#FAFAF9] transition-colors">
+                      <span className="h-9 w-9 shrink-0 rounded-xl bg-[#205040]/8 flex items-center justify-center text-[#205040]">
+                        <l.Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-[#14110F] leading-snug">{l.label}</span>
+                        <span className="block text-xs text-[#78716C] mt-0.5 truncate">{l.desc}</span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Contact : accès direct */}
           <Link href="/site/contact" className={lienNav(isActive('/site/contact'))}>
             Contact
@@ -148,16 +185,13 @@ export function SiteNav() {
         </nav>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Starkk : bouton animé signature */}
-          <Link href="/site/starkk" className="ll-starkk-btn hidden sm:inline-flex rounded-full ll-lift">
-            <span className="ll-starkk-inner inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-black italic text-white">
-              <span className="relative z-10 flex h-2 w-2 not-italic">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-[#5CD9A0] opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#5CD9A0]" />
-              </span>
-              <span className="relative z-10">Starkk</span>
-            </span>
-          </Link>
+          {/* WhatsApp : écrire à l'équipe, message déjà rédigé */}
+          <a href={lienWhatsapp} target="_blank" rel="noopener noreferrer"
+            aria-label="Écrire à Lab Learning sur WhatsApp (nouvelle fenêtre)"
+            className="inline-flex items-center gap-2 h-10 rounded-full bg-[#25D366] px-3 sm:pl-3 sm:pr-4 text-sm font-semibold text-white shadow-sm shadow-[#25D366]/30 ll-lift hover:bg-[#1FBF5B] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]">
+            <Whatsapp className="h-5 w-5" strokeWidth={1.8} />
+            <span className="hidden sm:inline">WhatsApp</span>
+          </a>
           <button className="lg:hidden h-10 w-10 inline-flex items-center justify-center rounded-full hover:bg-black/[0.04] text-[#14110F]"
             onClick={() => setOpen((v) => !v)} aria-label="Menu">
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -217,16 +251,27 @@ export function SiteNav() {
             </Link>
 
             <div className="my-1 border-t border-[#F0EEE9]" />
-            <Link href="/site/starkk" onClick={() => setOpen(false)}
-              className="ll-starkk-btn mt-1 mb-1 flex rounded-2xl">
-              <span className="ll-starkk-inner flex flex-1 items-center justify-center gap-2 px-4 py-3 rounded-2xl text-white text-sm font-black italic">
-                <span className="relative z-10 flex h-2 w-2 not-italic">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#5CD9A0] opacity-75 animate-ping" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#5CD9A0]" />
+            <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#A8A29E]">Nos outils</div>
+            {OUTILS.map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm transition-colors ${
+                  isActive(l.href) ? 'bg-[#205040]/8 text-[#205040] font-medium' : 'text-[#44403C] hover:bg-black/[0.03]'
+                }`}>
+                <span className="h-8 w-8 shrink-0 rounded-lg bg-[#205040]/8 flex items-center justify-center text-[#205040]"><l.Icon className="h-4 w-4" /></span>
+                <span className="flex-1">
+                  <span className="block font-medium">{l.label}</span>
+                  <span className="block text-xs text-[#78716C]">{l.desc}</span>
                 </span>
-                <span className="relative z-10">Starkk, notre IA</span>
-              </span>
-            </Link>
+                <ArrowRight className="h-3.5 w-3.5 opacity-30" />
+              </Link>
+            ))}
+
+            <div className="my-1 border-t border-[#F0EEE9]" />
+            <a href={lienWhatsapp} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
+              className="mt-1 mb-1 flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white hover:bg-[#1FBF5B] transition-colors">
+              <Whatsapp className="h-5 w-5" strokeWidth={1.8} />
+              Nous écrire sur WhatsApp
+            </a>
           </nav>
         </div>
       )}

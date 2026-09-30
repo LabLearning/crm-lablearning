@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { SiteNav } from './SiteNav'
 import { SiteFooter } from './SiteFooter'
 import { CookieBanner } from './CookieBanner'
-import { WhatsappBouton } from './WhatsappBouton'
 
 /**
  * Métadonnées du site vitrine.
@@ -102,7 +101,6 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <SiteNav />
       <main>{children}</main>
       <SiteFooter />
-      <WhatsappBouton />
       <CookieBanner />
     </div>
   )
