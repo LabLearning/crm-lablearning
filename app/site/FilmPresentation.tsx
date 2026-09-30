@@ -7,8 +7,9 @@ import { Play } from './icons'
  * Film de présentation Lab Learning : affiche + bouton lecture. Rien n'est
  * chargé avant le clic (preload="none"), puis la vidéo part avec le son, ce
  * que les navigateurs n'autorisent qu'après une action de l'utilisateur.
+ * sonore=false pour un film muet : l'affiche n'annonce alors pas de son.
  */
-export function FilmPresentation({ src, poster, duree }: { src: string; poster: string; duree: string }) {
+export function FilmPresentation({ src, poster, duree, sonore = true }: { src: string; poster: string; duree: string; sonore?: boolean }) {
   const video = useRef<HTMLVideoElement>(null)
   const [lance, setLance] = useState(false)
 
@@ -35,7 +36,7 @@ export function FilmPresentation({ src, poster, duree }: { src: string; poster: 
         <button
           type="button"
           onClick={lire}
-          aria-label={`Lire le film de présentation (${duree}, avec le son)`}
+          aria-label={`Lire le film de présentation (${duree}${sonore ? ', avec le son' : ''})`}
           className="group absolute inset-0 flex items-center justify-center focus-visible:outline-none"
         >
           <span className="absolute inset-0 bg-gradient-to-t from-[#07170F]/70 via-[#07170F]/10 to-transparent" />
@@ -45,7 +46,7 @@ export function FilmPresentation({ src, poster, duree }: { src: string; poster: 
           </span>
           <span className="absolute left-5 bottom-5 md:left-8 md:bottom-7 text-left">
             <span className="block text-white font-heading font-black text-lg md:text-2xl tracking-tight">Lab Learning en {duree}</span>
-            <span className="block text-white/70 text-xs md:text-sm mt-0.5">Avec le son</span>
+            {sonore && <span className="block text-white/70 text-xs md:text-sm mt-0.5">Avec le son</span>}
           </span>
         </button>
       )}
