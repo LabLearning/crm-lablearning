@@ -94,7 +94,14 @@ export default async function SiteHome() {
                 Parler à un conseiller
               </Link>
             </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#78716C]">
+            {/* Qualiopi : logo officiel + mention obligatoire, sous l'appel à l'action */}
+            <div className="mt-6 flex w-fit max-w-full items-center gap-4 rounded-2xl bg-white shadow-lg shadow-black/10 ring-1 ring-black/5 px-4 py-3">
+              <img src="/site/logos/qualiopi.png" alt="Qualiopi, processus certifié, République française" className="h-12 w-auto shrink-0" />
+              <p className="max-w-[200px] text-[10px] leading-snug text-[#78716C]">
+                La certification qualité a été délivrée au titre de la catégorie d&apos;actions suivante : ACTIONS DE FORMATION
+              </p>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[#78716C]">
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#205040]" /> Financement OPCO &amp; France Travail</span>
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#205040]" /> Formateurs praticiens du métier</span>
             </div>
@@ -113,14 +120,6 @@ export default async function SiteHome() {
                   </div>
                 </Link>
               ))}
-              {/* Badge flottant Qualiopi — logo officiel + mention obligatoire */}
-              <div className="hidden sm:block absolute -right-4 -bottom-8 rounded-2xl bg-white shadow-lg shadow-black/10 ring-1 ring-black/5 px-4 py-3 max-w-[220px]">
-                <img src="/site/logos/qualiopi.png" alt="Qualiopi, processus certifié, République française" className="h-14 w-auto" />
-                <p className="mt-1.5 text-[8px] leading-snug text-[#78716C]">
-                  La certification qualité a été délivrée au titre de la catégorie d&apos;actions suivante : ACTIONS DE FORMATION
-                </p>
-              </div>
-
               {/* Badge flottant preuve */}
               <div className="hidden sm:flex absolute -left-6 bottom-2 items-center gap-3 rounded-2xl bg-white shadow-lg shadow-black/10 ring-1 ring-black/5 px-4 py-3">
                 <span className="h-9 w-9 rounded-xl bg-[#205040]/10 flex items-center justify-center"><GraduationCap className="h-5 w-5 text-[#205040]" /></span>
