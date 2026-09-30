@@ -9,7 +9,7 @@ import { CountUp } from './CountUp'
 import { MetierVisual } from './MetierVisual'
 import { StoryChapter } from './StoryChapter'
 import { Reveal } from './Reveal'
-import { FilmPresentation } from './FilmPresentation'
+import { FilmSection } from './FilmSection'
 import { Kicker } from './Kicker'
 import { Marquee } from './Marquee'
 import { PhotoStrip } from './PhotoStrip'
@@ -135,17 +135,21 @@ export default async function SiteHome() {
       {/* ── FILM DE PRÉSENTATION (v2, muet, 1 min 14) ──
           Ancien film supprimé le 30/09/2026 : un plan annonçait « POEI ·
           France Travail ». Tout nouveau film est relu image par image avant
-          publication (ni POEI, ni France Travail, mention Qualiopi complète). */}
-      <section className="bg-[#0B221B] py-16 md:py-24">
-        <div className="max-w-6xl mx-auto px-5 md:px-8">
-          <div className="text-center mb-10 md:mb-12">
-            <Kicker tone="light" center className="mb-4 justify-center">Découvrir Lab Learning</Kicker>
-            <h2 className="ll-display ll-fluid-h2 text-white tracking-heading text-balance">Nos métiers, notre méthode, nos résultats</h2>
-            <p className="mt-3 text-white/70 max-w-xl mx-auto">Une minute pour voir comment on forme vos équipes, sur place, partout en France.</p>
-          </div>
-          <FilmPresentation src="/site/video/lab-learning-presentation-v2.mp4" poster="/site/video/lab-learning-presentation-v2.jpg" duree="1 minute" sonore={false} />
-        </div>
-      </section>
+          publication (ni POEI, ni France Travail, mention Qualiopi complète),
+          et ses chapitres sont recalés sur ses séquences. */}
+      <FilmSection
+        src="/site/video/lab-learning-presentation-v2.mp4"
+        poster="/site/video/lab-learning-presentation-v2-affiche.jpg"
+        duree="1 min 14"
+        chapitres={[
+          { t: 4, titre: 'Nos métiers' },
+          { t: 12, titre: 'Notre spécialité : la restauration rapide' },
+          { t: 28, titre: 'Le formateur vient chez vous' },
+          { t: 37, titre: 'Qualité certifiée' },
+          { t: 44, titre: 'Partout en France' },
+          { t: 52, titre: 'Nos résultats' },
+        ]}
+      />
 
       {/* ── PREUVES / FRANCHISES (marquee live) ── */}
       {franchises.length > 0 && (
