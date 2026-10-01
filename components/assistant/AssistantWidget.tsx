@@ -244,7 +244,10 @@ export function AssistantWidget({ utilisateurId }: { utilisateurId?: string }) {
       if (courante?.etat !== 'en_attente') continue
       // Une étape qui échoue arrête le plan : les suivantes attendent une décision
       if (!(await confirmerAction(idxMessage, courante))) {
+        // Seules les étapes encore en attente reçoivent la note (pas celles faites ou ignorées entre-temps)
+        const restantes = messagesRef.current[idxMessage]?.actions || []
         for (const suivante of etapes.slice(i + 1)) {
+          if (restantes.find((x) => x.id === suivante.id)?.etat !== 'en_attente') continue
           majAction(idxMessage, suivante.id, { resultat: 'Plan interrompu : l’étape précédente n’a pas abouti. Vous pouvez confirmer celle-ci seule.' })
         }
         break

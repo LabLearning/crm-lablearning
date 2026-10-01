@@ -426,10 +426,12 @@ export function detailsAffiches(type: string, params: Record<string, any>): stri
     lignes.push(params.present ? 'Créneaux : tous ceux non signés, jusqu’à aujourd’hui' : 'Créneaux : tous ceux non signés')
   }
   if (type === 'action_generer_facture_opco') {
-    if (params.destinataire_nom) lignes.push(`Adressée à : ${params.destinataire_nom}`)
-    if (params.montant_reference != null && params.montant_reference !== params.montant_ht) {
+    if (params.montant_ht === undefined) {
+      lignes.push(`Montant HT facturé : celui de l’accord de prise en charge à la confirmation (à défaut, le prix de la session)${Number(params.montant_reference) > 0 ? ` ; aujourd’hui ${euros(params.montant_reference)}` : ''}`)
+    } else if (params.montant_reference != null && params.montant_reference !== params.montant_ht) {
       lignes.push(`Montant de l’accord ou prix de la session : ${euros(params.montant_reference)}`)
     }
+    if (params.destinataire_nom) lignes.push(`Adressée à : ${params.destinataire_nom}`)
   }
   return lignes
 }
@@ -452,14 +454,14 @@ export async function figerParams(type: string, params: Record<string, any>, org
     return { ok: true, params: { ...params, convention_ids: data.map((c: any) => c.id) } }
   }
   if (type === 'action_generer_facture_opco') {
-    // Montant et destinataire figés : ceux que la carte annonce sont ceux facturés
+    // Destinataire figé (revérifié avant de facturer). Le montant ne l'est que
+    // si le modèle l'a donné : sinon c'est celui de l'accord au moment de la
+    // confirmation, qu'une étape « accord » du même plan peut avoir enregistré.
     let dest
     try { dest = await destinataireFactureSession(params.session_id, orgId) } catch { return { ok: false, statut: 503, message: 'Vérification impossible pour le moment, réessayez.' } }
+    if (dest === 'introuvable') return { ok: false, statut: 404, message: 'Session introuvable dans votre organisation.' }
     if (!dest) return { ok: false, statut: 422, message: 'Aucun client ni OPCO rattaché à la session : impossible de savoir à qui adresser la facture.' }
-    const reference = Math.round(dest.montant * 100) / 100
-    const montant = params.montant_ht ?? reference
-    if (!(montant > 0)) return { ok: false, statut: 422, message: 'Montant à facturer inconnu : enregistrez l’accord de prise en charge ou le prix de la session.' }
-    return { ok: true, params: { ...params, montant_ht: montant, montant_reference: reference, destinataire: dest.cle, destinataire_nom: dest.nom } }
+    return { ok: true, params: { ...params, montant_reference: Math.round(dest.montant * 100) / 100, destinataire: dest.cle, destinataire_nom: dest.nom } }
   }
   if (type === 'action_marquer_paiement' && params.montant === undefined) {
     const { data: f, error } = await supabase.from('factures').select('montant_ttc, montant_restant')

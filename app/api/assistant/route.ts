@@ -59,21 +59,19 @@ export async function POST(req: Request) {
   // renvoyées au client, que l'utilisateur confirme d'un clic.
   const messages: any[] = historique.slice(-16)
   const propositions: PropositionAction[] = []
-  // Quand le modèle repropose à un tour suivant une action déjà publiée (mêmes
-  // paramètres), elle n'apparaît qu'une fois, à sa nouvelle place. Jamais pour
-  // les créations et paiements, qui se cumulent légitimement (un dossier AGEFICE
-  // par dirigeant), ni entre deux propositions d'un même tour.
-  const CUMULATIVES = new Set(['action_creer_dossier_agefice', 'action_marquer_paiement', 'action_creer_client', 'action_creer_apprenant', 'action_creer_session', 'action_creer_devis'])
+  // Une action proposée deux fois à l'identique (mêmes paramètres) n'apparaît
+  // qu'une fois, à sa dernière place : deux convocations ou deux paiements
+  // identiques seraient partis deux fois. Seule exception, la création de
+  // dossier AGEFICE : chaque appel vise le dirigeant suivant (un par appel).
+  const CUMULATIVES = new Set(['action_creer_dossier_agefice'])
   const cleProposition = (type: string, params: Record<string, any>) =>
     type + JSON.stringify(Object.keys(params).filter((k) => k !== 'libelle').sort().map((k) => [k, params[k]]))
-  const tourDe = new Map<string, number>()
-  const publier = (p: PropositionAction, tour: number) => {
+  const publier = (p: PropositionAction) => {
     if (!CUMULATIVES.has(p.type)) {
       const cle = cleProposition(p.type, p.params)
-      const deja = propositions.findIndex((x) => tourDe.get(x.id)! < tour && cleProposition(x.type, x.params) === cle)
+      const deja = propositions.findIndex((x) => cleProposition(x.type, x.params) === cle)
       if (deja >= 0) propositions.splice(deja, 1)
     }
-    tourDe.set(p.id, tour)
     propositions.push(p)
   }
   // Le modèle ne voit que les outils et les actions que le rôle de l'utilisateur permet.
@@ -147,7 +145,7 @@ export async function POST(req: Request) {
           if (p) resultats[i] = { type: 'tool_result', tool_use_id: appels[i].id, is_error: true, content: "Non affichée : une autre étape de ce plan a été refusée. Corrige-la, puis repropose toutes les étapes restantes, dans l'ordre." }
         })
       } else {
-        for (const p of propositionsDuTour) if (p) publier(p, tour)
+        for (const p of propositionsDuTour) if (p) publier(p)
       }
       messages.push({ role: 'user', content: resultats })
     }

@@ -215,7 +215,7 @@ async function main() {
   const { data: sFact } = await sb.from('sessions').select('id').eq('organization_id', ORG).not('client_id', 'is', null).or('montant_finance_opco.gt.0,prix_ht.gt.0').limit(1).maybeSingle()
   if (sFact) {
     const fo = await P.figerParams('action_generer_facture_opco', { session_id: sFact.id }, ORG)
-    ok(fo.ok && fo.params.montant_ht > 0 && /^(opco|client):/.test(fo.params.destinataire) && P.detailsAffiches('action_generer_facture_opco', fo.params).some((l) => l.startsWith('Adressée à : ')), 'facture : montant et destinataire figés et affichés', fo)
+    ok(fo.ok && fo.params.montant_ht === undefined && /^(opco|client):/.test(fo.params.destinataire) && P.detailsAffiches('action_generer_facture_opco', fo.params).some((l) => l.startsWith('Adressée à : ')) && P.detailsAffiches('action_generer_facture_opco', fo.params).some((l) => l.includes('celui de l’accord de prise en charge à la confirmation')), 'facture : destinataire figé, montant pris à la confirmation (accord du plan compris)', fo)
     console.log('     détails :', fo.ok ? P.detailsAffiches('action_generer_facture_opco', fo.params) : fo)
     const change = await T.refusMetier('action_generer_facture_opco', { session_id: sFact.id, destinataire: 'opco:00000000-0000-4000-8000-000000000000' }, ORG)
     ok(!!change && /destinataire/.test(change), 'facture : destinataire changé depuis la proposition refusé', change)
@@ -223,6 +223,15 @@ async function main() {
   // 13. Pointage voué à l'échec refusé dès la proposition
   const ptg = await T.refusMetier('action_poser_presence', { session_id: '10d0ac71-80eb-498c-97a6-0d994ca4db98', apprenant_id: '0b9428b2-4fb7-4a70-bc98-8224d2936989', date: '2026-08-18', present: true }, ORG)
   ok(!!ptg && /feuille validée/.test(ptg), 'pointage sur feuille validée refusé dès la proposition', ptg)
+
+
+  // 14. Correctifs du quatrième tour
+  const sansCreneau = await T.refusMetier('action_poser_presence', { session_id: '10d0ac71-80eb-498c-97a6-0d994ca4db98', apprenant_id: 'fda97d3c-7ac6-4978-86b0-0ff5af0090da', present: true }, ORG)
+  ok(sansCreneau === null, 'pointage sans créneau existant (inscription dans le même plan) : accepté à la proposition', sansCreneau)
+  const inconnue = await P.figerParams('action_generer_facture_opco', { session_id: '11111111-1111-4111-8111-111111111111' }, ORG)
+  ok(!inconnue.ok && inconnue.statut === 404, 'facture sur session inconnue : 404 (pas « aucun client ni OPCO »)', inconnue)
+  const fm = P.normaliserParams('action_generer_facture_opco', { session_id: UUIDT, montant_ht: 1500 })
+  ok(fm.ok && P.detailsAffiches('action_generer_facture_opco', { ...(fm as any).params, montant_reference: 1800 }).some((l) => l.replace(/\s/g, ' ') === 'Montant HT facturé : 1 500,00 €'), 'facture : montant donné par le modèle affiché tel quel', fm)
 
   // 5. Périmètre
   const { data: s } = await sb.from('sessions').select('id').eq('organization_id', ORG).limit(1).single()

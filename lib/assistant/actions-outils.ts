@@ -414,35 +414,53 @@ const STATUTS_FACTURE_PAYABLES = ['emise', 'envoyee', 'payee_partiellement', 'en
  * l'onglet Émargement), et jamais une présence à venir. Une erreur de base
  * fait échouer le pointage au lieu de lever le verrou.
  */
-async function creneauxModifiables(params: any, orgId: string): Promise<string[]> {
+async function analyserCreneaux(params: any, orgId: string): Promise<{ total: number; ids: string[]; signes: number; verrouilles: number; futurs: number }> {
   const supabase = await createServiceRoleClient()
   const present = params.present === true || params.present === 'true'
   const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
-  let q = supabase.from('emargements').select('id, date, creneau')
-    .eq('organization_id', orgId).eq('session_id', String(params.session_id)).eq('apprenant_id', String(params.apprenant_id))
-    .is('signature_data', null).is('validated_by', null)
-  if (params.date) q = q.eq('date', String(params.date))
-  if (present) q = q.lte('date', aujourdhui)
-  const [{ data: creneaux, error }, { data: verrous, error: errVerrous }] = await Promise.all([
-    q,
+  const cible = (q: any) => {
+    q = q.eq('organization_id', orgId).eq('session_id', String(params.session_id)).eq('apprenant_id', String(params.apprenant_id))
+    return params.date ? q.eq('date', String(params.date)) : q
+  }
+  const [{ count, error: errTotal }, { data: libres, error }, { data: verrous, error: errVerrous }] = await Promise.all([
+    cible(supabase.from('emargements').select('id', { count: 'exact', head: true })),
+    cible(supabase.from('emargements').select('id, date, creneau')).is('signature_data', null).is('validated_by', null),
     supabase.from('emargement_feuilles').select('date, creneau')
       .eq('organization_id', orgId).eq('session_id', String(params.session_id)).not('validated_at', 'is', null),
   ])
+  if (errTotal) throw errTotal
   if (error) throw error
   if (errVerrous) throw errVerrous
   const verrouille = (c: any) => (verrous || []).some((v: any) =>
     v.date === c.date && (v.creneau === c.creneau || v.creneau === 'journee' || c.creneau === 'journee'))
-  return (creneaux || []).filter((c: any) => !verrouille(c)).map((c: any) => c.id)
+  let verrouilles = 0, futurs = 0
+  const ids: string[] = []
+  for (const c of (libres || []) as any[]) {
+    if (verrouille(c)) { verrouilles++; continue }
+    if (present && String(c.date) > aujourdhui) { futurs++; continue }
+    ids.push(c.id)
+  }
+  const total = count || 0
+  return { total, ids, signes: total - (libres || []).length, verrouilles, futurs }
 }
 
-/** Destinataire d'une facture de session, même règle que genererFactureOpcoAction. */
-export async function destinataireFactureSession(sessionId: string, orgId: string): Promise<{ cle: string; nom: string; montant: number } | null> {
+const motifCreneaux = (a: { signes: number; verrouilles: number; futurs: number }) => [
+  a.signes ? `${a.signes} déjà signé${a.signes > 1 ? 's' : ''}` : '',
+  a.verrouilles ? `${a.verrouilles} sur une feuille validée (à rouvrir dans l’onglet Émargement)` : '',
+  a.futurs ? `${a.futurs} à une date à venir (une présence ne se pose pas à l’avance)` : '',
+].filter(Boolean).join(', ')
+
+/**
+ * Destinataire d'une facture de session, même règle que genererFactureOpcoAction,
+ * et montant qu'elle prendrait aujourd'hui (accord de prise en charge, sinon prix).
+ */
+export async function destinataireFactureSession(sessionId: string, orgId: string): Promise<{ cle: string; nom: string; montant: number } | 'introuvable' | null> {
   const supabase = await createServiceRoleClient()
   const { data: s, error } = await supabase.from('sessions')
     .select('prix_ht, opco_id, montant_finance_opco, client:client_id(id, raison_sociale, nom_commercial, opco_id)')
     .eq('id', sessionId).eq('organization_id', orgId).maybeSingle()
   if (error) throw error
-  if (!s) return null
+  if (!s) return 'introuvable'
   const client: any = (s as any).client
   const opcoId = (s as any).opco_id || client?.opco_id || null
   const montant = Number((s as any).montant_finance_opco ?? (s as any).prix_ht ?? 0)
@@ -489,13 +507,16 @@ export async function refusMetier(type: string, params: any, orgId: string): Pro
     if (params.montant != null && Number(params.montant) > restant + 0.005) return `Le montant dépasse le reste dû (${restant.toLocaleString('fr-FR')} €).`
   }
   if (type === 'action_poser_presence') {
-    if (!(await creneauxModifiables(params, orgId)).length) {
-      return 'Aucun créneau modifiable : déjà signés, feuille validée (à rouvrir dans l’onglet Émargement), présence à une date à venir, ou introuvables.'
-    }
+    // Refus seulement si le stagiaire a des créneaux mais qu'aucun n'est
+    // modifiable. Sans créneau (inscription dans le même plan, juste avant),
+    // on laisse passer : l'exécution revérifie.
+    const a = await analyserCreneaux(params, orgId)
+    if (a.total > 0 && !a.ids.length) return `Aucun créneau modifiable : ${motifCreneaux(a)}.`
   }
   if (type === 'action_generer_facture_opco' && params.destinataire) {
     // La carte a annoncé un destinataire : s'il a changé depuis, on ne facture pas
     const dest = await destinataireFactureSession(String(params.session_id), orgId)
+    if (dest === 'introuvable') return 'Session introuvable'
     if (!dest || dest.cle !== params.destinataire) return 'Le destinataire de la facture a changé depuis la proposition : redemandez-la à Starkk.'
   }
   return null
@@ -559,7 +580,8 @@ export async function executerAction(type: string, params: any, orgId: string, u
         token = cree.token
       }
       const url = `${appUrl}/portail/${token}/mes-emargements`
-      if (!a.email) return { success: false, message: `${a.prenom} ${a.nom} n'a pas d'email en fiche. Lien à copier : ${url}` }
+      // Sans email, le lien est tout de même généré : c'est un résultat, pas un échec
+      if (!a.email) return { success: true, message: `${a.prenom} ${a.nom} n'a pas d'email en fiche. Lien à copier : ${url}` }
       const { envoyerLienEmargementAction } = await import('@/app/dashboard/sessions/[id]/actions')
       const r = await envoyerLienEmargementAction(String(params.session_id), a.id)
       return r.success
@@ -648,8 +670,12 @@ export async function executerAction(type: string, params: any, orgId: string, u
       const supabase = await createServiceRoleClient()
       const { data: sess } = await supabase.from('sessions').select('id').eq('id', String(params.session_id)).eq('organization_id', orgId).maybeSingle()
       if (!sess) return { success: false, message: 'Session introuvable' }
-      const { data: deja } = await supabase.from('inscriptions').select('id').eq('session_id', sess.id).eq('apprenant_id', String(params.apprenant_id)).maybeSingle()
-      if (deja) return { success: false, message: 'Cet apprenant est déjà inscrit à la session' }
+      const { data: deja } = await supabase.from('inscriptions').select('id, status').eq('session_id', sess.id).eq('apprenant_id', String(params.apprenant_id)).maybeSingle()
+      if (deja && ['annule', 'abandonne'].includes((deja as any).status)) {
+        return { success: false, message: 'Une inscription annulée ou abandonnée existe déjà : réactivez-la depuis la fiche session' }
+      }
+      // Déjà inscrit : le résultat voulu est atteint, un plan peut continuer
+      if (deja) return { success: true, message: 'Déjà inscrit à la session' }
       const { error } = await supabase.from('inscriptions').insert({ organization_id: orgId, session_id: sess.id, apprenant_id: String(params.apprenant_id), status: 'inscrit' })
       if (error) return { success: false, message: error.message }
       // Grille d'émargement clonée depuis un autre inscrit de la session
@@ -673,8 +699,10 @@ export async function executerAction(type: string, params: any, orgId: string, u
     if (type === 'action_poser_presence') {
       const supabase = await createServiceRoleClient()
       const present = params.present === true || params.present === 'true'
-      const ids = await creneauxModifiables(params, orgId)
-      if (!ids.length) return { success: false, message: 'Aucun créneau modifiable (déjà signés, feuille validée, date à venir ou introuvables)' }
+      const analyse = await analyserCreneaux(params, orgId)
+      const ids = analyse.ids
+      if (!analyse.total) return { success: false, message: 'Aucun créneau d’émargement pour ce stagiaire sur cette session' }
+      if (!ids.length) return { success: false, message: `Aucun créneau modifiable : ${motifCreneaux(analyse)}` }
       const { data, error: errMaj } = await supabase.from('emargements')
         .update(present
           ? { est_present: true, motif_absence: null }
