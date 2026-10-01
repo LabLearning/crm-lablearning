@@ -21,6 +21,13 @@ const ROLES_EQUIPE = ['super_admin', 'admin', 'gestionnaire', 'commercial', 'man
 
 const refus = (statut: number, message: string) => NextResponse.json({ success: false, message }, { status: statut })
 
+/** Réponse pour une proposition déjà confirmée : son résultat consigné, sans nouvelle exécution. */
+const reponseConsignee = (deja: { statut: string; message?: string } | null) => {
+  if (deja?.statut === 'executee') return NextResponse.json({ success: true, message: deja.message || 'Action déjà effectuée.' })
+  if (deja?.statut === 'echec') return refus(409, deja.message || 'Cette action a déjà été tentée et a échoué : redemandez-la à Starkk.')
+  return refus(409, 'Cette action est déjà en cours d’exécution.')
+}
+
 export async function POST(req: Request) {
   let session
   try {
@@ -42,6 +49,12 @@ export async function POST(req: Request) {
   if (!verification.ok) return refus(verification.statut, verification.message)
   const proposition = verification.proposition
 
+  // Déjà confirmée (nouvel essai après une coupure, second onglet) : on renvoie
+  // ce qui a été consigné, avant de rejouer des contrôles que l'action
+  // elle-même a pu rendre faux (une facture soldée n'est plus « payable »).
+  const consigne = await lireResultat(proposition.id, organization.id)
+  if (consigne) return reponseConsignee(consigne)
+
   // Revérifié au moment d'exécuter : le rôle, les droits ou les données ont
   // pu changer depuis la proposition.
   const controle = await controlerAction({ type: proposition.type, params: proposition.params, orgId: organization.id, user, permissions })
@@ -56,12 +69,8 @@ export async function POST(req: Request) {
   const reservation = await reserverExecution({ proposition, acteurId, auNomDe })
   if (reservation === 'erreur') return refus(503, 'Confirmation impossible pour le moment, réessayez dans un instant.')
   if (reservation === 'deja') {
-    // Seconde confirmation (double clic, nouvel essai après une coupure) :
-    // on renvoie ce qui a été consigné, sans rien exécuter de nouveau.
-    const deja = await lireResultat(proposition.id, organization.id)
-    if (deja?.statut === 'executee') return NextResponse.json({ success: true, message: deja.message || 'Action déjà effectuée.' })
-    if (deja?.statut === 'echec') return refus(409, deja.message || 'Cette action a déjà été tentée et a échoué : redemandez-la à Starkk.')
-    return refus(409, 'Cette action est déjà en cours d’exécution.')
+    // Deux confirmations simultanées : l'autre a réservé, rien ne s'exécute ici
+    return reponseConsignee(await lireResultat(proposition.id, organization.id))
   }
 
   let resultat: { success: boolean; message: string }

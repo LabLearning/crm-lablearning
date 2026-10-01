@@ -10,6 +10,9 @@ export interface PropositionAction {
   id: string
   type: string
   params: Record<string, any>
+  /** Titre fixé par le serveur selon le type d'action (TITRES_ACTIONS) */
+  titre: string
+  /** Note du modèle, affichée sous le titre */
   libelle: string
   /** Jeton signé par le serveur (lib/assistant/propositions.ts) : seul élément renvoyé à la confirmation. */
   jeton: string
@@ -406,6 +409,54 @@ const TRANSITIONS_SESSION: Record<string, string[]> = {
 const STATUTS_FACTURE_PAYABLES = ['emise', 'envoyee', 'payee_partiellement', 'en_retard']
 
 /**
+ * Créneaux d'émargement qu'un pointage peut modifier : non signés, hors
+ * feuille validée (pièce Qualiopi verrouillée, rouverte seulement depuis
+ * l'onglet Émargement), et jamais une présence à venir. Une erreur de base
+ * fait échouer le pointage au lieu de lever le verrou.
+ */
+async function creneauxModifiables(params: any, orgId: string): Promise<string[]> {
+  const supabase = await createServiceRoleClient()
+  const present = params.present === true || params.present === 'true'
+  const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
+  let q = supabase.from('emargements').select('id, date, creneau')
+    .eq('organization_id', orgId).eq('session_id', String(params.session_id)).eq('apprenant_id', String(params.apprenant_id))
+    .is('signature_data', null).is('validated_by', null)
+  if (params.date) q = q.eq('date', String(params.date))
+  if (present) q = q.lte('date', aujourdhui)
+  const [{ data: creneaux, error }, { data: verrous, error: errVerrous }] = await Promise.all([
+    q,
+    supabase.from('emargement_feuilles').select('date, creneau')
+      .eq('organization_id', orgId).eq('session_id', String(params.session_id)).not('validated_at', 'is', null),
+  ])
+  if (error) throw error
+  if (errVerrous) throw errVerrous
+  const verrouille = (c: any) => (verrous || []).some((v: any) =>
+    v.date === c.date && (v.creneau === c.creneau || v.creneau === 'journee' || c.creneau === 'journee'))
+  return (creneaux || []).filter((c: any) => !verrouille(c)).map((c: any) => c.id)
+}
+
+/** Destinataire d'une facture de session, même règle que genererFactureOpcoAction. */
+export async function destinataireFactureSession(sessionId: string, orgId: string): Promise<{ cle: string; nom: string; montant: number } | null> {
+  const supabase = await createServiceRoleClient()
+  const { data: s, error } = await supabase.from('sessions')
+    .select('prix_ht, opco_id, montant_finance_opco, client:client_id(id, raison_sociale, nom_commercial, opco_id)')
+    .eq('id', sessionId).eq('organization_id', orgId).maybeSingle()
+  if (error) throw error
+  if (!s) return null
+  const client: any = (s as any).client
+  const opcoId = (s as any).opco_id || client?.opco_id || null
+  const montant = Number((s as any).montant_finance_opco ?? (s as any).prix_ht ?? 0)
+  if (opcoId) {
+    const { data: o, error: errOpco } = await supabase.from('opco').select('nom').eq('id', opcoId).maybeSingle()
+    if (errOpco) throw errOpco
+    const nomOpco = String(o?.nom || '').trim()
+    return { cle: `opco:${opcoId}`, nom: /^opco\b/i.test(nomOpco) ? nomOpco : `OPCO ${nomOpco}`.trim(), montant }
+  }
+  if (!client?.id) return null
+  return { cle: `client:${client.id}`, nom: `${client.nom_commercial || client.raison_sociale || 'le client'} (facture directe, sans OPCO)`, montant }
+}
+
+/**
  * Règles métier vérifiées à la proposition ET à l'exécution, pour que la
  * carte ne propose jamais ce qui sera refusé après le clic. Renvoie le motif
  * du refus, ou null si l'action est permise.
@@ -414,11 +465,12 @@ export async function refusMetier(type: string, params: any, orgId: string): Pro
   const supabase = await createServiceRoleClient()
   if (type === 'action_changer_statut_session') {
     const sid = String(params.session_id)
-    const [{ data: sess, error }, { data: chapeau }] = await Promise.all([
+    const [{ data: sess, error }, { data: chapeau, error: errPoei }] = await Promise.all([
       supabase.from('sessions').select('status, poei_intervention_id').eq('id', sid).eq('organization_id', orgId).maybeSingle(),
       supabase.from('poei').select('id').eq('session_id', sid).eq('organization_id', orgId).limit(1).maybeSingle(),
     ])
     if (error) throw error
+    if (errPoei) throw errPoei
     if (!sess) return 'Session introuvable'
     // Une session support de POEI se pilote depuis la fiche POEI, comme dans l'interface
     if (sess.poei_intervention_id || chapeau) return 'Session rattachée à une POEI : son statut se gère dans le module POEI.'
@@ -435,6 +487,16 @@ export async function refusMetier(type: string, params: any, orgId: string): Pro
     const restant = Number(f.montant_restant ?? f.montant_ttc ?? 0)
     if (!STATUTS_FACTURE_PAYABLES.includes(f.status) || restant <= 0) return `Aucun paiement à enregistrer sur cette facture (statut « ${f.status} », reste dû ${restant.toLocaleString('fr-FR')} €).`
     if (params.montant != null && Number(params.montant) > restant + 0.005) return `Le montant dépasse le reste dû (${restant.toLocaleString('fr-FR')} €).`
+  }
+  if (type === 'action_poser_presence') {
+    if (!(await creneauxModifiables(params, orgId)).length) {
+      return 'Aucun créneau modifiable : déjà signés, feuille validée (à rouvrir dans l’onglet Émargement), présence à une date à venir, ou introuvables.'
+    }
+  }
+  if (type === 'action_generer_facture_opco' && params.destinataire) {
+    // La carte a annoncé un destinataire : s'il a changé depuis, on ne facture pas
+    const dest = await destinataireFactureSession(String(params.session_id), orgId)
+    if (!dest || dest.cle !== params.destinataire) return 'Le destinataire de la facture a changé depuis la proposition : redemandez-la à Starkk.'
   }
   return null
 }
@@ -611,24 +673,7 @@ export async function executerAction(type: string, params: any, orgId: string, u
     if (type === 'action_poser_presence') {
       const supabase = await createServiceRoleClient()
       const present = params.present === true || params.present === 'true'
-      // Une présence ne s'atteste pas à l'avance (pièce Qualiopi) ; une absence prévue, si.
-      const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
-      let q = supabase.from('emargements').select('id, date, creneau')
-        .eq('organization_id', orgId).eq('session_id', String(params.session_id)).eq('apprenant_id', String(params.apprenant_id))
-        .is('signature_data', null).is('validated_by', null)
-      if (params.date) q = q.eq('date', String(params.date))
-      if (present) q = q.lte('date', aujourdhui)
-      // Une feuille validée est verrouillée : on ne touche à aucun de ses créneaux
-      // (elle se rouvre depuis l'onglet Émargement, par l'administration).
-      const [{ data: creneaux, error }, { data: verrous }] = await Promise.all([
-        q,
-        supabase.from('emargement_feuilles').select('date, creneau')
-          .eq('session_id', String(params.session_id)).not('validated_at', 'is', null),
-      ])
-      if (error) return { success: false, message: error.message }
-      const verrouille = (c: any) => (verrous || []).some((v: any) =>
-        v.date === c.date && (v.creneau === c.creneau || v.creneau === 'journee' || c.creneau === 'journee'))
-      const ids = (creneaux || []).filter((c: any) => !verrouille(c)).map((c: any) => c.id)
+      const ids = await creneauxModifiables(params, orgId)
       if (!ids.length) return { success: false, message: 'Aucun créneau modifiable (déjà signés, feuille validée, date à venir ou introuvables)' }
       const { data, error: errMaj } = await supabase.from('emargements')
         .update(present

@@ -2,7 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { hasPermission } from '@/lib/permissions'
 import type { CRMModule, Permission } from '@/lib/types'
-import { CHAMPS_APPRENANT_MODIFIABLES, CHAMPS_CLIENT_MODIFIABLES, NOMS_ACTIONS, refusMetier } from '@/lib/assistant/actions-outils'
+import { CHAMPS_APPRENANT_MODIFIABLES, CHAMPS_CLIENT_MODIFIABLES, NOMS_ACTIONS, destinataireFactureSession, refusMetier } from '@/lib/assistant/actions-outils'
 
 /**
  * Sécurité des actions de Starkk : une action ne s'exécute que si le serveur
@@ -63,6 +63,37 @@ const REGLES_ACTIONS: Record<string, RegleAction> = {
   action_envoyer_pack_hygiene: { droits: [['sessions', 'update']] },
   action_relancer_signatures: { droits: [['conventions', 'update']] },
   action_creer_dossier_agefice: { droits: [['conventions', 'create']] },
+}
+
+/**
+ * Titre de la carte, fixé par le serveur selon le type d'action : deux actions
+ * différentes ne peuvent pas se présenter pareil, quel que soit le libellé
+ * écrit par le modèle (qui n'est plus qu'une note sous ce titre).
+ */
+export const TITRES_ACTIONS: Record<string, string> = {
+  action_envoyer_convocation: 'Envoi de la convocation au référent du client',
+  action_envoyer_convention: 'Envoi de la convention en signature électronique',
+  action_relancer_facture: 'Relance par email d’une facture impayée',
+  action_envoyer_lien_emargement: 'Envoi du lien personnel de signature des émargements',
+  action_marquer_paiement: 'Enregistrement d’un paiement reçu',
+  action_modifier_client: 'Modification de la fiche client',
+  action_modifier_apprenant: 'Modification de la fiche stagiaire',
+  action_creer_client: 'Création d’une fiche client',
+  action_creer_apprenant: 'Création d’une fiche stagiaire',
+  action_inscrire_apprenant: 'Inscription du stagiaire à la session (convoqué si la session est proche)',
+  action_poser_presence: 'Pointage de présence sur la feuille d’émargement',
+  action_changer_statut_session: 'Changement de statut de la session',
+  action_envoyer_attestations_hygiene: 'Envoi au client des attestations d’hygiène',
+  action_maj_reglement_agefice: 'Enregistrement du règlement d’un dossier AGEFICE',
+  action_creer_session: 'Création d’une session (mission au formateur, convocations si la date est proche)',
+  action_creer_devis: 'Création d’un devis',
+  action_enregistrer_accord_pec: 'Enregistrement de l’accord de prise en charge OPCO',
+  action_generer_facture_opco: 'Création de la facture de la session',
+  action_proposer_mission_formateur: 'Attribution de la session au formateur et proposition de mission',
+  action_envoyer_contrat_formateur: 'Envoi du contrat au formateur pour signature',
+  action_envoyer_pack_hygiene: 'Envoi du pack hygiène au formateur',
+  action_relancer_signatures: 'Relance des conventions en attente de signature',
+  action_creer_dossier_agefice: 'Création d’un dossier AGEFICE pour le prochain dirigeant inscrit',
 }
 
 /** Rôles qui ont accès à tout l'administratif (même règle que lib/dashboard-guard.ts). */
@@ -394,7 +425,12 @@ export function detailsAffiches(type: string, params: Record<string, any>): stri
   if (type === 'action_poser_presence' && !params.date) {
     lignes.push(params.present ? 'Créneaux : tous ceux non signés, jusqu’à aujourd’hui' : 'Créneaux : tous ceux non signés')
   }
-  if (type === 'action_generer_facture_opco' && params.montant_ht === undefined) lignes.push('Montant HT facturé : celui de l’accord de prise en charge')
+  if (type === 'action_generer_facture_opco') {
+    if (params.destinataire_nom) lignes.push(`Adressée à : ${params.destinataire_nom}`)
+    if (params.montant_reference != null && params.montant_reference !== params.montant_ht) {
+      lignes.push(`Montant de l’accord ou prix de la session : ${euros(params.montant_reference)}`)
+    }
+  }
   return lignes
 }
 
@@ -414,6 +450,16 @@ export async function figerParams(type: string, params: Record<string, any>, org
     if (error) return { ok: false, statut: 503, message: 'Vérification impossible pour le moment, réessayez.' }
     if (!data?.length) return { ok: false, statut: 422, message: 'Aucune convention en attente de signature.' }
     return { ok: true, params: { ...params, convention_ids: data.map((c: any) => c.id) } }
+  }
+  if (type === 'action_generer_facture_opco') {
+    // Montant et destinataire figés : ceux que la carte annonce sont ceux facturés
+    let dest
+    try { dest = await destinataireFactureSession(params.session_id, orgId) } catch { return { ok: false, statut: 503, message: 'Vérification impossible pour le moment, réessayez.' } }
+    if (!dest) return { ok: false, statut: 422, message: 'Aucun client ni OPCO rattaché à la session : impossible de savoir à qui adresser la facture.' }
+    const reference = Math.round(dest.montant * 100) / 100
+    const montant = params.montant_ht ?? reference
+    if (!(montant > 0)) return { ok: false, statut: 422, message: 'Montant à facturer inconnu : enregistrez l’accord de prise en charge ou le prix de la session.' }
+    return { ok: true, params: { ...params, montant_ht: montant, montant_reference: reference, destinataire: dest.cle, destinataire_nom: dest.nom } }
   }
   if (type === 'action_marquer_paiement' && params.montant === undefined) {
     const { data: f, error } = await supabase.from('factures').select('montant_ttc, montant_restant')
@@ -454,7 +500,8 @@ const CIBLES: Record<string, Cible> = {
     libelle: (r) => `Facture ${r.numero || 'sans numéro'}${r.montant_restant != null ? ` (reste dû ${euros(r.montant_restant)})` : ''}`,
   },
   apprenant_id: { table: 'apprenants', colonnes: 'id, prenom, nom', libelle: (r) => `Stagiaire ${nomComplet(r)}` },
-  apprenant_ids: { table: 'apprenants', colonnes: 'id, prenom, nom', libelle: (r) => nomComplet(r), liste: enListe('stagiaire', 5) },
+  // Tous les noms : ce sont les personnes inscrites et convoquées
+  apprenant_ids: { table: 'apprenants', colonnes: 'id, prenom, nom', libelle: (r) => nomComplet(r), liste: enListe('stagiaire', 50) },
   formateur_id: { table: 'formateurs', colonnes: 'id, prenom, nom', libelle: (r) => `Formateur ${nomComplet(r)}` },
   formation_id: { table: 'formations', colonnes: 'id, intitule, reference', libelle: (r) => `Formation ${r.intitule || r.reference || ''}`.trim() },
   dossier_id: { table: 'dossiers_agefice', colonnes: 'id, numero_dossier', libelle: (r) => `Dossier AGEFICE ${r.numero_dossier || ''}`.trim() },

@@ -9,6 +9,9 @@ interface ActionProposee {
   id: string
   type: string
   params: Record<string, any>
+  /** Titre fixé par le serveur selon le type d'action */
+  titre?: string
+  /** Note du modèle, sous le titre */
   libelle: string
   /** Jeton signé par le serveur : seul élément envoyé à la confirmation. */
   jeton?: string
@@ -234,11 +237,18 @@ export function AssistantWidget({ utilisateurId }: { utilisateurId?: string }) {
   /** Plan : toutes les actions en attente d'un message, exécutées dans l'ordre, une confirmation. */
   async function confirmerPlan(idxMessage: number, actions: ActionProposee[]) {
     setPlanEnCours(idxMessage)
-    for (const a of actions.filter((x) => x.etat === 'en_attente')) {
+    const etapes = actions.filter((x) => x.etat === 'en_attente')
+    for (let i = 0; i < etapes.length; i++) {
       // Une étape ignorée pendant le déroulement du plan ne part pas
-      const courante = messagesRef.current[idxMessage]?.actions?.find((x) => x.id === a.id)
+      const courante = messagesRef.current[idxMessage]?.actions?.find((x) => x.id === etapes[i].id)
       if (courante?.etat !== 'en_attente') continue
-      await confirmerAction(idxMessage, courante)
+      // Une étape qui échoue arrête le plan : les suivantes attendent une décision
+      if (!(await confirmerAction(idxMessage, courante))) {
+        for (const suivante of etapes.slice(i + 1)) {
+          majAction(idxMessage, suivante.id, { resultat: 'Plan interrompu : l’étape précédente n’a pas abouti. Vous pouvez confirmer celle-ci seule.' })
+        }
+        break
+      }
     }
     setPlanEnCours(null)
   }
@@ -285,7 +295,11 @@ export function AssistantWidget({ utilisateurId }: { utilisateurId?: string }) {
             ? <VideoStarkk src="/starkk-valide.mp4" taille="h-8 w-8" className="ring-2 ring-emerald-200" />
             : <Zap className={cn('h-4 w-4 mt-0.5 shrink-0', action.etat === 'erreur' ? 'text-danger-500' : 'text-amber-500')} />}
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-surface-800">{action.libelle}</div>
+            {/* Le titre dit ce que fait l'action (fixé par le serveur) ; la note du modèle vient dessous */}
+            <div className="text-xs font-semibold text-surface-800">{action.titre || action.libelle}</div>
+            {action.titre && action.libelle && (
+              <div className="mt-0.5 text-[11px] leading-snug text-surface-500">{action.libelle}</div>
+            )}
             {action.cibles && action.cibles.length > 0 && (
               <div className="mt-1 space-y-0.5">
                 {action.cibles.map((c, i) => (

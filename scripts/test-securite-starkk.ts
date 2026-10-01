@@ -204,6 +204,26 @@ async function main() {
   const refusLecture = await OL.executerOutil('analyse_financiere', {}, ORG, { id: USER, role: 'directeur_commercial', permissions: de('directeur_commercial') })
   ok(!!refusLecture?.erreur, 'outil de lecture refusé sans le droit de lecture du module', refusLecture)
 
+
+  // 11. Cohérence : chaque action a sa règle, son schéma et son titre
+  const A2 = await import('@/lib/assistant/actions-outils')
+  const manques = [...A2.NOMS_ACTIONS].filter((t) => !P.TITRES_ACTIONS[t] || !P.actionAutorisee(t, 'super_admin', []) || (P.normaliserParams(t, {}) as any).message === 'Action inconnue.')
+  ok(manques.length === 0, 'chaque action a sa règle de permission, son schéma et son titre fixe', manques)
+  const titres = new Set(Object.values(P.TITRES_ACTIONS))
+  ok(titres.size === Object.keys(P.TITRES_ACTIONS).length, 'deux actions n’ont jamais le même titre')
+  // 12. Facture de session : montant et destinataire figés, changement détecté
+  const { data: sFact } = await sb.from('sessions').select('id').eq('organization_id', ORG).not('client_id', 'is', null).or('montant_finance_opco.gt.0,prix_ht.gt.0').limit(1).maybeSingle()
+  if (sFact) {
+    const fo = await P.figerParams('action_generer_facture_opco', { session_id: sFact.id }, ORG)
+    ok(fo.ok && fo.params.montant_ht > 0 && /^(opco|client):/.test(fo.params.destinataire) && P.detailsAffiches('action_generer_facture_opco', fo.params).some((l) => l.startsWith('Adressée à : ')), 'facture : montant et destinataire figés et affichés', fo)
+    console.log('     détails :', fo.ok ? P.detailsAffiches('action_generer_facture_opco', fo.params) : fo)
+    const change = await T.refusMetier('action_generer_facture_opco', { session_id: sFact.id, destinataire: 'opco:00000000-0000-4000-8000-000000000000' }, ORG)
+    ok(!!change && /destinataire/.test(change), 'facture : destinataire changé depuis la proposition refusé', change)
+  }
+  // 13. Pointage voué à l'échec refusé dès la proposition
+  const ptg = await T.refusMetier('action_poser_presence', { session_id: '10d0ac71-80eb-498c-97a6-0d994ca4db98', apprenant_id: '0b9428b2-4fb7-4a70-bc98-8224d2936989', date: '2026-08-18', present: true }, ORG)
+  ok(!!ptg && /feuille validée/.test(ptg), 'pointage sur feuille validée refusé dès la proposition', ptg)
+
   // 5. Périmètre
   const { data: s } = await sb.from('sessions').select('id').eq('organization_id', ORG).limit(1).single()
   const { data: f } = await sb.from('factures').select('id').eq('organization_id', ORG).limit(1).single()

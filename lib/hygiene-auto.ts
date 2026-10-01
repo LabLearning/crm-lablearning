@@ -25,9 +25,11 @@ export async function envoyerHygieneAutomatique(supabase: any, sessionId: string
   if (!toEmail) return
 
   // Garde anti-doublon : un envoi automatique déjà tracé pour cette session ?
-  const { data: deja } = await supabase.from('email_logs')
+  // Si la vérification échoue, on n'envoie pas (pas de doublon au client).
+  const { data: deja, error: errDeja } = await supabase.from('email_logs')
     .select('id').eq('organization_id', orgId).eq('entity_type', 'session').eq('entity_id', sessionId)
     .ilike('subject', '%attestations d_hygiène%').limit(1)
+  if (errDeja) { console.error('[hygiene-auto] vérification des envois impossible', errDeja); return }
   if ((deja || []).length) return
 
   // Stagiaires + heures réellement suivies (mêmes règles que la route PDF)
@@ -129,9 +131,10 @@ export async function apercuHygiene(supabase: any, sessionId: string, orgId: str
   }
   if (!toEmail) return { envoyable: false, raison: 'aucun email (client ni contact)', client: nomClient }
 
-  const { data: deja } = await supabase.from('email_logs')
+  const { data: deja, error: errDeja } = await supabase.from('email_logs')
     .select('id').eq('organization_id', orgId).eq('entity_type', 'session').eq('entity_id', sessionId)
     .ilike('subject', '%attestations d_hygiène%').limit(1)
+  if (errDeja) return { envoyable: false, raison: 'vérification des envois impossible, réessayez', client: nomClient }
   if ((deja || []).length) return { envoyable: false, raison: 'déjà envoyée', client: nomClient }
 
   const { data: inscriptions } = await supabase.from('inscriptions')
