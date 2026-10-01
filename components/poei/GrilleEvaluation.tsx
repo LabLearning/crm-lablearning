@@ -198,7 +198,7 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
                   <div className="input-base bg-surface-50 text-surface-700">
                     {`${dureeBilan.heures.toLocaleString('fr-FR')} h${dureeBilan.heures < dureeBilan.prevues ? ` sur ${dureeBilan.prevues.toLocaleString('fr-FR')} h prévues` : ''}`}
                   </div>
-                  <p className="mt-1 text-[11px] leading-snug text-surface-500">Celle du certificat de réalisation, à modifier sur la fiche du candidat.</p>
+                  <p className="mt-1 text-[11px] leading-snug text-surface-500">Celle du certificat de réalisation, à modifier dans l’onglet Documents (bloc Certificats).</p>
                 </div>
               ) : (
                 <div>
