@@ -11,6 +11,10 @@ export interface PropositionAction {
   type: string
   params: Record<string, any>
   libelle: string
+  /** Jeton signé par le serveur (lib/assistant/propositions.ts) : seul élément renvoyé à la confirmation. */
+  jeton: string
+  /** Cibles lues en base (session, client, facture…) et montants, affichées sur la carte. */
+  cibles: string[]
 }
 
 /** Déclarations d'outils « action » exposées au modèle (proposition seulement). */
@@ -379,6 +383,62 @@ async function relancerFacture(factureId: string, orgId: string): Promise<{ succ
   return { success: true, message: `Relance n°${relanceNum} envoyée à ${cli.email} (${montant} dus)` }
 }
 
+/** Champs qu'une action de modification peut écrire (la carte affiche exactement ceux-là). */
+export const CHAMPS_CLIENT_MODIFIABLES = ['email', 'telephone', 'adresse', 'code_postal', 'ville', 'financeur_type']
+export const CHAMPS_APPRENANT_MODIFIABLES = ['email', 'telephone']
+
+/**
+ * Transitions de statut permises, alignées sur la fiche et la liste des
+ * sessions : une session avance, elle ne revient jamais en arrière ; on peut
+ * l'annuler tant qu'elle n'a pas commencé.
+ */
+const TRANSITIONS_SESSION: Record<string, string[]> = {
+  planifiee: ['confirmee', 'annulee'],
+  confirmee: ['en_cours', 'annulee'],
+  en_attente_signatures: ['annulee'],
+  validee: ['en_cours', 'annulee'],
+  en_cours: ['terminee'],
+  terminee: [],
+  annulee: [],
+}
+
+/** Factures sur lesquelles l'interface permet d'enregistrer un paiement (FacturesList). */
+const STATUTS_FACTURE_PAYABLES = ['emise', 'envoyee', 'payee_partiellement', 'en_retard']
+
+/**
+ * Règles métier vérifiées à la proposition ET à l'exécution, pour que la
+ * carte ne propose jamais ce qui sera refusé après le clic. Renvoie le motif
+ * du refus, ou null si l'action est permise.
+ */
+export async function refusMetier(type: string, params: any, orgId: string): Promise<string | null> {
+  const supabase = await createServiceRoleClient()
+  if (type === 'action_changer_statut_session') {
+    const sid = String(params.session_id)
+    const [{ data: sess, error }, { data: chapeau }] = await Promise.all([
+      supabase.from('sessions').select('status, poei_intervention_id').eq('id', sid).eq('organization_id', orgId).maybeSingle(),
+      supabase.from('poei').select('id').eq('session_id', sid).eq('organization_id', orgId).limit(1).maybeSingle(),
+    ])
+    if (error) throw error
+    if (!sess) return 'Session introuvable'
+    // Une session support de POEI se pilote depuis la fiche POEI, comme dans l'interface
+    if (sess.poei_intervention_id || chapeau) return 'Session rattachée à une POEI : son statut se gère dans le module POEI.'
+    const suivants = TRANSITIONS_SESSION[sess.status as string]
+    if (suivants && suivants.includes(String(params.statut))) return null
+    if (sess.status === 'terminee' || sess.status === 'annulee') return `La session est ${sess.status === 'terminee' ? 'terminée' : 'annulée'} : son statut ne change plus.`
+    return `Passage de « ${sess.status} » à « ${params.statut} » impossible${suivants?.length ? ` : étapes possibles ${suivants.join(', ')}` : ''}.`
+  }
+  if (type === 'action_marquer_paiement') {
+    const { data: f, error } = await supabase.from('factures').select('status, montant_ttc, montant_restant')
+      .eq('id', String(params.facture_id)).eq('organization_id', orgId).maybeSingle()
+    if (error) throw error
+    if (!f) return 'Facture introuvable'
+    const restant = Number(f.montant_restant ?? f.montant_ttc ?? 0)
+    if (!STATUTS_FACTURE_PAYABLES.includes(f.status) || restant <= 0) return `Aucun paiement à enregistrer sur cette facture (statut « ${f.status} », reste dû ${restant.toLocaleString('fr-FR')} €).`
+    if (params.montant != null && Number(params.montant) > restant + 0.005) return `Le montant dépasse le reste dû (${restant.toLocaleString('fr-FR')} €).`
+  }
+  return null
+}
+
 /**
  * Exécute une action APRÈS confirmation de l'utilisateur. Les actions session
  * réutilisent les server actions existantes (elles portent leurs propres
@@ -386,6 +446,16 @@ async function relancerFacture(factureId: string, orgId: string): Promise<{ succ
  */
 export async function executerAction(type: string, params: any, orgId: string, userId?: string): Promise<{ success: boolean; message: string }> {
   try {
+    // Défense en profondeur : quel que soit l'appelant, chaque entité visée
+    // (session, client, stagiaire, facture…) doit appartenir à l'organisation.
+    // Plusieurs fonctions déléguées ne le vérifient pas elles-mêmes.
+    const { verifierPerimetre } = await import('@/lib/assistant/propositions')
+    const perimetre = await verifierPerimetre(params && typeof params === 'object' ? params : {}, orgId)
+    if (!perimetre.ok) return { success: false, message: perimetre.message }
+    // Les règles métier peuvent avoir changé depuis la proposition (statut, reste dû…)
+    const refus = await refusMetier(type, params, orgId)
+    if (refus) return { success: false, message: refus }
+
     if (type === 'action_envoyer_convocation') {
       const { sendConvocationToReferentAction } = await import('@/app/dashboard/sessions/[id]/actions')
       const r = await sendConvocationToReferentAction(String(params.session_id))
@@ -466,7 +536,7 @@ export async function executerAction(type: string, params: any, orgId: string, u
     }
     if (type === 'action_modifier_client') {
       const supabase = await createServiceRoleClient()
-      const autorises = ['email', 'telephone', 'adresse', 'code_postal', 'ville', 'financeur_type']
+      const autorises = CHAMPS_CLIENT_MODIFIABLES
       const champs: any = {}
       for (const [k, v] of Object.entries(params.champs || {})) if (autorises.includes(k)) champs[k] = v
       if (!Object.keys(champs).length) return { success: false, message: 'Aucun champ modifiable fourni' }
@@ -477,7 +547,7 @@ export async function executerAction(type: string, params: any, orgId: string, u
     }
     if (type === 'action_modifier_apprenant') {
       const supabase = await createServiceRoleClient()
-      const autorises = ['email', 'telephone']
+      const autorises = CHAMPS_APPRENANT_MODIFIABLES
       const champs: any = {}
       for (const [k, v] of Object.entries(params.champs || {})) if (autorises.includes(k)) champs[k] = v
       if (!Object.keys(champs).length) return { success: false, message: 'Aucun champ modifiable fourni' }
@@ -518,7 +588,7 @@ export async function executerAction(type: string, params: any, orgId: string, u
       if (!sess) return { success: false, message: 'Session introuvable' }
       const { data: deja } = await supabase.from('inscriptions').select('id').eq('session_id', sess.id).eq('apprenant_id', String(params.apprenant_id)).maybeSingle()
       if (deja) return { success: false, message: 'Cet apprenant est déjà inscrit à la session' }
-      const { error } = await supabase.from('inscriptions').insert({ session_id: sess.id, apprenant_id: String(params.apprenant_id), status: 'inscrit' })
+      const { error } = await supabase.from('inscriptions').insert({ organization_id: orgId, session_id: sess.id, apprenant_id: String(params.apprenant_id), status: 'inscrit' })
       if (error) return { success: false, message: error.message }
       // Grille d'émargement clonée depuis un autre inscrit de la session
       const { data: modele } = await supabase.from('emargements')
@@ -540,19 +610,38 @@ export async function executerAction(type: string, params: any, orgId: string, u
     }
     if (type === 'action_poser_presence') {
       const supabase = await createServiceRoleClient()
-      let q = supabase.from('emargements')
-        .update(params.present
-          ? { est_present: true, motif_absence: null }
-          : { est_present: false, motif_absence: params.motif || 'Non précisé' })
+      const present = params.present === true || params.present === 'true'
+      // Une présence ne s'atteste pas à l'avance (pièce Qualiopi) ; une absence prévue, si.
+      const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
+      let q = supabase.from('emargements').select('id, date, creneau')
         .eq('organization_id', orgId).eq('session_id', String(params.session_id)).eq('apprenant_id', String(params.apprenant_id))
         .is('signature_data', null).is('validated_by', null)
       if (params.date) q = q.eq('date', String(params.date))
-      const { data, error } = await q.select('id')
+      if (present) q = q.lte('date', aujourdhui)
+      // Une feuille validée est verrouillée : on ne touche à aucun de ses créneaux
+      // (elle se rouvre depuis l'onglet Émargement, par l'administration).
+      const [{ data: creneaux, error }, { data: verrous }] = await Promise.all([
+        q,
+        supabase.from('emargement_feuilles').select('date, creneau')
+          .eq('session_id', String(params.session_id)).not('validated_at', 'is', null),
+      ])
       if (error) return { success: false, message: error.message }
-      if (!data?.length) return { success: false, message: 'Aucun créneau modifiable (déjà signés/validés, ou introuvables)' }
-      return { success: true, message: `${data.length} créneau${data.length > 1 ? 'x' : ''} pointé${data.length > 1 ? 's' : ''} ${params.present ? 'présent' : 'absent'}` }
+      const verrouille = (c: any) => (verrous || []).some((v: any) =>
+        v.date === c.date && (v.creneau === c.creneau || v.creneau === 'journee' || c.creneau === 'journee'))
+      const ids = (creneaux || []).filter((c: any) => !verrouille(c)).map((c: any) => c.id)
+      if (!ids.length) return { success: false, message: 'Aucun créneau modifiable (déjà signés, feuille validée, date à venir ou introuvables)' }
+      const { data, error: errMaj } = await supabase.from('emargements')
+        .update(present
+          ? { est_present: true, motif_absence: null }
+          : { est_present: false, motif_absence: params.motif || 'Non précisé' })
+        .in('id', ids).is('signature_data', null)
+        .select('id')
+      if (errMaj) return { success: false, message: errMaj.message }
+      if (!data?.length) return { success: false, message: 'Aucun créneau modifiable (signés entre-temps)' }
+      return { success: true, message: `${data.length} créneau${data.length > 1 ? 'x' : ''} pointé${data.length > 1 ? 's' : ''} ${present ? 'présent' : 'absent'}` }
     }
     if (type === 'action_changer_statut_session') {
+      // Transitions et garde POEI : vérifiées par refusMetier en tête de fonction
       const { updateSessionStatusAction } = await import('@/app/dashboard/sessions/[id]/actions')
       const r = await updateSessionStatusAction(String(params.session_id), String(params.statut))
       return r.success
@@ -665,12 +754,14 @@ export async function executerAction(type: string, params: any, orgId: string, u
     }
     if (type === 'action_relancer_signatures') {
       const supabase = await createServiceRoleClient()
-      let q = supabase.from('conventions').select('id, numero, type, session_id, client_id')
-        .eq('organization_id', orgId).not('sent_at', 'is', null).is('signature_client_date', null)
-        .not('status', 'in', '("annulee","brouillon","signee_client","signee_complete")').order('sent_at').limit(10)
-      if (params.session_id) q = q.eq('session_id', String(params.session_id))
-      const { data: convs } = await q
-      if (!convs?.length) return { success: false, message: 'Aucune convention en attente de signature' }
+      // Uniquement les conventions listées sur la carte (figées à la proposition),
+      // et seulement si elles attendent toujours une signature.
+      const ids = Array.isArray(params.convention_ids) ? params.convention_ids.map(String) : []
+      if (!ids.length) return { success: false, message: 'Liste des conventions absente : redemandez la relance à Starkk.' }
+      const { data: convs } = await supabase.from('conventions').select('id, numero, type, session_id, client_id')
+        .eq('organization_id', orgId).in('id', ids).not('sent_at', 'is', null).is('signature_client_date', null)
+        .not('status', 'in', '("annulee","brouillon","signee_client","signee_complete")')
+      if (!convs?.length) return { success: false, message: 'Aucune de ces conventions n’attend plus de signature' }
       const { sendConventionForSignatureAction, envoyerConventionEntrepriseInterAction } = await import('@/app/dashboard/sessions/[id]/actions')
       const faites: string[] = [], ratees: string[] = []
       for (const c of convs) {

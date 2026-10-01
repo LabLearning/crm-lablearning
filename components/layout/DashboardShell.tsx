@@ -61,7 +61,7 @@ export function DashboardShell({ user, orgName, permissions, children, impersona
         </div>
 
         {/* Assistant CRM interne : jamais pour les comptes formateur/apprenant */}
-        {!['formateur', 'apprenant'].includes(user.role) && <AssistantWidget />}
+        {!['formateur', 'apprenant'].includes(user.role) && <AssistantWidget utilisateurId={user.id} />}
       </div>
     </ToastProvider>
   )

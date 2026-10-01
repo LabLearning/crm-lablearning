@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Avatar } from '@/components/ui'
 import { NotificationsBell } from './NotificationsBell'
 import { GlobalSearch } from './GlobalSearch'
+import { effacerConversationsStarkk } from '@/components/assistant/AssistantWidget'
 import { ROLE_LABELS } from '@/lib/types'
 import type { User } from '@/lib/types'
 
@@ -50,6 +51,8 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
   }, [])
 
   async function handleLogout() {
+    // Les conversations Starkk (données clients, montants) ne restent pas sur le poste
+    effacerConversationsStarkk()
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')

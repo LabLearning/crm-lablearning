@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { OUTILS_ASSISTANT, executerOutil } from '@/lib/assistant/outils'
 import { OUTILS_ACTIONS, NOMS_ACTIONS, type PropositionAction } from '@/lib/assistant/actions-outils'
+import { actionAutorisee, outilAutorise, preparerProposition, signerProposition } from '@/lib/assistant/propositions'
 
 export const maxDuration = 60
 
@@ -21,8 +22,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
   }
-  const { user, organization } = session
-  if (!ROLES_EQUIPE.includes(user.role)) {
+  const { user, organization, permissions } = session
+  if (!ROLES_EQUIPE.includes(user.role) || ['suspended', 'inactive'].includes((user as any).status)) {
     return NextResponse.json({ error: 'Accès réservé à l’équipe interne' }, { status: 403 })
   }
   const claudeKey = process.env.ANTHROPIC_API_KEY
@@ -58,6 +59,18 @@ export async function POST(req: Request) {
   // renvoyées au client, que l'utilisateur confirme d'un clic.
   const messages: any[] = historique.slice(-16)
   const propositions: PropositionAction[] = []
+  // Une même action (mêmes paramètres) n'apparaît qu'une fois, à sa dernière place
+  const cleProposition = (type: string, params: Record<string, any>) =>
+    type + JSON.stringify(Object.keys(params).filter((k) => k !== 'libelle').sort().map((k) => [k, params[k]]))
+  const publier = (p: PropositionAction) => {
+    const cle = cleProposition(p.type, p.params)
+    const deja = propositions.findIndex((x) => cleProposition(x.type, x.params) === cle)
+    if (deja >= 0) propositions.splice(deja, 1)
+    propositions.push(p)
+  }
+  // Le modèle ne voit que les outils et les actions que le rôle de l'utilisateur permet.
+  const outilsPermis = OUTILS_ASSISTANT.filter((o) => outilAutorise(o.name, user.role, permissions))
+  const actionsPermises = OUTILS_ACTIONS.filter((o) => actionAutorisee(o.name, user.role, permissions))
   try {
     for (let tour = 0; tour < MAX_TOURS; tour++) {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -67,7 +80,7 @@ export async function POST(req: Request) {
           model: MODELE,
           max_tokens: 2500,
           system: systeme,
-          tools: [...OUTILS_ASSISTANT, ...OUTILS_ACTIONS],
+          tools: [...outilsPermis, ...actionsPermises],
           messages,
         }),
       })
@@ -82,9 +95,26 @@ export async function POST(req: Request) {
       }
 
       messages.push({ role: 'assistant', content: rep.content })
-      const resultats = await Promise.all(appels.map(async (a: any) => {
+      // Les contrôles tournent en parallèle, mais les propositions sont rangées
+      // dans l'ordre où le modèle les a écrites : c'est l'ordre du plan.
+      const propositionsDuTour: (PropositionAction | null)[] = appels.map(() => null)
+      const resultats = await Promise.all(appels.map(async (a: any, rang: number) => {
         if (NOMS_ACTIONS.has(a.name)) {
-          propositions.push({ id: a.id, type: a.name, params: a.input || {}, libelle: a.input?.libelle || a.name })
+          const brut = a.input && typeof a.input === 'object' && !Array.isArray(a.input) ? a.input : {}
+          // Paramètres normalisés par un schéma strict, mêmes contrôles qu'à la
+          // confirmation ; la carte est calculée sur les paramètres signés.
+          const prep = await preparerProposition({ type: a.name, brut, orgId: organization.id, user, permissions })
+          if (!prep.ok) {
+            const consigne = prep.statut === 403 ? "Ne la propose pas : explique-lui qu'elle ne relève pas de ses droits."
+              : prep.statut === 400 ? 'Corrige les paramètres (types et valeurs permises) avant de reproposer.'
+              : prep.statut === 404 ? "Vérifie l'identifiant avec les outils de lecture avant de reproposer."
+              : prep.statut === 503 ? "La vérification n'a pas pu se faire : préviens l'utilisateur et propose de réessayer."
+              : "Ne la propose pas : explique-lui la raison."
+            return { type: 'tool_result', tool_use_id: a.id, is_error: true, content: `${prep.message} ${consigne}` }
+          }
+          const params = prep.params
+          const { id, jeton } = signerProposition({ type: a.name, params, org: organization.id, user: user.id })
+          propositionsDuTour[rang] = { id, type: a.name, params, libelle: typeof params.libelle === 'string' && params.libelle ? params.libelle : a.name, jeton, cibles: prep.cibles }
           return {
             type: 'tool_result',
             tool_use_id: a.id,
@@ -94,9 +124,19 @@ export async function POST(req: Request) {
         return {
           type: 'tool_result',
           tool_use_id: a.id,
-          content: JSON.stringify(await executerOutil(a.name, a.input || {}, organization.id)).slice(0, 24000),
+          content: JSON.stringify(await executerOutil(a.name, a.input || {}, organization.id, { id: user.id, role: user.role, permissions })).slice(0, 24000),
         }
       }))
+      // Un plan dont une étape est refusée ne s'affiche pas en morceaux : le
+      // modèle corrige et repropose toutes les étapes, dans l'ordre.
+      const etapeRefusee = appels.some((a: any, i: number) => NOMS_ACTIONS.has(a.name) && (resultats[i] as any).is_error)
+      if (etapeRefusee && propositionsDuTour.some(Boolean)) {
+        propositionsDuTour.forEach((p, i) => {
+          if (p) resultats[i] = { type: 'tool_result', tool_use_id: appels[i].id, is_error: true, content: "Non affichée : une autre étape de ce plan a été refusée. Corrige-la, puis repropose toutes les étapes restantes, dans l'ordre." }
+        })
+      } else {
+        for (const p of propositionsDuTour) if (p) publier(p)
+      }
       messages.push({ role: 'user', content: resultats })
     }
     return NextResponse.json({ reponse: 'La recherche est trop longue, reformule ta demande de façon plus précise.', actions: propositions })

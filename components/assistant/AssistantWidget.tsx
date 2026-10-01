@@ -10,11 +10,17 @@ interface ActionProposee {
   type: string
   params: Record<string, any>
   libelle: string
+  /** Jeton signé par le serveur : seul élément envoyé à la confirmation. */
+  jeton?: string
+  /** Cibles lues en base par le serveur (session, client, facture, montant…). */
+  cibles?: string[]
   etat?: 'en_attente' | 'en_cours' | 'faite' | 'ignoree' | 'erreur'
   resultat?: string
 }
 interface Message { role: 'user' | 'assistant'; content: string; actions?: ActionProposee[]; contexte?: string | null }
 
+// Une conversation par compte : sur un poste partagé, le suivant ne voit pas
+// les échanges (ni les données) du précédent.
 const CLE_HISTO = 'll_assistant_conversation'
 
 /**
@@ -25,6 +31,28 @@ const CLE_HISTO = 'll_assistant_conversation'
  * (localStorage), « Nouvelle conversation » remet à zéro.
  */
 
+/**
+ * Seuls les liens vers une page du CRM sont cliquables. Un lien vers un autre
+ * site (qu'un texte piégé dans les données pourrait faire écrire au modèle)
+ * s'affiche en clair, domaine visible, et javascript: ou data: jamais.
+ */
+function lienSur(href: string): string | null {
+  if (/^\/(?![/\\])/.test(href)) return href
+  try {
+    const url = new URL(href)
+    return typeof window !== 'undefined' && url.origin === window.location.origin ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+/** Clés de conversation de Starkk dans le navigateur (une par compte). */
+export function effacerConversationsStarkk() {
+  try {
+    for (const cle of Object.keys(localStorage)) if (cle.startsWith(CLE_HISTO)) localStorage.removeItem(cle)
+  } catch { /* stockage indisponible */ }
+}
+
 /** Rendu minimal du markdown de l'assistant : liens, gras, listes. */
 function LigneRendue({ texte }: { texte: string }) {
   const morceaux: React.ReactNode[] = []
@@ -34,13 +62,17 @@ function LigneRendue({ texte }: { texte: string }) {
   let cle = 0
   while ((m = regex.exec(texte)) !== null) {
     if (m.index > curseur) morceaux.push(texte.slice(curseur, m.index))
-    if (m[1] && m[2]) {
+    const href = m[1] && m[2] ? lienSur(m[2]) : null
+    if (m[1] && href) {
       morceaux.push(
-        <a key={cle++} href={m[2]} target="_blank" rel="noreferrer"
+        <a key={cle++} href={href} target="_blank" rel="noreferrer"
           className="font-semibold text-brand-600 underline underline-offset-2 hover:text-brand-700">
           {m[1]}
         </a>,
       )
+    } else if (m[1]) {
+      // Lien externe ou douteux : texte et adresse en clair, non cliquables
+      morceaux.push(/^https?:\/\//i.test(m[2]) ? `${m[1]} (${m[2]})` : m[1])
     } else if (m[3]) {
       morceaux.push(<strong key={cle++} className="font-semibold text-surface-900">{m[3]}</strong>)
     }
@@ -94,7 +126,8 @@ const SUGGESTIONS = [
   'Qui n’a pas signé ses émargements ?',
 ]
 
-export function AssistantWidget() {
+export function AssistantWidget({ utilisateurId }: { utilisateurId?: string }) {
+  const cleHisto = utilisateurId ? `${CLE_HISTO}:${utilisateurId}` : CLE_HISTO
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [saisie, setSaisie] = useState('')
@@ -112,13 +145,19 @@ export function AssistantWidget() {
   // La conversation survit à la navigation entre pages du CRM.
   useEffect(() => {
     try {
-      const brut = localStorage.getItem(CLE_HISTO)
+      // L'ancienne clé, commune à tous les comptes du navigateur, est effacée
+      if (cleHisto !== CLE_HISTO) localStorage.removeItem(CLE_HISTO)
+      const brut = localStorage.getItem(cleHisto)
       if (brut) setMessages(JSON.parse(brut))
     } catch { /* stockage indisponible */ }
-  }, [])
+  }, [cleHisto])
   useEffect(() => {
-    try { localStorage.setItem(CLE_HISTO, JSON.stringify(messages.slice(-40))) } catch { /* plein */ }
-  }, [messages])
+    // Un lien personnel de portail (stagiaire) n'est pas conservé dans le navigateur
+    try { localStorage.setItem(cleHisto, JSON.stringify(messages.slice(-40)).replace(/(\/portail\/)[^/\s)"'\\]+/g, '$1[lien masqué]')) } catch { /* plein */ }
+  }, [messages, cleHisto])
+  // État courant des cartes, lu par « Tout confirmer » entre deux étapes
+  const messagesRef = useRef(messages)
+  useEffect(() => { messagesRef.current = messages }, [messages])
 
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, busy])
 
@@ -153,20 +192,40 @@ export function AssistantWidget() {
     }))
   }
 
+  // Une proposition ne se lance qu'une fois depuis ce widget (double clic,
+  // « Tout confirmer » cliqué deux fois) ; le serveur refuse de toute façon
+  // une seconde exécution.
+  const lancees = useRef<Set<string>>(new Set())
+
   async function confirmerAction(idxMessage: number, action: ActionProposee): Promise<boolean> {
+    if (lancees.current.has(action.id)) return false
+    if (!action.jeton) {
+      majAction(idxMessage, action.id, { etat: 'erreur', resultat: 'Proposition antérieure à la mise à jour de sécurité : redemandez-la à Starkk.' })
+      return false
+    }
+    lancees.current.add(action.id)
     majAction(idxMessage, action.id, { etat: 'en_cours' })
     try {
       const r = await fetch('/api/assistant/action', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: action.type, params: action.params }),
+        body: JSON.stringify({ jeton: action.jeton }),
       })
       const j = await r.json().catch(() => null)
       if (r.ok && j?.success) { majAction(idxMessage, action.id, { etat: 'faite', resultat: j.message }); return true }
+      if (r.status === 503) {
+        // Rien n'a été exécuté : la proposition reste à confirmer
+        lancees.current.delete(action.id)
+        majAction(idxMessage, action.id, { etat: 'en_attente', resultat: j?.message || 'Indisponible pour le moment : vous pouvez réessayer.' })
+        return false
+      }
       majAction(idxMessage, action.id, { etat: 'erreur', resultat: j?.message || j?.error || 'Échec' })
       return false
     } catch {
-      majAction(idxMessage, action.id, { etat: 'erreur', resultat: 'Connexion impossible' })
+      // Réponse perdue : un nouvel essai est sans risque, le serveur renvoie
+      // le résultat déjà consigné au lieu d'exécuter une seconde fois.
+      lancees.current.delete(action.id)
+      majAction(idxMessage, action.id, { etat: 'en_attente', resultat: 'Connexion impossible : vous pouvez réessayer.' })
       return false
     }
   }
@@ -176,7 +235,10 @@ export function AssistantWidget() {
   async function confirmerPlan(idxMessage: number, actions: ActionProposee[]) {
     setPlanEnCours(idxMessage)
     for (const a of actions.filter((x) => x.etat === 'en_attente')) {
-      await confirmerAction(idxMessage, a)
+      // Une étape ignorée pendant le déroulement du plan ne part pas
+      const courante = messagesRef.current[idxMessage]?.actions?.find((x) => x.id === a.id)
+      if (courante?.etat !== 'en_attente') continue
+      await confirmerAction(idxMessage, courante)
     }
     setPlanEnCours(null)
   }
@@ -224,6 +286,13 @@ export function AssistantWidget() {
             : <Zap className={cn('h-4 w-4 mt-0.5 shrink-0', action.etat === 'erreur' ? 'text-danger-500' : 'text-amber-500')} />}
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-surface-800">{action.libelle}</div>
+            {action.cibles && action.cibles.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {action.cibles.map((c, i) => (
+                  <div key={i} className="text-[11px] leading-snug text-surface-600 break-words">{c}</div>
+                ))}
+              </div>
+            )}
             {action.resultat && (
               <div className={cn('text-[11px] mt-0.5', action.etat === 'faite' ? 'text-emerald-700' : 'text-danger-600')}>{action.resultat}</div>
             )}

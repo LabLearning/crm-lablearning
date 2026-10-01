@@ -1,4 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import type { Permission } from '@/lib/types'
+import { MODULES_RECHERCHE, clientDansPortefeuille, outilAutorise, peutLire } from '@/lib/assistant/propositions'
 
 /**
  * Outils de l'assistant CRM interne : lecture seule, TOUJOURS scopé sur
@@ -108,9 +110,20 @@ export const OUTILS_ASSISTANT = [
 const nomClient = (c: any) => c?.nom_commercial || c?.raison_sociale || 'Client'
 
 /** Exécute un outil pour une organisation donnée. Renvoie toujours du JSON sérialisable. */
-export async function executerOutil(nom: string, args: any, orgId: string): Promise<any> {
+export async function executerOutil(
+  nom: string, args: any, orgId: string,
+  utilisateur?: { id: string; role: string; permissions?: Permission[] },
+): Promise<any> {
   const supabase = await createServiceRoleClient()
   const org = (q: any) => q.eq('organization_id', orgId)
+  // Un commercial ne voit que les clients qu'il suit, comme dans l'interface
+  // (liste filtrée sur assigned_to, fiche réservée à son portefeuille).
+  const commercial = utilisateur?.role === 'commercial' ? utilisateur : null
+  // Mêmes droits de lecture par module que les pages du dashboard
+  const droits = utilisateur?.permissions ? { role: utilisateur.role, permissions: utilisateur.permissions } : null
+  if (droits && !outilAutorise(nom, droits.role, droits.permissions)) {
+    return { erreur: 'Ces données ne relèvent pas des droits de lecture de l’utilisateur.' }
+  }
 
   try {
     if (nom === 'rechercher') {
@@ -118,9 +131,13 @@ export async function executerOutil(nom: string, args: any, orgId: string): Prom
       if (q.length < 2) return { erreur: 'Requête trop courte' }
       const motif = `%${q}%`
       const type = args.type || 'tous'
-      const veut = (t: string) => type === 'tous' || type === t
+      const veut = (t: string) => (type === 'tous' || type === t)
+        && (!droits || !MODULES_RECHERCHE[t] || peutLire(MODULES_RECHERCHE[t], droits.role, droits.permissions))
       const [clients, apprenants, formateurs, factures, conventions, formations] = await Promise.all([
-        veut('clients') ? org(supabase.from('clients').select('id, raison_sociale, nom_commercial, ville, type')).or(`raison_sociale.ilike.${motif},nom_commercial.ilike.${motif}`).limit(6) : { data: [] },
+        veut('clients') ? (commercial
+          ? org(supabase.from('clients').select('id, raison_sociale, nom_commercial, ville, type')).eq('assigned_to', commercial.id)
+          : org(supabase.from('clients').select('id, raison_sociale, nom_commercial, ville, type'))
+        ).or(`raison_sociale.ilike.${motif},nom_commercial.ilike.${motif}`).limit(6) : { data: [] },
         veut('apprenants') ? org(supabase.from('apprenants').select('id, prenom, nom, email, client:client_id(raison_sociale, nom_commercial)')).or(`nom.ilike.${motif},prenom.ilike.${motif},email.ilike.${motif}`).limit(6) : { data: [] },
         veut('formateurs') ? org(supabase.from('formateurs').select('id, prenom, nom, email')).or(`nom.ilike.${motif},prenom.ilike.${motif}`).limit(4) : { data: [] },
         veut('factures') ? org(supabase.from('factures').select('id, numero, status, montant_ttc, client:client_id(raison_sociale, nom_commercial)')).ilike('numero', motif).limit(5) : { data: [] },
@@ -189,6 +206,11 @@ export async function executerOutil(nom: string, args: any, orgId: string): Prom
       const cid = String(args.client_id)
       const { data: c } = await org(supabase.from('clients').select('id, raison_sociale, nom_commercial, type, email, telephone, ville, adresse, siret')).eq('id', cid).maybeSingle()
       if (!c) return { erreur: 'Client introuvable dans cette organisation' }
+      if (commercial) {
+        if (!(await clientDansPortefeuille(cid, orgId, commercial.id))) {
+          return { erreur: 'Ce client n’est pas dans le portefeuille de l’utilisateur : sa fiche est réservée au commercial qui le suit ou à un responsable.' }
+        }
+      }
       const [{ data: contacts }, { data: sessions }, { data: factures }, { data: convs }] = await Promise.all([
         org(supabase.from('contacts').select('prenom, nom, email, telephone, fonction')).eq('client_id', cid).limit(6),
         org(supabase.from('sessions').select('id, date_debut, date_fin, status, formation:formation_id(intitule)')).eq('client_id', cid).order('date_debut', { ascending: false }).limit(8),
