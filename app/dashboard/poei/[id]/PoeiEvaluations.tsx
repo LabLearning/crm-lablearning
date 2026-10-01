@@ -9,7 +9,13 @@ import { grilleProgress } from '@/lib/poei-grille'
 import { formatDate } from '@/lib/utils'
 import { PoeiSection, PoeiVide, PoeiDefilable } from './PoeiSection'
 
-interface Cand { id: string; apprenant_id: string | null; nom: string }
+interface Cand {
+  id: string
+  apprenant_id: string | null
+  nom: string
+  /** Heures du certificat de réalisation, reprises sur le bilan final */
+  duree?: { heures: number; prevues: number } | null
+}
 interface Grille { id: string; apprenant_id: string; semaine: number | null; statut: string; date_evaluation: string; items: any; [k: string]: any }
 
 export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur = null }: {
@@ -206,7 +212,8 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
         {open && (
           <div className="max-h-[75vh] overflow-y-auto pr-1">
             <GrilleEvaluation poeiId={poeiId} apprenantId={open.apprenantId} apprenantNom={open.nom}
-              semaine={open.semaine} initial={gridOf(open.apprenantId, open.semaine)} onSaved={() => setOpen(null)} />
+              semaine={open.semaine} initial={gridOf(open.apprenantId, open.semaine)} onSaved={() => setOpen(null)}
+              dureeBilan={candidats.find((c) => c.apprenant_id === open.apprenantId)?.duree || null} />
           </div>
         )}
       </Modal>

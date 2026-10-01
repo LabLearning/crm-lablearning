@@ -37,7 +37,14 @@ interface Props {
   absences?: string | null
   dateEvaluation?: string | null
   statut?: string | null
+  /** Heures du certificat de réalisation : elles priment sur la durée saisie dans la grille */
+  heuresCertifiees?: number | null
+  heuresPrevues?: number | null
+  /** Fin du suivi quand le parcours a été interrompu (date de l'abandon) */
+  dateFinSuivi?: string | null
 }
+
+const heuresTexte = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
 
 const NIV: Record<string, { label: string; color: string }> = {
   A: { label: 'Acquis', color: '#177245' },
@@ -211,7 +218,11 @@ export function GrillePoeiPDF(p: Props) {
   }
 
   // ── Bilan final : le formulaire France Travail, puis le détail en annexe ──
-  const dureeAffichee = p.dureeRealisee || (p.poei?.duree_heures ? `${p.poei.duree_heures} heures` : '')
+  // Mêmes heures que le certificat de réalisation (abandon : heures effectuées
+  // sur la durée prévue) ; la saisie libre de la grille ne sert qu'à défaut.
+  const dureeAffichee = p.heuresCertifiees != null && p.heuresCertifiees > 0
+    ? `${heuresTexte(p.heuresCertifiees)} heures${p.heuresPrevues && p.heuresCertifiees < p.heuresPrevues ? ` (sur ${heuresTexte(p.heuresPrevues)} heures prévues)` : ''}`
+    : p.dureeRealisee || (p.poei?.duree_heures ? `${p.poei.duree_heures} heures` : '')
   const acquisDe = (id: string): boolean | null => {
     const n = p.items?.[id]?.n
     if (!n) return null
@@ -249,7 +260,7 @@ export function GrillePoeiPDF(p: Props) {
             {`atteste que ${nomAppr}`}
           </Text>
           <Text style={{ fontSize: 9, color: SURFACE_900, marginBottom: 5 }}>
-            {`a suivi une POEI tutorée du ${fmtCourt(p.poei?.date_debut)} au ${fmtCourt(p.poei?.date_fin)},`}
+            {`a suivi une POEI tutorée du ${fmtCourt(p.poei?.date_debut)} au ${fmtCourt(p.dateFinSuivi || p.poei?.date_fin)},`}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 5 }}>
             <Text style={{ fontSize: 9, color: SURFACE_900 }}>sous la responsabilité de&nbsp;:</Text>

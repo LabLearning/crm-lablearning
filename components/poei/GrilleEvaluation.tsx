@@ -9,13 +9,15 @@ import { saveGrilleAction, detaillerBilanAction } from '@/app/dashboard/poei/gri
 
 type Items = Record<string, { n?: NiveauAcquis; o?: string }>
 
-export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, initial, onSaved }: {
+export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, initial, onSaved, dureeBilan = null }: {
   poeiId: string
   apprenantId: string
   apprenantNom: string
   semaine: number | null            // null = évaluation finale
   initial?: any
   onSaved?: () => void
+  /** Heures du certificat de réalisation : le bilan final porte celles-ci, pas une saisie libre */
+  dureeBilan?: { heures: number; prevues: number } | null
 }) {
   const { toast } = useToast()
   const router = useRouter()
@@ -189,10 +191,21 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
                 placeholder="Au terme de la formation, [Prénom Nom] …" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-surface-600 mb-1">Durée réalisée</label>
-                <input className="input-base" value={txt.duree_realisee} onChange={(e) => setTxt((p) => ({ ...p, duree_realisee: e.target.value }))} placeholder="Ex : 400 h" />
-              </div>
+              {dureeBilan ? (
+                // Une seule source pour les heures : celles du certificat de réalisation
+                <div>
+                  <label className="block text-xs font-medium text-surface-600 mb-1">Durée portée sur le bilan</label>
+                  <div className="input-base bg-surface-50 text-surface-700">
+                    {`${dureeBilan.heures.toLocaleString('fr-FR')} h${dureeBilan.heures < dureeBilan.prevues ? ` sur ${dureeBilan.prevues.toLocaleString('fr-FR')} h prévues` : ''}`}
+                  </div>
+                  <p className="mt-1 text-[11px] leading-snug text-surface-500">Celle du certificat de réalisation, à modifier sur la fiche du candidat.</p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-surface-600 mb-1">Durée réalisée</label>
+                  <input className="input-base" value={txt.duree_realisee} onChange={(e) => setTxt((p) => ({ ...p, duree_realisee: e.target.value }))} placeholder="Ex : 400 h" />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-surface-600 mb-1">Absences / retards</label>
                 <input className="input-base" value={txt.absences} onChange={(e) => setTxt((p) => ({ ...p, absences: e.target.value }))} placeholder="Ex : aucune" />

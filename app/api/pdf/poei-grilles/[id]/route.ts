@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const { data: poei } = await supabase
     .from('poei')
-    .select('id, numero, poste_vise, date_debut, date_fin, duree_heures, numero_engagement, numero_dossier_ft, client_id, client:client_id(raison_sociale, nom_commercial), formation:formation_id(intitule)')
+    .select('id, numero, poste_vise, date_debut, date_fin, duree_heures, numero_engagement, numero_dossier_ft, client_id, client:client_id(raison_sociale, nom_commercial), formation:formation_id(intitule, duree_heures)')
     .eq('id', params.id).eq('organization_id', orgId).single()
   if (!poei) return NextResponse.json({ error: 'Projet POEI introuvable' }, { status: 404 })
 
@@ -41,9 +41,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .select('formateur_id, contrat:contrats_formateur(signature_formateur_date, signature_formateur_nom, signature_formateur_signature_data)')
       .eq('poei_id', params.id),
     supabase.from('poei_candidats')
-      .select('apprenant_id, numero_convention, numero_engagement')
+      .select('apprenant_id, numero_convention, numero_engagement, statut, date_abandon')
       .eq('poei_id', params.id),
   ])
+  // Les heures du bilan sont celles du certificat de réalisation : durée du
+  // parcours, durée propre du candidat, ou heures effectuées s'il a interrompu.
+  const { heuresCertificatsPoei } = await import('@/lib/certificat-heures')
+  const heuresCertifiees = await heuresCertificatsPoei(supabase, poei as any, (poei as any).formation?.duree_heures)
   const sigBenefPar = new Map((sigsCertif || [])
     .filter((x: any) => (x.role || 'candidat') === 'candidat')
     .map((x: any) => [String(x.apprenant_id), x]))
@@ -118,6 +122,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       pointsForts: g.points_forts, aRenforcer: g.a_renforcer, recommandations: g.recommandations,
       avisFinal: g.avis_final, motivationAvis: g.motivation_avis, conclusion: g.conclusion,
       dureeRealisee: g.duree_realisee, absences: g.absences,
+      heuresCertifiees: heuresCertifiees.get(String(g.apprenant_id))?.heures ?? null,
+      heuresPrevues: heuresCertifiees.get(String(g.apprenant_id))?.dureeTotale ?? null,
+      // Parcours interrompu : le suivi s'arrête à la date de l'abandon
+      dateFinSuivi: (() => {
+        const c: any = conventionPar.get(String(g.apprenant_id))
+        return c?.statut === 'abandonne' && c?.date_abandon ? c.date_abandon : null
+      })(),
       dateEvaluation: g.date_evaluation, statut: g.statut,
     }) as any,
   )

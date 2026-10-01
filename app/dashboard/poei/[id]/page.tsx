@@ -118,6 +118,11 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     ...((sessionsInterv || []) as any[]).map((x) => x.id),
   ].filter(Boolean) as string[]
 
+  // Heures des certificats : lues sur le parcours lui-même (heures saisies, sinon durée), session chapeau ou non.
+  // Le bilan final (attestation de compétences) reprend exactement les mêmes.
+  const { heuresCertificatsPoei } = await import('@/lib/certificat-heures')
+  const heures = await heuresCertificatsPoei(supabase, p as any, (p as any).formation?.duree_heures)
+
   let sessionsEmargement: SessionEmargement[] = []
   let candidatsEmargement: LigneEmargementCandidat[] = []
   if (idsSessionsPoei.length) {
@@ -139,9 +144,6 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       }
     }).sort((a, b) => String(a.date_debut).localeCompare(String(b.date_debut)))
 
-    // Heures des certificats : lues sur le parcours lui-même (heures saisies, sinon durée), session chapeau ou non
-    const { heuresCertificatsPoei } = await import('@/lib/certificat-heures')
-    const heures = await heuresCertificatsPoei(supabase, p as any, (p as any).formation?.duree_heures)
     candidatsEmargement = candidats.map((c: any) => {
       const aid = c.apprenant?.id || c.apprenant_id || ''
       const siennes = ((lignesEm || []) as any[]).filter((x: any) => x.apprenant_id === aid)
@@ -562,7 +564,15 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         evaluations={
           <PoeiEvaluations
             poeiId={p.id}
-            candidats={candidats.map((c: any) => ({ id: c.id, apprenant_id: c.apprenant?.id || c.apprenant_id || null, nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat' }))}
+            candidats={candidats.map((c: any) => {
+              const aid = c.apprenant?.id || c.apprenant_id || null
+              const h = aid ? heures.get(String(aid)) : null
+              return {
+                id: c.id, apprenant_id: aid,
+                nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat',
+                duree: h ? { heures: h.heures, prevues: h.dureeTotale } : null,
+              }
+            })}
             grilles={(grilles || []) as any[]}
             signatureEmployeur={sigEmployeur}
           />
