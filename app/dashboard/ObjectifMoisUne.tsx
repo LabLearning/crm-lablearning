@@ -22,7 +22,7 @@ import { cn, villeLisible } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Pencil, Check, X, Minus, Plus, Award, ArrowRight, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2 } from '@/components/ui/icons'
 import type { MoisCalendrier, ObjectifMois } from '@/lib/objectif-mois'
-import { chargerObjectifMoisAction, setObjectifMoisAction, setObjectifCaMoisAction } from './objectif-actions'
+import { chargerObjectifsMoisAction, setObjectifMoisAction, setObjectifCaMoisAction } from './objectif-actions'
 
 const MAX_NOMS = 12
 /** Fin de l'entrée : après la dernière animation (trait sous le mois : 1,9 s + 1,1 s). */
@@ -337,8 +337,9 @@ function Etiquette({ children }: { children: ReactNode }) {
 
 /**
  * Le mois suivant s'affiche d'abord ; la bande de l'en-tête mène à chaque mois
- * de l'année. Le mois en cours et le suivant arrivent avec la page, les autres
- * sont chargés au premier clic puis gardés.
+ * de l'année, et le bouton « Année » à leur cumul. Le mois en cours et le
+ * suivant arrivent avec la page, les autres sont chargés au premier clic puis
+ * gardés.
  */
 export function ObjectifMoisUne({ mois, calendrier, peutModifier }: { mois: ObjectifMois[]; calendrier: MoisCalendrier[]; peutModifier: boolean }) {
   const { toast } = useToast()
@@ -347,10 +348,16 @@ export function ObjectifMoisUne({ mois, calendrier, peutModifier }: { mois: Obje
   const demande = useRef<string | null>(null)
   const [charges, setCharges] = useState<Record<string, ObjectifMois>>({})
   const [cle, setCle] = useState(() => (mois.find((m) => !m.enCours && !m.passe) ?? mois[mois.length - 1]).cle)
-  const [attente, setAttente] = useState<string | null>(null)
+  const [attente, setAttente] = useState<string | null>(null)       // clé d'un mois, ou « annee »
+  const [vue, setVue] = useState<'mois' | 'annee'>('mois')
   // Les mois venus avec la page restent la référence : ils sont relus à chaque revalidation
   const dispo = (c: string): ObjectifMois | undefined => mois.find((m) => m.cle === c) ?? charges[c]
   const data = dispo(cle) ?? mois[mois.length - 1]
+  // L'année du mois en cours : janvier de l'année suivante, proposé en décembre, n'en fait pas partie
+  const annee = (calendrier.find((m) => m.enCours)?.cle ?? data.cle).slice(0, 4)
+  const clesAnnee = calendrier.filter((m) => m.cle.startsWith(annee)).map((m) => m.cle)
+  const moisAnnee = clesAnnee.map(dispo).filter((m): m is ObjectifMois => !!m)
+  const annuelle = vue === 'annee' && moisAnnee.length === clesAnnee.length
 
   // Petits écrans : la bande défile, le mois visé reste au milieu
   const centrer = (c: string, doux: boolean) => {
@@ -360,19 +367,30 @@ export function ObjectifMoisUne({ mois, calendrier, peutModifier }: { mois: Obje
   }
   useEffect(() => { centrer(cle, false) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const choisir = async (c: string) => {
-    if (c === data.cle && !attente) return
-    demande.current = c
-    centrer(c, true)
-    if (dispo(c)) { setAttente(null); setCle(c); return }
-    setAttente(c)
-    const res = await chargerObjectifMoisAction(c).catch(() => null)
-    if (demande.current !== c) return                    // un autre mois a été demandé entre-temps
+  /** Charge les mois qui manquent ; faux si la demande a échoué ou a été remplacée par une autre. */
+  const charger = async (jeton: string, cles: string[]) => {
+    demande.current = jeton
+    const manquants = cles.filter((c) => !dispo(c))
+    if (!manquants.length) { setAttente(null); return true }
+    setAttente(jeton)
+    const res = await chargerObjectifsMoisAction(manquants).catch(() => null)
+    if (demande.current !== jeton) return false           // une autre vue a été demandée entre-temps
     setAttente(null)
-    if (!res?.success || !res.data) { toast('error', res?.error || 'Ce mois n’a pas pu être chargé. Réessayez.'); return }
-    const charge = res.data
-    setCharges((p) => ({ ...p, [c]: charge }))
-    setCle(c)
+    if (!res?.success || !res.data) { toast('error', res?.error || 'Ces chiffres n’ont pas pu être chargés. Réessayez.'); return false }
+    const recus = res.data
+    setCharges((p) => ({ ...p, ...Object.fromEntries(recus.map((m) => [m.cle, m])) }))
+    return true
+  }
+
+  const choisir = async (c: string) => {
+    if (c === data.cle && vue === 'mois' && !attente) return
+    centrer(c, true)
+    if (await charger(c, [c])) { setCle(c); setVue('mois') }
+  }
+
+  const voirAnnee = async () => {
+    if (annuelle && !attente) return
+    if (await charger('annee', clesAnnee)) setVue('annee')
   }
 
   return (
@@ -386,49 +404,69 @@ export function ObjectifMoisUne({ mois, calendrier, peutModifier }: { mois: Obje
 
       {/* Le choix du mois : hors du bloc remonté, la bande garde son défilement et son focus */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-4 sm:px-6 sm:pt-5">
-        <p aria-hidden="true" className="ll-kicker ll-kicker--light whitespace-nowrap">Objectif du mois</p>
+        <p aria-hidden="true" className="ll-kicker ll-kicker--light whitespace-nowrap">{annuelle ? 'Objectif de l’année' : 'Objectif du mois'}</p>
         {calendrier.length > 1 && (
-          <div
-            ref={bande}
-            role="group"
-            aria-label="Mois affiché"
-            className="ll-obj-bande relative flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-white/[0.07] p-0.5 ring-1 ring-inset ring-white/10"
-          >
-            {calendrier.map((c) => {
-              const actif = c.cle === data.cle
-              return (
-                <button
-                  key={c.cle}
-                  data-mois={c.cle}
-                  type="button"
-                  aria-pressed={actif}
-                  aria-busy={c.cle === attente ? true : undefined}
-                  onClick={() => choisir(c.cle)}
-                  className={cn(
-                    'relative h-9 shrink-0 rounded-md px-2.5 text-xs font-semibold transition-colors sm:h-8',
-                    FOCUS,
-                    actif ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white',
-                    c.cle === attente && 'animate-pulse text-white',
-                  )}
-                >
-                  <span aria-hidden="true">{c.court}</span>
-                  <span className="sr-only">{c.nomMois}{c.enCours ? ', mois en cours' : ''}</span>
-                  {c.enCours && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-accent-400" />}
-                </button>
-              )
-            })}
+          <div className="flex max-w-full items-center gap-2">
+            <button
+              type="button"
+              aria-pressed={annuelle}
+              aria-busy={attente === 'annee' ? true : undefined}
+              onClick={voirAnnee}
+              className={cn(
+                'h-10 shrink-0 rounded-lg px-3 text-xs font-semibold ring-1 ring-inset ring-white/10 transition-colors sm:h-9',
+                FOCUS,
+                annuelle ? 'bg-white/20 text-white' : 'bg-white/[0.07] text-white/70 hover:text-white',
+                attente === 'annee' && 'animate-pulse text-white',
+              )}
+            >
+              Année<span className="sr-only"> {annee}, cumul des douze mois</span>
+            </button>
+            <div
+              ref={bande}
+              role="group"
+              aria-label="Mois affiché"
+              className="ll-obj-bande relative flex min-w-0 gap-0.5 overflow-x-auto rounded-lg bg-white/[0.07] p-0.5 ring-1 ring-inset ring-white/10"
+            >
+              {calendrier.map((c) => {
+                const actif = !annuelle && c.cle === data.cle
+                return (
+                  <button
+                    key={c.cle}
+                    data-mois={c.cle}
+                    type="button"
+                    aria-pressed={actif}
+                    aria-busy={c.cle === attente ? true : undefined}
+                    onClick={() => choisir(c.cle)}
+                    className={cn(
+                      'relative h-9 shrink-0 rounded-md px-2.5 text-xs font-semibold transition-colors sm:h-8',
+                      FOCUS,
+                      actif ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white',
+                      c.cle === attente && 'animate-pulse text-white',
+                    )}
+                  >
+                    <span aria-hidden="true">{c.court}</span>
+                    <span className="sr-only">{c.nomMois}{c.enCours ? ', mois en cours' : ''}</span>
+                    {c.enCours && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-accent-400" />}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Une clé par mois : les réglages repartent de zéro et les jauges se remplissent à nouveau */}
-      <Une
-        key={data.cle}
-        uid={uid}
-        data={data}
-        peutModifier={peutModifier}
-        onObjectif={(patch) => setCharges((p) => (p[data.cle] ? { ...p, [data.cle]: { ...p[data.cle], ...patch } } : p))}
-      />
+      {/* Une clé par vue : les réglages repartent de zéro et les jauges se remplissent à nouveau */}
+      {annuelle ? (
+        <Annee key="annee" uid={uid} annee={annee} mois={moisAnnee} onMois={choisir} />
+      ) : (
+        <Une
+          key={data.cle}
+          uid={uid}
+          data={data}
+          peutModifier={peutModifier}
+          onObjectif={(patch) => setCharges((p) => (p[data.cle] ? { ...p, [data.cle]: { ...p[data.cle], ...patch } } : p))}
+        />
+      )}
     </section>
   )
 }
@@ -859,6 +897,241 @@ function Une({ uid, data, peutModifier, onObjectif }: {
         <p className="min-w-0 truncate font-mono tabular-nums md:hidden">{compteursCourts}</p>
         <div className="flex shrink-0 items-center gap-5">
           <span className="hidden font-mono tabular-nums xl:inline">{compteurs}</span>
+          <Link
+            href="/dashboard/sessions"
+            className={cn('inline-flex min-h-[40px] items-center gap-1.5 rounded-md font-semibold text-accent-300 hover:text-accent-200', FOCUS)}
+          >
+            Voir les sessions <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+// ── Vue annuelle ──
+
+/** 73 215 → « 73k » : étiquette au-dessus d'une barre de chiffre d'affaires. */
+const kiloEuros = (n: number) => (n <= 0 ? '0' : n < 1000 ? '<1k' : `${Math.round(n / 1000)}k`)
+const somme = (t: ObjectifMois[], f: (m: ObjectifMois) => number) => t.reduce((s, m) => s + f(m), 0)
+const MOIS_COURTS = ['Janv', 'Févr', 'Mars', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sept', 'Oct', 'Nov', 'Déc']
+
+/** Une barre par mois face à son objectif (trait blanc) ; la part POEI en menthe pâle. Un clic ouvre le mois. */
+function Barres({ mois, valeur, objectif, poei, etiquette, lire, onMois }: {
+  mois: ObjectifMois[]
+  valeur: (m: ObjectifMois) => number
+  objectif: (m: ObjectifMois) => number
+  poei: (m: ObjectifMois) => number
+  /** Texte court au-dessus de la barre. */
+  etiquette: (n: number) => string
+  /** Texte complet pour les lecteurs d'écran et l'infobulle. */
+  lire: (n: number) => string
+  onMois: (cle: string) => void
+}) {
+  const max = Math.max(1, ...mois.map((m) => Math.max(valeur(m), objectif(m))))
+  return (
+    <div className="grid grid-cols-12 gap-1 sm:gap-1.5">
+      {mois.map((m, i) => {
+        const v = valeur(m)
+        const o = objectif(m)
+        const p = Math.min(poei(m), v)
+        const texte = `${m.nomMois} : ${lire(v)} sur un objectif de ${lire(o)}`
+        return (
+          <button
+            key={m.cle}
+            type="button"
+            onClick={() => onMois(m.cle)}
+            aria-label={`${texte}. Ouvrir ${m.nomMois.toLowerCase()}.`}
+            title={texte}
+            className={cn('group flex min-w-0 flex-col items-center rounded-md pb-0.5 pt-1', FOCUS)}
+          >
+            <span aria-hidden="true" className={cn('font-mono text-[10px] leading-3 tabular-nums', v > 0 && v >= o ? 'font-semibold text-accent-300' : 'text-white/55')}>
+              {etiquette(v)}
+            </span>
+            <span aria-hidden="true" className="relative mt-1 block h-24 w-full overflow-hidden rounded-[5px] bg-white/[0.07] transition-colors group-hover:bg-white/[0.13] sm:h-28">
+              {v > 0 && (
+                <span className="ll-obj-barre absolute inset-x-0 bottom-0 min-h-[3px] bg-accent-400" style={vars({ height: `${(v / max) * 100}%`, '--i': i })}>
+                  {p > 0 && <span className="ll-obj-pastille-poei absolute inset-x-0 top-0" style={{ height: `${(p / v) * 100}%` }} />}
+                </span>
+              )}
+              <span className="absolute inset-x-0 h-0.5 bg-white/80" style={{ bottom: `max(0px, calc(${(o / max) * 100}% - 2px))` }} />
+            </span>
+            <span aria-hidden="true" className={cn('mt-1 text-[10px] leading-3', m.enCours ? 'font-bold text-white' : 'font-medium text-white/55')}>
+              <span className="sm:hidden">{m.nomMois.charAt(0)}</span>
+              <span className="hidden sm:inline">{MOIS_COURTS[Number(m.cle.slice(5)) - 1]}</span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** L'année en un regard : cumul des douze mois et une barre par mois. Rien ne s'y modifie, les objectifs se règlent mois par mois. */
+function Annee({ uid, annee, mois, onMois }: { uid: string; annee: string; mois: ObjectifMois[]; onMois: (cle: string) => void }) {
+  const [intro, setIntro] = useState(true)
+  useEffect(() => { const t = setTimeout(() => setIntro(false), INTRO_MS); return () => clearTimeout(t) }, [])
+
+  const clos = mois.filter((m) => m.passe)
+  const enCours = mois.find((m) => m.enCours)
+  // Jours jusqu'au 31 décembre : ce qu'il reste du mois en cours, plus les mois suivants
+  const jours = enCours ? enCours.joursRestants + somme(mois.filter((m) => m.cle > enCours.cle), (m) => Number(m.fin.slice(8))) : 0
+
+  const totalE = somme(mois, (m) => m.etablissements.length)
+  const objE = somme(mois, (m) => m.objectif)
+  const poeiE = somme(mois, (m) => m.nbPoei)
+  const pctE = objE > 0 ? Math.round((totalE / objE) * 100) : 0
+  const distincts = new Set(mois.flatMap((m) => m.etablissements.map((e) => e.id))).size
+  const atteintsE = clos.filter((m) => m.etablissements.length >= m.objectif).length
+
+  const ca = somme(mois, (m) => m.caCale)
+  const objC = somme(mois, (m) => m.objectifCa)
+  const caPoei = Math.min(somme(mois, (m) => m.caPoei), ca)
+  const pctC = objC > 0 ? Math.round((ca / objC) * 100) : 0
+  const atteintsC = clos.filter((m) => m.caCale >= m.objectifCa).length
+  const nbSans = somme(mois, (m) => m.sessionsSansMontant.length)
+  const groupesCa = ca >= 1_000_000 ? 3 : ca >= 1000 ? 2 : 1
+
+  const nbSessions = somme(mois, (m) => m.nbSessions)
+  const nbParcours = somme(mois, (m) => m.nbParcoursPoei)
+  const lesDeux = totalE >= objE && ca >= objC && objE > 0 && objC > 0
+
+  const titreJauge = 'font-heading text-sm font-semibold text-white/85'
+  const objectifTexte = 'font-heading text-sm font-bold text-white/75 sm:text-xl'
+  const ligne = 'll-obj-rise mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs'
+  const pied = 'mt-3 flex min-h-[40px] items-center gap-1.5 border-t border-white/10 pt-1 text-xs text-white/55 sm:min-h-[34px]'
+  const moisAtteints = (n: number) => (clos.length > 0
+    ? <span className="text-white/70">Objectif atteint <b className="font-semibold text-white">{n}</b> mois sur {clos.length}</span>
+    : <span aria-hidden="true" />)
+
+  return (
+    <div className={cn(intro && 'is-intro')}>
+      <header className="px-4 sm:px-6">
+        <div className="mt-1.5 flex items-end justify-between gap-4">
+          <h2 id={`${uid}-titre`} className="min-w-0 text-white">
+            <span className="sr-only">Objectif de l’année {annee} : cumul des douze mois</span>
+            <span aria-hidden="true" className="relative inline-block">
+              <span className="ll-obj-mois">
+                {Array.from(annee).map((c, i) => (
+                  <span key={i} className="ll-obj-lettre" style={vars({ '--i': i })}>{c}</span>
+                ))}
+              </span>
+              {lesDeux && (
+                <svg className="ll-obj-trait pointer-events-none absolute -bottom-1.5 left-0 h-2.5 w-full" viewBox="0 0 300 12" preserveAspectRatio="none">
+                  <path d="M3 8C80 2.5 190 2.5 297 6.5" pathLength={1} fill="none" stroke="#5CD9A0" strokeWidth={4} strokeLinecap="round" />
+                </svg>
+              )}
+            </span>
+          </h2>
+          {enCours && (
+            <p className="ll-obj-rise shrink-0 pb-0.5 text-right" style={vars({ '--i': 0 })}>
+              <span className="block font-heading text-2xl font-extrabold leading-none tracking-tight tabular-nums text-white sm:text-3xl sm:leading-none">J-{jours}</span>
+              <span className="mt-1 block text-xs text-white/60">avant la fin de l’année</span>
+            </p>
+          )}
+        </div>
+      </header>
+
+      <div className="mt-4 grid px-4 sm:px-6 lg:grid-cols-2">
+        {/* ── Établissements calés, cumul des mois ── */}
+        <div className={cn(COLONNE, 'pb-2 sm:pb-4 lg:border-r lg:border-white/10 lg:pb-5 lg:pr-6')}>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className={titreJauge}>Établissements calés <span className="font-sans text-xs font-medium text-white/50">cumul des mois</span></h3>
+            <p className="font-heading text-sm font-bold tabular-nums text-accent-300">
+              <span aria-hidden="true" className="ll-obj-compteur" style={vars({ '--ll-obj-n': pctE, minWidth: `${String(pctE).length}ch` })} />
+              <span className="sr-only">{pctE}</span>{NNBSP}%<span className="sr-only"> de l’objectif cumulé</span>
+            </p>
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1 gap-y-1">
+            <span className="sr-only">{totalE} sur</span>
+            <span aria-hidden="true" className="ll-obj-score ll-obj-compteur font-heading font-extrabold text-accent-400" style={vars({ '--ll-obj-n': totalE, minWidth: `${String(totalE).length}ch` })} />
+            <span aria-hidden="true" className={cn(objectifTexte, 'text-white/45')}>/</span>
+            <span className={cn(objectifTexte, 'tabular-nums')}>{objE}</span>
+          </div>
+          <div className="mt-2 sm:mt-2.5">
+            <Barres
+              mois={mois}
+              valeur={(m) => m.etablissements.length}
+              objectif={(m) => m.objectif}
+              poei={(m) => m.nbPoei}
+              etiquette={String}
+              lire={(n) => `${n} ${pluriel(n, 'établissement', 'établissements')}`}
+              onMois={onMois}
+            />
+            <Repartition opco={String(totalE - poeiE)} poei={String(poeiE)} />
+          </div>
+          <div className={ligne} style={vars({ '--i': 1 })}>
+            {moisAtteints(atteintsE)}
+            {totalE >= objE && objE > 0
+              ? <Etiquette>{totalE === objE ? 'Objectif annuel atteint' : `Objectif annuel dépassé de ${totalE - objE}`}</Etiquette>
+              : <span className="text-white/70">Encore <b className="font-semibold text-white">{objE - totalE}</b> sur l’année</span>}
+          </div>
+          <p className={pied}>
+            <span><b className="font-semibold tabular-nums text-white/80">{distincts}</b> {pluriel(distincts, 'établissement différent', 'établissements différents')} : chacun compte une fois par mois où il est calé.</span>
+          </p>
+        </div>
+
+        {/* ── Chiffre d'affaires calé, cumul des mois ── */}
+        <div className={cn(COLONNE, 'border-t border-white/10 pb-2 pt-3 sm:pb-4 sm:pt-4 lg:border-t-0 lg:pb-5 lg:pl-6 lg:pt-0')}>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className={titreJauge}>Chiffre d’affaires calé <span className="font-sans text-xs font-medium text-white/50">cumul des mois</span></h3>
+            <p className="font-heading text-sm font-bold tabular-nums text-accent-300">
+              <span aria-hidden="true" className="ll-obj-compteur" style={vars({ '--ll-obj-n': pctC, minWidth: `${String(pctC).length}ch` })} />
+              <span className="sr-only">{pctC}</span>{NNBSP}%<span className="sr-only"> de l’objectif cumulé</span>
+            </p>
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+            <span className="sr-only">{euros(ca)} HT calés sur</span>
+            <span aria-hidden="true" className="ll-obj-score whitespace-nowrap font-heading font-extrabold tabular-nums text-accent-400">
+              <span
+                className="ll-obj-euros"
+                data-g={groupesCa}
+                style={vars({ '--ll-obj-m': Math.floor(ca / 1_000_000), '--ll-obj-k': Math.floor(ca / 1000) % 1000, '--ll-obj-u': ca % 1000 })}
+              >
+                <span>{milliers(ca)}</span>
+              </span>{NNBSP}€
+            </span>
+            <span aria-hidden="true" className="text-sm text-white/55">sur</span>
+            <span className={cn(objectifTexte, 'whitespace-nowrap tabular-nums')}>{euros(objC)} HT</span>
+          </div>
+          <div className="mt-2 sm:mt-2.5">
+            <Barres
+              mois={mois}
+              valeur={(m) => m.caCale}
+              objectif={(m) => m.objectifCa}
+              poei={(m) => m.caPoei}
+              etiquette={kiloEuros}
+              lire={(n) => `${euros(n)} HT`}
+              onMois={onMois}
+            />
+            <Repartition opco={euros(ca - caPoei)} poei={euros(caPoei)} />
+          </div>
+          <div className={ligne} style={vars({ '--i': 2 })}>
+            {moisAtteints(atteintsC)}
+            {ca >= objC && objC > 0
+              ? <Etiquette>{ca === objC ? 'Objectif annuel atteint' : `Objectif annuel dépassé de ${euros(ca - objC)}`}</Etiquette>
+              : <span className="text-white/70">Encore <b className="whitespace-nowrap font-semibold text-white">{euros(objC - ca)}</b> sur l’année</span>}
+          </div>
+          <p className={pied}>
+            {nbSans > 0 ? (
+              <>
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning-500" />
+                <span className="text-warning-100/90">{nbSans === 1 ? '1 session sans montant n’est pas comptée' : `${nbSans} sessions sans montant ne sont pas comptées`} : le détail est dans chaque mois.</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent-300" /> Toutes les sessions de l’année ont un montant.
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <footer className="flex items-center justify-between gap-4 border-t border-white/10 bg-brand-800/40 px-4 text-2xs text-white/55 sm:px-6 sm:text-xs">
+        <p className="hidden min-w-0 truncate md:block">Cumul des douze mois. Le trait blanc est l’objectif du mois ; une barre ouvre son mois.</p>
+        <p className="min-w-0 truncate font-mono tabular-nums md:hidden">{nbSessions} sessions · {nbParcours} POEI</p>
+        <div className="flex shrink-0 items-center gap-5">
+          <span className="hidden font-mono tabular-nums xl:inline">{nbSessions} {pluriel(nbSessions, 'session', 'sessions')} · {nbParcours} POEI</span>
           <Link
             href="/dashboard/sessions"
             className={cn('inline-flex min-h-[40px] items-center gap-1.5 rounded-md font-semibold text-accent-300 hover:text-accent-200', FOCUS)}

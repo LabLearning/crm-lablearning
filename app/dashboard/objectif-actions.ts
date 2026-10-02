@@ -5,22 +5,25 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
-import { ROLES_OBJECTIF, ROLES_SANS_OBJECTIF, calendrierObjectif, chargerObjectifMois, type ObjectifMois } from '@/lib/objectif-mois'
+import { ROLES_OBJECTIF, ROLES_SANS_OBJECTIF, calendrierObjectif, chargerObjectifsDesMois, type ObjectifMois } from '@/lib/objectif-mois'
 
 /**
- * Charge un mois du sélecteur (« 2026-03 ») à la demande : seuls le mois en
- * cours et le suivant sont lus avec le tableau de bord.
+ * Charge des mois du sélecteur (« 2026-03 ») à la demande : seuls le mois en
+ * cours et le suivant sont lus avec le tableau de bord. Un mois au clic, ou
+ * tous ceux qui manquent pour la vue annuelle.
  */
-export async function chargerObjectifMoisAction(mois: string): Promise<ActionResult<ObjectifMois>> {
+export async function chargerObjectifsMoisAction(mois: string[]): Promise<ActionResult<ObjectifMois[]>> {
   const session = await getSession()
   if (ROLES_SANS_OBJECTIF.includes(session.user.role)) return { success: false, error: 'Non autorisé' }
-  if (!calendrierObjectif().some((m) => m.cle === mois)) return { success: false, error: 'Mois invalide' }
+  const proposes = calendrierObjectif().map((m) => m.cle)
+  const cles = Array.isArray(mois) ? [...new Set(mois)] : []
+  if (!cles.length || cles.some((c) => !proposes.includes(c))) return { success: false, error: 'Mois invalide' }
   try {
     const supabase = await createServiceRoleClient()
-    const data = await chargerObjectifMois(supabase, session.organization.id, new Date(), { cle: mois })
+    const data = await chargerObjectifsDesMois(supabase, session.organization.id, cles)
     return { success: true, data }
   } catch {
-    return { success: false, error: 'Ce mois n’a pas pu être chargé. Réessayez.' }
+    return { success: false, error: 'Ces chiffres n’ont pas pu être chargés. Réessayez.' }
   }
 }
 

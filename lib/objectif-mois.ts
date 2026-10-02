@@ -193,6 +193,12 @@ export async function chargerObjectifsMois(supabase: any, organizationId: string
   return mois.filter((m): m is ObjectifMois => !!m)
 }
 
+/** Plusieurs mois désignés par leur clé (« 2026-03 »), dans l'ordre demandé : sert au sélecteur et à la vue annuelle. */
+export async function chargerObjectifsDesMois(supabase: any, organizationId: string, cles: string[], ref: Date = new Date()): Promise<ObjectifMois[]> {
+  const carte = cartePoeiSessions(supabase, organizationId)
+  return Promise.all(cles.map((cle) => chargerObjectifMois(supabase, organizationId, ref, { cle, carte })))
+}
+
 /** Charge l'objectif d'un mois (le suivant par défaut, ou celui de la clé « 2026-03 ») et les établissements calés. */
 export async function chargerObjectifMois(
   supabase: any, organizationId: string, ref: Date = new Date(),
