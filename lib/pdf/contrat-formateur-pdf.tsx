@@ -251,7 +251,7 @@ export function ContratFormateurPDF({ formateur, org, session, contrat, interven
 
       {/* Annexe — Programme de formation (fait partie intégrante du contrat) */}
       {hasProgrammeContent(annexeFormation) && (
-        <ProgrammeFormationPage formation={annexeFormation} org={org} annexe={{ numero, rattachement: 'le présent contrat' }} />
+        <ProgrammeFormationPage formation={annexeFormation} org={org} annexe={{ numero, mention: 'Annexe au présent contrat' }} />
       )}
     </Document>
   )

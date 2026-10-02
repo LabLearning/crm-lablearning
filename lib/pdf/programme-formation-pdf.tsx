@@ -16,7 +16,7 @@ interface ProgrammeFormationProps {
    * contenu que le programme téléchargé seul, sans la grille tarifaire (le prix
    * est celui du contrat), avec la mention de rattachement.
    */
-  annexe?: { numero?: string | null; rattachement: string }
+  annexe?: { numero?: string | null; /** « Annexe à la convention CV-… », « Annexe au présent contrat » */ mention: string }
 }
 
 function fmtLong(s: string | null | undefined): string {
@@ -204,7 +204,7 @@ export function ProgrammeFormationPage({ formation, org, session, poei, annexe }
         {annexe || formation.version ? (
           <Text style={{ fontSize: 7.5, color: SURFACE_500 as any, marginTop: -4, marginBottom: 8 }}>
             {[
-              annexe ? `Annexe à ${annexe.rattachement}, dont elle fait partie intégrante` : null,
+              annexe ? `${annexe.mention}, dont elle fait partie intégrante` : null,
               formation.version ? `${annexe ? 'programme version' : 'Version'} ${formation.version}` : null,
             ].filter(Boolean).join(' · ')}
           </Text>

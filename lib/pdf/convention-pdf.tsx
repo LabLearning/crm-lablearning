@@ -556,7 +556,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
       <ProgrammeFormationPage
         formation={{ ...formation, intitule: formationTitle }}
         org={org}
-        annexe={{ numero: convention.numero, rattachement: `la convention ${convention.numero || ''}`.trim() }}
+        annexe={{ numero: convention.numero, mention: `Annexe à la convention ${convention.numero || ''}`.trim() }}
       />
     </Document>
   )
