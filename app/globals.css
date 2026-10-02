@@ -539,6 +539,9 @@
   font-size: 2.125rem;
 }
 .ll-obj-lettre { display: inline-block; }
+/* Bande des mois : défile sans barre sur les petits écrans */
+.ll-obj-bande { scrollbar-width: none; -ms-overflow-style: none; }
+.ll-obj-bande::-webkit-scrollbar { display: none; }
 .ll-obj-score { font-size: 1.75rem; line-height: 1; letter-spacing: -.035em; }
 @media (min-width: 640px) {
   .ll-obj-mois { font-size: 2.75rem; }

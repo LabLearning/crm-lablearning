@@ -1,7 +1,7 @@
 /**
  * Objectif du mois : combien d'établissements sont déjà calés en formation
  * sur un mois, face à l'objectif fixé par la direction. Le tableau de bord
- * montre le mois suivant et, sur un sélecteur, le mois en cours.
+ * montre le mois suivant et, sur un sélecteur, chaque mois de l'année.
  *
  * « Établissement calé » = client distinct ayant, dans le mois visé, au moins
  *  - côté OPCO : une session non annulée qui DÉMARRE dans le mois. Une session
@@ -35,6 +35,19 @@ export const OBJECTIF_CA_PAR_DEFAUT = 60000
 /** Rôles qui fixent l'objectif. Déclaré ici et pas dans objectif-actions.ts :
     un fichier 'use server' n'exporte que des fonctions async. */
 export const ROLES_OBJECTIF: string[] = ['super_admin', 'gestionnaire', 'directeur_commercial']
+/** Rôles qui ont leur propre espace et ne voient pas les chiffres de l'organisme. */
+export const ROLES_SANS_OBJECTIF: string[] = ['commercial', 'apporteur_affaires', 'formateur', 'apprenant', 'franchise']
+
+/** Un mois du sélecteur. */
+export interface MoisCalendrier {
+  /** « 2026-10 » */
+  cle: string
+  /** « Octobre » */
+  nomMois: string
+  /** « Oct. », avec l'année quand elle n'est pas celle en cours : « Janv. 27 » */
+  court: string
+  enCours: boolean
+}
 
 export interface EtablissementCale {
   id: string
@@ -66,6 +79,8 @@ export interface ObjectifMois {
   joursAvantDebut: number
   /** Le mois visé est le mois en cours. */
   enCours: boolean
+  /** Le mois visé est terminé. */
+  passe: boolean
   /** Mois en cours : jours qu'il reste jusqu'à la fin du mois, aujourd'hui compris. */
   joursRestants: number
   objectif: number
@@ -113,12 +128,43 @@ export function aujourdhuiParis(ref: Date = new Date()): string {
   return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ref)
 }
 
+const MOIS_COURTS = ['Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.']
+const CLE_MOIS = /^(\d{4})-(0[1-9]|1[0-2])$/
+
 /** Bornes d'un mois compté depuis la date de référence (heure de Paris) : 0 = mois en cours, 1 = mois suivant. */
 export function moisVise(ref: Date = new Date(), decalage = 1) {
   const [a, m] = aujourdhuiParis(ref).split('-').map(Number)
   const rang = a * 12 + (m - 1) + decalage
-  const annee = Math.floor(rang / 12)
-  const mois = (rang % 12) + 1
+  return bornesMois(Math.floor(rang / 12), (rang % 12) + 1)
+}
+
+/** Bornes du mois désigné par sa clé « 2026-03 ». */
+export function moisDeCle(cle: string) {
+  const r = CLE_MOIS.exec(cle)
+  if (!r) throw new Error('Mois invalide')
+  return bornesMois(Number(r[1]), Number(r[2]))
+}
+
+/**
+ * Les mois proposés par le sélecteur : les douze mois de l'année en cours, et
+ * le mois suivant quand il tombe l'année d'après (janvier, vu de décembre).
+ */
+export function calendrierObjectif(ref: Date = new Date()): MoisCalendrier[] {
+  const [a, m] = aujourdhuiParis(ref).split('-').map(Number)
+  const liste = Array.from({ length: 12 }, (_, i) => ({ annee: a, mois: i + 1 }))
+  if (m === 12) liste.push({ annee: a + 1, mois: 1 })
+  return liste.map(({ annee, mois }) => {
+    const b = bornesMois(annee, mois)
+    return {
+      cle: b.cle,
+      nomMois: b.nomMois,
+      court: annee === a ? MOIS_COURTS[mois - 1] : `${MOIS_COURTS[mois - 1]} ${String(annee).slice(2)}`,
+      enCours: annee === a && mois === m,
+    }
+  })
+}
+
+function bornesMois(annee: number, mois: number) {
   const mm = String(mois).padStart(2, '0')
   const dernier = new Date(Date.UTC(annee, mois, 0)).getUTCDate()
   const nom = MOIS[mois - 1]
@@ -147,12 +193,12 @@ export async function chargerObjectifsMois(supabase: any, organizationId: string
   return mois.filter((m): m is ObjectifMois => !!m)
 }
 
-/** Charge l'objectif d'un mois (le suivant par défaut) et les établissements déjà calés. */
+/** Charge l'objectif d'un mois (le suivant par défaut, ou celui de la clé « 2026-03 ») et les établissements calés. */
 export async function chargerObjectifMois(
   supabase: any, organizationId: string, ref: Date = new Date(),
-  options: { decalage?: number; carte?: Promise<CartePoeiSessions> } = {},
+  options: { decalage?: number; cle?: string; carte?: Promise<CartePoeiSessions> } = {},
 ): Promise<ObjectifMois> {
-  const m = moisVise(ref, options.decalage ?? 1)
+  const m = options.cle ? moisDeCle(options.cle) : moisVise(ref, options.decalage ?? 1)
   const auj = aujourdhuiParis(ref)
   // Début de la semaine civile à Paris (lundi 00:00), en UTC : même découpage que l'agenda
   const lundi = (() => { const d = new Date(`${auj}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10) })()
@@ -294,6 +340,7 @@ export async function chargerObjectifMois(
     ...m,
     joursAvantDebut: Math.max(0, joursEntre(auj, m.debut)),
     enCours: auj >= m.debut && auj <= m.fin,
+    passe: auj > m.fin,
     joursRestants: auj >= m.debut && auj <= m.fin ? joursEntre(auj, m.fin) + 1 : 0,
     objectif,
     objectifSaisi,

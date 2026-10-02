@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/utils'
 import { OnboardingGuide } from './OnboardingGuide'
 import { SessionsTable } from './SessionsTable'
 import { ObjectifMoisUne } from './ObjectifMoisUne'
-import { chargerObjectifsMois, ROLES_OBJECTIF } from '@/lib/objectif-mois'
+import { chargerObjectifsMois, calendrierObjectif, ROLES_OBJECTIF } from '@/lib/objectif-mois'
 
 /** Lundi de la semaine qui contient la date (ISO, sans fuseau). */
 const lundiDe = (iso: string) => {
@@ -205,8 +205,8 @@ export default async function DashboardPage() {
       {/* Guide de démarrage (masquable) */}
       <OnboardingGuide flags={onboardingFlags} firstName={user.first_name} />
 
-      {/* Objectif du mois : établissements calés pour le mois suivant, mois en cours sur le sélecteur */}
-      {objectifsMois.length > 0 && <ObjectifMoisUne mois={objectifsMois} peutModifier={ROLES_OBJECTIF.includes(user.role)} />}
+      {/* Objectif du mois : établissements calés pour le mois suivant, les autres mois de l'année sur le sélecteur */}
+      {objectifsMois.length > 0 && <ObjectifMoisUne mois={objectifsMois} calendrier={calendrierObjectif()} peutModifier={ROLES_OBJECTIF.includes(user.role)} />}
 
       {/* ── Agenda : sessions OPCO d'un côté, parcours POEI de l'autre, chacun en cours / à venir / terminées ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">

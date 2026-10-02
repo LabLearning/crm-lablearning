@@ -2,8 +2,8 @@
 
 /**
  * Objectif du mois, bloc « La une » du tableau de bord : le mois suivant en
- * titre (le mois en cours sur le sélecteur) et deux jauges côte à côte qui se
- * remplissent comme un liquide.
+ * titre (les autres mois de l'année sur la bande de l'en-tête) et deux jauges
+ * côte à côte qui se remplissent comme un liquide.
  *  - Établissements calés : jauge crantée, une case par établissement visé.
  *  - Chiffre d'affaires HT calé : jauge continue, un repère par palier rond.
  * Les calages de la semaine sont hachurés ; sous chaque jauge, le reste à
@@ -21,8 +21,8 @@ import Link from 'next/link'
 import { cn, villeLisible } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
 import { Pencil, Check, X, Minus, Plus, Award, ArrowRight, ChevronDown, ChevronRight, AlertTriangle, CheckCircle2 } from '@/components/ui/icons'
-import type { ObjectifMois } from '@/lib/objectif-mois'
-import { setObjectifMoisAction, setObjectifCaMoisAction } from './objectif-actions'
+import type { MoisCalendrier, ObjectifMois } from '@/lib/objectif-mois'
+import { chargerObjectifMoisAction, setObjectifMoisAction, setObjectifCaMoisAction } from './objectif-actions'
 
 const MAX_NOMS = 12
 /** Fin de l'entrée : après la dernière animation (trait sous le mois : 1,9 s + 1,1 s). */
@@ -335,36 +335,112 @@ function Etiquette({ children }: { children: ReactNode }) {
 
 // ── Bloc ──
 
-/** Le mois suivant s'affiche d'abord ; le sélecteur de l'en-tête ramène au mois en cours. */
-export function ObjectifMoisUne({ mois, peutModifier }: { mois: ObjectifMois[]; peutModifier: boolean }) {
-  const [cle, setCle] = useState(() => (mois.find((m) => !m.enCours) ?? mois[mois.length - 1]).cle)
-  const [bascule, setBascule] = useState(false)
-  const data = mois.find((m) => m.cle === cle) ?? mois[mois.length - 1]
-  // Une clé par mois : les réglages repartent de zéro et les jauges se remplissent à nouveau
+/**
+ * Le mois suivant s'affiche d'abord ; la bande de l'en-tête mène à chaque mois
+ * de l'année. Le mois en cours et le suivant arrivent avec la page, les autres
+ * sont chargés au premier clic puis gardés.
+ */
+export function ObjectifMoisUne({ mois, calendrier, peutModifier }: { mois: ObjectifMois[]; calendrier: MoisCalendrier[]; peutModifier: boolean }) {
+  const { toast } = useToast()
+  const uid = useId().replace(/:/g, '')
+  const bande = useRef<HTMLDivElement>(null)
+  const demande = useRef<string | null>(null)
+  const [charges, setCharges] = useState<Record<string, ObjectifMois>>({})
+  const [cle, setCle] = useState(() => (mois.find((m) => !m.enCours && !m.passe) ?? mois[mois.length - 1]).cle)
+  const [attente, setAttente] = useState<string | null>(null)
+  // Les mois venus avec la page restent la référence : ils sont relus à chaque revalidation
+  const dispo = (c: string): ObjectifMois | undefined => mois.find((m) => m.cle === c) ?? charges[c]
+  const data = dispo(cle) ?? mois[mois.length - 1]
+
+  // Petits écrans : la bande défile, le mois visé reste au milieu
+  const centrer = (c: string, doux: boolean) => {
+    const b = bande.current
+    const el = b?.querySelector<HTMLElement>(`[data-mois="${c}"]`)
+    if (b && el) b.scrollTo({ left: el.offsetLeft - (b.clientWidth - el.offsetWidth) / 2, behavior: doux ? 'smooth' : 'auto' })
+  }
+  useEffect(() => { centrer(cle, false) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const choisir = async (c: string) => {
+    if (c === data.cle && !attente) return
+    demande.current = c
+    centrer(c, true)
+    if (dispo(c)) { setAttente(null); setCle(c); return }
+    setAttente(c)
+    const res = await chargerObjectifMoisAction(c).catch(() => null)
+    if (demande.current !== c) return                    // un autre mois a été demandé entre-temps
+    setAttente(null)
+    if (!res?.success || !res.data) { toast('error', res?.error || 'Ce mois n’a pas pu être chargé. Réessayez.'); return }
+    const charge = res.data
+    setCharges((p) => ({ ...p, [c]: charge }))
+    setCle(c)
+  }
+
   return (
-    <Une
-      key={data.cle}
-      data={data}
-      choix={mois}
-      onChoisir={(c) => { setBascule(true); setCle(c) }}
-      reprendreFocus={bascule}
-      peutModifier={peutModifier}
-    />
+    <section
+      aria-labelledby={`${uid}-titre`}
+      aria-busy={attente ? true : undefined}
+      className="ll-obj relative isolate overflow-hidden rounded-2xl text-white shadow-elevated"
+    >
+      <div aria-hidden="true" className="ll-obj-fond pointer-events-none absolute inset-0 -z-10" />
+      <div aria-hidden="true" className="ll-obj-grille pointer-events-none absolute inset-0 -z-10" />
+
+      {/* Le choix du mois : hors du bloc remonté, la bande garde son défilement et son focus */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-4 sm:px-6 sm:pt-5">
+        <p aria-hidden="true" className="ll-kicker ll-kicker--light whitespace-nowrap">Objectif du mois</p>
+        {calendrier.length > 1 && (
+          <div
+            ref={bande}
+            role="group"
+            aria-label="Mois affiché"
+            className="ll-obj-bande relative flex max-w-full gap-0.5 overflow-x-auto rounded-lg bg-white/[0.07] p-0.5 ring-1 ring-inset ring-white/10"
+          >
+            {calendrier.map((c) => {
+              const actif = c.cle === data.cle
+              return (
+                <button
+                  key={c.cle}
+                  data-mois={c.cle}
+                  type="button"
+                  aria-pressed={actif}
+                  aria-busy={c.cle === attente ? true : undefined}
+                  onClick={() => choisir(c.cle)}
+                  className={cn(
+                    'relative h-9 shrink-0 rounded-md px-2.5 text-xs font-semibold transition-colors sm:h-8',
+                    FOCUS,
+                    actif ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white',
+                    c.cle === attente && 'animate-pulse text-white',
+                  )}
+                >
+                  <span aria-hidden="true">{c.court}</span>
+                  <span className="sr-only">{c.nomMois}{c.enCours ? ', mois en cours' : ''}</span>
+                  {c.enCours && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-accent-400" />}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Une clé par mois : les réglages repartent de zéro et les jauges se remplissent à nouveau */}
+      <Une
+        key={data.cle}
+        uid={uid}
+        data={data}
+        peutModifier={peutModifier}
+        onObjectif={(patch) => setCharges((p) => (p[data.cle] ? { ...p, [data.cle]: { ...p[data.cle], ...patch } } : p))}
+      />
+    </section>
   )
 }
 
-function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
+function Une({ uid, data, peutModifier, onObjectif }: {
+  uid: string
   data: ObjectifMois
-  choix: ObjectifMois[]
-  onChoisir: (cle: string) => void
-  /** Le bloc vient d'être remonté par le sélecteur : le bouton du mois affiché reprend le focus. */
-  reprendreFocus: boolean
   peutModifier: boolean
+  /** Un objectif vient d'être enregistré : le mois gardé en mémoire le reprend. */
+  onObjectif: (patch: Partial<ObjectifMois>) => void
 }) {
   const { toast } = useToast()
-  const uid = useId().replace(/:/g, '')
-  const moisActif = useRef<HTMLButtonElement>(null)
-  useEffect(() => { if (reprendreFocus) moisActif.current?.focus({ preventScroll: true }) }, [reprendreFocus])
 
   const [intro, setIntro] = useState(true)            // animations d'entrée, une fois par affichage
   const [annonce, setAnnonce] = useState('')
@@ -389,7 +465,9 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
   })
   const etabs = data.etablissements                       // triés du plus ancien calage au plus récent
   const realise = etabs.length
-  const nouveaux = etabs.filter((e) => e.recent).length
+  // Mois terminé : plus de « cette semaine », plus de rythme, plus d'invitation à caler
+  const passe = data.passe
+  const nouveaux = passe ? 0 : etabs.filter((e) => e.recent).length
   const objectif = regE.apercu
   const etatE = etatDe(realise, objectif)
   const maxE = Math.max(objectif, realise)
@@ -397,7 +475,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
   const restantE = Math.max(0, objectif - realise)
   const rythmeE = restantE / jours
   const poeiE = etabs.filter((e) => e.poei).length
-  const nouveauxPoei = etabs.filter((e) => e.recent && e.poei).length
+  const nouveauxPoei = passe ? 0 : etabs.filter((e) => e.recent && e.poei).length
   const opcoE = realise - poeiE
   const texteE = `${realise} ${pluriel(realise, 'établissement calé', 'établissements calés')} sur un objectif de ${objectif}, soit ${pctE}${NNBSP}% : ${opcoE} en OPCO, ${poeiE} en POEI`
     + (nouveaux > 0 ? `, dont ${nouveaux} cette semaine` : '')
@@ -409,7 +487,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
     ecrire: milliers,
   })
   const ca = data.caCale
-  const caSemaine = Math.min(data.caCetteSemaine, ca)
+  const caSemaine = passe ? 0 : Math.min(data.caCetteSemaine, ca)
   const objectifCa = regC.apercu
   const etatC: Etat = ca <= 0 ? 'vide' : ca < objectifCa ? 'en_cours' : ca === objectifCa ? 'atteint' : 'depasse'
   const maxC = Math.max(objectifCa, ca)
@@ -443,6 +521,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
     action: (v) => setObjectifMoisAction(data.cle, v),
     invalide: `Indiquez un nombre entier entre 1 et 1${NNBSP}000.`,
     reussi: (v) => {
+      onObjectif({ objectif: v, objectifSaisi: true })
       annoncer(`Objectif fixé à ${v} ${pluriel(v, 'établissement', 'établissements')}. ${realise} ${pluriel(realise, 'calé', 'calés')}, soit ${Math.round((realise / v) * 100)}${NNBSP}%.`)
       toast('success', `Objectif ${deMois(mois)} fixé à ${v} ${pluriel(v, 'établissement', 'établissements')}.`)
     },
@@ -452,6 +531,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
     action: (v) => setObjectifCaMoisAction(data.cle, v),
     invalide: `Indiquez un montant en euros, entre 1${NNBSP}€ et 10${NNBSP}000${NNBSP}000${NNBSP}€.`,
     reussi: (v) => {
+      onObjectif({ objectifCa: v, objectifCaSaisi: true })
       annoncer(`Objectif de chiffre d’affaires fixé à ${euros(v)} HT. ${euros(ca)} calés, soit ${Math.round((ca / v) * 100)}${NNBSP}%.`)
       toast('success', `Objectif de chiffre d’affaires ${deMois(mois)} fixé à ${euros(v)} HT.`)
     },
@@ -465,45 +545,14 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
   const deplier = cn('-ml-1 flex min-h-[40px] items-center gap-1.5 rounded-md px-1 text-left text-xs font-semibold transition-colors sm:min-h-[34px]', FOCUS)
 
   return (
-    <section
-      aria-labelledby={`${uid}-titre`}
-      className={cn('ll-obj relative isolate overflow-hidden rounded-2xl text-white shadow-elevated', intro && 'is-intro')}
-    >
-      <div aria-hidden="true" className="ll-obj-fond pointer-events-none absolute inset-0 -z-10" />
-      <div aria-hidden="true" className="ll-obj-grille pointer-events-none absolute inset-0 -z-10" />
+    <div className={cn(intro && 'is-intro')}>
       <p aria-live="polite" className="sr-only">{annonce}</p>
 
-      {/* En-tête : le choix du mois, le mois visé, le compte à rebours */}
-      <header className="px-4 pt-4 sm:px-6 sm:pt-5">
-        <div className="flex min-h-[32px] items-center justify-between gap-3">
-          <p aria-hidden="true" className="ll-kicker ll-kicker--light min-w-0 whitespace-nowrap"><span>Objectif<span className="hidden sm:inline"> du mois</span></span></p>
-          {choix.length > 1 && (
-            <div role="group" aria-label="Mois affiché" className="inline-flex shrink-0 rounded-lg bg-white/[0.07] p-0.5 ring-1 ring-inset ring-white/10">
-              {choix.map((c) => {
-                const actif = c.cle === data.cle
-                return (
-                  <button
-                    key={c.cle}
-                    ref={actif ? moisActif : undefined}
-                    type="button"
-                    aria-pressed={actif}
-                    onClick={() => { if (!actif) onChoisir(c.cle) }}
-                    className={cn(
-                      'h-9 rounded-md px-3 text-xs font-semibold transition-colors sm:h-8',
-                      FOCUS,
-                      actif ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white',
-                    )}
-                  >
-                    {c.nomMois}<span className="sr-only">{c.enCours ? ', mois en cours' : ', mois suivant'}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
+      {/* En-tête : le mois visé, le compte à rebours */}
+      <header className="px-4 sm:px-6">
         <div className="mt-1.5 flex items-end justify-between gap-4">
           <h2 id={`${uid}-titre`} className="min-w-0 text-white">
-            <span className="sr-only">Objectif du mois : formations en {data.libelle}{data.enCours ? ', mois en cours' : ''}</span>
+            <span className="sr-only">Objectif du mois : formations en {data.libelle}{data.enCours ? ', mois en cours' : passe ? ', mois terminé' : ''}</span>
             <span aria-hidden="true" className="flex items-baseline gap-2.5">
               <span className="relative inline-block">
                 <span className="ll-obj-mois">
@@ -522,12 +571,13 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
           </h2>
           <p className="ll-obj-rise shrink-0 pb-0.5 text-right" style={vars({ '--i': 0 })}>
             <span className="block font-heading text-2xl font-extrabold leading-none tracking-tight tabular-nums text-white sm:text-3xl sm:leading-none">
-              J-{jours}
+              {passe ? 'Terminé' : `J-${jours}`}
             </span>
             <span className="mt-1 block text-xs text-white/60">
-              {data.enCours
-                ? (jours === 1 ? `dernier jour ${deMois(mois)}` : `avant la fin ${deMois(mois)}`)
-                : (jours === 1 ? `demain, 1er ${mois}` : `avant le 1er ${mois}`)}
+              {passe ? `depuis le ${Number(data.fin.slice(8))} ${mois}`
+                : data.enCours
+                  ? (jours === 1 ? `dernier jour ${deMois(mois)}` : `avant la fin ${deMois(mois)}`)
+                  : (jours === 1 ? `demain, 1er ${mois}` : `avant le 1er ${mois}`)}
             </span>
           </p>
         </div>
@@ -582,7 +632,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
               recentPoei={realise > 0 ? nouveauxPoei / realise : 0}
               objectif={etatE === 'depasse' ? objectif / maxE : null}
               plein={etatE === 'atteint' || etatE === 'depasse'}
-              appel={etatE === 'vide' ? 1 / maxE : null}
+              appel={etatE === 'vide' && !passe ? 1 / maxE : null}
               reperes={maxE <= 40 ? Array.from({ length: maxE - 1 }, (_, k) => (k + 1) / maxE) : []}
             />
             <Echelle max={maxE} marques={graduer(maxE, objectif, pasDe(maxE), etatE === 'depasse')} objectif={etatE === 'depasse' ? objectif : null} format={String} />
@@ -590,10 +640,14 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
           </div>
 
           <div className={ligneRythme} style={vars({ '--i': 1 })}>
-            <Semaine valeur={nouveaux}>+{nouveaux} cette semaine</Semaine>
+            {passe ? <span aria-hidden="true" /> : <Semaine valeur={nouveaux}>+{nouveaux} cette semaine</Semaine>}
             {etatE === 'atteint' ? <Etiquette>Objectif atteint</Etiquette>
               : etatE === 'depasse' ? <Etiquette>Objectif dépassé de {realise - objectif}</Etiquette>
-              : (
+              : passe ? (
+                <span className="text-white/70">
+                  Il a manqué <b className="font-semibold text-white">{restantE}</b> {pluriel(restantE, 'établissement', 'établissements')}
+                </span>
+              ) : (
                 <span className="text-white/70">
                   Encore <b className="font-semibold text-white">{restantE}</b> à caler
                   {rythmeE >= 1 && <> · <b className="font-semibold text-white">{virgule(rythmeE)}</b> par jour</>}
@@ -602,7 +656,9 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
           </div>
 
           <div className={pied}>
-            {realise === 0 ? (
+            {realise === 0 && passe ? (
+              <p className="flex min-h-[40px] items-center text-xs text-white/55 sm:min-h-[34px]">Aucun établissement calé ce mois-là.</p>
+            ) : realise === 0 ? (
               <Link href="/dashboard/dossiers/nouveau" className={cn(deplier, 'text-accent-300 hover:text-accent-200')}>
                 <Plus className="h-3.5 w-3.5" /> Caler un premier établissement
               </Link>
@@ -618,12 +674,14 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
                   {voirEtabs ? 'Masquer les établissements' : realise === 1 ? 'Voir l’établissement calé' : `Voir les ${realise} établissements calés`}
                   <ChevronDown className={cn('h-4 w-4 transition-transform duration-150', voirEtabs && 'rotate-180')} />
                 </button>
-                <Link
-                  href="/dashboard/dossiers/nouveau"
-                  className={cn('hidden min-h-[34px] items-center gap-1.5 rounded-md px-1 text-xs font-semibold text-accent-300 transition-colors hover:text-accent-200 sm:inline-flex', FOCUS)}
-                >
-                  <Plus className="h-3.5 w-3.5" /> Caler le {ordinal(realise + 1)}<span className="sr-only"> établissement</span>
-                </Link>
+                {!passe && (
+                  <Link
+                    href="/dashboard/dossiers/nouveau"
+                    className={cn('hidden min-h-[34px] items-center gap-1.5 rounded-md px-1 text-xs font-semibold text-accent-300 transition-colors hover:text-accent-200 sm:inline-flex', FOCUS)}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Caler le {ordinal(realise + 1)}<span className="sr-only"> établissement</span>
+                  </Link>
+                )}
               </>
             )}
           </div>
@@ -640,7 +698,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
                       <span className="shrink-0 font-mono text-2xs tabular-nums text-accent-300/80">{String(i + 1).padStart(2, '0')}</span>
                       <span className="ll-underline min-w-0 truncate text-sm font-semibold text-white/90 group-hover:text-white group-hover:[background-size:100%_1px]">{nomAffiche(e)}</span>
                       {e.poei && <span className="shrink-0 font-mono text-[10px] font-medium text-accent-300">POEI</span>}
-                      {e.recent && (
+                      {e.recent && !passe && (
                         <>
                           <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />
                           <span className="sr-only">, calé cette semaine</span>
@@ -659,12 +717,14 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
                   {realise - MAX_NOMS === 1 ? 'Afficher le dernier établissement' : `Afficher les ${realise - MAX_NOMS} autres`}
                 </button>
               )}
-              <Link
-                href="/dashboard/dossiers/nouveau"
-                className={cn('mt-1 flex min-h-[40px] items-center gap-2 rounded-md text-sm font-semibold text-accent-300 hover:text-accent-200 sm:hidden', FOCUS)}
-              >
-                <Plus className="h-3.5 w-3.5" /> Caler le {ordinal(realise + 1)} établissement
-              </Link>
+              {!passe && (
+                <Link
+                  href="/dashboard/dossiers/nouveau"
+                  className={cn('mt-1 flex min-h-[40px] items-center gap-2 rounded-md text-sm font-semibold text-accent-300 hover:text-accent-200 sm:hidden', FOCUS)}
+                >
+                  <Plus className="h-3.5 w-3.5" /> Caler le {ordinal(realise + 1)} établissement
+                </Link>
+              )}
               <p className="mt-1 text-2xs leading-relaxed text-white/55 md:hidden">{definition}</p>
             </div>
           )}
@@ -722,7 +782,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
               recentPoei={ca > 0 ? caSemainePoei / ca : 0}
               objectif={etatC === 'depasse' ? objectifCa / maxC : null}
               plein={etatC === 'atteint' || etatC === 'depasse'}
-              appel={etatC === 'vide' ? Math.min(pasC, maxC) / maxC : null}
+              appel={etatC === 'vide' && !passe ? Math.min(pasC, maxC) / maxC : null}
               reperes={Array.from({ length: Math.ceil(maxC / pasC) }, (_, k) => ((k + 1) * pasC) / maxC)
                 .filter((x) => x < 0.995 && (etatC !== 'depasse' || Math.abs(x - objectifCa / maxC) > 0.01))}
             />
@@ -736,10 +796,14 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
           </div>
 
           <div className={ligneRythme} style={vars({ '--i': 2 })}>
-            <Semaine valeur={caSemaine}>+{euros(caSemaine)} cette semaine</Semaine>
+            {passe ? <span aria-hidden="true" /> : <Semaine valeur={caSemaine}>+{euros(caSemaine)} cette semaine</Semaine>}
             {etatC === 'atteint' ? <Etiquette>Objectif atteint</Etiquette>
               : etatC === 'depasse' ? <Etiquette>Objectif dépassé de {euros(ca - objectifCa)}</Etiquette>
-              : (
+              : passe ? (
+                <span className="text-white/70">
+                  Il a manqué <b className="whitespace-nowrap font-semibold text-white">{euros(restantC)}</b>
+                </span>
+              ) : (
                 <span className="text-white/70">
                   Encore <b className="whitespace-nowrap font-semibold text-white">{euros(restantC)}</b> à caler
                   {rythmeC >= 1 && <> · <b className="whitespace-nowrap font-semibold text-white">{euros(rythmeC)}</b> par jour</>}
@@ -803,6 +867,6 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
           </Link>
         </div>
       </footer>
-    </section>
+    </div>
   )
 }

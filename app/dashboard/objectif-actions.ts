@@ -5,7 +5,24 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
-import { ROLES_OBJECTIF } from '@/lib/objectif-mois'
+import { ROLES_OBJECTIF, ROLES_SANS_OBJECTIF, calendrierObjectif, chargerObjectifMois, type ObjectifMois } from '@/lib/objectif-mois'
+
+/**
+ * Charge un mois du sélecteur (« 2026-03 ») à la demande : seuls le mois en
+ * cours et le suivant sont lus avec le tableau de bord.
+ */
+export async function chargerObjectifMoisAction(mois: string): Promise<ActionResult<ObjectifMois>> {
+  const session = await getSession()
+  if (ROLES_SANS_OBJECTIF.includes(session.user.role)) return { success: false, error: 'Non autorisé' }
+  if (!calendrierObjectif().some((m) => m.cle === mois)) return { success: false, error: 'Mois invalide' }
+  try {
+    const supabase = await createServiceRoleClient()
+    const data = await chargerObjectifMois(supabase, session.organization.id, new Date(), { cle: mois })
+    return { success: true, data }
+  } catch {
+    return { success: false, error: 'Ce mois n’a pas pu être chargé. Réessayez.' }
+  }
+}
 
 /**
  * Fixe l'objectif d'établissements à former pour un mois (« 2026-10 »).
