@@ -87,8 +87,8 @@ export async function demanderSignatureBilanAction(
     recipientName: echapper([appr.prenom, appr.nom].filter(Boolean).join(' ') || 'Madame, Monsieur'),
     subject: 'Votre bilan de fin de formation à signer',
     docTitle: 'Votre bilan de fin de formation',
-    intro: `Votre formation « ${echapper(formation)} »${clientNom ? ` chez ${echapper(clientNom)}` : ''} est terminée. Merci de relire votre bilan de fin de formation, d'y donner votre avis sur la formation, puis de le signer. Cela prend une minute, depuis votre téléphone.`,
-    ctaLabel: 'Relire et signer mon bilan',
+    intro: `Votre formation « ${echapper(formation)} »${clientNom ? ` chez ${echapper(clientNom)}` : ''} est terminée. Merci de donner votre avis sur la formation et de signer votre bilan de fin de formation, établi avec votre formateur. Cela prend une minute, depuis votre téléphone.`,
+    ctaLabel: 'Donner mon avis et signer',
     ctaUrl: url,
     footerNote: `Lien personnel, à ne pas transmettre. Valable ${VALIDITE_JOURS} jours.`,
   }

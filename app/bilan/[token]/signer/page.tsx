@@ -7,8 +7,9 @@ import { BilanSignatureClient } from './BilanSignatureClient'
 export const dynamic = 'force-dynamic'
 
 /**
- * Page publique où le stagiaire relit son bilan de fin de formation, donne son
- * avis sur la formation et signe. Accès par lien personnel. S'il n'a pas
+ * Page publique où le stagiaire donne son avis sur la formation et signe son
+ * bilan de fin de formation, établi avec son formateur (le bilan n'y est pas
+ * réaffiché : choix de Lab Learning). Accès par lien personnel. S'il n'a pas
  * encore signé son certificat de réalisation, la même signature le couvre.
  */
 export default async function BilanSignerPage({ params }: { params: { token: string } }) {
@@ -51,7 +52,6 @@ export default async function BilanSignerPage({ params }: { params: { token: str
         orgNom={(org as any).name || 'Lab Learning'}
         logo={logo || null}
         nomStagiaire={`${g.apprenant?.prenom || ''} ${g.apprenant?.nom || ''}`.trim()}
-        lignes={bilan!.lignes}
         avisInitial={bilan!.avisInitial}
         noteInitiale={bilan!.noteInitiale}
         dejaSigne={dejaSigne}

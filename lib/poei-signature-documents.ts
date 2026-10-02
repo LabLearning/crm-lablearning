@@ -1,12 +1,14 @@
 /**
  * Signature unique des documents de fin de POEI par le stagiaire.
  *
- * Le stagiaire signe une fois, sur une page qui lui montre tout ce qu'il
- * signe : son certificat de réalisation, son attestation de compétences et
- * son bilan de fin de formation. Sa signature est alors portée sur chacun.
- * Elle n'est jamais portée sur un document qui ne lui a pas été montré : une
- * signature donnée quand la page ne présentait que le certificat ne couvre
- * pas le bilan, qui se signe alors par son propre lien.
+ * Le stagiaire signe une fois, sur une page qui lui dit ce qu'il signe : son
+ * certificat de réalisation, son attestation de compétences et son bilan de
+ * fin de formation. Sa signature est alors portée sur chacun. Le bilan n'est
+ * pas réaffiché sur la page (choix de Lab Learning : il est établi avec le
+ * formateur, en présence du stagiaire) ; celui-ci y note sa formation.
+ * La signature n'est jamais portée sur un document que la page ne nommait
+ * pas : une signature donnée quand elle ne présentait que le certificat ne
+ * couvre pas le bilan, qui se signe alors par son propre lien.
  */
 import { APPRECIATIONS_STAGIAIRE, CHAMPS_BILAN_FT, SIGNATURE_BILAN, construireBilanFt, lignesBilanFt } from '@/lib/poei-bilan-ft'
 
