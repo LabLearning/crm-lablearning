@@ -17,8 +17,9 @@ export function ProgrammeStructure({ groupes, ton = 'crm' }: { groupes: GroupePr
         <section key={gi} className="space-y-3">
           {g.titre && (
             <div className={`flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5 ${c.bande}`}>
-              <h3 className="text-sm font-semibold leading-snug">{g.titre}</h3>
-              {g.duree && <span className="shrink-0 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold tabular-nums">{g.duree}</span>}
+              {/* Couleur posée sur le titre lui-même : le style global des h3 l'emporte sur celle de la bande */}
+              <h3 className="text-sm font-semibold leading-snug !text-white">{g.titre}</h3>
+              {g.duree && <span className="shrink-0 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-white">{g.duree}</span>}
             </div>
           )}
           {g.objectif && <p className={`text-sm ${c.texte}`}>Objectif : {g.objectif}</p>}
