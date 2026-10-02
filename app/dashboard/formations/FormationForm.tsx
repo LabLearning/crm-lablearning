@@ -8,6 +8,7 @@ import { createFormationAction, updateFormationAction } from './actions'
 import { MODALITE_LABELS } from '@/lib/types/formation'
 import type { Formation } from '@/lib/types/formation'
 import { BRANCHES_BASE } from '@/lib/branches'
+import { FORMATION_DEFAUTS } from '@/lib/formation-defauts'
 
 interface FormationFormProps {
   formation?: Formation
@@ -331,13 +332,14 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
       {sections.pedagogie && (
         <div className="space-y-3 pl-5 border-l-2 border-success-100">
           <BulletTextarea id="methodes_pedagogiques" name="methodes_pedagogiques" label="Méthodes pédagogiques" rows={3}
-            placeholder="Apports théoriques, études de cas, mises en situation..." defaultValue={formation?.methodes_pedagogiques || ''} />
+            placeholder="Apports théoriques, études de cas, mises en situation..." defaultValue={formation ? formation.methodes_pedagogiques || '' : FORMATION_DEFAUTS.methodes_pedagogiques} />
           <BulletTextarea id="moyens_techniques" name="moyens_techniques" label="Moyens techniques" rows={2}
-            placeholder="Salle équipée, vidéoprojecteur, PC..." defaultValue={formation?.moyens_techniques || ''} />
+            placeholder="Salle équipée, vidéoprojecteur, PC..." defaultValue={formation ? formation.moyens_techniques || '' : FORMATION_DEFAUTS.moyens_techniques}
+            hint={formation ? undefined : 'Ajoutez le matériel fourni propre à cette formation.'} />
           <BulletTextarea id="modalites_evaluation" name="modalites_evaluation" label="Modalités d'évaluation" rows={2}
-            placeholder="QCM, mise en situation, étude de cas..." defaultValue={formation?.modalites_evaluation || ''} />
+            placeholder="QCM, mise en situation, étude de cas..." defaultValue={formation ? formation.modalites_evaluation || '' : FORMATION_DEFAUTS.modalites_evaluation} />
           <BulletTextarea id="modalites_admission" name="modalites_admission" label="Modalités d'admission" rows={3}
-            placeholder="Analyse du besoin, vérification des prérequis, entretien / positionnement..." defaultValue={(formation as any)?.modalites_admission || ''} />
+            placeholder="Analyse du besoin, vérification des prérequis, entretien / positionnement..." defaultValue={formation ? (formation as any).modalites_admission || '' : FORMATION_DEFAUTS.modalites_admission} />
           <BulletTextarea id="accessibilite_handicap" name="accessibilite_handicap" label="Accessibilité handicap" rows={2}
             placeholder="Locaux accessibles PMR..." defaultValue={formation?.accessibilite_handicap || ''} />
         </div>

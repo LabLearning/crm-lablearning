@@ -170,9 +170,6 @@ function DureePill({ children }: { children: React.ReactNode }) {
 const MODALITE = (m: string) => m === 'presentiel' ? 'Présentiel' : m === 'distanciel' ? 'Distanciel' : 'Mixte'
 
 export function ProgrammeFormationPDF({ formation, org, session, poei }: ProgrammeFormationProps) {
-  // Date du document = dernière mise à jour du programme, jamais la date de téléchargement.
-  const dateDoc = new Date(formation.date_derniere_maj || formation.updated_at || formation.created_at || Date.now())
-    .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const jours: any[] = session && Array.isArray(session.horaires_jours) ? session.horaires_jours : []
   const sessionLieu = session ? [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') : ''
   // Jours ou semaines, modules, séquences horaires, ateliers : découpage commun à tous les affichages
@@ -186,25 +183,14 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
   return (
     <Document title={`Programme — ${formation.intitule || ''}`} author={org?.name || 'Lab Learning'}>
       <Page size="A4" style={shared.page}>
-        <PdfDocHeader docTitle="Programme de formation" numero={formation.reference || ''} date={dateDoc} org={org} />
+        {/* Aucune date sur le programme (ni émission, ni conception, ni mise à jour) : seule la version l'identifie */}
+        <PdfDocHeader docTitle="Programme de formation" numero={formation.reference || ''} org={org} />
 
-        {/* Traçabilité du programme : conception, dernière révision, version. */}
-        {(() => {
-          const conception = Array.isArray(formation.historique_versions)
-            ? formation.historique_versions.find((h: any) => h?.evenement === 'conception')?.date
-            : null
-          const fr = (d: string) => new Date(d).toLocaleDateString('fr-FR')
-          const morceaux = [
-            conception ? `Conçu le ${fr(conception)}` : null,
-            formation.date_derniere_maj ? `mis à jour le ${fr(formation.date_derniere_maj)}` : null,
-            formation.version ? `version ${formation.version}` : null,
-          ].filter(Boolean)
-          return morceaux.length ? (
-            <Text style={{ fontSize: 7.5, color: SURFACE_500 as any, marginTop: -4, marginBottom: 8 }}>
-              {morceaux.join(' · ')}
-            </Text>
-          ) : null
-        })()}
+        {formation.version ? (
+          <Text style={{ fontSize: 7.5, color: SURFACE_500 as any, marginTop: -4, marginBottom: 8 }}>
+            {`Version ${formation.version}`}
+          </Text>
+        ) : null}
 
         {/* Titre + chips */}
         <View style={{ marginBottom: 18 }}>
