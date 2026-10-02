@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import { PdfSectionTitle, shared, PdfDocHeader, PdfDocFooter, PdfSignatureCards, BRAND_GREEN, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { structurerProgramme } from '@/lib/programme-structure'
+import { ProgrammeStructurePdf } from './programme-structure-pdf'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -272,6 +274,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   const prerequis = (typeof formation.prerequis === 'string' && formation.prerequis.trim()) ? cleanHtml(formation.prerequis) : (toList(formation.prerequis)?.join(' ') || null)
   const publicVise = (typeof formation.public_vise === 'string' && formation.public_vise.trim()) ? cleanHtml(formation.public_vise) : (toList(formation.public_vise)?.join(' ') || null)
   const programme = toList(formation.programme_detaille)
+  const programmeStructure = structurerProgramme(formation.programme_detaille)
 
   // Texte d'intro (construit en JS pour garantir les espaces)
   const qualiopiPhrase = org?.is_qualiopi !== false
@@ -584,7 +587,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         {programme && programme.length > 0 && (
           <View style={shared.section}>
             <PdfSectionTitle>Programme de la formation</PdfSectionTitle>
-            {programme.map((line, i) => {
+            {programmeStructure.length > 0 ? <ProgrammeStructurePdf groupes={programmeStructure} compact /> : programme.map((line, i) => {
               const isModule = /^module|^jour|^partie|^s[ée]quence/i.test(line)
               return (
                 <Text key={i} style={{ fontSize: 8.5, color: isModule ? SURFACE_900 : SURFACE_700, fontFamily: 'Satoshi', fontWeight: isModule ? 700 : 400, marginBottom: 2, marginTop: isModule ? 4 : 0, lineHeight: 1.45 }}>

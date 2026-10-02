@@ -6,6 +6,8 @@ import { tarifsOpcoPourFormation } from '@/lib/opco-tarifs'
 import { metierStyle } from '../../metier'
 import { titreFormation } from '@/lib/utils'
 import { photoFormation } from '@/lib/formations-photos'
+import { structurerProgramme } from '@/lib/programme-structure'
+import { ProgrammeStructure } from '@/components/formations/ProgrammeStructure'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,7 +94,11 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
   const sections: { Icon: any; title: string; content: React.ReactNode }[] = []
   if (f.public_vise) sections.push({ Icon: Users, title: 'Public visé', content: <Prose text={f.public_vise} /> })
   if (f.prerequis) sections.push({ Icon: ListView, title: 'Prérequis', content: <Prose text={f.prerequis} /> })
-  if (f.programme_detaille) sections.push({ Icon: BookOpen, title: 'Programme', content: <Prose text={f.programme_detaille} /> })
+  if (f.programme_detaille) {
+    // Jours, modules, puces et ateliers mis en forme ; un texte libre garde son rendu simple
+    const programme = structurerProgramme(f.programme_detaille)
+    sections.push({ Icon: BookOpen, title: 'Programme', content: programme.length > 0 ? <ProgrammeStructure groupes={programme} ton="site" /> : <Prose text={f.programme_detaille} /> })
+  }
   if (f.methodes_pedagogiques) sections.push({ Icon: Bulb, title: 'Méthodes pédagogiques', content: <Prose text={f.methodes_pedagogiques} /> })
   if (f.modalites_evaluation) sections.push({ Icon: ClipboardCheck, title: 'Modalités d’évaluation', content: <Prose text={f.modalites_evaluation} /> })
   if (f.modalites_admission || f.delai_acces) {

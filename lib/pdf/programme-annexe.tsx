@@ -1,6 +1,8 @@
 import * as React from 'react'
 import { Page, View, Text } from '@react-pdf/renderer'
 import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
+import { structurerProgramme } from '@/lib/programme-structure'
+import { ProgrammeStructurePdf } from './programme-structure-pdf'
 
 // Nettoie le HTML éventuel (contenus importés de Dendreo)
 function cleanHtml(v: string): string {
@@ -68,6 +70,7 @@ export function ProgrammeAnnexePage({ formation, org, numero, rattachement = 'la
   const prerequis = formation.prerequis ? cleanHtml(String(formation.prerequis)) : null
   const objectifs = toList(formation.objectifs_pedagogiques)
   const programme = toList(formation.programme_detaille)
+  const programmeStructure = structurerProgramme(formation.programme_detaille)
   const moyens = toList(formation.methodes_pedagogiques) || toList(formation.moyens_techniques)
   const modalitesEval = toList(formation.modalites_evaluation)
   const titre = formation.intitule || 'Formation'
@@ -103,7 +106,7 @@ export function ProgrammeAnnexePage({ formation, org, numero, rattachement = 'la
       {programme && programme.length > 0 && (
         <View style={shared.section}>
           <PdfSectionTitle>Programme de la formation</PdfSectionTitle>
-          {programme.map((line, i) => {
+          {programmeStructure.length > 0 ? <ProgrammeStructurePdf groupes={programmeStructure} compact /> : programme.map((line, i) => {
             const isModule = /^module|^jour|^partie|^s[ée]quence/i.test(line)
             return (
               <Text key={i} style={{ fontSize: 8.5, color: isModule ? SURFACE_900 : SURFACE_700, fontFamily: 'Satoshi', fontWeight: isModule ? 700 : 400, marginBottom: 2, marginTop: isModule ? 4 : 0, lineHeight: 1.45 }}>

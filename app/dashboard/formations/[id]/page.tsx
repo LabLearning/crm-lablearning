@@ -10,6 +10,8 @@ import { Badge, BackLink } from '@/components/ui'
 import { ModifierFormationButton } from './ModifierFormationButton'
 import { formatDate } from '@/lib/utils'
 import type { BadgeVariant } from '@/lib/types'
+import { structurerProgramme } from '@/lib/programme-structure'
+import { ProgrammeStructure } from '@/components/formations/ProgrammeStructure'
 
 export default async function FormationDetailPage({ params }: { params: { id: string } }) {
   const session = await getSession()
@@ -136,7 +138,10 @@ export default async function FormationDetailPage({ params }: { params: { id: st
           {formation.programme_detaille && (
             <div>
               <div className="text-sm font-medium text-surface-800 mb-1">Programme détaillé</div>
-              <pre className="text-sm text-surface-600 whitespace-pre-wrap font-sans">{formation.programme_detaille}</pre>
+              {/* Mis en forme comme sur le PDF quand le texte est structuré ; sinon le texte tel quel */}
+              {structurerProgramme(formation.programme_detaille).length > 0
+                ? <div className="mt-2"><ProgrammeStructure groupes={structurerProgramme(formation.programme_detaille)} /></div>
+                : <pre className="text-sm text-surface-600 whitespace-pre-wrap font-sans">{formation.programme_detaille}</pre>}
             </div>
           )}
 

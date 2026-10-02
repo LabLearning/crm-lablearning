@@ -4,6 +4,8 @@ import {
   PdfDocHeader, PdfDocFooter, PdfSectionTitle, PdfIcon, shared,
   BRAND_GREEN, BRAND_LIGHT, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
+import { structurerProgramme } from '@/lib/programme-structure'
+import { ProgrammeStructurePdf } from './programme-structure-pdf'
 
 interface ProgrammeFormationProps {
   formation: any; org: any; session?: any
@@ -139,35 +141,6 @@ function FieldText({ value, fallback }: { value: string | null | undefined; fall
   )
 }
 
-// Parse le programme_detaille en semaines → modules (objectif + contenu)
-function parseProgramme(text: string) {
-  const weeks: { titre: string; duree: string; modules: { titre: string; duree: string; objectif: string; bullets: string[] }[] }[] = []
-  let week: any = null
-  let mod: any = null
-  for (const raw of (text || '').split(/\r?\n/)) {
-    const line = raw.trim()
-    if (!line) continue
-    if (/^Semaine/i.test(line)) {
-      const parts = line.split(/\s+[—–-]\s+Durée\s*:\s*/i)
-      week = { titre: parts[0].trim(), duree: (parts[1] || '').trim(), modules: [] }
-      weeks.push(week); mod = null
-    } else if (/^Module/i.test(line)) {
-      const m = line.match(/^(.*?)\s*\(([^)]+)\)\s*$/)
-      mod = { titre: (m ? m[1] : line).trim(), duree: m ? m[2].trim() : '', objectif: '', bullets: [] }
-      if (!week) { week = { titre: '', duree: '', modules: [] }; weeks.push(week) }
-      week.modules.push(mod)
-    } else if (/^Objectif/i.test(line)) {
-      if (mod) mod.objectif = line.replace(/^Objectif\s*:\s*/i, '').trim()
-    } else if (mod) {
-      // Toute autre ligne sous un module = puce de contenu (puces normalisées)
-      const cleaned = stripBullet(line)
-      // Ignore le libellé "Contenu :" (ce n'est pas une puce)
-      if (cleaned && !/^contenu\s*:?\s*$/i.test(cleaned)) mod.bullets.push(cleaned)
-    }
-  }
-  return weeks
-}
-
 function Chip({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 9 }}>
@@ -202,7 +175,8 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
     .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const jours: any[] = session && Array.isArray(session.horaires_jours) ? session.horaires_jours : []
   const sessionLieu = session ? [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') : ''
-  const weeks = parseProgramme(formation.programme_detaille || '')
+  // Jours ou semaines, modules, séquences horaires, ateliers : découpage commun à tous les affichages
+  const weeks = structurerProgramme(formation.programme_detaille)
   const objectifs: string[] = Array.isArray(formation.objectifs_pedagogiques)
     ? formation.objectifs_pedagogiques.flatMap((o: any) => fieldItems(String(o ?? '')))
     : fieldItems(formation.objectifs_pedagogiques)
@@ -345,31 +319,7 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
         {weeks.length > 0 ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="list">Programme détaillé</PdfSectionTitle>
-            {weeks.map((w, wi) => (
-              <View key={wi} style={{ marginBottom: 12 }}>
-                {/* Bande semaine */}
-                <View wrap={false} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: BRAND_GREEN, borderRadius: 5, paddingVertical: 6, paddingHorizontal: 10, marginBottom: 7 }}>
-                  <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, color: '#ffffff', flex: 1 }}>{w.titre || `Semaine ${wi + 1}`}</Text>
-                  {w.duree ? <View style={{ backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 999, paddingVertical: 2, paddingHorizontal: 7 }}><Text style={{ fontSize: 7.5, color: '#ffffff', fontFamily: 'Satoshi', fontWeight: 700 }}>{w.duree}</Text></View> : null}
-                </View>
-                {/* Modules */}
-                {w.modules.map((m, mi) => (
-                  <View key={mi} wrap={false} style={{ marginBottom: 7, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: BRAND_LIGHT }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
-                      <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, flex: 1 }}>{m.titre}</Text>
-                      {m.duree ? <DureePill>{m.duree}</DureePill> : null}
-                    </View>
-                    {m.objectif ? <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 3, lineHeight: 1.4 }}>{m.objectif}</Text> : null}
-                    {m.bullets.map((b, bi) => (
-                      <View key={bi} style={{ flexDirection: 'row', gap: 5, marginBottom: 1.5 }}>
-                        <Text style={{ fontSize: 7.5, color: BRAND_GREEN }}>•</Text>
-                        <Text style={{ fontSize: 7.5, color: SURFACE_700, flex: 1, lineHeight: 1.35 }}>{b}</Text>
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ))}
+            <ProgrammeStructurePdf groupes={weeks} />
           </View>
         ) : (formation.programme_detaille ? (
           <View style={shared.section}>
