@@ -9,6 +9,7 @@
  * du candidat ; à défaut la case reste vide, à compléter à la main : rien
  * n'est déduit ni supposé.
  */
+import { grilleProgress } from '@/lib/poei-grille'
 
 /** Réponses saisies, rangées avec les appréciations de la grille finale (clés préfixées « ft_ »). */
 export const CHAMPS_BILAN_FT = {
@@ -63,6 +64,29 @@ const dateFr = (d?: string | null) => {
 const heures = (n?: number | null) =>
   n != null && n > 0 ? `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h` : ''
 const texte = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+
+/** « EPR » est notre abréviation interne : sur un document, le métier s'écrit en toutes lettres. */
+export function metierLisible(v?: string | null): string {
+  const s = texte(v)
+  return /^e\.?p\.?r\.?$/i.test(s) ? 'Employé polyvalent en restauration rapide' : s
+}
+
+/**
+ * Niveau atteint proposé à partir du bilan du formateur : son avis final et
+ * le nombre de compétences qu'il a notées acquises. Une formation non
+ * certifiante ne délivre pas de niveau de diplôme : on le dit, sans en
+ * inventer un. Reste modifiable dans le bilan.
+ */
+export function niveauParDefaut(avisFinal?: string | null, items?: Record<string, { n?: any }> | null, certifiante?: boolean | null): string {
+  const avis = texte(avisFinal).toUpperCase()
+  if (!avis) return ''
+  const p = grilleProgress(items || {})
+  const compte = p.evalues > 0 ? ` (${p.acquis} sur ${p.total})` : ''
+  const resultat = avis.includes('DÉFAVORABLE') ? `Compétences du poste non acquises${compte}`
+    : avis.includes('RÉSERVES') ? `Compétences du poste partiellement acquises${compte}, à consolider en poste`
+    : `Compétences du poste acquises${compte}`
+  return certifiante === false ? `${resultat}. Formation non certifiante, sans niveau de diplôme.` : `${resultat}.`
+}
 
 /** Lendemain d'une date AAAA-MM-JJ. */
 const lendemain = (d?: string | null): string | null => {
@@ -134,8 +158,8 @@ export function construireBilanFt(src: {
     finReelle: termine || abandon ? dateFr(finReelle) : '',
     heuresPrevues: heures(src.heuresPrevues),
     heuresReelles: termine || abandon ? heures(src.heuresReelles) : '',
-    metier: texte(c?.poste_vise) || texte(poei?.poste_vise) || texte(formation?.intitule),
-    niveau: saisie('niveau'),
+    metier: metierLisible(c?.poste_vise) || metierLisible(poei?.poste_vise) || texte(formation?.intitule),
+    niveau: saisie('niveau') || niveauParDefaut(grille?.avis_final, grille?.items, formation?.est_certifiante),
     certifiante: formation?.est_certifiante === true ? 'Oui' : formation?.est_certifiante === false ? 'Non' : '',
     acheve: abandon ? 'Non' : termine ? 'Oui' : '',
     motifSortie: abandon ? texte(c?.motif_abandon) : '',

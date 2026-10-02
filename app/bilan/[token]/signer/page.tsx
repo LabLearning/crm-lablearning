@@ -14,7 +14,7 @@ export default async function BilanSignerPage({ params }: { params: { token: str
   const supabase = await createServiceRoleClient()
 
   const { data: grille } = await supabase.from('poei_grilles')
-    .select('id, organization_id, poei_id, apprenant_id, appreciations, avis_final, motivation_avis, apprenant:apprenants(prenom, nom), formateur:formateurs(prenom, nom)')
+    .select('id, organization_id, poei_id, apprenant_id, items, appreciations, avis_final, motivation_avis, apprenant:apprenants(prenom, nom), formateur:formateurs(prenom, nom)')
     .eq(`appreciations->>${SIGNATURE_BILAN.jeton}`, params.token).is('semaine', null).maybeSingle()
   if (!grille) redirect('/portail/expired')
   const g: any = grille

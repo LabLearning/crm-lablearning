@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Document, Page, View, Text, Image as PdfImage } from '@react-pdf/renderer'
 import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
-import type { BilanFt } from '@/lib/poei-bilan-ft'
+import { metierLisible, type BilanFt } from '@/lib/poei-bilan-ft'
 
 interface Section { key: string; titre: string; items: { id: string; label: string }[] }
 
@@ -182,7 +182,7 @@ export function GrillePoeiPDF(p: Props) {
   const isFinale = p.semaine == null
   const nomAppr = `${p.apprenant?.prenom || ''} ${String(p.apprenant?.nom || '').toUpperCase()}`.trim()
   const clientNom = p.poei?.client?.nom_commercial || p.poei?.client?.raison_sociale || ''
-  const posteVise = p.poei?.poste_vise || p.poei?.formation?.intitule || ''
+  const posteVise = metierLisible(p.poei?.poste_vise) || p.poei?.formation?.intitule || ''
   // La convention est propre à chaque candidat ; les champs de la POEI ne
   // servent que de repli.
   const conventionNumero = p.conventionNumero || p.poei?.numero_engagement || p.poei?.numero_dossier_ft || null

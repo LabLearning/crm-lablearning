@@ -6,7 +6,7 @@ import { Save, CheckCircle2, ClipboardCheck, Sparkles, Loader2 } from '@/compone
 import { Button, Badge, useToast } from '@/components/ui'
 import { GRILLE_SECTIONS, NIVEAUX, APPRECIATIONS, AVIS_FINAL, grilleProgress, type NiveauAcquis } from '@/lib/poei-grille'
 import { saveGrilleAction, detaillerBilanAction } from '@/app/dashboard/poei/grille-actions'
-import { CHAMPS_BILAN_FT, SIGNATURE_BILAN, avisCentreParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
+import { CHAMPS_BILAN_FT, SIGNATURE_BILAN, avisCentreParDefaut, niveauParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
 
 type Items = Record<string, { n?: NiveauAcquis; o?: string }>
 
@@ -269,7 +269,11 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-surface-600 mb-1">Niveau de qualification atteint en fin de formation</label>
-                  <input className="input-base" value={app[F.niveau] || ''} onChange={(e) => setFt(F.niveau, e.target.value)} placeholder="Ex : sans niveau spécifique" />
+                  <input className="input-base" value={app[F.niveau] || ''} onChange={(e) => setFt(F.niveau, e.target.value)}
+                    placeholder={niveauParDefaut(txt.avis_final, items, bilanFt.certifiante === 'Non' ? false : null) || 'Ex : sans niveau spécifique'} />
+                  {!app[F.niveau] && (
+                    <p className="mt-1 text-[11px] leading-snug text-surface-500">Sans saisie, le bilan le déduit de l’avis final du formateur et des compétences notées acquises.</p>
+                  )}
                 </div>
               </div>
 
