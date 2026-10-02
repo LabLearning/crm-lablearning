@@ -49,7 +49,7 @@ export interface PoeiCandidat {
   poste_vise: string | null
   type_contrat: TypeContrat | null
   date_embauche_prevue: string | null
-  statut: string  // inscrit | en_formation | embauche | abandonne
+  statut: string  // inscrit | en_formation | embauche | non_retenu | abandonne
   created_at: string
   apprenant?: { nom: string | null; prenom: string | null; email: string | null; telephone: string | null; date_naissance?: string | null } | null
 }
@@ -58,6 +58,8 @@ export const CANDIDAT_STATUT_LABELS: Record<string, string> = {
   inscrit: 'Inscrit',
   en_formation: 'En formation',
   embauche: 'Embauché',
+  // A suivi la formation mais n'a pas été embauché à l'issue : ce n'est pas un abandon
+  non_retenu: 'Non retenu',
   abandonne: 'Abandonné',
 }
 

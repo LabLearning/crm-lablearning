@@ -45,6 +45,8 @@ interface Props {
   dateFinSuivi?: string | null
   /** Bilan de fin de formation France Travail, imprimé à la suite de l'attestation */
   bilanFt?: BilanFt | null
+  /** Signature donnée par le stagiaire sur CE bilan (lien personnel), avec son horodatage réel */
+  signatureBilan?: { data: string; nom: string; date: string } | null
 }
 
 // ── Bilan de fin de formation France Travail : le tableau du formulaire ──
@@ -301,7 +303,7 @@ export function GrillePoeiPDF(p: Props) {
     )
   }
 
-  // ── Bilan final : le formulaire France Travail, puis le détail en annexe ──
+  // ── Bilan final : bilan de fin de formation France Travail, attestation de compétences, puis le détail en annexe ──
   // Mêmes heures que le certificat de réalisation (abandon : heures effectuées
   // sur la durée prévue) ; la saisie libre de la grille ne sert qu'à défaut.
   const dureeAffichee = p.heuresCertifiees != null && p.heuresCertifiees > 0
@@ -315,6 +317,50 @@ export function GrillePoeiPDF(p: Props) {
 
   return (
     <Document>
+      {/*
+        Bilan de fin de formation France Travail, demandé sur Chorus Pro. Le
+        cachet est celui de l'organisme. La case du stagiaire porte la signature
+        qu'il a donnée sur ce bilan (lien personnel) ; tant qu'il ne l'a pas
+        signé elle reste vierge : la signature de son certificat n'y est jamais
+        reportée. Aucune date n'est imprimée sous les signatures (l'horodatage
+        réel reste en base).
+      */}
+      {p.bilanFt ? (
+        <Page size="A4" style={shared.page}>
+          <PdfDocHeader
+            docTitle="Bilan de fin de formation"
+            numero={p.poei?.numero || ''} date={dateAff} org={p.org}
+          />
+          <TableauBilanFt b={p.bilanFt} />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }} wrap={false}>
+            <View style={{ width: 90 }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Date</Text>
+              <Text style={{ fontSize: 8.5, color: SURFACE_900, marginTop: 3 }}>{dateAff}</Text>
+            </View>
+            <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 74 }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature et cachet du centre de formation</Text>
+              {p.org?.tampon_signature_url ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <PdfImage src={p.org.tampon_signature_url} style={{ width: 110, height: 50, objectFit: 'contain', marginTop: 3 }} />
+              ) : null}
+            </View>
+            <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 74 }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature du stagiaire</Text>
+              {p.signatureBilan?.data ? (
+                <>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <PdfImage src={p.signatureBilan.data} style={{ width: 120, height: 42, objectFit: 'contain', marginTop: 3 }} />
+                  <Text style={{ fontSize: 5.5, color: SURFACE_500, marginTop: 1 }}>
+                    {p.signatureBilan.nom || ''}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          </View>
+          <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />
+        </Page>
+      ) : null}
+
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
           docTitle="Attestation de développement de compétences"
@@ -408,7 +454,7 @@ export function GrillePoeiPDF(p: Props) {
                   {/* eslint-disable-next-line jsx-a11y/alt-text */}
                   <PdfImage src={b.sig.data} style={{ width: 100, height: 36, objectFit: 'contain', marginTop: 3 }} />
                   <Text style={{ fontSize: 5.5, color: SURFACE_500, marginTop: 1 }}>
-                    {`${b.sig.nom || ''}${b.sig.date ? ` — signé électroniquement le ${fmtCourt(b.sig.date)}` : ''}`}
+                    {b.sig.nom || ''}
                   </Text>
                 </>
               ) : null}
@@ -425,38 +471,6 @@ export function GrillePoeiPDF(p: Props) {
 
         <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />
       </Page>
-
-      {/*
-        Bilan de fin de formation France Travail, demandé sur Chorus Pro. Le
-        cachet est celui de l'organisme ; la case du stagiaire reste à signer :
-        il n'a pas signé ce document, on n'y reporte aucune signature.
-      */}
-      {p.bilanFt ? (
-        <Page size="A4" style={shared.page}>
-          <PdfDocHeader
-            docTitle="Bilan de fin de formation"
-            numero={p.poei?.numero || ''} date={dateAff} org={p.org}
-          />
-          <TableauBilanFt b={p.bilanFt} />
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }} wrap={false}>
-            <View style={{ width: 90 }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Date</Text>
-              <Text style={{ fontSize: 8.5, color: SURFACE_900, marginTop: 3 }}>{dateAff}</Text>
-            </View>
-            <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 74 }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature et cachet du centre de formation</Text>
-              {p.org?.tampon_signature_url ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <PdfImage src={p.org.tampon_signature_url} style={{ width: 110, height: 50, objectFit: 'contain', marginTop: 3 }} />
-              ) : null}
-            </View>
-            <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 74 }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature du stagiaire</Text>
-            </View>
-          </View>
-          <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />
-        </Page>
-      ) : null}
 
       {/* L'évaluation détaillée du formateur : elle nourrit l'attestation. */}
       <Page size="A4" style={shared.page}>

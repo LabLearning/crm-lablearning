@@ -6,7 +6,7 @@ import { Save, CheckCircle2, ClipboardCheck, Sparkles, Loader2 } from '@/compone
 import { Button, Badge, useToast } from '@/components/ui'
 import { GRILLE_SECTIONS, NIVEAUX, APPRECIATIONS, AVIS_FINAL, grilleProgress, type NiveauAcquis } from '@/lib/poei-grille'
 import { saveGrilleAction, detaillerBilanAction } from '@/app/dashboard/poei/grille-actions'
-import { CHAMPS_BILAN_FT, avisCentreParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
+import { CHAMPS_BILAN_FT, SIGNATURE_BILAN, avisCentreParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
 
 type Items = Record<string, { n?: NiveauAcquis; o?: string }>
 
@@ -236,6 +236,7 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
                 <div className="text-sm font-medium text-surface-700">Bilan de fin de formation France Travail</div>
                 <p className="mt-0.5 text-xs text-surface-500">
                   Page ajoutée au bilan final, à joindre à la facture sur Chorus Pro. Une case laissée vide reste à compléter à la main sur le document.
+                  Le stagiaire relit ce bilan et le signe par lien : bouton « Faire signer » de sa ligne, une fois le bilan enregistré.
                 </p>
               </div>
 
@@ -293,6 +294,13 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
                     </div>
                   </div>
                 ))}
+                {!app[F.repriseFin] && bilanFt.repriseFin && (
+                  <p className="text-[11px] leading-snug text-surface-500">
+                    Sans saisie, le bilan reprend l’état du candidat : reprise dès la fin de formation {bilanFt.repriseFin.toLowerCase()}
+                    {bilanFt.repriseFinDurable ? `, contrat durable ${bilanFt.repriseFinDurable.toLowerCase()}` : ''}
+                    {bilanFt.repriseFinDate ? `, le ${bilanFt.repriseFinDate}` : ''}.
+                  </p>
+                )}
                 <div className="rounded-xl border border-surface-200 p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <label className="text-sm text-surface-700">Reprise d’emploi à une date prévisionnelle</label>
@@ -306,8 +314,12 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
 
               <div>
                 <label className="block text-xs font-medium text-surface-600 mb-1">Avis du stagiaire sur la formation</label>
-                <textarea rows={2} className="input-base resize-none" value={app[F.avisStagiaire] || ''} onChange={(e) => setFt(F.avisStagiaire, e.target.value)}
-                  placeholder="Tel que le stagiaire l’a exprimé. Vide : à écrire à la main sur le document." />
+                <textarea rows={2} className="input-base resize-none disabled:bg-surface-50 disabled:text-surface-600" value={app[F.avisStagiaire] || ''} onChange={(e) => setFt(F.avisStagiaire, e.target.value)}
+                  disabled={!!app[SIGNATURE_BILAN.signeLe]}
+                  placeholder="Le stagiaire l’écrit lui-même en signant son bilan. Vous pouvez aussi reporter ici ce qu’il a exprimé." />
+                {app[SIGNATURE_BILAN.signeLe] && (
+                  <p className="mt-1 text-[11px] leading-snug text-surface-500">Bilan signé par le stagiaire le {new Date(app[SIGNATURE_BILAN.signeLe]).toLocaleDateString('fr-FR')} : son avis ne se modifie plus.</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-surface-600 mb-1">Avis du centre de formation</label>

@@ -11,7 +11,7 @@ import { PoeiCandidats } from './PoeiCandidats'
 import { PoeiPositionnement, type PositionnementCandidat } from './PoeiPositionnement'
 import { PoeiFacturation } from './PoeiFacturation'
 import { PoeiEvaluations } from './PoeiEvaluations'
-import { construireBilanFt } from '@/lib/poei-bilan-ft'
+import { appreciationsPourClient, construireBilanFt } from '@/lib/poei-bilan-ft'
 import { PoeiEmailHistory } from './PoeiEmailHistory'
 import { PoeiInterventions } from './PoeiInterventions'
 import { PoeiShell } from './PoeiShell'
@@ -233,11 +233,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   }
 
   // Grilles d'évaluation des candidats (résilient : table absente avant migration 108)
-  const { data: grilles } = await supabase
+  const { data: grillesBrutes } = await supabase
     .from('poei_grilles')
     .select('*, formateur:formateurs(prenom, nom)')
     .eq('poei_id', params.id).eq('organization_id', session.organization.id)
     .order('semaine', { ascending: true, nullsFirst: false })
+  // Le tracé de la signature du bilan et son jeton ne partent pas au navigateur
+  const grilles = ((grillesBrutes || []) as any[]).map((g) => ({ ...g, appreciations: appreciationsPourClient(g.appreciations) }))
 
   // Le contact référent de l'entreprise : signataire de l'attestation,
   // destinataire du lien de signature. Une seule source, la fiche client.

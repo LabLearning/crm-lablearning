@@ -4,9 +4,10 @@ import { useState, useMemo } from 'react'
 import { ClipboardCheck, CheckCircle2, Clock, Download, Minus, Plus, PenLine, Send, Loader2, Building2, Eye } from '@/components/ui/icons'
 import { Badge, Button, Modal, useToast } from '@/components/ui'
 import { sendSignatureEmployeurAction } from '../certificat-signature-actions'
+import { demanderSignatureBilanAction } from '../bilan-signature-actions'
 import { GrilleEvaluation } from '@/components/poei/GrilleEvaluation'
 import { grilleProgress } from '@/lib/poei-grille'
-import type { BilanFt } from '@/lib/poei-bilan-ft'
+import { SIGNATURE_BILAN, type BilanFt } from '@/lib/poei-bilan-ft'
 import { formatDate } from '@/lib/utils'
 import { PoeiSection, PoeiVide, PoeiDefilable } from './PoeiSection'
 
@@ -31,7 +32,9 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
   const [open, setOpen] = useState<{ apprenantId: string; nom: string; semaine: number | null } | null>(null)
   const { toast } = useToast()
   const [envoiSig, setEnvoiSig] = useState(false)
-  const [apercuSig, setApercuSig] = useState<{ html: string; subject?: string; to?: string } | null>(null)
+  // cible : l'employeur (attestation) ou un stagiaire (son bilan de fin de formation)
+  const [apercuSig, setApercuSig] = useState<{ html: string; subject?: string; to?: string; stagiaire?: string } | null>(null)
+  const [bilansDemandes, setBilansDemandes] = useState<string[]>([])
   const [signatureEnvoyee, setSignatureEnvoyee] = useState(false)
 
   // On montre le mail avant qu'il parte : destinataire, objet, rendu complet.
@@ -54,6 +57,37 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
       toast('success', `Lien de signature envoyé à ${(r as any).data?.email}`)
       setApercuSig(null)
       setSignatureEnvoyee(true)
+    } else toast('error', r.error || 'Erreur')
+  }
+
+  // Bilan de fin de formation : le stagiaire le signe lui-même, par lien personnel.
+  // Avec email : aperçu puis envoi. Sans email : le lien est copié, à lui transmettre.
+  async function demanderSignatureBilan(apprenantId: string) {
+    setEnvoiSig(true)
+    const r = await demanderSignatureBilanAction(poeiId, apprenantId, { preview: true })
+    if (r.success && r.data?.html) {
+      setApercuSig({ html: r.data.html, subject: r.data.subject, to: r.data.email, stagiaire: apprenantId })
+    } else if ((r.error || '').includes("pas d'adresse email")) {
+      await copierLienBilan(apprenantId, "Pas d'email sur la fiche : lien de signature copié, à transmettre au stagiaire")
+    } else toast('error', r.error || "Impossible de générer l'aperçu")
+    setEnvoiSig(false)
+  }
+
+  async function copierLienBilan(apprenantId: string, message = 'Lien de signature copié') {
+    const r = await demanderSignatureBilanAction(poeiId, apprenantId, { lienSeul: true })
+    if (!r.success || !r.data?.url) { toast('error', r.error || 'Erreur'); return }
+    try { await navigator.clipboard.writeText(r.data.url); toast('success', message) }
+    catch { toast('success', `Lien de signature : ${r.data.url}`) }
+  }
+
+  async function confirmerEnvoiBilan(apprenantId: string) {
+    setEnvoiSig(true)
+    const r = await demanderSignatureBilanAction(poeiId, apprenantId)
+    setEnvoiSig(false)
+    if (r.success) {
+      toast('success', `Bilan envoyé en signature à ${r.data?.email}`)
+      setApercuSig(null)
+      setBilansDemandes((p) => [...p, apprenantId])
     } else toast('error', r.error || 'Erreur')
   }
 
@@ -173,6 +207,20 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
                             <PenLine className="h-3.5 w-3.5" /> Remplir
                           </button>
                         )}
+                        {/* Signature du bilan de fin de formation par le stagiaire (équipe interne seulement) */}
+                        {fin && c.bilanFt && (fin.appreciations?.[SIGNATURE_BILAN.signeLe] ? (
+                          <span title={`Bilan signé par le stagiaire le ${formatDate(fin.appreciations[SIGNATURE_BILAN.signeLe])}`}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-success-50 text-success-700">
+                            <PenLine className="h-3.5 w-3.5" /> Signé
+                          </span>
+                        ) : (
+                          <button onClick={() => demanderSignatureBilan(aid)} disabled={envoiSig}
+                            title="Envoyer au stagiaire son bilan de fin de formation à relire et signer"
+                            className="inline-flex items-center gap-1 px-2 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium whitespace-nowrap bg-surface-100 text-surface-600 hover:bg-surface-200 transition-colors disabled:opacity-60">
+                            <Send className="h-3.5 w-3.5" />
+                            {fin.appreciations?.[SIGNATURE_BILAN.envoyeLe] || bilansDemandes.includes(aid) ? 'Relancer' : 'Faire signer'}
+                          </button>
+                        ))}
                         {fin && (
                           <a href={`/api/pdf/poei-grilles/${poeiId}?apprenant=${aid}&semaine=`} target="_blank" rel="noreferrer"
                             title="Télécharger la grille en PDF"
@@ -202,7 +250,10 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
             </div>
             <div className="flex flex-wrap justify-end gap-3 pt-1">
               <Button variant="secondary" onClick={() => setApercuSig(null)}>Annuler</Button>
-              <Button onClick={confirmerEnvoiEmployeur} isLoading={envoiSig} icon={<Send className="h-4 w-4" />}>
+              {apercuSig.stagiaire && (
+                <Button variant="secondary" onClick={() => copierLienBilan(apercuSig.stagiaire!)}>Copier le lien</Button>
+              )}
+              <Button onClick={() => (apercuSig.stagiaire ? confirmerEnvoiBilan(apercuSig.stagiaire) : confirmerEnvoiEmployeur())} isLoading={envoiSig} icon={<Send className="h-4 w-4" />}>
                 Confirmer l'envoi
               </Button>
             </div>

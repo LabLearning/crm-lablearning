@@ -10,6 +10,7 @@ import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS } from '@/lib/types/poei'
 import type { PoeiCandidat } from '@/lib/types/poei'
 import { cn } from '@/lib/utils'
 import { heuresDepuisInterventions } from '@/lib/poei-candidat'
+import { dateEmbauche } from '@/lib/poei-bilan-ft'
 
 /** Calendrier du projet, pour situer la période d'un candidat. */
 export interface ProjetPoeiPeriode {
@@ -320,6 +321,17 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                           ? `Sortie le ${frDate((c as any).date_fin)}`
                           : 'Période propre'}
                       {(c as any).duree_heures != null ? ` · ${Number((c as any).duree_heures).toLocaleString('fr-FR')} h sur ${projet.duree_heures ?? '—'} h du parcours` : ''}
+                    </div>
+                  )}
+                  {c.statut === 'embauche' && (
+                    <div className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-success-700 bg-success-50 rounded-md px-1.5 py-0.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Embauché{dateEmbauche(c, projet) ? ` le ${frDate(dateEmbauche(c, projet))}` : ''}
+                    </div>
+                  )}
+                  {c.statut === 'non_retenu' && (
+                    <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-surface-600 bg-surface-100 rounded-md px-1.5 py-0.5">
+                      <XCircle className="h-3.5 w-3.5" /> Non retenu à l&apos;issue de la formation
                     </div>
                   )}
                   {c.statut === 'abandonne' && (c as any).date_abandon && (
@@ -713,7 +725,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Select id="e_type_contrat" name="type_contrat" label="Type de contrat" options={contratOptions} defaultValue={editCand.type_contrat || ''} />
-                <Input id="e_date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue" defaultValue={editCand.date_embauche_prevue || ''} />
+                <Input id="e_date_embauche_prevue" name="date_embauche_prevue" type="date" label={editCand.statut === 'embauche' ? "Date d'embauche" : 'Embauche prévue'} defaultValue={editCand.date_embauche_prevue || ''} />
               </div>
               <Input id="e_numero_convention" name="numero_convention" label="N° de convention" defaultValue={(editCand as any).numero_convention || ''} />
               {/* Entretien de recrutement/positionnement, trace d'individualisation (ind. 4/10) */}

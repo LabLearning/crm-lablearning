@@ -3,6 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { resolveFormateur } from '../_formateur/guard'
 import { PoeiGrillesFormateur } from './PoeiGrillesFormateur'
 import { PoeiIncidentsFormateur } from './PoeiIncidentsFormateur'
+import { appreciationsPourClient } from '@/lib/poei-bilan-ft'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,7 +52,7 @@ export default async function MonEspacePoeiPage() {
       <PoeiGrillesFormateur
         poeis={(poeis || []) as any[]}
         candidats={(cands || []) as any[]}
-        grilles={(grilles || []) as any[]}
+        grilles={((grilles || []) as any[]).map((g) => ({ ...g, appreciations: appreciationsPourClient(g.appreciations) }))}
       />
 
       <PoeiIncidentsFormateur

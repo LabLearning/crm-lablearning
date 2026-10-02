@@ -6,7 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
 import { GrillePoeiPDF } from '@/lib/pdf/grille-poei-pdf'
 import { GRILLE_SECTIONS, APPRECIATIONS } from '@/lib/poei-grille'
-import { construireBilanFt } from '@/lib/poei-bilan-ft'
+import { construireBilanFt, signatureBilan } from '@/lib/poei-bilan-ft'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       .select('formateur_id, contrat:contrats_formateur(signature_formateur_date, signature_formateur_nom, signature_formateur_signature_data)')
       .eq('poei_id', params.id),
     supabase.from('poei_candidats')
-      .select('apprenant_id, numero_convention, numero_engagement, statut, date_abandon, motif_abandon, identifiant_ft, poste_vise, date_debut, date_fin, date_embauche_prevue')
+      .select('apprenant_id, numero_convention, numero_engagement, statut, date_abandon, motif_abandon, identifiant_ft, poste_vise, type_contrat, date_debut, date_fin, date_embauche_prevue')
       .eq('poei_id', params.id),
   ])
   // Les heures du bilan sont celles du certificat de réalisation : durée du
@@ -140,6 +140,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         heuresPrevues: heuresCertifiees.get(String(g.apprenant_id))?.dureeTotale ?? null,
         grille: g, aujourdhui,
       }) : null,
+      signatureBilan: g.semaine == null ? signatureBilan(g.appreciations) : null,
     }) as any,
   )
 

@@ -324,8 +324,21 @@ export async function updateCandidatStatutAction(candidatId: string, poeiId: str
   const session = await getSession()
   if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  const maj: Record<string, unknown> = { statut }
+  // Embauché : sans date sur la fiche, l'embauche est datée du lendemain de la POEI
+  if (statut === 'embauche') {
+    const [{ data: c }, { data: p }] = await Promise.all([
+      supabase.from('poei_candidats').select('date_embauche_prevue, date_fin').eq('id', candidatId).eq('organization_id', session.organization.id).maybeSingle(),
+      supabase.from('poei').select('date_fin').eq('id', poeiId).eq('organization_id', session.organization.id).maybeSingle(),
+    ])
+    if (c && !c.date_embauche_prevue) {
+      const { dateEmbauche } = await import('@/lib/poei-bilan-ft')
+      const date = dateEmbauche(c, p)
+      if (date) maj.date_embauche_prevue = date
+    }
+  }
   const { error } = await supabase
-    .from('poei_candidats').update({ statut })
+    .from('poei_candidats').update(maj)
     .eq('id', candidatId).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur' }
   revalidatePath(`/dashboard/poei/${poeiId}`)

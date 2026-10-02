@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
+import { fusionnerAppreciations } from '@/lib/poei-bilan-ft'
 
 export interface GrillePayload {
   poeiId: string
@@ -60,12 +61,16 @@ export async function saveGrilleAction(p: GrillePayload): Promise<ActionResult> 
   if (formateurId) row.formateur_id = formateurId
 
   // Upsert sur (poei, apprenant, semaine) — semaine NULL = évaluation finale
-  let q = supabase.from('poei_grilles').select('id')
+  let q = supabase.from('poei_grilles').select('id, appreciations')
     .eq('organization_id', session.organization.id)
     .eq('poei_id', p.poeiId)
     .eq('apprenant_id', p.apprenantId)
   q = p.semaine === null ? q.is('semaine', null) : q.eq('semaine', p.semaine)
   const { data: existing } = await q.maybeSingle()
+
+  // La signature du stagiaire sur son bilan (et son avis, une fois signé) ne
+  // dépend jamais de ce que renvoie le formulaire : on garde ce qui est en base.
+  row.appreciations = fusionnerAppreciations((existing as any)?.appreciations, p.appreciations)
 
   let error: any = null
   if (existing?.id) {
