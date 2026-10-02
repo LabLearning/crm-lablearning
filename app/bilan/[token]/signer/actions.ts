@@ -15,7 +15,7 @@ export async function signerBilanAction(
   token: string,
   signatureBase64: string,
   nom: string,
-  avis: string,
+  reponse: { note: string; avis: string },
 ): Promise<{ success: boolean; error?: string }> {
   if (!/^[0-9a-f]{64}$/.test(token || '')) return { success: false, error: 'Lien invalide' }
   if (!signatureBase64?.startsWith('data:image/png;base64,') || signatureBase64.length > 400_000) return { success: false, error: 'Signature invalide' }
@@ -35,7 +35,7 @@ export async function signerBilanAction(
     data: signatureBase64, nom: nom.trim().slice(0, 120),
     ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || '', agent: (h.get('user-agent') || '').slice(0, 300),
   }
-  if (!(await signerBilan(supabase, { grilleId: g.id, appreciations: a }, avis, trace))) {
+  if (!(await signerBilan(supabase, { grilleId: g.id, appreciations: a }, reponse, trace))) {
     return { success: false, error: "Ce bilan est déjà signé, ou l'enregistrement a échoué. Rechargez la page." }
   }
   // Une seule signature pour tous les documents : le certificat aussi, s'il attendait encore

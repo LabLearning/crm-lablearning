@@ -8,15 +8,19 @@
  * signature donnée quand la page ne présentait que le certificat ne couvre
  * pas le bilan, qui se signe alors par son propre lien.
  */
-import { CHAMPS_BILAN_FT, SIGNATURE_BILAN, construireBilanFt, lignesBilanFt } from '@/lib/poei-bilan-ft'
+import { APPRECIATIONS_STAGIAIRE, CHAMPS_BILAN_FT, SIGNATURE_BILAN, construireBilanFt, lignesBilanFt } from '@/lib/poei-bilan-ft'
 
 export interface BilanPourSignature {
   grilleId: string
   appreciations: Record<string, any>
   lignes: { libelle: string; valeur: string }[]
   avisInitial: string
+  noteInitiale: string
   dejaSigne: boolean
 }
+
+/** Ce que le stagiaire dit de sa formation en signant : son appréciation et un commentaire libre. */
+export interface AvisStagiaire { note: string; avis: string }
 
 /** Bilan final d'un candidat, tel qu'il lui est montré avant signature (null s'il n'est pas encore rempli). */
 export async function bilanPourSignature(supabase: any, orgId: string, poeiId: string, apprenantId: string): Promise<BilanPourSignature | null> {
@@ -50,6 +54,7 @@ export async function bilanPourSignature(supabase: any, orgId: string, poeiId: s
     appreciations: a,
     lignes: lignesBilanFt(bilan),
     avisInitial: String(a[CHAMPS_BILAN_FT.avisStagiaire] || ''),
+    noteInitiale: String(a[CHAMPS_BILAN_FT.noteStagiaire] || ''),
     dejaSigne: !!a[SIGNATURE_BILAN.signeLe],
   }
 }
@@ -57,11 +62,13 @@ export async function bilanPourSignature(supabase: any, orgId: string, poeiId: s
 interface Trace { data: string; nom: string; ip: string; agent: string }
 
 /** Porte la signature sur le bilan (une seule fois). Renvoie false s'il était déjà signé ou en cas d'erreur. */
-export async function signerBilan(supabase: any, bilan: { grilleId: string; appreciations: Record<string, any> }, avis: string, t: Trace): Promise<boolean> {
+export async function signerBilan(supabase: any, bilan: { grilleId: string; appreciations: Record<string, any> }, reponse: AvisStagiaire, t: Trace): Promise<boolean> {
+  const note = (APPRECIATIONS_STAGIAIRE as readonly string[]).includes(reponse?.note) ? reponse.note : ''
   const { data, error } = await supabase.from('poei_grilles').update({
     appreciations: {
       ...bilan.appreciations,
-      [CHAMPS_BILAN_FT.avisStagiaire]: String(avis || '').trim().slice(0, 1500),
+      [CHAMPS_BILAN_FT.noteStagiaire]: note,
+      [CHAMPS_BILAN_FT.avisStagiaire]: String(reponse?.avis || '').trim().slice(0, 1500),
       [SIGNATURE_BILAN.data]: t.data,
       [SIGNATURE_BILAN.nom]: t.nom,
       [SIGNATURE_BILAN.signeLe]: new Date().toISOString(),

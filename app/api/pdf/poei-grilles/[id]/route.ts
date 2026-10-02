@@ -6,7 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
 import { GrillePoeiPDF } from '@/lib/pdf/grille-poei-pdf'
 import { GRILLE_SECTIONS, APPRECIATIONS } from '@/lib/poei-grille'
-import { construireBilanFt, signatureBilan } from '@/lib/poei-bilan-ft'
+import { bilanFtImprime, construireBilanFt, signatureBilan } from '@/lib/poei-bilan-ft'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,13 +133,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       })(),
       dateEvaluation: g.date_evaluation, statut: g.statut,
       // Bilan de fin de formation France Travail (pièce demandée sur Chorus Pro), bilan final seulement
-      bilanFt: g.semaine == null ? construireBilanFt({
+      bilanFt: g.semaine == null ? bilanFtImprime(construireBilanFt({
         org, poei, candidat: conventionPar.get(String(g.apprenant_id)), apprenant: g.apprenant,
         formateurNom: g.formateur ? `${g.formateur.prenom || ''} ${g.formateur.nom || ''}`.trim() : null,
         heuresReelles: heuresCertifiees.get(String(g.apprenant_id))?.heures ?? null,
         heuresPrevues: heuresCertifiees.get(String(g.apprenant_id))?.dureeTotale ?? null,
         grille: g, aujourdhui,
-      }) : null,
+      })) : null,
       signatureBilan: g.semaine == null ? signatureBilan(g.appreciations) : null,
     }) as any,
   )

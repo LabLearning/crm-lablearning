@@ -56,11 +56,11 @@ export default async function CertificatSignerPage({ params }: { params: { token
 
   // Le bilan de fin de formation, s'il est rempli : le candidat le relit et le
   // signe du même geste que son certificat.
-  let bilan: { lignes: { libelle: string; valeur: string }[]; avisInitial: string } | null = null
+  let bilan: { lignes: { libelle: string; valeur: string }[]; avisInitial: string; noteInitiale: string } | null = null
   if ((sig as any).role !== 'employeur' && !(sig as any).signed_at && (sig as any).apprenant_id && (sig as any).poei?.id && (sig as any).organization?.id) {
     const { bilanPourSignature } = await import('@/lib/poei-signature-documents')
     const b = await bilanPourSignature(supabase, (sig as any).organization.id, (sig as any).poei.id, (sig as any).apprenant_id)
-    if (b && !b.dejaSigne) bilan = { lignes: b.lignes, avisInitial: b.avisInitial }
+    if (b && !b.dejaSigne) bilan = { lignes: b.lignes, avisInitial: b.avisInitial, noteInitiale: b.noteInitiale }
   }
 
   // Page sur fond clair : logo vert (logo_url peut être la variante blanche des emails)

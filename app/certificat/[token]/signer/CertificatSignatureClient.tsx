@@ -5,6 +5,7 @@ import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icon
 import { Button } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { signCertificatAction } from './actions'
+import { AvisFormationStagiaire } from '@/components/poei/AvisFormationStagiaire'
 
 /** 63.5 → « 63,5 » */
 const heuresFr = (n: number) => String(Math.round(Number(n) * 100) / 100).replace('.', ',')
@@ -17,7 +18,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
   /** Heures portées sur le certificat de ce candidat (saisies dans la POEI, sinon durée du parcours). */
   heuresCandidat?: { heures: number; prevues: number } | null
   /** Bilan de fin de formation à relire : il est signé du même geste que le certificat */
-  bilan?: { lignes: { libelle: string; valeur: string }[]; avisInitial: string } | null
+  bilan?: { lignes: { libelle: string; valeur: string }[]; avisInitial: string; noteInitiale?: string } | null
 }) {
   // Le représentant de l'employeur signe l'attestation France Travail, une
   // fois pour tous les candidats ; le candidat signe son propre certificat.
@@ -31,6 +32,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
       : `${sig.apprenant?.prenom || ''} ${sig.apprenant?.nom || ''}`.trim(),
   )
   const [avis, setAvis] = useState(bilan?.avisInitial || '')
+  const [note, setNote] = useState(bilan?.noteInitiale || '')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(!!sig.signed_at)
   const [err, setErr] = useState<string | null>(null)
@@ -61,11 +63,12 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
 
   async function submit() {
     setErr(null)
+    if (bilan && !note) { setErr('Merci d’indiquer votre appréciation de la formation.'); return }
     if (!hasDrawn) { setErr('Merci de signer dans le cadre.'); return }
     if (!nom.trim()) { setErr('Merci d\'indiquer votre nom.'); return }
     setSaving(true)
     const data = canvasRef.current!.toDataURL('image/png')
-    const r = await signCertificatAction(token, data, nom.trim(), bilan ? { avis } : undefined)
+    const r = await signCertificatAction(token, data, nom.trim(), bilan ? { note, avis } : undefined)
     if (r.success) setDone(true)
     else setErr(r.error || "Une erreur est survenue. Merci de réessayer.")
     setSaving(false)
@@ -140,15 +143,10 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
       )}
 
       <div className="card p-5">
-        {bilan && (
-          <>
-            <label className="block text-sm font-medium text-surface-700 mb-1">Votre avis sur la formation</label>
-            <textarea rows={3} className="input-base resize-none mb-4" value={avis} maxLength={1500}
-              onChange={(e) => setAvis(e.target.value)} placeholder="Ce que la formation vous a apporté, ce qui pourrait être amélioré…" />
-          </>
-        )}
         <label className="block text-sm font-medium text-surface-700 mb-1">Nom et prénom</label>
         <input className="input-base mb-4" value={nom} onChange={(e) => setNom(e.target.value)} />
+
+        {bilan && <AvisFormationStagiaire note={note} avis={avis} onNote={setNote} onAvis={setAvis} />}
 
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-surface-700 flex items-center gap-1.5"><PenTool className="h-4 w-4 text-brand-500" /> Votre signature</label>

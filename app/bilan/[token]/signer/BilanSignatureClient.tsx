@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icons'
 import { Button } from '@/components/ui'
 import { signerBilanAction } from './actions'
+import { AvisFormationStagiaire } from '@/components/poei/AvisFormationStagiaire'
 
-export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes, avisInitial, dejaSigne, certificatASigner = false }: {
+export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes, avisInitial, noteInitiale = '', dejaSigne, certificatASigner = false }: {
   token: string
   orgNom: string
   logo: string | null
@@ -13,6 +14,7 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
   /** Les rubriques du bilan telles qu'elles seront imprimées */
   lignes: { libelle: string; valeur: string }[]
   avisInitial: string
+  noteInitiale?: string
   dejaSigne: boolean
   /** Le certificat de réalisation n'est pas encore signé : la même signature le couvre */
   certificatASigner?: boolean
@@ -22,6 +24,7 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
   const [hasDrawn, setHasDrawn] = useState(false)
   const [nom, setNom] = useState(nomStagiaire)
   const [avis, setAvis] = useState(avisInitial)
+  const [note, setNote] = useState(noteInitiale)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(dejaSigne)
   const [err, setErr] = useState<string | null>(null)
@@ -47,10 +50,11 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
 
   async function submit() {
     setErr(null)
+    if (!note) { setErr('Merci d’indiquer votre appréciation de la formation.'); return }
     if (!hasDrawn) { setErr('Merci de signer dans le cadre.'); return }
     if (!nom.trim()) { setErr("Merci d'indiquer votre nom."); return }
     setSaving(true)
-    const r = await signerBilanAction(token, canvasRef.current!.toDataURL('image/png'), nom.trim(), avis)
+    const r = await signerBilanAction(token, canvasRef.current!.toDataURL('image/png'), nom.trim(), { note, avis })
     if (r.success) setDone(true)
     else setErr(r.error || 'Une erreur est survenue. Merci de réessayer.')
     setSaving(false)
@@ -99,12 +103,10 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
       </div>
 
       <div className="card p-5">
-        <label className="block text-sm font-medium text-surface-700 mb-1">Votre avis sur la formation</label>
-        <textarea rows={3} className="input-base resize-none mb-4" value={avis} maxLength={1500}
-          onChange={(e) => setAvis(e.target.value)} placeholder="Ce que la formation vous a apporté, ce qui pourrait être amélioré…" />
-
         <label className="block text-sm font-medium text-surface-700 mb-1">Nom et prénom</label>
         <input className="input-base mb-4" value={nom} onChange={(e) => setNom(e.target.value)} />
+
+        <AvisFormationStagiaire note={note} avis={avis} onNote={setNote} onAvis={setAvis} />
 
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-surface-700 flex items-center gap-1.5"><PenTool className="h-4 w-4 text-brand-500" /> Votre signature</label>

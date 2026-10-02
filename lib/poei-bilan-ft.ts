@@ -22,9 +22,14 @@ export const CHAMPS_BILAN_FT = {
   repriseFinDurable: 'ft_reprise_fin_durable',
   repriseFinDate: 'ft_reprise_fin_date',
   reprisePrevue: 'ft_reprise_prevue',
+  /** Appréciation de la formation par le stagiaire (une des APPRECIATIONS_STAGIAIRE) */
+  noteStagiaire: 'ft_note_stagiaire',
   avisStagiaire: 'ft_avis_stagiaire',
   avisCentre: 'ft_avis_centre',
 } as const
+
+/** Niveaux proposés au stagiaire pour noter sa formation. */
+export const APPRECIATIONS_STAGIAIRE = ['Excellente', 'Bonne', 'Moyenne', 'Mauvaise'] as const
 
 export interface BilanFt {
   organisme: string
@@ -172,7 +177,7 @@ export function construireBilanFt(src: {
     repriseFinDate: dateFr(saisie('repriseFinDate') || (embauche ? dateEmbauche(c, poei) : '')),
     // Tant que l'embauche n'est pas constatée, la date de la fiche candidat est prévisionnelle
     reprisePrevue: dateFr(saisie('reprisePrevue') || (abandon || embauche || nonRetenu ? '' : c?.date_embauche_prevue)),
-    avisStagiaire: saisie('avisStagiaire'),
+    avisStagiaire: [saisie('noteStagiaire') ? `Appréciation : ${saisie('noteStagiaire').toLowerCase()}` : '', saisie('avisStagiaire')].filter(Boolean).join('. '),
     avisCentre: saisie('avisCentre') || avisCentreParDefaut(grille?.avis_final, grille?.motivation_avis),
   }
 }
@@ -218,7 +223,10 @@ export function fusionnerAppreciations(
   const out: Record<string, any> = {}
   for (const [k, v] of Object.entries(recues || {})) if (!k.startsWith(PREFIXE_SIGNATURE)) out[k] = v
   for (const [k, v] of Object.entries(base)) if (k.startsWith(PREFIXE_SIGNATURE)) out[k] = v
-  if (texte(base[SIGNATURE_BILAN.signeLe])) out[CHAMPS_BILAN_FT.avisStagiaire] = base[CHAMPS_BILAN_FT.avisStagiaire] ?? ''
+  if (texte(base[SIGNATURE_BILAN.signeLe])) {
+    out[CHAMPS_BILAN_FT.avisStagiaire] = base[CHAMPS_BILAN_FT.avisStagiaire] ?? ''
+    out[CHAMPS_BILAN_FT.noteStagiaire] = base[CHAMPS_BILAN_FT.noteStagiaire] ?? ''
+  }
   return out
 }
 
@@ -227,6 +235,29 @@ export function appreciationsPourClient(appreciations: Record<string, any> | nul
   const out: Record<string, any> = { ...(appreciations || {}) }
   for (const k of [SIGNATURE_BILAN.data, SIGNATURE_BILAN.jeton, SIGNATURE_BILAN.ip, SIGNATURE_BILAN.agent]) delete out[k]
   return out
+}
+
+/**
+ * Bilan tel qu'il s'imprime : une rubrique de suivi sans objet porte « Non
+ * concerné » plutôt qu'une case vide (pas de sortie anticipée, pas de reprise
+ * d'emploi en cours de formation…). Les cases qui attendent une vraie réponse
+ * restent vides : identifiant, niveau, avis du stagiaire, et le contrat
+ * durable d'une reprise d'emploi déclarée.
+ */
+export function bilanFtImprime(b: BilanFt): BilanFt {
+  const NC = 'Non concerné'
+  const sousReprise = (reprise: string, v: string) => v || (reprise === 'Oui' ? '' : NC)
+  return {
+    ...b,
+    motifSortie: b.motifSortie || (b.acheve === 'Non' ? '' : NC),
+    repriseCours: b.repriseCours || NC,
+    repriseCoursDurable: sousReprise(b.repriseCours, b.repriseCoursDurable),
+    repriseCoursDate: sousReprise(b.repriseCours, b.repriseCoursDate),
+    repriseFin: b.repriseFin || NC,
+    repriseFinDurable: sousReprise(b.repriseFin, b.repriseFinDurable),
+    repriseFinDate: sousReprise(b.repriseFin, b.repriseFinDate),
+    reprisePrevue: b.reprisePrevue || NC,
+  }
 }
 
 /** Les rubriques du bilan, dans l'ordre du formulaire, pour la page de signature. */

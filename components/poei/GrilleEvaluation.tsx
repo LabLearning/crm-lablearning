@@ -6,7 +6,7 @@ import { Save, CheckCircle2, ClipboardCheck, Sparkles, Loader2 } from '@/compone
 import { Button, Badge, useToast } from '@/components/ui'
 import { GRILLE_SECTIONS, NIVEAUX, APPRECIATIONS, AVIS_FINAL, grilleProgress, type NiveauAcquis } from '@/lib/poei-grille'
 import { saveGrilleAction, detaillerBilanAction } from '@/app/dashboard/poei/grille-actions'
-import { CHAMPS_BILAN_FT, SIGNATURE_BILAN, avisCentreParDefaut, niveauParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
+import { APPRECIATIONS_STAGIAIRE, CHAMPS_BILAN_FT, SIGNATURE_BILAN, avisCentreParDefaut, niveauParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
 
 type Items = Record<string, { n?: NiveauAcquis; o?: string }>
 
@@ -318,9 +318,18 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
 
               <div>
                 <label className="block text-xs font-medium text-surface-600 mb-1">Avis du stagiaire sur la formation</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {APPRECIATIONS_STAGIAIRE.map((n) => (
+                    <button key={n} type="button" disabled={!!app[SIGNATURE_BILAN.signeLe]}
+                      onClick={() => setFt(F.noteStagiaire, app[F.noteStagiaire] === n ? '' : n)}
+                      className={`px-3 py-1.5 min-h-[40px] md:min-h-0 rounded-lg text-xs font-medium transition-colors disabled:cursor-default ${app[F.noteStagiaire] === n ? 'bg-brand-500 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200 disabled:hover:bg-surface-100'}`}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
                 <textarea rows={2} className="input-base resize-none disabled:bg-surface-50 disabled:text-surface-600" value={app[F.avisStagiaire] || ''} onChange={(e) => setFt(F.avisStagiaire, e.target.value)}
                   disabled={!!app[SIGNATURE_BILAN.signeLe]}
-                  placeholder="Le stagiaire l’écrit lui-même en signant son bilan. Vous pouvez aussi reporter ici ce qu’il a exprimé." />
+                  placeholder="Le stagiaire note la formation et écrit son commentaire lui-même en signant. Vous pouvez aussi reporter ici ce qu’il a exprimé." />
                 {app[SIGNATURE_BILAN.signeLe] && (
                   <p className="mt-1 text-[11px] leading-snug text-surface-500">Bilan signé par le stagiaire le {new Date(app[SIGNATURE_BILAN.signeLe]).toLocaleDateString('fr-FR')} : son avis ne se modifie plus.</p>
                 )}

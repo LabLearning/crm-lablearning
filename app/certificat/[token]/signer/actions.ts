@@ -13,7 +13,7 @@ export async function signCertificatAction(
   signatureBase64: string,
   nom: string,
   /** Présent quand la page a montré au stagiaire son bilan de fin de formation : il le signe du même geste */
-  bilan?: { avis: string },
+  bilan?: { note: string; avis: string },
 ): Promise<{ success: boolean; error?: string }> {
   if (!signatureBase64?.startsWith('data:image/')) return { success: false, error: 'Signature invalide' }
   if (!nom?.trim()) return { success: false, error: 'Nom requis' }
@@ -60,7 +60,7 @@ export async function signCertificatAction(
       const { bilanPourSignature, signerBilan } = await import('@/lib/poei-signature-documents')
       const b = await bilanPourSignature(supabase, (sig as any).organization_id, sig.poei_id, (sig as any).apprenant_id)
       if (b && !b.dejaSigne) {
-        await signerBilan(supabase, b, bilan.avis, {
+        await signerBilan(supabase, b, { note: bilan.note, avis: bilan.avis }, {
           data: signatureBase64, nom: nom.trim(),
           ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || '', agent: (h.get('user-agent') || '').slice(0, 300),
         })

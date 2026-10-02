@@ -45,6 +45,7 @@ export default async function BilanSignerPage({ params }: { params: { token: str
         nomStagiaire={`${g.apprenant?.prenom || ''} ${g.apprenant?.nom || ''}`.trim()}
         lignes={bilan!.lignes}
         avisInitial={bilan!.avisInitial}
+        noteInitiale={bilan!.noteInitiale}
         dejaSigne={dejaSigne}
         certificatASigner={!certificat?.signed_at}
       />
