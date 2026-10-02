@@ -72,7 +72,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (sessionId) {
     const { data } = await supabase
       .from('sessions')
-      .select('*, formation:formation_id(intitule, duree_heures, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation), client:client_id(raison_sociale, adresse, code_postal, ville)')
+      .select('*, formation:formation_id(intitule, duree_heures, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation, modalites_admission, accessibilite_handicap, duree_jours, modalite, categorie, version), client:client_id(raison_sociale, adresse, code_postal, ville)')
       .eq('id', sessionId).single()
     session = data
   }
@@ -81,7 +81,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session && interventionId) {
     const { data } = await supabase
       .from('poei_interventions')
-      .select('*, poei:poei(numero, formation:formations(intitule, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation), client:clients(raison_sociale))')
+      .select('*, poei:poei(numero, formation:formations(intitule, duree_heures, reference, sous_titre, objectifs_pedagogiques, programme_detaille, prerequis, public_vise, methodes_pedagogiques, moyens_techniques, modalites_evaluation, modalites_admission, accessibilite_handicap, duree_jours, modalite, categorie, version), client:clients(raison_sociale))')
       .eq('id', interventionId).single()
     intervention = data
   }

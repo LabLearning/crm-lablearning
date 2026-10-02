@@ -3,6 +3,7 @@ import { Document, Page, View, Text } from '@react-pdf/renderer'
 import { PdfSectionTitle, shared, PdfDocHeader, PdfDocFooter, PdfSignatureCards, BRAND_GREEN, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 import { structurerProgramme } from '@/lib/programme-structure'
 import { ProgrammeStructurePdf } from './programme-structure-pdf'
+import { ProgrammeFormationPage } from './programme-formation-pdf'
 
 // ─── Helpers contenu ─────────────────────────────────────────────────────────
 
@@ -551,70 +552,12 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
         <PdfDocFooter numero={convention.numero} org={org} />
       </Page>
 
-      {/* ── ANNEXE — Programme de formation (pages dédiées) ──────────────── */}
-      <Page size="A4" style={shared.page}>
-        <PdfDocHeader
-          docTitle="Annexe — Programme de formation"
-          numero={convention.numero}
-          date={formationTitle}
-          org={org}
-        />
-
-        <View style={shared.section}>
-          <PdfSectionTitle>Formation</PdfSectionTitle>
-          <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{formationTitle}</Text>
-          <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 2 }}>
-            Annexe à la convention {convention.numero || ''} — fait partie intégrante du contrat.
-          </Text>
-        </View>
-
-        {(publicVise || prerequis) && (
-          <View style={shared.section}>
-            <PdfSectionTitle>Public visé et prérequis</PdfSectionTitle>
-            {publicVise && <InfoRow label="Public visé" value={publicVise} />}
-            {prerequis && <InfoRow label="Prérequis" value={prerequis} />}
-          </View>
-        )}
-
-        {objectifs && objectifs.length > 0 && (
-          <View style={shared.section}>
-            <PdfSectionTitle>Objectifs pédagogiques</PdfSectionTitle>
-            <Text style={{ fontSize: 8.5, color: SURFACE_700, marginBottom: 6 }}>À l'issue de la formation, les participants seront capables de :</Text>
-            <Bullets items={objectifs} />
-          </View>
-        )}
-
-        {programme && programme.length > 0 && (
-          <View style={shared.section}>
-            <PdfSectionTitle>Programme de la formation</PdfSectionTitle>
-            {programmeStructure.length > 0 ? <ProgrammeStructurePdf groupes={programmeStructure} compact /> : programme.map((line, i) => {
-              const isModule = /^module|^jour|^partie|^s[ée]quence/i.test(line)
-              return (
-                <Text key={i} style={{ fontSize: 8.5, color: isModule ? SURFACE_900 : SURFACE_700, fontFamily: 'Satoshi', fontWeight: isModule ? 700 : 400, marginBottom: 2, marginTop: isModule ? 4 : 0, lineHeight: 1.45 }}>
-                  {isModule ? line : `•  ${line.replace(/^[-•]\s*/, '')}`}
-                </Text>
-              )
-            })}
-          </View>
-        )}
-
-        <View style={shared.section}>
-          <PdfSectionTitle>Moyens et supports pédagogiques</PdfSectionTitle>
-          <Bullets items={moyens} />
-        </View>
-
-        <View style={shared.section}>
-          <PdfSectionTitle>Modalités d'évaluation des acquis</PdfSectionTitle>
-          <Bullets items={modalitesEval} />
-        </View>
-
-        <View style={shared.section}>
-          <PdfSectionTitle>Modalités pédagogiques et de suivi</PdfSectionTitle>
-          <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.6 }}>{modalitesPeda}</Text>
-        </View>
-
-        <PdfDocFooter numero={convention.numero} org={org} />
-      </Page>
+      {/* ── ANNEXE : le programme de formation, le même que celui téléchargé seul ── */}
+      <ProgrammeFormationPage
+        formation={{ ...formation, intitule: formationTitle }}
+        org={org}
+        annexe={{ numero: convention.numero, rattachement: `la convention ${convention.numero || ''}`.trim() }}
+      />
     </Document>
   )
 }

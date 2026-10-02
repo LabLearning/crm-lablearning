@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { Document, Page, View, Text } from '@react-pdf/renderer'
 import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, PdfSignatureCards, shared, BRAND_GREEN, SURFACE_500, SURFACE_700 } from './components'
-import { ProgrammeAnnexePage, hasProgrammeContent } from './programme-annexe'
+import { hasProgrammeContent } from './programme-annexe'
+import { ProgrammeFormationPage } from './programme-formation-pdf'
 
 interface ContratFormateurProps {
   formateur: any
@@ -250,7 +251,7 @@ export function ContratFormateurPDF({ formateur, org, session, contrat, interven
 
       {/* Annexe — Programme de formation (fait partie intégrante du contrat) */}
       {hasProgrammeContent(annexeFormation) && (
-        <ProgrammeAnnexePage formation={annexeFormation} org={org} numero={numero} rattachement="le présent contrat" />
+        <ProgrammeFormationPage formation={annexeFormation} org={org} annexe={{ numero, rattachement: 'le présent contrat' }} />
       )}
     </Document>
   )

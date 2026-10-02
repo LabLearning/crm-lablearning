@@ -11,6 +11,12 @@ interface ProgrammeFormationProps {
   formation: any; org: any; session?: any
   /** Parcours POEI : dates, durée, entreprise et planning des interventions */
   poei?: any
+  /**
+   * Programme joint en annexe d'un contrat (convention, contrat formateur) : même
+   * contenu que le programme téléchargé seul, sans la grille tarifaire (le prix
+   * est celui du contrat), avec la mention de rattachement.
+   */
+  annexe?: { numero?: string | null; rattachement: string }
 }
 
 function fmtLong(s: string | null | undefined): string {
@@ -169,7 +175,17 @@ function DureePill({ children }: { children: React.ReactNode }) {
 
 const MODALITE = (m: string) => m === 'presentiel' ? 'Présentiel' : m === 'distanciel' ? 'Distanciel' : 'Mixte'
 
-export function ProgrammeFormationPDF({ formation, org, session, poei }: ProgrammeFormationProps) {
+/** Programme téléchargé seul. */
+export function ProgrammeFormationPDF(props: ProgrammeFormationProps) {
+  return (
+    <Document title={`Programme — ${props.formation?.intitule || ''}`} author={props.org?.name || 'Lab Learning'}>
+      <ProgrammeFormationPage {...props} />
+    </Document>
+  )
+}
+
+/** La page du programme, identique seule ou en annexe d'un contrat. */
+export function ProgrammeFormationPage({ formation, org, session, poei, annexe }: ProgrammeFormationProps) {
   const jours: any[] = session && Array.isArray(session.horaires_jours) ? session.horaires_jours : []
   const sessionLieu = session ? [session.lieu, session.adresse, [session.code_postal, session.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ') : ''
   // Jours ou semaines, modules, séquences horaires, ateliers : découpage commun à tous les affichages
@@ -181,14 +197,16 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
   const contact = [org?.email_contact || org?.email, org?.telephone_contact || org?.phone].filter(Boolean).join(' · ')
 
   return (
-    <Document title={`Programme — ${formation.intitule || ''}`} author={org?.name || 'Lab Learning'}>
       <Page size="A4" style={shared.page}>
         {/* Aucune date sur le programme (ni émission, ni conception, ni mise à jour) : seule la version l'identifie */}
-        <PdfDocHeader docTitle="Programme de formation" numero={formation.reference || ''} org={org} />
+        <PdfDocHeader docTitle={annexe ? 'Annexe — Programme de formation' : 'Programme de formation'} numero={annexe?.numero || formation.reference || ''} org={org} />
 
-        {formation.version ? (
+        {annexe || formation.version ? (
           <Text style={{ fontSize: 7.5, color: SURFACE_500 as any, marginTop: -4, marginBottom: 8 }}>
-            {`Version ${formation.version}`}
+            {[
+              annexe ? `Annexe à ${annexe.rattachement}, dont elle fait partie intégrante` : null,
+              formation.version ? `${annexe ? 'programme version' : 'Version'} ${formation.version}` : null,
+            ].filter(Boolean).join(' · ')}
           </Text>
         ) : null}
 
@@ -197,8 +215,8 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
           <Text style={{ fontSize: 16, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, letterSpacing: -0.3 }}>{formation.intitule}</Text>
           {formation.sous_titre ? <Text style={{ fontSize: 9.5, color: SURFACE_500, marginTop: 3 }}>{formation.sous_titre}</Text> : null}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-            <Chip icon="clock">{formation.duree_heures} h{formation.duree_jours ? ` · ${formation.duree_jours} j` : ''}</Chip>
-            <Chip icon="monitor">{MODALITE(formation.modalite)}</Chip>
+            {formation.duree_heures ? <Chip icon="clock">{formation.duree_heures} h{formation.duree_jours ? ` · ${formation.duree_jours} j` : ''}</Chip> : null}
+            {formation.modalite ? <Chip icon="monitor">{MODALITE(formation.modalite)}</Chip> : null}
             {formation.categorie ? <Chip icon="list">{formation.categorie}</Chip> : null}
           </View>
         </View>
@@ -355,8 +373,8 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
           </View>
         ) : null}
 
-        {/* Tarifs */}
-        {(formation.tarif_inter_ht || formation.tarif_intra_ht) ? (
+        {/* Tarifs du catalogue : pas en annexe d'un contrat, qui fixe lui-même le prix */}
+        {!annexe && (formation.tarif_inter_ht || formation.tarif_intra_ht) ? (
           <View style={shared.section}>
             <PdfSectionTitle icon="banknote">Tarifs</PdfSectionTitle>
             {formation.tarif_inter_ht ? <View style={shared.row}><Text style={shared.label}>Inter-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_inter_ht).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} € HT / personne</Text></View> : null}
@@ -382,8 +400,7 @@ export function ProgrammeFormationPDF({ formation, org, session, poei }: Program
           {contact ? <Text style={shared.infoBoxText}><Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Contact : </Text>{contact}</Text> : null}
         </View>
 
-        <PdfDocFooter numero={formation.reference || 'PROG'} org={org} />
+        <PdfDocFooter numero={annexe?.numero || formation.reference || 'PROG'} org={org} />
       </Page>
-    </Document>
   )
 }
