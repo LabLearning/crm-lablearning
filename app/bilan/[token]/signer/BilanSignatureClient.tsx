@@ -118,7 +118,7 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
         <label className="block text-sm font-medium text-surface-700 mb-1">Nom et prénom</label>
         <input className="input-base mb-4" value={nom} onChange={(e) => setNom(e.target.value)} />
 
-        <AvisFormationStagiaire note={note} avis={avis} onNote={setNote} onAvis={setAvis} />
+        <AvisFormationStagiaire note={note} avis={avis} onNote={(v) => { setNote(v); setErr(null) }} onAvis={setAvis} />
 
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-surface-700 flex items-center gap-1.5"><PenTool className="h-4 w-4 text-brand-500" /> Votre signature</label>
