@@ -476,7 +476,7 @@ function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
       {/* En-tête : le choix du mois, le mois visé, le compte à rebours */}
       <header className="px-4 pt-4 sm:px-6 sm:pt-5">
         <div className="flex min-h-[32px] items-center justify-between gap-3">
-          <p aria-hidden="true" className="ll-kicker ll-kicker--light min-w-0 whitespace-nowrap">Objectif<span className="hidden sm:inline"> du mois</span></p>
+          <p aria-hidden="true" className="ll-kicker ll-kicker--light min-w-0 whitespace-nowrap"><span>Objectif<span className="hidden sm:inline"> du mois</span></span></p>
           {choix.length > 1 && (
             <div role="group" aria-label="Mois affiché" className="inline-flex shrink-0 rounded-lg bg-white/[0.07] p-0.5 ring-1 ring-inset ring-white/10">
               {choix.map((c) => {
