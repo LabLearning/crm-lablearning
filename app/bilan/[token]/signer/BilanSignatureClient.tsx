@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icons'
+import { CheckCircle2, ChevronDown, Eraser, PenTool, ShieldCheck } from '@/components/ui/icons'
 import { Button } from '@/components/ui'
 import { signerBilanAction } from './actions'
 import { AvisFormationStagiaire } from '@/components/poei/AvisFormationStagiaire'
@@ -100,19 +100,26 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
         <h1 className="text-2xl font-heading font-bold text-surface-900 mt-3">{certificatASigner ? 'Vos documents de fin de formation' : 'Bilan de fin de formation'}</h1>
         <p className="text-surface-500 mt-1 text-sm">
           {certificatASigner
-            ? 'Une seule signature pour votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation. Relisez les informations, donnez votre avis, puis signez.'
-            : 'Relisez votre bilan, donnez votre avis sur la formation, puis signez dans le cadre ci-dessous.'}
+            ? 'Une seule signature pour votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation. Donnez votre avis sur la formation, puis signez.'
+            : 'Donnez votre avis sur la formation, puis signez dans le cadre ci-dessous.'}
         </p>
       </div>
 
-      <div className="card p-5 mb-5 space-y-2.5 text-sm">
-        {lignes.map((l) => (
-          <div key={l.libelle} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 border-b border-surface-100 pb-2 last:border-0">
-            <span className="text-surface-500 sm:shrink-0">{l.libelle}</span>
-            <span className="font-medium text-surface-900 sm:text-right whitespace-pre-line break-words">{l.valeur}</span>
-          </div>
-        ))}
-      </div>
+      {/* Le bilan n'est plus affiché en entier : il reste consultable d'un geste, puisque c'est lui que le stagiaire signe */}
+      <details className="card mb-5 group">
+        <summary className="flex items-center justify-between gap-3 px-5 py-4 min-h-[48px] cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm font-medium text-surface-800">
+          Voir mon bilan de fin de formation
+          <ChevronDown className="h-4 w-4 shrink-0 text-surface-400 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-5 pb-5 space-y-2.5 text-sm">
+          {lignes.map((l) => (
+            <div key={l.libelle} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 border-b border-surface-100 pb-2 last:border-0">
+              <span className="text-surface-500 sm:shrink-0">{l.libelle}</span>
+              <span className="font-medium text-surface-900 sm:text-right whitespace-pre-line break-words">{l.valeur}</span>
+            </div>
+          ))}
+        </div>
+      </details>
 
       <div className="card p-5">
         <label className="block text-sm font-medium text-surface-700 mb-1">Nom et prénom</label>
@@ -141,7 +148,7 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
         <p className="text-2xs text-surface-400 mt-3 text-center">
           {certificatASigner
             ? 'En signant, vous attestez avoir suivi la formation et vous signez votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation, qui sera transmis à France Travail.'
-            : 'En signant, vous confirmez avoir relu les informations de ce bilan et votre avis sur la formation. Il sera transmis à France Travail.'}
+            : 'En signant, vous signez votre bilan de fin de formation (consultable ci-dessus) avec votre avis sur la formation. Il sera transmis à France Travail.'}
         </p>
       </div>
     </div>

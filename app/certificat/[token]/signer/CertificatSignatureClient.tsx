@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icons'
+import { CheckCircle2, ChevronDown, Eraser, PenTool, ShieldCheck } from '@/components/ui/icons'
 import { Button } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { signCertificatAction } from './actions'
@@ -107,7 +107,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
           {estEmployeur
             ? 'En qualité de représentant de l\u2019employeur, vérifiez les informations puis signez dans le cadre ci-dessous.'
             : bilan
-              ? 'Une seule signature pour votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation. Relisez les informations, donnez votre avis, puis signez.'
+              ? 'Une seule signature pour votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation. Vérifiez les informations, donnez votre avis, puis signez.'
               : 'Vérifiez les informations puis signez dans le cadre ci-dessous.'}
         </p>
       </div>
@@ -131,8 +131,14 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
       </div>
 
       {bilan && (
-        <div className="card p-5 mb-5 space-y-2.5 text-sm">
-          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Bilan de fin de formation</div>
+        <>
+      {/* Le bilan n'est plus affiché en entier : il reste consultable d'un geste, puisque c'est lui que le stagiaire signe */}
+      <details className="card mb-5 group">
+        <summary className="flex items-center justify-between gap-3 px-5 py-4 min-h-[48px] cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm font-medium text-surface-800">
+          Voir mon bilan de fin de formation
+          <ChevronDown className="h-4 w-4 shrink-0 text-surface-400 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="px-5 pb-5 space-y-2.5 text-sm">
           {bilan.lignes.map((l) => (
             <div key={l.libelle} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 border-b border-surface-100 pb-2 last:border-0">
               <span className="text-surface-500 sm:shrink-0">{l.libelle}</span>
@@ -140,6 +146,8 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
             </div>
           ))}
         </div>
+      </details>
+        </>
       )}
 
       <div className="card p-5">
