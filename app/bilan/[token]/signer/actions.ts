@@ -2,11 +2,14 @@
 
 import { headers } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { CHAMPS_BILAN_FT, SIGNATURE_BILAN } from '@/lib/poei-bilan-ft'
+import { SIGNATURE_BILAN } from '@/lib/poei-bilan-ft'
+import { signerBilan, signerCertificatSiBesoin } from '@/lib/poei-signature-documents'
 
 /**
- * Signature publique (par lien personnel) du bilan de fin de formation par le
- * stagiaire. L'horodatage enregistré est celui du moment réel de la signature.
+ * Signature publique (par lien personnel) des documents de fin de POEI par le
+ * stagiaire : son bilan de fin de formation et, s'il ne l'a pas encore signé,
+ * son certificat de réalisation. L'horodatage enregistré est celui du moment
+ * réel de la signature.
  */
 export async function signerBilanAction(
   token: string,
@@ -19,27 +22,24 @@ export async function signerBilanAction(
   if (!nom?.trim()) return { success: false, error: 'Nom requis' }
 
   const supabase = await createServiceRoleClient()
-  const { data: grille } = await supabase.from('poei_grilles').select('id, appreciations')
+  const { data: grille } = await supabase.from('poei_grilles').select('id, organization_id, poei_id, apprenant_id, appreciations')
     .eq(`appreciations->>${SIGNATURE_BILAN.jeton}`, token).is('semaine', null).maybeSingle()
   if (!grille) return { success: false, error: 'Lien invalide' }
-  const a: Record<string, any> = (grille as any).appreciations || {}
+  const g: any = grille
+  const a: Record<string, any> = g.appreciations || {}
   if (a[SIGNATURE_BILAN.signeLe]) return { success: false, error: 'Ce bilan est déjà signé' }
   if (a[SIGNATURE_BILAN.expire] && new Date(a[SIGNATURE_BILAN.expire]) < new Date()) return { success: false, error: 'Ce lien a expiré' }
 
   const h = await headers()
-  const { data: maj, error } = await supabase.from('poei_grilles').update({
-    appreciations: {
-      ...a,
-      [CHAMPS_BILAN_FT.avisStagiaire]: String(avis || '').trim().slice(0, 1500),
-      [SIGNATURE_BILAN.data]: signatureBase64,
-      [SIGNATURE_BILAN.nom]: nom.trim().slice(0, 120),
-      [SIGNATURE_BILAN.signeLe]: new Date().toISOString(),
-      [SIGNATURE_BILAN.ip]: h.get('x-forwarded-for')?.split(',')[0]?.trim() || '',
-      [SIGNATURE_BILAN.agent]: (h.get('user-agent') || '').slice(0, 300),
-    },
-  }).eq('id', (grille as any).id).is(`appreciations->>${SIGNATURE_BILAN.signeLe}`, null).select('id')
-
-  if (error) { console.error('[signature bilan]', error); return { success: false, error: "Erreur lors de l'enregistrement" } }
-  if (!maj?.length) return { success: false, error: 'Ce bilan est déjà signé' }
+  const trace = {
+    data: signatureBase64, nom: nom.trim().slice(0, 120),
+    ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || '', agent: (h.get('user-agent') || '').slice(0, 300),
+  }
+  if (!(await signerBilan(supabase, { grilleId: g.id, appreciations: a }, avis, trace))) {
+    return { success: false, error: "Ce bilan est déjà signé, ou l'enregistrement a échoué. Rechargez la page." }
+  }
+  // Une seule signature pour tous les documents : le certificat aussi, s'il attendait encore
+  try { await signerCertificatSiBesoin(supabase, g.organization_id, g.poei_id, g.apprenant_id, trace) }
+  catch (e) { console.error('[signature certificat depuis le bilan]', e) }
   return { success: true }
 }

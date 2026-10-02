@@ -103,3 +103,32 @@ export async function demanderSignatureBilanAction(
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true, data: { email: appr.email } }
 }
+
+/**
+ * Envoie le lien de signature à tous les stagiaires de la POEI dont le bilan
+ * final est rempli et pas encore signé. Ceux sans email sont comptés à part :
+ * leur lien se copie depuis leur ligne.
+ */
+export async function demanderSignaturesBilansAction(
+  poeiId: string,
+): Promise<ActionResult & { data?: { envoyes: number; sansEmail: number; echecs: number } }> {
+  const session = await getSession()
+  if (['apprenant', 'formateur', 'apporteur_affaires', 'franchise'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+  const { data: grilles } = await supabase.from('poei_grilles').select('apprenant_id, appreciations')
+    .eq('organization_id', session.organization.id).eq('poei_id', poeiId).is('semaine', null)
+  const aSigner = ((grilles || []) as any[]).filter((g) => g.apprenant_id && !g.appreciations?.[SIGNATURE_BILAN.signeLe])
+  if (!aSigner.length) return { success: false, error: 'Aucun bilan final à faire signer' }
+
+  let envoyes = 0, sansEmail = 0, echecs = 0
+  for (const g of aSigner) {
+    const r = await demanderSignatureBilanAction(poeiId, g.apprenant_id)
+    if (r.success) envoyes++
+    else if ((r.error || '').includes("pas d'adresse email")) sansEmail++
+    else echecs++
+  }
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  return { success: true, data: { envoyes, sansEmail, echecs } }
+}

@@ -5,7 +5,7 @@ import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icon
 import { Button } from '@/components/ui'
 import { signerBilanAction } from './actions'
 
-export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes, avisInitial, dejaSigne }: {
+export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes, avisInitial, dejaSigne, certificatASigner = false }: {
   token: string
   orgNom: string
   logo: string | null
@@ -14,6 +14,8 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
   lignes: { libelle: string; valeur: string }[]
   avisInitial: string
   dejaSigne: boolean
+  /** Le certificat de réalisation n'est pas encore signé : la même signature le couvre */
+  certificatASigner?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [drawing, setDrawing] = useState(false)
@@ -60,8 +62,12 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
         <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-5">
           <CheckCircle2 className="h-8 w-8 text-emerald-600" />
         </div>
-        <h1 className="text-2xl font-heading font-bold text-surface-900">Bilan signé</h1>
-        <p className="text-surface-500 mt-2">Merci. Votre bilan de fin de formation a bien été signé.</p>
+        <h1 className="text-2xl font-heading font-bold text-surface-900">{certificatASigner ? 'Documents signés' : 'Bilan signé'}</h1>
+        <p className="text-surface-500 mt-2">
+          {certificatASigner
+            ? 'Merci. Votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation ont bien été signés.'
+            : 'Merci. Votre bilan de fin de formation a bien été signé.'}
+        </p>
         <p className="text-xs text-surface-400 mt-6">{orgNom}</p>
       </div>
     )
@@ -75,8 +81,12 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
         <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 bg-brand-50 rounded-full px-3 py-1">
           <ShieldCheck className="h-3.5 w-3.5" /> Signature électronique
         </div>
-        <h1 className="text-2xl font-heading font-bold text-surface-900 mt-3">Bilan de fin de formation</h1>
-        <p className="text-surface-500 mt-1 text-sm">Relisez votre bilan, donnez votre avis sur la formation, puis signez dans le cadre ci-dessous.</p>
+        <h1 className="text-2xl font-heading font-bold text-surface-900 mt-3">{certificatASigner ? 'Vos documents de fin de formation' : 'Bilan de fin de formation'}</h1>
+        <p className="text-surface-500 mt-1 text-sm">
+          {certificatASigner
+            ? 'Une seule signature pour votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation. Relisez les informations, donnez votre avis, puis signez.'
+            : 'Relisez votre bilan, donnez votre avis sur la formation, puis signez dans le cadre ci-dessous.'}
+        </p>
       </div>
 
       <div className="card p-5 mb-5 space-y-2.5 text-sm">
@@ -112,10 +122,12 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
         )}
 
         <Button className="w-full mt-5" onClick={submit} isLoading={saving} icon={<CheckCircle2 className="h-4 w-4" />}>
-          Signer mon bilan
+          {certificatASigner ? 'Signer mes documents' : 'Signer mon bilan'}
         </Button>
         <p className="text-2xs text-surface-400 mt-3 text-center">
-          En signant, vous confirmez avoir relu les informations de ce bilan et votre avis sur la formation. Il sera transmis à France Travail.
+          {certificatASigner
+            ? 'En signant, vous attestez avoir suivi la formation et vous signez votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation, qui sera transmis à France Travail.'
+            : 'En signant, vous confirmez avoir relu les informations de ce bilan et votre avis sur la formation. Il sera transmis à France Travail.'}
         </p>
       </div>
     </div>

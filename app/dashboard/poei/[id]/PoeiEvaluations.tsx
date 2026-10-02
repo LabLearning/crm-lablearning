@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { ClipboardCheck, CheckCircle2, Clock, Download, Minus, Plus, PenLine, Send, Loader2, Building2, Eye } from '@/components/ui/icons'
 import { Badge, Button, Modal, useToast } from '@/components/ui'
 import { sendSignatureEmployeurAction } from '../certificat-signature-actions'
-import { demanderSignatureBilanAction } from '../bilan-signature-actions'
+import { demanderSignatureBilanAction, demanderSignaturesBilansAction } from '../bilan-signature-actions'
 import { GrilleEvaluation } from '@/components/poei/GrilleEvaluation'
 import { grilleProgress } from '@/lib/poei-grille'
 import { SIGNATURE_BILAN, type BilanFt } from '@/lib/poei-bilan-ft'
@@ -33,7 +33,7 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
   const { toast } = useToast()
   const [envoiSig, setEnvoiSig] = useState(false)
   // cible : l'employeur (attestation) ou un stagiaire (son bilan de fin de formation)
-  const [apercuSig, setApercuSig] = useState<{ html: string; subject?: string; to?: string; stagiaire?: string } | null>(null)
+  const [apercuSig, setApercuSig] = useState<{ html: string; subject?: string; to?: string; stagiaire?: string; tous?: string[] } | null>(null)
   const [bilansDemandes, setBilansDemandes] = useState<string[]>([])
   const [signatureEnvoyee, setSignatureEnvoyee] = useState(false)
 
@@ -73,6 +73,29 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
     setEnvoiSig(false)
   }
 
+  // Tous les bilans finals non signés d'un coup : aperçu du premier mail, puis envoi à chacun
+  async function demanderToutesSignatures(apprenantIds: string[]) {
+    if (!apprenantIds.length) return
+    setEnvoiSig(true)
+    const r = await demanderSignatureBilanAction(poeiId, apprenantIds[0], { preview: true })
+    setEnvoiSig(false)
+    if (r.success && r.data?.html) {
+      setApercuSig({ html: r.data.html, subject: r.data.subject, to: `${apprenantIds.length} stagiaire${apprenantIds.length > 1 ? 's' : ''} (un mail personnel chacun)`, tous: apprenantIds })
+    } else toast('error', r.error || "Impossible de générer l'aperçu")
+  }
+
+  async function confirmerEnvoiTous(apprenantIds: string[]) {
+    setEnvoiSig(true)
+    const r = await demanderSignaturesBilansAction(poeiId)
+    setEnvoiSig(false)
+    if (r.success && r.data) {
+      const { envoyes, sansEmail, echecs } = r.data
+      toast(echecs ? 'error' : 'success', `${envoyes} bilan${envoyes > 1 ? 's' : ''} envoyé${envoyes > 1 ? 's' : ''} en signature${sansEmail ? `, ${sansEmail} sans email (lien à copier)` : ''}${echecs ? `, ${echecs} en échec` : ''}`)
+      setApercuSig(null)
+      setBilansDemandes((p) => [...p, ...apprenantIds])
+    } else toast('error', r.error || 'Erreur')
+  }
+
   async function copierLienBilan(apprenantId: string, message = 'Lien de signature copié') {
     const r = await demanderSignatureBilanAction(poeiId, apprenantId, { lienSeul: true })
     if (!r.success || !r.data?.url) { toast('error', r.error || 'Erreur'); return }
@@ -103,6 +126,12 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
   const prochaineSemaine = (semaines[semaines.length - 1] ?? 0) + 1
   const gridOf = (aid: string, sem: number | null) => grilles.find((g) => g.apprenant_id === aid && g.semaine === sem)
 
+  // Bilans finals remplis et pas encore signés par le stagiaire (équipe interne seulement)
+  const bilansASigner = candidats
+    .filter((c) => c.apprenant_id && c.bilanFt)
+    .filter((c) => { const g = gridOf(c.apprenant_id!, null); return !!g && !g.appreciations?.[SIGNATURE_BILAN.signeLe] })
+    .map((c) => c.apprenant_id!)
+
   if (candidats.length === 0) {
     return <PoeiVide icone={ClipboardCheck} texte="Ajoutez des candidats au dossier pour suivre leurs évaluations." />
   }
@@ -128,6 +157,13 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
               className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-60">
               {envoiSig && !apercuSig ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
               {signatureEmployeur?.sent_at || signatureEnvoyee ? 'Relancer la signature employeur' : 'Faire signer l\u2019employeur'}
+            </button>
+          )}
+          {bilansASigner.length > 1 && (
+            <button onClick={() => demanderToutesSignatures(bilansASigner)} disabled={envoiSig}
+              title="Chaque stagiaire reçoit son lien : il relit son bilan, donne son avis et signe une fois pour tous ses documents"
+              className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-60">
+              <Send className="h-4 w-4" /> Faire signer les {bilansASigner.length} bilans
             </button>
           )}
           {grilles.length > 0 && (
@@ -253,7 +289,7 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
               {apercuSig.stagiaire && (
                 <Button variant="secondary" onClick={() => copierLienBilan(apercuSig.stagiaire!)}>Copier le lien</Button>
               )}
-              <Button onClick={() => (apercuSig.stagiaire ? confirmerEnvoiBilan(apercuSig.stagiaire) : confirmerEnvoiEmployeur())} isLoading={envoiSig} icon={<Send className="h-4 w-4" />}>
+              <Button onClick={() => (apercuSig.tous ? confirmerEnvoiTous(apercuSig.tous) : apercuSig.stagiaire ? confirmerEnvoiBilan(apercuSig.stagiaire) : confirmerEnvoiEmployeur())} isLoading={envoiSig} icon={<Send className="h-4 w-4" />}>
                 Confirmer l'envoi
               </Button>
             </div>

@@ -54,6 +54,15 @@ export default async function CertificatSignerPage({ params }: { params: { token
     if (h) heuresCandidat = { heures: h.heures, prevues: h.dureeTotale }
   }
 
+  // Le bilan de fin de formation, s'il est rempli : le candidat le relit et le
+  // signe du même geste que son certificat.
+  let bilan: { lignes: { libelle: string; valeur: string }[]; avisInitial: string } | null = null
+  if ((sig as any).role !== 'employeur' && !(sig as any).signed_at && (sig as any).apprenant_id && (sig as any).poei?.id && (sig as any).organization?.id) {
+    const { bilanPourSignature } = await import('@/lib/poei-signature-documents')
+    const b = await bilanPourSignature(supabase, (sig as any).organization.id, (sig as any).poei.id, (sig as any).apprenant_id)
+    if (b && !b.dejaSigne) bilan = { lignes: b.lignes, avisInitial: b.avisInitial }
+  }
+
   // Page sur fond clair : logo vert (logo_url peut être la variante blanche des emails)
   if ((sig as any).organization) {
     const { resolveDocumentLogoUrl } = await import('@/lib/pdf/org-logo')
@@ -62,7 +71,7 @@ export default async function CertificatSignerPage({ params }: { params: { token
 
   return (
     <div className="min-h-screen bg-surface-50">
-      <CertificatSignatureClient sig={sig as any} token={params.token} nbCandidats={nbCandidats} employeurNom={employeurNom} heuresCandidat={heuresCandidat} />
+      <CertificatSignatureClient sig={sig as any} token={params.token} nbCandidats={nbCandidats} employeurNom={employeurNom} heuresCandidat={heuresCandidat} bilan={bilan} />
     </div>
   )
 }

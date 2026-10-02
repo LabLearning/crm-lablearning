@@ -9,13 +9,15 @@ import { signCertificatAction } from './actions'
 /** 63.5 → « 63,5 » */
 const heuresFr = (n: number) => String(Math.round(Number(n) * 100) / 100).replace('.', ',')
 
-export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employeurNom = null, heuresCandidat = null }: {
+export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employeurNom = null, heuresCandidat = null, bilan = null }: {
   sig: any
   token: string
   nbCandidats?: number
   employeurNom?: string | null
   /** Heures portées sur le certificat de ce candidat (saisies dans la POEI, sinon durée du parcours). */
   heuresCandidat?: { heures: number; prevues: number } | null
+  /** Bilan de fin de formation à relire : il est signé du même geste que le certificat */
+  bilan?: { lignes: { libelle: string; valeur: string }[]; avisInitial: string } | null
 }) {
   // Le représentant de l'employeur signe l'attestation France Travail, une
   // fois pour tous les candidats ; le candidat signe son propre certificat.
@@ -28,6 +30,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
       ? (employeurNom || '')
       : `${sig.apprenant?.prenom || ''} ${sig.apprenant?.nom || ''}`.trim(),
   )
+  const [avis, setAvis] = useState(bilan?.avisInitial || '')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(!!sig.signed_at)
   const [err, setErr] = useState<string | null>(null)
@@ -62,7 +65,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
     if (!nom.trim()) { setErr('Merci d\'indiquer votre nom.'); return }
     setSaving(true)
     const data = canvasRef.current!.toDataURL('image/png')
-    const r = await signCertificatAction(token, data, nom.trim())
+    const r = await signCertificatAction(token, data, nom.trim(), bilan ? { avis } : undefined)
     if (r.success) setDone(true)
     else setErr(r.error || "Une erreur est survenue. Merci de réessayer.")
     setSaving(false)
@@ -74,11 +77,13 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
         <div className="h-16 w-16 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-5">
           <CheckCircle2 className="h-8 w-8 text-emerald-600" />
         </div>
-        <h1 className="text-2xl font-heading font-bold text-surface-900">{estEmployeur ? 'Attestation signée' : 'Certificat signé'}</h1>
+        <h1 className="text-2xl font-heading font-bold text-surface-900">{estEmployeur ? 'Attestation signée' : bilan ? 'Documents signés' : 'Certificat signé'}</h1>
         <p className="text-surface-500 mt-2">
           {estEmployeur
             ? `Merci. Votre signature sera portée sur l'attestation de développement de compétences de chaque candidat${dateAffichee ? ` (datée du ${formatDate(dateAffichee, { day: 'numeric', month: 'long', year: 'numeric' })})` : ''}.`
-            : `Merci. Votre certificat de réalisation a bien été signé${dateAffichee ? ` (daté du ${formatDate(dateAffichee, { day: 'numeric', month: 'long', year: 'numeric' })})` : ''}.`}
+            : bilan
+              ? 'Merci. Votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation ont bien été signés.'
+              : `Merci. Votre certificat de réalisation a bien été signé${dateAffichee ? ` (daté du ${formatDate(dateAffichee, { day: 'numeric', month: 'long', year: 'numeric' })})` : ''}.`}
         </p>
         <p className="text-xs text-surface-400 mt-6">{sig.organization?.name || 'Lab Learning'}</p>
       </div>
@@ -93,12 +98,14 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
           <ShieldCheck className="h-3.5 w-3.5" /> Signature électronique
         </div>
         <h1 className="text-2xl font-heading font-bold text-surface-900 mt-3">
-          {estEmployeur ? 'Attestation de développement de compétences' : 'Certificat de réalisation'}
+          {estEmployeur ? 'Attestation de développement de compétences' : bilan ? 'Vos documents de fin de formation' : 'Certificat de réalisation'}
         </h1>
         <p className="text-surface-500 mt-1 text-sm">
           {estEmployeur
             ? 'En qualité de représentant de l\u2019employeur, vérifiez les informations puis signez dans le cadre ci-dessous.'
-            : 'Vérifiez les informations puis signez dans le cadre ci-dessous.'}
+            : bilan
+              ? 'Une seule signature pour votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation. Relisez les informations, donnez votre avis, puis signez.'
+              : 'Vérifiez les informations puis signez dans le cadre ci-dessous.'}
         </p>
       </div>
 
@@ -120,7 +127,26 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
         ))}
       </div>
 
+      {bilan && (
+        <div className="card p-5 mb-5 space-y-2.5 text-sm">
+          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Bilan de fin de formation</div>
+          {bilan.lignes.map((l) => (
+            <div key={l.libelle} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 border-b border-surface-100 pb-2 last:border-0">
+              <span className="text-surface-500 sm:shrink-0">{l.libelle}</span>
+              <span className="font-medium text-surface-900 sm:text-right whitespace-pre-line break-words">{l.valeur}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="card p-5">
+        {bilan && (
+          <>
+            <label className="block text-sm font-medium text-surface-700 mb-1">Votre avis sur la formation</label>
+            <textarea rows={3} className="input-base resize-none mb-4" value={avis} maxLength={1500}
+              onChange={(e) => setAvis(e.target.value)} placeholder="Ce que la formation vous a apporté, ce qui pourrait être amélioré…" />
+          </>
+        )}
         <label className="block text-sm font-medium text-surface-700 mb-1">Nom et prénom</label>
         <input className="input-base mb-4" value={nom} onChange={(e) => setNom(e.target.value)} />
 
@@ -145,12 +171,14 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
         )}
 
         <Button className="w-full mt-5" onClick={submit} isLoading={saving} icon={<CheckCircle2 className="h-4 w-4" />}>
-          {estEmployeur ? "Signer l'attestation" : 'Signer mon certificat'}
+          {estEmployeur ? "Signer l'attestation" : bilan ? 'Signer mes documents' : 'Signer mon certificat'}
         </Button>
         <p className="text-2xs text-surface-400 mt-3 text-center">
           {estEmployeur
             ? 'En signant, vous attestez, en qualité de représentant de l\u2019employeur, l\u2019exactitude des informations portées sur les attestations de développement de compétences des candidats du projet.'
-            : 'En signant, vous attestez avoir suivi la formation mentionnée ci-dessus.'}
+            : bilan
+              ? 'En signant, vous attestez avoir suivi la formation mentionnée ci-dessus et vous signez votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation, qui sera transmis à France Travail.'
+              : 'En signant, vous attestez avoir suivi la formation mentionnée ci-dessus.'}
         </p>
       </div>
     </div>
