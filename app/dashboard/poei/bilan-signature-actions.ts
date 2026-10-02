@@ -21,7 +21,7 @@ const echapper = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').r
 export async function demanderSignatureBilanAction(
   poeiId: string,
   apprenantId: string,
-  opts?: { preview?: boolean; lienSeul?: boolean },
+  opts?: { preview?: boolean; lienSeul?: boolean; apercuPage?: boolean },
 ): Promise<ActionResult & { data?: { email?: string; html?: string; subject?: string; url?: string } }> {
   const session = await getSession()
   if (['apprenant', 'formateur', 'apporteur_affaires', 'franchise'].includes(session.user.role)) {
@@ -41,6 +41,18 @@ export async function demanderSignatureBilanAction(
   if (!poei || !appr) return { success: false, error: 'Candidat introuvable' }
   if (!grille) return { success: false, error: "Le bilan final n'est pas encore rempli" }
   const a: Record<string, any> = (grille as any).appreciations || {}
+
+  // Lien d'aperçu : la page du stagiaire, pour l'équipe, sans rien enregistrer
+  if (opts?.apercuPage) {
+    const jetonApercu: string = a[SIGNATURE_BILAN.jetonApercu] || randomBytes(32).toString('hex')
+    if (!a[SIGNATURE_BILAN.jetonApercu]) {
+      const { error } = await supabase.from('poei_grilles')
+        .update({ appreciations: { ...a, [SIGNATURE_BILAN.jetonApercu]: jetonApercu } }).eq('id', (grille as any).id)
+      if (error) return { success: false, error: "Erreur lors de la préparation de l'aperçu" }
+    }
+    return { success: true, data: { url: `${APP()}/bilan/${jetonApercu}/signer` } }
+  }
+
   if (a[SIGNATURE_BILAN.signeLe]) return { success: false, error: 'Ce bilan est déjà signé' }
 
   // Un seul lien par bilan, prolongé à chaque demande

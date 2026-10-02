@@ -24,7 +24,12 @@ export async function signerBilanAction(
   const supabase = await createServiceRoleClient()
   const { data: grille } = await supabase.from('poei_grilles').select('id, organization_id, poei_id, apprenant_id, appreciations')
     .eq(`appreciations->>${SIGNATURE_BILAN.jeton}`, token).is('semaine', null).maybeSingle()
-  if (!grille) return { success: false, error: 'Lien invalide' }
+  if (!grille) {
+    // Lien d'aperçu de l'équipe : on valide comme pour une vraie signature, sans rien écrire
+    const { data: apercu } = await supabase.from('poei_grilles').select('id')
+      .eq(`appreciations->>${SIGNATURE_BILAN.jetonApercu}`, token).is('semaine', null).maybeSingle()
+    return apercu ? { success: true } : { success: false, error: 'Lien invalide' }
+  }
   const g: any = grille
   const a: Record<string, any> = g.appreciations || {}
   if (a[SIGNATURE_BILAN.signeLe]) return { success: false, error: 'Ce bilan est déjà signé' }

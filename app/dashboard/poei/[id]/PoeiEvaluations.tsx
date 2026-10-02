@@ -96,6 +96,13 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
     } else toast('error', r.error || 'Erreur')
   }
 
+  // La page que voit le stagiaire, ouverte en aperçu (rien ne s'enregistre)
+  async function voirPageStagiaire(apprenantId: string) {
+    const r = await demanderSignatureBilanAction(poeiId, apprenantId, { apercuPage: true })
+    if (r.success && r.data?.url) window.open(r.data.url, '_blank', 'noopener')
+    else toast('error', r.error || 'Erreur')
+  }
+
   async function copierLienBilan(apprenantId: string, message = 'Lien de signature copié') {
     const r = await demanderSignatureBilanAction(poeiId, apprenantId, { lienSeul: true })
     if (!r.success || !r.data?.url) { toast('error', r.error || 'Erreur'); return }
@@ -286,6 +293,9 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
             </div>
             <div className="flex flex-wrap justify-end gap-3 pt-1">
               <Button variant="secondary" onClick={() => setApercuSig(null)}>Annuler</Button>
+              {(apercuSig.stagiaire || apercuSig.tous) && (
+                <Button variant="secondary" onClick={() => voirPageStagiaire(apercuSig.stagiaire || apercuSig.tous![0])} icon={<Eye className="h-4 w-4" />}>Voir la page du stagiaire</Button>
+              )}
               {apercuSig.stagiaire && (
                 <Button variant="secondary" onClick={() => copierLienBilan(apercuSig.stagiaire!)}>Copier le lien</Button>
               )}

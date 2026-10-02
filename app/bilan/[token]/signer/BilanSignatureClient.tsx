@@ -6,7 +6,7 @@ import { Button } from '@/components/ui'
 import { signerBilanAction } from './actions'
 import { AvisFormationStagiaire } from '@/components/poei/AvisFormationStagiaire'
 
-export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes, avisInitial, noteInitiale = '', dejaSigne, certificatASigner = false }: {
+export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes, avisInitial, noteInitiale = '', dejaSigne, certificatASigner = false, apercu = false }: {
   token: string
   orgNom: string
   logo: string | null
@@ -18,6 +18,8 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
   dejaSigne: boolean
   /** Le certificat de réalisation n'est pas encore signé : la même signature le couvre */
   certificatASigner?: boolean
+  /** Lien d'aperçu de l'équipe : rien ne s'enregistre */
+  apercu?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [drawing, setDrawing] = useState(false)
@@ -72,6 +74,11 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
             ? 'Merci. Votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation ont bien été signés.'
             : 'Merci. Votre bilan de fin de formation a bien été signé.'}
         </p>
+        {apercu && (
+          <p className="mt-5 rounded-xl bg-warning-50 border border-warning-200 px-4 py-3 text-sm text-warning-700">
+            Aperçu : c&apos;est l&apos;écran que voit le stagiaire après avoir signé. Rien n&apos;a été enregistré.
+          </p>
+        )}
         <p className="text-xs text-surface-400 mt-6">{orgNom}</p>
       </div>
     )
@@ -79,6 +86,11 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, lignes
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-10">
+      {apercu && (
+        <div className="mb-6 rounded-xl bg-warning-50 border border-warning-200 px-4 py-3 text-sm text-warning-700">
+          Aperçu réservé à l&apos;équipe : voici la page que reçoit {nomStagiaire || 'le stagiaire'}. Vous pouvez la tester jusqu&apos;au bout, rien n&apos;est enregistré.
+        </div>
+      )}
       <div className="text-center mb-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {logo && <img src={logo} alt="" className="h-12 mx-auto mb-4 object-contain" />}

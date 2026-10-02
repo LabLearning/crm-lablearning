@@ -15,14 +15,22 @@ export default async function BilanSignerPage({ params }: { params: { token: str
   if (!/^[0-9a-f]{64}$/.test(params.token || '')) redirect('/portail/expired')
   const supabase = await createServiceRoleClient()
 
-  const { data: grille } = await supabase.from('poei_grilles')
-    .select('id, organization_id, poei_id, apprenant_id, appreciations, apprenant:apprenants(prenom, nom)')
+  const champs = 'id, organization_id, poei_id, apprenant_id, appreciations, apprenant:apprenants(prenom, nom)'
+  let { data: grille } = await supabase.from('poei_grilles').select(champs)
     .eq(`appreciations->>${SIGNATURE_BILAN.jeton}`, params.token).is('semaine', null).maybeSingle()
+  // Lien d'aperçu de l'équipe : la page du stagiaire, sans rien enregistrer
+  let apercu = false
+  if (!grille) {
+    const r = await supabase.from('poei_grilles').select(champs)
+      .eq(`appreciations->>${SIGNATURE_BILAN.jetonApercu}`, params.token).is('semaine', null).maybeSingle()
+    grille = r.data
+    apercu = !!grille
+  }
   if (!grille) redirect('/portail/expired')
   const g: any = grille
   const a: Record<string, any> = g.appreciations || {}
-  const dejaSigne = !!a[SIGNATURE_BILAN.signeLe]
-  if (!dejaSigne && a[SIGNATURE_BILAN.expire] && new Date(a[SIGNATURE_BILAN.expire]) < new Date()) redirect('/portail/expired')
+  const dejaSigne = !apercu && !!a[SIGNATURE_BILAN.signeLe]
+  if (!apercu && !dejaSigne && a[SIGNATURE_BILAN.expire] && new Date(a[SIGNATURE_BILAN.expire]) < new Date()) redirect('/portail/expired')
 
   const [bilan, { data: org }, { data: certificat }] = await Promise.all([
     bilanPourSignature(supabase, g.organization_id, g.poei_id, g.apprenant_id),
@@ -48,6 +56,7 @@ export default async function BilanSignerPage({ params }: { params: { token: str
         noteInitiale={bilan!.noteInitiale}
         dejaSigne={dejaSigne}
         certificatASigner={!certificat?.signed_at}
+        apercu={apercu}
       />
     </div>
   )

@@ -191,6 +191,8 @@ export function construireBilanFt(src: {
 
 export const SIGNATURE_BILAN = {
   jeton: 'ft_sig_jeton',
+  /** Lien d'aperçu pour l'équipe : même page que le stagiaire, mais rien ne s'enregistre */
+  jetonApercu: 'ft_sig_jeton_apercu',
   expire: 'ft_sig_expire',
   envoyeLe: 'ft_sig_envoye_le',
   data: 'ft_sig_data',
@@ -233,7 +235,7 @@ export function fusionnerAppreciations(
 /** Appréciations envoyées au navigateur : sans le tracé, le jeton ni les traces techniques. */
 export function appreciationsPourClient(appreciations: Record<string, any> | null | undefined): Record<string, any> {
   const out: Record<string, any> = { ...(appreciations || {}) }
-  for (const k of [SIGNATURE_BILAN.data, SIGNATURE_BILAN.jeton, SIGNATURE_BILAN.ip, SIGNATURE_BILAN.agent]) delete out[k]
+  for (const k of [SIGNATURE_BILAN.data, SIGNATURE_BILAN.jeton, SIGNATURE_BILAN.jetonApercu, SIGNATURE_BILAN.ip, SIGNATURE_BILAN.agent]) delete out[k]
   return out
 }
 
