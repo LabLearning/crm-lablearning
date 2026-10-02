@@ -6,10 +6,11 @@ import { Save, CheckCircle2, ClipboardCheck, Sparkles, Loader2 } from '@/compone
 import { Button, Badge, useToast } from '@/components/ui'
 import { GRILLE_SECTIONS, NIVEAUX, APPRECIATIONS, AVIS_FINAL, grilleProgress, type NiveauAcquis } from '@/lib/poei-grille'
 import { saveGrilleAction, detaillerBilanAction } from '@/app/dashboard/poei/grille-actions'
+import { CHAMPS_BILAN_FT, avisCentreParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
 
 type Items = Record<string, { n?: NiveauAcquis; o?: string }>
 
-export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, initial, onSaved, dureeBilan = null }: {
+export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, initial, onSaved, dureeBilan = null, bilanFt = null }: {
   poeiId: string
   apprenantId: string
   apprenantNom: string
@@ -18,6 +19,8 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
   onSaved?: () => void
   /** Heures du certificat de réalisation : le bilan final porte celles-ci, pas une saisie libre */
   dureeBilan?: { heures: number; prevues: number } | null
+  /** Bilan de fin de formation France Travail : ce que le CRM remplit déjà (équipe interne seulement) */
+  bilanFt?: BilanFt | null
 }) {
   const { toast } = useToast()
   const router = useRouter()
@@ -56,6 +59,20 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
 
   const setN = (id: string, n: NiveauAcquis) => setItems((p) => ({ ...p, [id]: { ...p[id], n: p[id]?.n === n ? undefined : n } }))
   const setO = (id: string, o: string) => setItems((p) => ({ ...p, [id]: { ...p[id], o } }))
+
+  // Réponses du bilan France Travail : rangées avec les appréciations (clés « ft_ »)
+  const F = CHAMPS_BILAN_FT
+  const setFt = (cle: string, v: string) => setApp((p) => ({ ...p, [cle]: v }))
+  const OuiNonFt = ({ cle }: { cle: string }) => (
+    <div className="flex gap-1.5">
+      {['Oui', 'Non'].map((o) => (
+        <button key={o} type="button" onClick={() => setFt(cle, app[cle] === o ? '' : o)}
+          className={`px-3 py-1.5 min-h-[40px] md:min-h-0 rounded-lg text-xs font-medium transition-colors ${app[cle] === o ? 'bg-brand-500 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200'}`}>
+          {o}
+        </button>
+      ))}
+    </div>
+  )
 
   async function save(statut: 'brouillon' | 'validee') {
     setSaving(true)
@@ -212,6 +229,96 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
               </div>
             </div>
           </div>
+
+          {bilanFt && (
+            <div className="card p-4 space-y-4">
+              <div>
+                <div className="text-sm font-medium text-surface-700">Bilan de fin de formation France Travail</div>
+                <p className="mt-0.5 text-xs text-surface-500">
+                  Page ajoutée au bilan final, à joindre à la facture sur Chorus Pro. Une case laissée vide reste à compléter à la main sur le document.
+                </p>
+              </div>
+
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 rounded-xl bg-surface-50 p-3 text-xs">
+                {([
+                  ['Organisme', bilanFt.organisme],
+                  ['Intitulé de la formation', bilanFt.intitule],
+                  ['Demandeur d’emploi', `${bilanFt.prenom} ${bilanFt.nom}`.trim()],
+                  ['N° identifiant', bilanFt.identifiant],
+                  ['Début (prévu / réel)', [bilanFt.debutPrevue, bilanFt.debutReelle].filter(Boolean).join(' / ')],
+                  ['Fin (prévue / réelle)', [bilanFt.finPrevue, bilanFt.finReelle].filter(Boolean).join(' / ')],
+                  ['Heures (prévues / réelles)', [bilanFt.heuresPrevues, bilanFt.heuresReelles].filter(Boolean).join(' / ')],
+                  ['Métier visé', bilanFt.metier],
+                  ['Formation certifiante', bilanFt.certifiante],
+                  ['A achevé la formation', bilanFt.acheve],
+                  ['Dernier jour de formation', bilanFt.dernierJour],
+                  ...(bilanFt.motifSortie ? [['Motif de sortie anticipée', bilanFt.motifSortie]] : []),
+                ] as [string, string][]).map(([l, v]) => (
+                  <div key={l} className="flex gap-2 min-w-0">
+                    <dt className="shrink-0 text-surface-500">{l} :</dt>
+                    <dd className={`min-w-0 break-words ${v ? 'text-surface-800' : 'text-amber-600'}`}>{v || 'non renseigné dans le CRM'}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-surface-600 mb-1">Référent de l’organisme de formation</label>
+                  <input className="input-base" value={app[F.referent] || ''} onChange={(e) => setFt(F.referent, e.target.value)} placeholder={bilanFt.referent || 'Prénom Nom'} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-surface-600 mb-1">Niveau de qualification atteint en fin de formation</label>
+                  <input className="input-base" value={app[F.niveau] || ''} onChange={(e) => setFt(F.niveau, e.target.value)} placeholder="Ex : sans niveau spécifique" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Suivi du stagiaire après la formation</div>
+                {([
+                  ['Reprise d’emploi en cours de formation', F.repriseCours, F.repriseCoursDurable, F.repriseCoursDate],
+                  ['Reprise d’emploi dès la fin de formation', F.repriseFin, F.repriseFinDurable, F.repriseFinDate],
+                ] as const).map(([titre, reprise, durable, date]) => (
+                  <div key={reprise} className="rounded-xl border border-surface-200 p-3 space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm text-surface-700">{titre}</div>
+                      <OuiNonFt cle={reprise} />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs text-surface-600">Sur contrat durable (CDD de plus de 6 mois ou CDI)</div>
+                      <OuiNonFt cle={durable} />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="text-xs text-surface-600">Date de la reprise d’activité</label>
+                      <input type="date" className="input-base !w-auto" value={app[date] || ''} onChange={(e) => setFt(date, e.target.value)} />
+                    </div>
+                  </div>
+                ))}
+                <div className="rounded-xl border border-surface-200 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-sm text-surface-700">Reprise d’emploi à une date prévisionnelle</label>
+                    <input type="date" className="input-base !w-auto" value={app[F.reprisePrevue] || ''} onChange={(e) => setFt(F.reprisePrevue, e.target.value)} />
+                  </div>
+                  {!app[F.reprisePrevue] && bilanFt.reprisePrevue && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-surface-500">Sans saisie, le bilan reprend la date d’embauche prévue de la fiche candidat : {bilanFt.reprisePrevue}.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-surface-600 mb-1">Avis du stagiaire sur la formation</label>
+                <textarea rows={2} className="input-base resize-none" value={app[F.avisStagiaire] || ''} onChange={(e) => setFt(F.avisStagiaire, e.target.value)}
+                  placeholder="Tel que le stagiaire l’a exprimé. Vide : à écrire à la main sur le document." />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-surface-600 mb-1">Avis du centre de formation</label>
+                <textarea rows={3} className="input-base resize-none" value={app[F.avisCentre] || ''} onChange={(e) => setFt(F.avisCentre, e.target.value)}
+                  placeholder={avisCentreParDefaut(txt.avis_final, txt.motivation_avis) || 'Sans saisie : l’avis final du formateur et sa motivation.'} />
+                {!app[F.avisCentre] && (
+                  <p className="mt-1 text-[11px] leading-snug text-surface-500">Sans saisie, le bilan reprend l’avis final du formateur et sa motivation.</p>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
 

@@ -11,6 +11,7 @@ import { PoeiCandidats } from './PoeiCandidats'
 import { PoeiPositionnement, type PositionnementCandidat } from './PoeiPositionnement'
 import { PoeiFacturation } from './PoeiFacturation'
 import { PoeiEvaluations } from './PoeiEvaluations'
+import { construireBilanFt } from '@/lib/poei-bilan-ft'
 import { PoeiEmailHistory } from './PoeiEmailHistory'
 import { PoeiInterventions } from './PoeiInterventions'
 import { PoeiShell } from './PoeiShell'
@@ -34,7 +35,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
 
   const { data: poei } = await supabase
     .from('poei')
-    .select(`*, client:clients(raison_sociale, nom_commercial, sigle), formation:formations(intitule), session:sessions(id, reference, date_debut, date_fin, status)`)
+    .select(`*, client:clients(raison_sociale, nom_commercial, sigle), formation:formations(intitule, est_certifiante), session:sessions(id, reference, date_debut, date_fin, status)`)
     .eq('id', params.id)
     .eq('organization_id', session.organization.id)
     .single()
@@ -234,7 +235,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   // Grilles d'évaluation des candidats (résilient : table absente avant migration 108)
   const { data: grilles } = await supabase
     .from('poei_grilles')
-    .select('*')
+    .select('*, formateur:formateurs(prenom, nom)')
     .eq('poei_id', params.id).eq('organization_id', session.organization.id)
     .order('semaine', { ascending: true, nullsFirst: false })
 
@@ -567,10 +568,19 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             candidats={candidats.map((c: any) => {
               const aid = c.apprenant?.id || c.apprenant_id || null
               const h = aid ? heures.get(String(aid)) : null
+              // Ce que le CRM porte déjà sur le bilan de fin de formation France Travail
+              // (sans les réponses saisies : le formulaire les montre à part)
+              const finale: any = ((grilles || []) as any[]).find((g) => g.apprenant_id === aid && g.semaine == null)
               return {
                 id: c.id, apprenant_id: aid,
                 nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat',
                 duree: h ? { heures: h.heures, prevues: h.dureeTotale } : null,
+                bilanFt: construireBilanFt({
+                  org: session.organization, poei: p, candidat: c, apprenant: c.apprenant,
+                  formateurNom: finale?.formateur ? `${finale.formateur.prenom || ''} ${finale.formateur.nom || ''}`.trim() : null,
+                  heuresReelles: h?.heures ?? null, heuresPrevues: h?.dureeTotale ?? null,
+                  grille: null, aujourdhui: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }),
+                }),
               }
             })}
             grilles={(grilles || []) as any[]}

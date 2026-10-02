@@ -6,6 +6,7 @@ import { Badge, Button, Modal, useToast } from '@/components/ui'
 import { sendSignatureEmployeurAction } from '../certificat-signature-actions'
 import { GrilleEvaluation } from '@/components/poei/GrilleEvaluation'
 import { grilleProgress } from '@/lib/poei-grille'
+import type { BilanFt } from '@/lib/poei-bilan-ft'
 import { formatDate } from '@/lib/utils'
 import { PoeiSection, PoeiVide, PoeiDefilable } from './PoeiSection'
 
@@ -15,6 +16,8 @@ interface Cand {
   nom: string
   /** Heures du certificat de réalisation, reprises sur le bilan final */
   duree?: { heures: number; prevues: number } | null
+  /** Bilan de fin de formation France Travail tel que le CRM le remplit déjà */
+  bilanFt?: BilanFt | null
 }
 interface Grille { id: string; apprenant_id: string; semaine: number | null; statut: string; date_evaluation: string; items: any; [k: string]: any }
 
@@ -213,7 +216,8 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
           <div className="max-h-[75vh] overflow-y-auto pr-1">
             <GrilleEvaluation poeiId={poeiId} apprenantId={open.apprenantId} apprenantNom={open.nom}
               semaine={open.semaine} initial={gridOf(open.apprenantId, open.semaine)} onSaved={() => setOpen(null)}
-              dureeBilan={candidats.find((c) => c.apprenant_id === open.apprenantId)?.duree || null} />
+              dureeBilan={candidats.find((c) => c.apprenant_id === open.apprenantId)?.duree || null}
+              bilanFt={candidats.find((c) => c.apprenant_id === open.apprenantId)?.bilanFt || null} />
           </div>
         )}
       </Modal>
