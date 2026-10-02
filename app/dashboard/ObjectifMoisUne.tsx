@@ -2,7 +2,8 @@
 
 /**
  * Objectif du mois, bloc « La une » du tableau de bord : le mois suivant en
- * titre et deux jauges côte à côte qui se remplissent comme un liquide.
+ * titre (le mois en cours sur le sélecteur) et deux jauges côte à côte qui se
+ * remplissent comme un liquide.
  *  - Établissements calés : jauge crantée, une case par établissement visé.
  *  - Chiffre d'affaires HT calé : jauge continue, un repère par palier rond.
  * Les calages de la semaine sont hachurés ; sous chaque jauge, le reste à
@@ -334,9 +335,36 @@ function Etiquette({ children }: { children: ReactNode }) {
 
 // ── Bloc ──
 
-export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; peutModifier: boolean }) {
+/** Le mois suivant s'affiche d'abord ; le sélecteur de l'en-tête ramène au mois en cours. */
+export function ObjectifMoisUne({ mois, peutModifier }: { mois: ObjectifMois[]; peutModifier: boolean }) {
+  const [cle, setCle] = useState(() => (mois.find((m) => !m.enCours) ?? mois[mois.length - 1]).cle)
+  const [bascule, setBascule] = useState(false)
+  const data = mois.find((m) => m.cle === cle) ?? mois[mois.length - 1]
+  // Une clé par mois : les réglages repartent de zéro et les jauges se remplissent à nouveau
+  return (
+    <Une
+      key={data.cle}
+      data={data}
+      choix={mois}
+      onChoisir={(c) => { setBascule(true); setCle(c) }}
+      reprendreFocus={bascule}
+      peutModifier={peutModifier}
+    />
+  )
+}
+
+function Une({ data, choix, onChoisir, reprendreFocus, peutModifier }: {
+  data: ObjectifMois
+  choix: ObjectifMois[]
+  onChoisir: (cle: string) => void
+  /** Le bloc vient d'être remonté par le sélecteur : le bouton du mois affiché reprend le focus. */
+  reprendreFocus: boolean
+  peutModifier: boolean
+}) {
   const { toast } = useToast()
   const uid = useId().replace(/:/g, '')
+  const moisActif = useRef<HTMLButtonElement>(null)
+  useEffect(() => { if (reprendreFocus) moisActif.current?.focus({ preventScroll: true }) }, [reprendreFocus])
 
   const [intro, setIntro] = useState(true)            // animations d'entrée, une fois par affichage
   const [annonce, setAnnonce] = useState('')
@@ -350,7 +378,8 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
   const annoncer = (msg: string) => { setAnnonce(''); setTimeout(() => setAnnonce(msg), 60) }
 
   const mois = data.nomMois.toLowerCase()                 // « octobre »
-  const jours = Math.max(1, data.joursAvantDebut)
+  // Jours pour caler : jusqu'au 1er du mois visé, ou jusqu'à la fin du mois quand il est en cours
+  const jours = Math.max(1, data.enCours ? data.joursRestants : data.joursAvantDebut)
 
   // ── Établissements ──
   const regE = useReglage(data.objectif, data.objectifSaisi, {
@@ -444,33 +473,64 @@ export function ObjectifMoisUne({ data, peutModifier }: { data: ObjectifMois; pe
       <div aria-hidden="true" className="ll-obj-grille pointer-events-none absolute inset-0 -z-10" />
       <p aria-live="polite" className="sr-only">{annonce}</p>
 
-      {/* En-tête : le mois visé, le compte à rebours */}
-      <header className="flex items-end justify-between gap-4 px-4 pt-4 sm:px-6 sm:pt-5">
-        <h2 id={`${uid}-titre`} className="min-w-0 text-white">
-          <span className="ll-kicker ll-kicker--light">Objectif du mois</span>
-          <span className="sr-only"> : formations en {data.libelle}</span>
-          <span aria-hidden="true" className="mt-1.5 flex items-baseline gap-2.5">
-            <span className="relative inline-block">
-              <span className="ll-obj-mois">
-                {Array.from(data.nomMois).map((lettre, i) => (
-                  <span key={i} className="ll-obj-lettre" style={vars({ '--i': i })}>{lettre}</span>
-                ))}
+      {/* En-tête : le choix du mois, le mois visé, le compte à rebours */}
+      <header className="px-4 pt-4 sm:px-6 sm:pt-5">
+        <div className="flex min-h-[32px] items-center justify-between gap-3">
+          <p aria-hidden="true" className="ll-kicker ll-kicker--light min-w-0 whitespace-nowrap">Objectif<span className="hidden sm:inline"> du mois</span></p>
+          {choix.length > 1 && (
+            <div role="group" aria-label="Mois affiché" className="inline-flex shrink-0 rounded-lg bg-white/[0.07] p-0.5 ring-1 ring-inset ring-white/10">
+              {choix.map((c) => {
+                const actif = c.cle === data.cle
+                return (
+                  <button
+                    key={c.cle}
+                    ref={actif ? moisActif : undefined}
+                    type="button"
+                    aria-pressed={actif}
+                    onClick={() => { if (!actif) onChoisir(c.cle) }}
+                    className={cn(
+                      'h-9 rounded-md px-3 text-xs font-semibold transition-colors sm:h-8',
+                      FOCUS,
+                      actif ? 'bg-white/15 text-white shadow-sm' : 'text-white/60 hover:text-white',
+                    )}
+                  >
+                    {c.nomMois}<span className="sr-only">{c.enCours ? ', mois en cours' : ', mois suivant'}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        <div className="mt-1.5 flex items-end justify-between gap-4">
+          <h2 id={`${uid}-titre`} className="min-w-0 text-white">
+            <span className="sr-only">Objectif du mois : formations en {data.libelle}{data.enCours ? ', mois en cours' : ''}</span>
+            <span aria-hidden="true" className="flex items-baseline gap-2.5">
+              <span className="relative inline-block">
+                <span className="ll-obj-mois">
+                  {Array.from(data.nomMois).map((lettre, i) => (
+                    <span key={i} className="ll-obj-lettre" style={vars({ '--i': i })}>{lettre}</span>
+                  ))}
+                </span>
+                {lesDeux && (
+                  <svg className="ll-obj-trait pointer-events-none absolute -bottom-1.5 left-0 h-2.5 w-full" viewBox="0 0 300 12" preserveAspectRatio="none">
+                    <path d="M3 8C80 2.5 190 2.5 297 6.5" pathLength={1} fill="none" stroke="#5CD9A0" strokeWidth={4} strokeLinecap="round" />
+                  </svg>
+                )}
               </span>
-              {lesDeux && (
-                <svg className="ll-obj-trait pointer-events-none absolute -bottom-1.5 left-0 h-2.5 w-full" viewBox="0 0 300 12" preserveAspectRatio="none">
-                  <path d="M3 8C80 2.5 190 2.5 297 6.5" pathLength={1} fill="none" stroke="#5CD9A0" strokeWidth={4} strokeLinecap="round" />
-                </svg>
-              )}
+              <span className="ll-obj-rise hidden font-mono text-sm tabular-nums text-white/45 sm:inline" style={vars({ '--i': 0 })}>{data.annee}</span>
             </span>
-            <span className="ll-obj-rise hidden font-mono text-sm tabular-nums text-white/45 sm:inline" style={vars({ '--i': 0 })}>{data.annee}</span>
-          </span>
-        </h2>
-        <p className="ll-obj-rise shrink-0 pb-0.5 text-right" style={vars({ '--i': 0 })}>
-          <span className="block font-heading text-2xl font-extrabold leading-none tracking-tight tabular-nums text-white sm:text-3xl sm:leading-none">
-            J-{jours}
-          </span>
-          <span className="mt-1 block text-xs text-white/60">{jours === 1 ? `demain, 1er ${mois}` : `avant le 1er ${mois}`}</span>
-        </p>
+          </h2>
+          <p className="ll-obj-rise shrink-0 pb-0.5 text-right" style={vars({ '--i': 0 })}>
+            <span className="block font-heading text-2xl font-extrabold leading-none tracking-tight tabular-nums text-white sm:text-3xl sm:leading-none">
+              J-{jours}
+            </span>
+            <span className="mt-1 block text-xs text-white/60">
+              {data.enCours
+                ? (jours === 1 ? `dernier jour ${deMois(mois)}` : `avant la fin ${deMois(mois)}`)
+                : (jours === 1 ? `demain, 1er ${mois}` : `avant le 1er ${mois}`)}
+            </span>
+          </p>
+        </div>
       </header>
 
       {/* Deux colonnes aux mêmes rangées (sous-grille) : les jauges restent alignées même si une ligne passe à la ligne */}

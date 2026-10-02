@@ -1,6 +1,7 @@
 /**
  * Objectif du mois : combien d'établissements sont déjà calés en formation
- * pour le mois suivant, face à l'objectif fixé par la direction.
+ * sur un mois, face à l'objectif fixé par la direction. Le tableau de bord
+ * montre le mois suivant et, sur un sélecteur, le mois en cours.
  *
  * « Établissement calé » = client distinct ayant, dans le mois visé, au moins
  *  - côté OPCO : une session non annulée qui DÉMARRE dans le mois. Une session
@@ -24,7 +25,7 @@
  * appelé par le tableau de bord (rendu serveur).
  */
 
-import { cartePoeiSessions } from '@/lib/poei-sessions'
+import { cartePoeiSessions, type CartePoeiSessions } from '@/lib/poei-sessions'
 import { villeLisible } from '@/lib/utils'
 
 export const OBJECTIF_PAR_DEFAUT = 25
@@ -61,8 +62,12 @@ export interface ObjectifMois {
   /** « octobre 2026 » */
   libelle: string
   annee: number
-  /** Jours entre aujourd'hui (Paris) et le premier jour du mois visé. */
+  /** Jours entre aujourd'hui (Paris) et le premier jour du mois visé (0 pour le mois en cours). */
   joursAvantDebut: number
+  /** Le mois visé est le mois en cours. */
+  enCours: boolean
+  /** Mois en cours : jours qu'il reste jusqu'à la fin du mois, aujourd'hui compris. */
+  joursRestants: number
   objectif: number
   /** L'objectif vient-il d'une saisie (sinon valeur par défaut) ? */
   objectifSaisi: boolean
@@ -108,11 +113,12 @@ export function aujourdhuiParis(ref: Date = new Date()): string {
   return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ref)
 }
 
-/** Bornes du mois suivant la date de référence (heure de Paris). */
-export function moisSuivant(ref: Date = new Date()) {
+/** Bornes d'un mois compté depuis la date de référence (heure de Paris) : 0 = mois en cours, 1 = mois suivant. */
+export function moisVise(ref: Date = new Date(), decalage = 1) {
   const [a, m] = aujourdhuiParis(ref).split('-').map(Number)
-  const annee = m === 12 ? a + 1 : a
-  const mois = m === 12 ? 1 : m + 1
+  const rang = a * 12 + (m - 1) + decalage
+  const annee = Math.floor(rang / 12)
+  const mois = (rang % 12) + 1
   const mm = String(mois).padStart(2, '0')
   const dernier = new Date(Date.UTC(annee, mois, 0)).getUTCDate()
   const nom = MOIS[mois - 1]
@@ -126,12 +132,27 @@ export function moisSuivant(ref: Date = new Date()) {
   }
 }
 
+/** Bornes du mois suivant la date de référence (heure de Paris). */
+export const moisSuivant = (ref: Date = new Date()) => moisVise(ref, 1)
+
 const joursEntre = (de: string, a: string) =>
   Math.round((Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10)) - Date.UTC(+de.slice(0, 4), +de.slice(5, 7) - 1, +de.slice(8, 10))) / 86400000)
 
-/** Charge l'objectif du mois suivant et les établissements déjà calés. */
-export async function chargerObjectifMois(supabase: any, organizationId: string, ref: Date = new Date()): Promise<ObjectifMois> {
-  const m = moisSuivant(ref)
+/** Le mois en cours puis le mois suivant, dans l'ordre du calendrier. Un mois qui échoue est écarté, pas l'autre. */
+export async function chargerObjectifsMois(supabase: any, organizationId: string, ref: Date = new Date()): Promise<ObjectifMois[]> {
+  // La carte des sessions POEI ne dépend pas du mois : lue une seule fois pour les deux
+  const carte = cartePoeiSessions(supabase, organizationId)
+  const mois = await Promise.all([0, 1].map((decalage) =>
+    chargerObjectifMois(supabase, organizationId, ref, { decalage, carte }).catch(() => null)))
+  return mois.filter((m): m is ObjectifMois => !!m)
+}
+
+/** Charge l'objectif d'un mois (le suivant par défaut) et les établissements déjà calés. */
+export async function chargerObjectifMois(
+  supabase: any, organizationId: string, ref: Date = new Date(),
+  options: { decalage?: number; carte?: Promise<CartePoeiSessions> } = {},
+): Promise<ObjectifMois> {
+  const m = moisVise(ref, options.decalage ?? 1)
   const auj = aujourdhuiParis(ref)
   // Début de la semaine civile à Paris (lundi 00:00), en UTC : même découpage que l'agenda
   const lundi = (() => { const d = new Date(`${auj}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10) })()
@@ -158,7 +179,7 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
       .eq('organization_id', organizationId)
       .gte('date_debut', m.debut).lte('date_debut', m.fin)
       .neq('status', 'annulee'),
-    cartePoeiSessions(supabase, organizationId),
+    options.carte ?? cartePoeiSessions(supabase, organizationId),
     supabase.from('poei')
       .select('id, numero, statut, date_debut, date_fin, created_at, montant_total, montant_horaire, duree_heures, client:client_id(id, raison_sociale, nom_commercial, ville), candidats:poei_candidats(apprenant_id, statut)')
       .eq('organization_id', organizationId)
@@ -272,6 +293,8 @@ export async function chargerObjectifMois(supabase: any, organizationId: string,
   return {
     ...m,
     joursAvantDebut: Math.max(0, joursEntre(auj, m.debut)),
+    enCours: auj >= m.debut && auj <= m.fin,
+    joursRestants: auj >= m.debut && auj <= m.fin ? joursEntre(auj, m.fin) + 1 : 0,
     objectif,
     objectifSaisi,
     tableAbsente,

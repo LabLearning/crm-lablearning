@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/utils'
 import { OnboardingGuide } from './OnboardingGuide'
 import { SessionsTable } from './SessionsTable'
 import { ObjectifMoisUne } from './ObjectifMoisUne'
-import { chargerObjectifMois, ROLES_OBJECTIF } from '@/lib/objectif-mois'
+import { chargerObjectifsMois, ROLES_OBJECTIF } from '@/lib/objectif-mois'
 
 /** Lundi de la semaine qui contient la date (ISO, sans fuseau). */
 const lundiDe = (iso: string) => {
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
   const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
 
   // Les 3 blocs sont indépendants → exécutés en parallèle (agenda, compteurs onboarding, objectif du mois)
-  const [{ data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt], objectifMois] = await Promise.all([
+  const [{ data: upcomingSessions }, [orgRow, fCnt, cCnt, lCnt, sCnt, dCnt, factCnt, uCnt], objectifsMois] = await Promise.all([
     supabase
       .from('sessions')
       .select('id, reference, status, date_debut, date_fin, lieu, intitule, mission_status, convocations_sent_at, poei_intervention_id, formation:formation_id(intitule, is_poei), formateur:formateurs(prenom, nom), client:client_id(raison_sociale)')
@@ -84,7 +84,7 @@ export default async function DashboardPage() {
       headCount('formations'), headCount('clients'), headCount('leads'),
       headCount('sessions'), headCount('devis'), headCount('factures'), headCount('users'),
     ]),
-    chargerObjectifMois(supabase, organization.id).catch(() => null),
+    chargerObjectifsMois(supabase, organization.id).catch(() => []),
   ])
 
   const allSessions = upcomingSessions || []
@@ -205,8 +205,8 @@ export default async function DashboardPage() {
       {/* Guide de démarrage (masquable) */}
       <OnboardingGuide flags={onboardingFlags} firstName={user.first_name} />
 
-      {/* Objectif du mois : établissements calés pour le mois suivant */}
-      {objectifMois && <ObjectifMoisUne data={objectifMois} peutModifier={ROLES_OBJECTIF.includes(user.role)} />}
+      {/* Objectif du mois : établissements calés pour le mois suivant, mois en cours sur le sélecteur */}
+      {objectifsMois.length > 0 && <ObjectifMoisUne mois={objectifsMois} peutModifier={ROLES_OBJECTIF.includes(user.role)} />}
 
       {/* ── Agenda : sessions OPCO d'un côté, parcours POEI de l'autre, chacun en cours / à venir / terminées ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
