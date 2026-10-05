@@ -350,7 +350,8 @@ export function SessionDocuments(props: Props) {
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg bg-brand-500 text-white text-xs font-medium hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {busy === busyKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              {etat === 'absent' ? sendLabel : 'Relancer'}
+              {/* « Relancer » seulement si un mail est déjà parti : un lien préparé seul n'a rien envoyé */}
+              {etat === 'absent' || envois.length === 0 ? sendLabel : 'Relancer'}
             </button>
           )}
         </div>
