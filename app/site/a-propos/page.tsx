@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = {
   title: 'À propos de notre organisme de formation',
   description:
-    'Lab Learning, organisme de formation certifié Qualiopi à Montpellier : formateurs praticiens des métiers de bouche, interventions en établissement partout en France.',
+    'Lab Learning, organisme de formation certifié Qualiopi à Montpellier : formateurs praticiens des métiers de bouche, interventions partout en France.',
   alternates: { canonical: '/a-propos' },
 }
 
