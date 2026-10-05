@@ -72,7 +72,7 @@ export function ApprenantForm({
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Select id="sexe" name="sexe" label="Sexe" options={[{ value: '', label: '—' }, { value: 'H', label: 'Homme' }, { value: 'F', label: 'Femme' }]} defaultValue={(apprenant as any)?.sexe || ''} />
-        <Input id="date_naissance" name="date_naissance" type="date" label="Date de naissance" defaultValue={apprenant?.date_naissance || ''} />
+        <Input id="date_naissance" name="date_naissance" type="date" label="Date de naissance" copiable defaultValue={apprenant?.date_naissance || ''} />
         <Input id="poste" name="poste" label="Poste" defaultValue={apprenant?.poste || ''} />
       </div>
 

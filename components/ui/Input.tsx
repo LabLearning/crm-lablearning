@@ -1,7 +1,8 @@
 'use client'
 
-import { forwardRef } from 'react'
+import { forwardRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { CopyButton, valeurACopier } from './CopyButton'
 
 /** Collage dans un champ date natif : « 12/05/1985 », « 12-05-85 » ou ISO
  *  sont convertis — le navigateur refuse sinon tout copier-coller. */
@@ -25,20 +26,38 @@ function collerDate(e: React.ClipboardEvent<HTMLInputElement>) {
   input.dispatchEvent(new Event('change', { bubbles: true }))
 }
 
+/** Copie depuis un champ date natif : le navigateur ne copie rien de lui-même (rien n'y est
+ *  sélectionnable). Ctrl+C dans le champ copie la date au format JJ/MM/AAAA. */
+function copierDate(e: React.ClipboardEvent<HTMLInputElement>) {
+  const date = valeurACopier(e.currentTarget.value, 'date')
+  if (!date) return
+  e.clipboardData.setData('text/plain', date)
+  e.preventDefault()
+}
+
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
   hint?: string
+  /** Champ date : affiche un bouton « copier » à côté du libellé (la date part au format JJ/MM/AAAA). */
+  copiable?: boolean
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, hint, id, ...props }, ref) => {
+  ({ className, label, error, hint, id, copiable, onInput, onPaste, onCopy, ...props }, ref) => {
+    const estDate = props.type === 'date'
+    // Champ non contrôlé : on suit la saisie pour que le bouton copie la date du moment, pas celle du chargement
+    const [saisie, setSaisie] = useState(String(props.defaultValue ?? ''))
+    const valeurDate = props.value !== undefined ? String(props.value ?? '') : saisie
     return (
       <div className="space-y-1.5">
         {label && (
-          <label htmlFor={id} className="block text-sm font-medium text-surface-700">
-            {label}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor={id} className="block text-sm font-medium text-surface-700">
+              {label}
+            </label>
+            {estDate && copiable && <CopyButton valeur={valeurDate} format="date" libelle={`la ${label.toLowerCase()}`} className="-my-1" />}
+          </div>
         )}
         <input
           ref={ref}
@@ -48,8 +67,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             error && 'border-danger-500 focus:ring-danger-500/20 focus:border-danger-500',
             className
           )}
-          onPaste={props.type === 'date' ? collerDate : props.onPaste}
           {...props}
+          onPaste={estDate ? collerDate : onPaste}
+          onCopy={estDate ? copierDate : onCopy}
+          onInput={(e) => { if (estDate) setSaisie(e.currentTarget.value); onInput?.(e) }}
         />
         {error && <p className="text-xs text-danger-600">{error}</p>}
         {hint && !error && <p className="text-xs text-surface-500">{hint}</p>}

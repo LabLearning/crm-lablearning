@@ -717,7 +717,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
               <Input id="e_email" name="email" type="email" label="Email" defaultValue={editCand.apprenant?.email || ''} />
               <Input id="e_telephone" name="telephone" label="Téléphone" defaultValue={editCand.apprenant?.telephone || ''} />
             </div>
-            <Input id="e_date_naissance" name="date_naissance" type="date" label="Date de naissance" defaultValue={(editCand.apprenant as any)?.date_naissance || ''} />
+            <Input id="e_date_naissance" name="date_naissance" type="date" label="Date de naissance" copiable defaultValue={(editCand.apprenant as any)?.date_naissance || ''} />
             <div className="border-t border-surface-100 pt-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <Input id="e_identifiant_ft" name="identifiant_ft" label="Identifiant France Travail" defaultValue={editCand.identifiant_ft || ''} />

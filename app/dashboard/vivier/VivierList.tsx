@@ -419,7 +419,7 @@ function CandidatForm({ candidat, clients, poeis, previsions, onDone }: { candid
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Select id="sexe" name="sexe" label="Sexe" options={[{ value: '', label: '—' }, { value: 'H', label: 'Homme' }, { value: 'F', label: 'Femme' }]} defaultValue={candidat?.sexe || ''} />
-        <Input id="date_naissance" name="date_naissance" type="date" label="Date de naissance" defaultValue={candidat?.date_naissance || ''} />
+        <Input id="date_naissance" name="date_naissance" type="date" label="Date de naissance" copiable defaultValue={candidat?.date_naissance || ''} />
         <Input id="lieu_naissance" name="lieu_naissance" label="Lieu de naissance" defaultValue={candidat?.lieu_naissance || ''} />
       </div>
       <div className="grid grid-cols-2 gap-3">
