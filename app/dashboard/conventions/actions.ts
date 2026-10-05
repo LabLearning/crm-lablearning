@@ -196,6 +196,30 @@ export async function updateConventionContenuAction(
 }
 
 /**
+ * La session est passée sur un autre programme : la convention le reprend
+ * (formation, intitulé, durée, donc annexe). Geste volontaire, nécessaire dès
+ * que le client a signé ; le changement est tracé dans les notes internes de
+ * la convention et au journal, sans avenant.
+ */
+export async function reprendreFormationSessionAction(conventionId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+
+  const { reprendreFormationSession, estSigneeParLeClient } = await import('@/lib/convention-formation')
+  const e = await reprendreFormationSession(supabase, conventionId, session.organization.id)
+  if (!e) return { success: false, error: 'Cette convention porte déjà le programme de sa session' }
+
+  await logAudit({
+    action: 'reprendre_formation_session', entity_type: 'convention', entity_id: conventionId,
+    details: { numero: e.numero, session: e.sessionReference, avant: e.avant?.intitule ?? null, duree_avant: e.avant?.dureeHeures ?? null, apres: e.apres.intitule, duree_apres: e.apres.dureeHeures, signee: estSigneeParLeClient(e.status) },
+  })
+  revalidatePath('/dashboard/conventions')
+  revalidatePath(`/dashboard/conventions/${conventionId}`)
+  return { success: true }
+}
+
+/**
  * Retire un avenant de prix créé pour corriger une erreur de saisie : le prix
  * signé était faux, le client connaît le bon. La convention garde le prix
  * corrigé et n'en fait plus mention ; la correction reste tracée dans les

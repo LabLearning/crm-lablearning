@@ -628,9 +628,25 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
     await ensureEmargements(supabase, id, session.organization.id)
   } catch (e) { console.error('[grille émargement]', e) }
 
+  // Programme changé : les conventions non signées le reprennent, les signées attendent un geste sur leur fiche
+  let conventionsAReprendre: string[] = []
+  try {
+    const { syncConventionsFormationSession } = await import('@/lib/convention-formation')
+    const { suivies, aReprendre } = await syncConventionsFormationSession(supabase, id, session.organization.id)
+    for (const e of suivies) {
+      await logAudit({
+        action: 'reprendre_formation_session', entity_type: 'convention', entity_id: e.conventionId,
+        details: { numero: e.numero, session: e.sessionReference, avant: e.avant?.intitule ?? null, duree_avant: e.avant?.dureeHeures ?? null, apres: e.apres.intitule, duree_apres: e.apres.dureeHeures, signee: false, origine: 'session' },
+      })
+      revalidatePath(`/dashboard/conventions/${e.conventionId}`)
+    }
+    conventionsAReprendre = aReprendre.map((e) => e.numero)
+    if (suivies.length) revalidatePath('/dashboard/conventions')
+  } catch (e) { console.error('[programme convention]', e) }
+
   await logAudit({ action: 'update', entity_type: 'session', entity_id: id })
   revalidatePath('/dashboard/sessions')
-  return { success: true }
+  return { success: true, data: { conventionsAReprendre } }
 }
 
 export async function updateSessionStatusAction(id: string, status: string): Promise<ActionResult> {

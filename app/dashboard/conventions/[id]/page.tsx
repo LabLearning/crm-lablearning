@@ -14,6 +14,8 @@ import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { ConventionDetailsEditor } from './ConventionDetailsEditor'
 import { ConventionHistory } from './ConventionHistory'
 import { RetirerAvenantBouton } from './RetirerAvenantBouton'
+import { ReprendreProgramme } from './ReprendreProgramme'
+import { citerProgramme, ecartFormation, estSigneeParLeClient } from '@/lib/convention-formation'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,12 +51,15 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
   const signatureUrl = c.signature_token ? `${appUrl}/convention/${c.signature_token}/signer` : null
 
-  // Avenants (modifications de participants après envoi/signature)
-  const { data: avenants } = await supabase
-    .from('convention_avenants')
-    .select('*')
-    .eq('convention_id', c.id)
-    .order('numero', { ascending: true })
+  // Avenants (modifications de participants après envoi/signature) et écart de programme avec la session
+  const [{ data: avenants }, ecartProgramme] = await Promise.all([
+    supabase
+      .from('convention_avenants')
+      .select('*')
+      .eq('convention_id', c.id)
+      .order('numero', { ascending: true }),
+    c.session_id && c.status !== 'annulee' ? ecartFormation(supabase, c.id, session.organization.id) : null,
+  ])
 
   return (
     <div className="space-y-5 animate-fade-in max-w-5xl">
@@ -87,6 +92,19 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
           </div>
         </div>
       </div>
+
+      {/* La session est passée sur un autre programme : la convention peut le reprendre */}
+      {ecartProgramme && (
+        <ReprendreProgramme
+          conventionId={c.id}
+          numero={c.numero}
+          signee={estSigneeParLeClient(c.status)}
+          sessionReference={ecartProgramme.sessionReference}
+          avant={citerProgramme(ecartProgramme.avant)}
+          apres={citerProgramme(ecartProgramme.apres)}
+          peutReprendre={['super_admin', 'gestionnaire'].includes(session.user.role)}
+        />
+      )}
 
       {/* Bloc signature (gestion lien signature client) */}
       <ConventionSignatureBlock

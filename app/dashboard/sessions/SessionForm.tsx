@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Save, Building2, Users, X, Plus, CalendarDays, Clock, Search } from '@/components/ui/icons'
-import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect } from '@/components/ui'
+import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect, useToast } from '@/components/ui'
 import { createSessionAction, updateSessionAction, getApprenantsForClientAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
 import { companyLabel } from '@/lib/utils'
@@ -68,6 +68,7 @@ function heuresJour(h: HoraireJour): number {
 }
 
 export function SessionForm({ session, formations, formateurs, clients = [], apprenants = [], initialInscrits = [], initialFormationId, initialClientId, onSuccess, onCancel }: SessionFormProps) {
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [error, setError] = useState<string | null>(null)
@@ -285,6 +286,12 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
 
       const result = session ? await updateSessionAction(session.id, fd) : await createSessionAction(fd)
       if (result.success) {
+        const aReprendre: string[] = (result as any).data?.conventionsAReprendre || []
+        if (aReprendre.length) {
+          toast('warning', aReprendre.length > 1
+            ? `Les conventions signées ${aReprendre.join(', ')} gardent l’ancien programme : ouvrez leur fiche pour reprendre le nouveau.`
+            : `La convention signée ${aReprendre[0]} garde l’ancien programme : ouvrez sa fiche pour reprendre le nouveau.`)
+        }
         onSuccess()
       } else {
         if (result.errors) {
