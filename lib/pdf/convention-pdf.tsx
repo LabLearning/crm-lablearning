@@ -238,7 +238,15 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     : (convention.dates_formation || '—')
 
   const cout = Number(convention.montant_ttc ?? convention.montant_ht ?? 0)
-  const avenants: any[] = Array.isArray(convention.avenants) ? convention.avenants : []
+  // Un avenant n'est mentionné que s'il est postérieur à la signature du client : c'est alors que la
+  // convention affichée diffère de ce qui a été signé. Une convention pas encore signée, ou resignée
+  // depuis la modification, porte la valeur à jour sous sa signature : il n'y a rien à signaler.
+  const tousAvenants: any[] = Array.isArray(convention.avenants) ? convention.avenants : []
+  const signeeParLeClient = ['signee_client', 'signee_of', 'signee_complete'].includes(String(convention.status || ''))
+  const signeLe = convention.signature_client_signed_at ? Date.parse(String(convention.signature_client_signed_at)) : NaN
+  const avenants: any[] = !signeeParLeClient ? []
+    : Number.isNaN(signeLe) ? tousAvenants
+    : tousAvenants.filter((a: any) => !(Date.parse(String(a.created_at)) <= signeLe))
   const avenantsPrix = avenants.filter((a: any) => a.montant_apres != null)
   const hasTva = Number(convention.taux_tva) > 0
 
