@@ -2,9 +2,10 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ReceiptEuro, Download, CheckCircle2, Clock, XCircle, BadgeEuro } from '@/components/ui/icons'
+import { ReceiptEuro, Download, CheckCircle2, Clock, XCircle, BadgeEuro, Calendar, Building2, MapPin } from '@/components/ui/icons'
 import { useToast } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
+import { dureeFr, type DetailPrestation } from '@/lib/facture-formateur-detail'
 import { updateFactureFormateurStatusAction } from '../actions'
 
 const STATUT: Record<string, { label: string; cls: string; Icon: any }> = {
@@ -16,7 +17,12 @@ const STATUT: Record<string, { label: string; cls: string; Icon: any }> = {
 }
 const fmt = (n: any) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 
-export function FormateurFacturesAdmin({ factures, fileUrls }: { factures: any[]; fileUrls: Record<string, string> }) {
+export function FormateurFacturesAdmin({ factures, fileUrls, details = {} }: {
+  factures: any[]
+  fileUrls: Record<string, string>
+  /** Détail de la prestation, par identifiant de facture. */
+  details?: Record<string, DetailPrestation>
+}) {
   const { toast } = useToast()
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -47,6 +53,7 @@ export function FormateurFacturesAdmin({ factures, fileUrls }: { factures: any[]
         <div className="divide-y divide-surface-100">
           {factures.map((f) => {
             const st = STATUT[f.status] || STATUT.envoyee
+            const d = details[f.id]
             return (
               <div key={f.id} className="px-4 py-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -69,6 +76,16 @@ export function FormateurFacturesAdmin({ factures, fileUrls }: { factures: any[]
                     )}
                   </div>
                 </div>
+                {d ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
+                    {d.periode && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{d.periode}{dureeFr(d) ? ` · ${dureeFr(d)}` : ''}</span>}
+                    {d.client && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{d.client}{d.clientVille ? `, ${d.clientVille}` : ''}</span>}
+                    {d.lieu && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{d.lieu}</span>}
+                    {d.reference && <span className="font-mono text-[11px] text-surface-400">{d.reference}</span>}
+                  </div>
+                ) : (
+                  <div className="mt-1.5 text-xs text-amber-700">Aucune session rattachée : à rattacher depuis Finances, Factures formateurs.</div>
+                )}
                 {f.status === 'rejetee' && f.motif_rejet && <div className="mt-1.5 text-xs text-danger-600">Motif : {f.motif_rejet}</div>}
               </div>
             )

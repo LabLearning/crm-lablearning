@@ -7,6 +7,7 @@ import { Modal, Button, Input, useToast } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
 import { submitFactureFormateurAction, deleteFactureFormateurAction, updateFactureModeleAction } from './facturation-actions'
 import { FACTURE_MODELES } from '@/lib/pdf/facture-modeles'
+import { dureeFr, type DetailPrestation } from '@/lib/facture-formateur-detail'
 
 const STATUT: Record<string, { label: string; cls: string; Icon: any }> = {
   brouillon: { label: 'Brouillon', cls: 'bg-surface-100 text-surface-600', Icon: FileText },
@@ -17,11 +18,13 @@ const STATUT: Record<string, { label: string; cls: string; Icon: any }> = {
 }
 const fmtMontant = (n: any) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 
-export function FacturationClient({ token, facturable, factures, fileUrls, modele = 'epure' }: {
+export function FacturationClient({ token, facturable, factures, fileUrls, details = {}, modele = 'epure' }: {
   token: string | null
   facturable: any[]
   factures: any[]
   fileUrls: Record<string, string>
+  /** Détail de la prestation, par identifiant de facture. */
+  details?: Record<string, DetailPrestation>
   modele?: string
 }) {
   const { toast } = useToast()
@@ -148,6 +151,7 @@ export function FacturationClient({ token, facturable, factures, fileUrls, model
           <div className="divide-y divide-surface-100">
             {factures.map((f) => {
               const st = STATUT[f.status] || STATUT.envoyee
+              const d = details[f.id]
               return (
                 <div key={f.id} className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -176,6 +180,13 @@ export function FacturationClient({ token, facturable, factures, fileUrls, model
                       )}
                     </div>
                   </div>
+                  {d && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
+                      {d.periode && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{d.periode}{dureeFr(d) ? ` · ${dureeFr(d)}` : ''}</span>}
+                      {d.client && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{d.client}{d.clientVille ? `, ${d.clientVille}` : ''}</span>}
+                      {d.reference && <span className="font-mono text-[11px] text-surface-400">{d.reference}</span>}
+                    </div>
+                  )}
                   {f.status === 'rejetee' && f.motif_rejet && (
                     <div className="mt-1.5 text-xs text-danger-600">Motif du rejet : {f.motif_rejet}</div>
                   )}

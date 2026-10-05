@@ -439,6 +439,47 @@ export async function sendAuditAccessAction(formateurId: string): Promise<Action
 }
 
 /**
+ * Rattache une facture formateur à la session qu'elle rémunère (ou la détache
+ * avec `null`). C'est la session qui donne le détail de la prestation : la
+ * formation, les dates, le client, le lieu.
+ */
+export async function rattacherSessionFactureFormateurAction(id: string, sessionId: string | null): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'comptable'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+  const { data: fac } = await supabase
+    .from('factures_formateur').select('id, formateur_id, session_id')
+    .eq('id', id).eq('organization_id', session.organization.id).maybeSingle()
+  if (!fac) return { success: false, error: 'Facture introuvable' }
+
+  if (sessionId) {
+    const { data: cible } = await supabase
+      .from('sessions').select('id, formateur_id, reference')
+      .eq('id', sessionId).eq('organization_id', session.organization.id).maybeSingle()
+    if (!cible) return { success: false, error: 'Session introuvable' }
+    if (cible.formateur_id !== fac.formateur_id) return { success: false, error: 'Cette session n’est pas animée par ce formateur' }
+    // Une session ne porte qu'une facture par formateur : on évite le double paiement
+    const { data: deja } = await supabase
+      .from('factures_formateur').select('numero')
+      .eq('organization_id', session.organization.id).eq('formateur_id', fac.formateur_id)
+      .eq('session_id', sessionId).neq('id', id).neq('status', 'rejetee').limit(1)
+    if (deja?.length) return { success: false, error: `Cette session est déjà facturée (${deja[0].numero})` }
+  }
+
+  const { error } = await supabase
+    .from('factures_formateur').update({ session_id: sessionId, updated_at: new Date().toISOString() })
+    .eq('id', id).eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: 'Erreur lors du rattachement' }
+
+  await logAudit({ action: 'update_facture_formateur', entity_type: 'facture_formateur', entity_id: id, details: { session_id: sessionId, ancienne_session_id: fac.session_id } })
+  revalidatePath('/dashboard/factures-formateurs')
+  revalidatePath(`/dashboard/formateurs/${fac.formateur_id}`)
+  return { success: true }
+}
+
+/**
  * Traitement admin d'une facture de prestation formateur : validation,
  * mise en paiement, ou rejet (avec motif).
  */

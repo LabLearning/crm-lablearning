@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
 import { getPortalContext } from '@/lib/portal-auth'
 import { FactureFormateurPDF, type FactureModele } from '@/lib/pdf/facture-formateur-pdf'
+import { SESSION_DETAIL_SELECT, chargerDetailsPrestations } from '@/lib/facture-formateur-detail'
 
 /**
  * PDF d'une facture de prestation formateur. Accessible :
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const { data: facture } = await supabase
     .from('factures_formateur')
-    .select('*, formateur:formateur_id(civilite, prenom, nom, email, adresse, code_postal, ville, siret, numero_da, facture_modele), session:session_id(reference)')
+    .select(`*, formateur:formateur_id(civilite, prenom, nom, email, adresse, code_postal, ville, siret, numero_da, facture_modele), ${SESSION_DETAIL_SELECT}`)
     .eq('id', params.id)
     .single()
   if (!facture) return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 })
@@ -43,8 +44,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const override = req.nextUrl.searchParams.get('modele') as FactureModele | null
   const modele = (override || (facture as any).formateur?.facture_modele || 'epure') as FactureModele
 
+  // Le détail de la prestation (formation, dates, client, lieu) vient de la session rattachée
+  const detail = (await chargerDetailsPrestations(supabase, [facture]))[(facture as any).id] || null
+
   const buffer = await renderToBuffer(
-    createElement(FactureFormateurPDF, { facture, formateur: (facture as any).formateur, org, modele }) as any
+    createElement(FactureFormateurPDF, { facture, formateur: (facture as any).formateur, org, modele, detail }) as any
   )
   const numAffiche = (facture as any).reference_externe || (facture as any).numero
 

@@ -44,9 +44,16 @@ export async function GET(req: NextRequest) {
     session: { reference: 'ADF_2026-014' },
     montant_ht: 1200, taux_tva: 0, montant_tva: 0, montant_ttc: 1200,
   }
+  // Le détail d'exemple montre au formateur ce que portera chaque facture rattachée à une session
+  const detail = {
+    sessionId: 'exemple', reference: 'ADF_2026-014', formation: 'Hygiène alimentaire et prévention des risques (HACCP)',
+    dateDebut: '2026-01-12', dateFin: '2026-01-14', periode: 'du 12 au 14 janvier 2026', jours: 3, heures: 21,
+    clientId: null, client: 'Restaurant Le Comptoir', clientVille: 'Lyon', lieu: '8 rue de la République, 69002 Lyon',
+    modalite: 'Présentiel', stagiaires: 6, prevu: 1200, tarifJour: 400, poei: false,
+  }
 
   const buffer = await renderToBuffer(
-    createElement(FactureFormateurPDF, { facture, formateur, org, modele }) as any
+    createElement(FactureFormateurPDF, { facture, formateur, org, modele, detail }) as any
   )
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

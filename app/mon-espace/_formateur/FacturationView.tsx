@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { SESSION_DETAIL_SELECT, chargerDetailsPrestations } from '@/lib/facture-formateur-detail'
 import { FacturationClient } from './FacturationClient'
 
 /**
@@ -17,7 +18,7 @@ export async function FacturationView({ formateurId, token }: { formateurId: str
       .order('date_fin', { ascending: false }),
     supabase
       .from('factures_formateur')
-      .select('*, session:session_id(reference)')
+      .select(`*, ${SESSION_DETAIL_SELECT}`)
       .eq('formateur_id', formateurId)
       .order('created_at', { ascending: false }),
     supabase
@@ -28,6 +29,8 @@ export async function FacturationView({ formateurId, token }: { formateurId: str
   ])
 
   const facturesList = (factures || []) as any[]
+  // Détail de chaque prestation facturée : dates, client, lieu, durée
+  const details = await chargerDetailsPrestations(supabase, facturesList)
   const invoiced = new Set(facturesList.map((f) => f.session_id).filter(Boolean))
   // Facturable = session non encore facturée qui est soit terminée / passée,
   // soit dont la rémunération est déjà fixée. Le montant peut être vide (venant
@@ -56,6 +59,7 @@ export async function FacturationView({ formateurId, token }: { formateurId: str
         facturable={facturable}
         factures={facturesList}
         fileUrls={fileUrls}
+        details={details}
         modele={(formateur as any)?.facture_modele || 'epure'}
       />
     </div>

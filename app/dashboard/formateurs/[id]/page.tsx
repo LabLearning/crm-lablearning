@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/utils'
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/formation'
 import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES_FORMATEUR } from '@/lib/types/document'
 import { Download } from '@/components/ui/icons'
+import { SESSION_DETAIL_SELECT, chargerDetailsPrestations } from '@/lib/facture-formateur-detail'
 import { FormateurFacturesAdmin } from './FormateurFacturesAdmin'
 import { MarquerVerifieButton } from './MarquerVerifieButton'
 import { EvaluationFormateur } from './EvaluationFormateur'
@@ -69,10 +70,11 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
   // Factures de prestation envoyées par le formateur
   const { data: facturesRaw } = await supabase
     .from('factures_formateur')
-    .select('*, session:session_id(reference)')
+    .select(`*, ${SESSION_DETAIL_SELECT}`)
     .eq('formateur_id', params.id)
     .order('created_at', { ascending: false })
   const factures = (facturesRaw || []) as any[]
+  const facDetails = await chargerDetailsPrestations(supabase, factures)
   const facPaths = factures.map((f) => f.fichier_url).filter((u) => u && !/^https?:\/\//.test(u)) as string[]
   const facUrls: Record<string, string> = {}
   if (facPaths.length > 0) {
@@ -272,7 +274,7 @@ export default async function FormateurDetailPage({ params }: { params: { id: st
       <EvaluationFormateur formateurId={params.id} initial={evaluation} />
 
       {/* Factures de prestation envoyées par le formateur */}
-      <FormateurFacturesAdmin factures={factures} fileUrls={facUrls} />
+      <FormateurFacturesAdmin factures={factures} fileUrls={facUrls} details={facDetails} />
 
       {/* Pièces administratives — déposées par le formateur ou par l'administration */}
       <div className="card overflow-hidden">

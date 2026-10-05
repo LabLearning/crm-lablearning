@@ -2,11 +2,15 @@ import * as React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { shared } from './components' // side-effect: enregistre les polices (Satoshi)
 import { FACTURE_MODELES, type FactureModele } from './facture-modeles'
+import { dureeFr, lignesDetail, type DetailPrestation } from '@/lib/facture-formateur-detail'
 
 /**
  * Facture de prestation émise PAR un formateur À l'organisme (Lab Learning).
  * L'émetteur est le formateur — AUCUN branding Lab Learning : l'OF n'apparaît
  * qu'en « Facturé à ». Trois modèles de style au choix du formateur.
+ *
+ * Chaque modèle porte le détail de la prestation (formation, dates, durée,
+ * client, lieu, stagiaires) quand la facture est rattachée à une session.
  */
 export { FACTURE_MODELES, type FactureModele }
 
@@ -27,7 +31,10 @@ interface Parts {
   numAffiche: string
   dateEmission: string
   objet: string | null
-  sessionRef: string | null
+  /** Lignes « libellé, valeur » du détail de la prestation ; vide sans session rattachée. */
+  detail: [string, string][]
+  /** Ligne facturée : « Prestation de formation · 3 jours × 300,00 € ». */
+  designation: string
   montantHt: any
   montantTva: any
   montantTtc: any
@@ -35,7 +42,7 @@ interface Parts {
   mentionTva: string
 }
 
-function buildParts(facture: any, formateur: any, org: any): Parts {
+function buildParts(facture: any, formateur: any, org: any, d: DetailPrestation | null): Parts {
   const f = formateur || {}
   const emetteurNom = [f.civilite, f.prenom, f.nom].filter(Boolean).join(' ').trim() || 'Formateur'
   const emetteurLignes = [
@@ -55,18 +62,37 @@ function buildParts(facture: any, formateur: any, org: any): Parts {
   ].filter(Boolean) as string[]
 
   const tauxTva = Number(facture.taux_tva || 0)
+  // Le prix par jour n'est écrit que lorsqu'il tombe juste : pas de « 2,5 jours × 466,67 € »
+  const calcul = d?.jours && d.tarifJour && Number.isInteger(d.jours) && Number.isInteger(d.tarifJour * 100) && Math.abs(d.jours * d.tarifJour - Number(facture.montant_ht || 0)) < 0.01
+    ? `${d.jours} ${d.jours > 1 ? 'jours' : 'jour'} × ${fmt(d.tarifJour)} €`
+    : d ? dureeFr(d) : null
   return {
     emetteurNom, emetteurLignes, ofNom, ofLignes,
     numAffiche: facture.reference_externe || facture.numero,
     dateEmission: fmtDate(facture.date_emission || facture.created_at),
     objet: facture.objet || null,
-    sessionRef: facture.session?.reference || null,
+    detail: d ? lignesDetail(d) : (facture.session?.reference ? [['Session', String(facture.session.reference)]] : []),
+    designation: ['Prestation de formation', calcul].filter(Boolean).join(' · '),
     montantHt: facture.montant_ht, montantTva: facture.montant_tva, montantTtc: facture.montant_ttc,
     tauxTva,
     mentionTva: tauxTva === 0
       ? "TVA non applicable (art. 293 B ou 261-4-4° a du CGI, selon le régime de l'émetteur)."
       : 'TVA acquittée sur les encaissements (prestations de services).',
   }
+}
+
+/** Le détail de la prestation, une ligne par information : commun aux trois modèles. */
+function DetailLignes({ lignes, couleurLibelle }: { lignes: [string, string][]; couleurLibelle: string }) {
+  return (
+    <View>
+      {lignes.map(([libelle, valeur]) => (
+        <View key={libelle} style={{ flexDirection: 'row', marginBottom: 2.5 }}>
+          <Text style={{ width: 62, fontSize: 8, color: couleurLibelle }}>{libelle}</Text>
+          <Text style={{ flex: 1, fontSize: 9, lineHeight: 1.35 }}>{valeur}</Text>
+        </View>
+      ))}
+    </View>
+  )
 }
 
 // ─────────────────────────── Modèle « Épuré » ───────────────────────────
@@ -111,13 +137,21 @@ function ModeleEpure({ p }: { p: Parts }) {
         <>
           <View style={ep.ruleThin} />
           <Text style={ep.label}>Objet</Text>
-          <Text style={{ fontSize: 9 }}>{p.objet}{p.sessionRef ? `  ·  Session ${p.sessionRef}` : ''}</Text>
+          <Text style={{ fontSize: 9 }}>{p.objet}</Text>
+        </>
+      ) : null}
+
+      {p.detail.length > 0 ? (
+        <>
+          <View style={ep.ruleThin} />
+          <Text style={ep.label}>Détail de la prestation</Text>
+          <DetailLignes lignes={p.detail} couleurLibelle="#6B7885" />
         </>
       ) : null}
 
       <View style={ep.ruleThin} />
       <View style={{ ...ep.row, marginBottom: 8 }}>
-        <Text style={{ fontSize: 9, color: '#4E5A67' }}>Prestation de formation</Text>
+        <Text style={{ fontSize: 9, color: '#4E5A67' }}>{p.designation}</Text>
         <Text style={{ fontSize: 9 }}>{fmt(p.montantHt)} €</Text>
       </View>
 
@@ -176,7 +210,14 @@ function ModeleClassique({ p }: { p: Parts }) {
       {p.objet ? (
         <View style={{ marginTop: 14 }}>
           <Text style={cl.label}>Objet</Text>
-          <Text style={{ fontSize: 9 }}>{p.objet}{p.sessionRef ? `  ·  Session ${p.sessionRef}` : ''}</Text>
+          <Text style={{ fontSize: 9 }}>{p.objet}</Text>
+        </View>
+      ) : null}
+
+      {p.detail.length > 0 ? (
+        <View style={{ marginTop: 14, ...cl.boxLight }}>
+          <Text style={cl.label}>Détail de la prestation</Text>
+          <DetailLignes lignes={p.detail} couleurLibelle="#4E5A67" />
         </View>
       ) : null}
 
@@ -186,7 +227,7 @@ function ModeleClassique({ p }: { p: Parts }) {
           <Text style={{ ...cl.thc, width: 90, textAlign: 'right' }}>Montant HT</Text>
         </View>
         <View style={cl.td}>
-          <Text style={{ flex: 4, fontSize: 9 }}>{p.objet || 'Prestation de formation'}</Text>
+          <Text style={{ flex: 4, fontSize: 9 }}>{p.designation}</Text>
           <Text style={{ width: 90, textAlign: 'right', fontSize: 9 }}>{fmt(p.montantHt)} €</Text>
         </View>
         <View style={{ padding: 8 }}>
@@ -247,13 +288,20 @@ function ModeleModerne({ p }: { p: Parts }) {
         {p.objet ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={mo.label}>Objet</Text>
-            <Text style={{ fontSize: 9 }}>{p.objet}{p.sessionRef ? `  ·  Session ${p.sessionRef}` : ''}</Text>
+            <Text style={{ fontSize: 9 }}>{p.objet}</Text>
+          </View>
+        ) : null}
+
+        {p.detail.length > 0 ? (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={mo.label}>Détail de la prestation</Text>
+            <DetailLignes lignes={p.detail} couleurLibelle="#4E5A67" />
           </View>
         ) : null}
 
         <View style={{ borderTopWidth: 2, borderTopColor: ACCENT, paddingTop: 10 }}>
           <View style={{ ...mo.row, marginBottom: 6 }}>
-            <Text style={{ fontSize: 9, color: '#4E5A67' }}>Prestation de formation</Text>
+            <Text style={{ fontSize: 9, color: '#4E5A67' }}>{p.designation}</Text>
             <Text style={{ fontSize: 9 }}>{fmt(p.montantHt)} €</Text>
           </View>
         </View>
@@ -276,10 +324,12 @@ function ModeleModerne({ p }: { p: Parts }) {
   )
 }
 
-export function FactureFormateurPDF({ facture, formateur, org, modele = 'epure' }: {
+export function FactureFormateurPDF({ facture, formateur, org, modele = 'epure', detail = null }: {
   facture: any; formateur: any; org?: any; modele?: FactureModele
+  /** Détail de la prestation (lib/facture-formateur-detail) ; absent pour une facture sans session. */
+  detail?: DetailPrestation | null
 }) {
-  const p = buildParts(facture, formateur, org)
+  const p = buildParts(facture, formateur, org, detail)
   // Ref shared pour garantir le chargement des polices même si l'arbre ne l'utilise pas.
   void shared
   return (
