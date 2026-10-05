@@ -341,8 +341,15 @@ export async function signConventionPublicAction(
   })
 
 
-  // Email avec convention signée (copie PDF) → client + équipe (si signature complète des deux côtés)
-  if (newStatus === 'signee_complete') {
+  // Email avec convention signée (copie PDF) → client + équipe (si signature complète des deux côtés),
+  // seulement quand la convention a été envoyée par e-mail (« Envoyer la convention »). Signée par un
+  // lien préparé seul, rien ne part : écrire au client reste un geste du gestionnaire.
+  let envoyeeParMail = false
+  try {
+    const { conventionEnvoyeeParMail } = await import('@/lib/convention-envoi')
+    envoyeeParMail = await conventionEnvoyeeParMail(supabase, conv.id)
+  } catch (e) { console.error('[convention envoyée par mail ?]', e) }
+  if (newStatus === 'signee_complete' && envoyeeParMail) {
     try {
       const { loadConventionForPdf } = await import('@/lib/pdf/convention-data')
       const loaded = fige?.loaded || await loadConventionForPdf(supabase, conv.id)

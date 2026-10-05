@@ -336,7 +336,7 @@ export function SessionDocuments(props: Props) {
             <button
               onClick={onLink}
               disabled={disabled || pending}
-              title={disabled ? disabledReason : 'Générer le lien de signature sans envoyer d\'email'}
+              title={disabled ? disabledReason : 'Préparer le lien de signature : aucun e-mail ne part, ni maintenant ni à la signature'}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Copy className="h-3.5 w-3.5" /> Lien
@@ -436,7 +436,7 @@ export function SessionDocuments(props: Props) {
                     {!c?.signature_client_date && (
                       <>
                         <button disabled={envoiContrat === `lien:${cid}`} onClick={() => genererLienEntreprise(cid)}
-                          title="Générer le lien de signature sans envoyer d'email"
+                          title="Préparer le lien de signature : aucun e-mail ne part, ni maintenant ni à la signature"
                           className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors disabled:opacity-40 shrink-0">
                           {envoiContrat === `lien:${cid}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
                           Lien
