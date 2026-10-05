@@ -21,13 +21,14 @@ export function peutVoirTresorerie(role: string | null | undefined): boolean {
   return !!role && ROLES_TRESORERIE.includes(role)
 }
 
-/** Le relevé est toujours lu sur six mois : la période choisie ne fait que le découper. */
-export const JOURS_RELEVE = 180
+/** Le relevé est toujours lu sur un peu plus de six mois (26 semaines entières) : la période choisie ne fait que le découper. */
+export const JOURS_RELEVE = 190
 
+/** `semaines` : nombre de lignes du pilotage, semaine en cours comprise. */
 export const PERIODES = [
-  { jours: 30, label: '30 jours' },
-  { jours: 90, label: '90 jours' },
-  { jours: 180, label: '6 mois' },
+  { jours: 30, label: '30 jours', semaines: 5 },
+  { jours: 90, label: '90 jours', semaines: 13 },
+  { jours: 180, label: '6 mois', semaines: 26 },
 ] as const
 
 const arrondi = (n: number) => Math.round(n * 100) / 100
@@ -57,7 +58,6 @@ const lundiDe = (jour: string) => {
 // ─── Relevé bancaire ────────────────────────────────────────────────────────
 
 export interface LigneTiers { nom: string; montant: number; nb: number }
-export interface FluxSemaine { lundi: string; entrees: number; sorties: number }
 export interface PointSolde { jour: string; solde: number }
 
 export interface SyntheseBanque {
@@ -72,8 +72,6 @@ export interface SyntheseBanque {
   nbSorties: number
   /** Solde total à la clôture de chaque jour de la période, du plus ancien au plus récent. */
   courbe: PointSolde[]
-  /** Une ligne par semaine civile entamée dans la période. */
-  semaines: FluxSemaine[]
   /** D'où vient l'argent, par contrepartie, du plus gros au plus petit. */
   origines: LigneTiers[]
   /** Où il part, par contrepartie. */
@@ -91,38 +89,33 @@ function parTiers(mouvements: MouvementQonto[], nomDe: (m: MouvementQonto) => st
   return [...groupes.values()].map((g) => ({ ...g, montant: arrondi(g.montant) })).sort((a, b) => b.montant - a.montant)
 }
 
+type Date_ = { m: MouvementQonto; jour: string }
+const signe = (m: MouvementQonto) => (m.sens === 'credit' ? m.montant : -m.montant)
+
+/**
+ * Solde total à la clôture de chaque jour, de `premier` à `aujourdhui` : on part
+ * du solde du jour et on défait les mouvements un à un en remontant le temps.
+ * `dates` : tous les mouvements du relevé, du plus récent au plus ancien.
+ */
+function cloturesParJour(dates: Date_[], total: number, premier: string, aujourdhui: string): PointSolde[] {
+  const points: PointSolde[] = []
+  let solde = total
+  let i = 0
+  for (let jour = aujourdhui; jour >= premier; jour = plusJours(jour, -1)) {
+    while (i < dates.length && dates[i].jour > jour) { solde -= signe(dates[i].m); i++ }
+    points.push({ jour, solde: arrondi(solde) })
+  }
+  return points.reverse()
+}
+
 /** Synthèse du relevé sur les `jours` derniers jours (aujourd'hui compris). */
 export function synthetiserBanque(banque: BanqueQonto, jours: number, aujourdhui: string): SyntheseBanque {
   const premier = plusJours(aujourdhui, -(jours - 1))
   const dates = banque.mouvements.map((m) => ({ m, jour: jourParis(m.date) }))
-  const periode = dates.filter((x) => x.jour >= premier && x.jour <= aujourdhui)
-  const externes = periode.filter((x) => !x.m.interne).map((x) => x.m)
+  const externes = dates.filter((x) => x.jour >= premier && x.jour <= aujourdhui && !x.m.interne).map((x) => x.m)
   const credits = externes.filter((m) => m.sens === 'credit')
   const debits = externes.filter((m) => m.sens === 'debit')
   const total = arrondi(banque.comptes.reduce((s, c) => s + c.solde, 0))
-
-  // Courbe : on part du solde d'aujourd'hui et on défait les mouvements un à un en remontant le temps
-  const courbe: PointSolde[] = []
-  let solde = total
-  let i = 0                                             // mouvements triés du plus récent au plus ancien
-  for (let jour = aujourdhui; jour >= premier; jour = plusJours(jour, -1)) {
-    while (i < dates.length && dates[i].jour > jour) {
-      solde -= dates[i].m.sens === 'credit' ? dates[i].m.montant : -dates[i].m.montant
-      i++
-    }
-    courbe.push({ jour, solde: arrondi(solde) })
-  }
-  courbe.reverse()
-
-  const semaines = new Map<string, FluxSemaine>()
-  for (let l = lundiDe(premier); l <= aujourdhui; l = plusJours(l, 7)) semaines.set(l, { lundi: l, entrees: 0, sorties: 0 })
-  for (const x of periode) {
-    if (x.m.interne) continue
-    const s = semaines.get(lundiDe(x.jour))
-    if (!s) continue
-    if (x.m.sens === 'credit') s.entrees += x.m.montant
-    else s.sorties += x.m.montant
-  }
 
   return {
     total,
@@ -131,10 +124,103 @@ export function synthetiserBanque(banque: BanqueQonto, jours: number, aujourdhui
     sorties: arrondi(debits.reduce((s, m) => s + m.montant, 0)),
     nbEntrees: credits.length,
     nbSorties: debits.length,
-    courbe,
-    semaines: [...semaines.values()].map((s) => ({ ...s, entrees: arrondi(s.entrees), sorties: arrondi(s.sorties) })),
+    courbe: cloturesParJour(dates, total, premier, aujourdhui),
     origines: parTiers(credits, (m) => m.tiers),
     destinations: parTiers(debits, (m) => m.tiers),
+  }
+}
+
+// ─── Pilotage semaine par semaine ───────────────────────────────────────────
+
+export interface SemainePilotage {
+  lundi: string
+  /** Dernier jour compté : le dimanche, ou aujourd'hui pour la semaine en cours. */
+  fin: string
+  enCours: boolean
+  /** Solde total à la clôture de la veille du lundi. */
+  soldeDebut: number
+  entrees: number
+  sorties: number
+  /** Marge de trésorerie : entrées moins sorties. */
+  marge: number
+  /** Solde total à la clôture du dernier jour compté. */
+  soldeFin: number
+  nbEntrees: number
+  nbSorties: number
+  /** Net des virements entre comptes de la société : nul, sauf si les deux jambes d'un virement tombent sur deux semaines. */
+  interne: number
+  principalesEntrees: LigneTiers[]
+  principalesSorties: LigneTiers[]
+  /** Sorties par compte bancaire d'où elles partent. */
+  sortiesParCompte: LigneTiers[]
+}
+
+export interface Pilotage {
+  /** De la plus récente à la plus ancienne. */
+  semaines: SemainePilotage[]
+  total: { entrees: number; sorties: number; marge: number }
+  /** Moyenne par semaine sur les dernières semaines entières (quatre au plus) ; absent sans semaine entière. */
+  rythme: { nbSemaines: number; entrees: number; sorties: number; marge: number } | null
+  /** Jours de sorties que couvre le solde du jour, au rythme ci-dessus. */
+  joursCouverts: number | null
+}
+
+/**
+ * Ce qui entre, ce qui sort et ce qu'il reste, semaine civile par semaine
+ * civile (du lundi au dimanche, heure de Paris), semaine en cours comprise.
+ * Les virements entre comptes de la société ne comptent ni en entrée ni en
+ * sortie ; les soldes, eux, sont ceux de la banque, tous comptes confondus.
+ */
+export function piloterParSemaine(banque: BanqueQonto, nbSemaines: number, aujourdhui: string): Pilotage {
+  const dates = banque.mouvements.map((m) => ({ m, jour: jourParis(m.date) }))
+  const total = arrondi(banque.comptes.reduce((s, c) => s + c.solde, 0))
+  const nomCompte = new Map(banque.comptes.map((c) => [c.id, c.nom]))
+  const lundiCourant = lundiDe(aujourdhui)
+  // Une semaine n'est gardée que si le relevé la couvre en entier
+  const lundis = Array.from({ length: nbSemaines }, (_, i) => plusJours(lundiCourant, -7 * i)).filter((l) => l > banque.depuis)
+  if (!lundis.length) return { semaines: [], total: { entrees: 0, sorties: 0, marge: 0 }, rythme: null, joursCouverts: null }
+  const clotures = new Map(cloturesParJour(dates, total, plusJours(lundis[lundis.length - 1], -1), aujourdhui).map((p) => [p.jour, p.solde]))
+
+  const semaines: SemainePilotage[] = lundis.map((lundi) => {
+    const dimanche = plusJours(lundi, 6)
+    const fin = dimanche < aujourdhui ? dimanche : aujourdhui
+    const siens = dates.filter((x) => x.jour >= lundi && x.jour <= fin).map((x) => x.m)
+    const credits = siens.filter((m) => !m.interne && m.sens === 'credit')
+    const debits = siens.filter((m) => !m.interne && m.sens === 'debit')
+    const entrees = arrondi(credits.reduce((s, m) => s + m.montant, 0))
+    const sorties = arrondi(debits.reduce((s, m) => s + m.montant, 0))
+    return {
+      lundi,
+      fin,
+      enCours: lundi === lundiCourant,
+      soldeDebut: clotures.get(plusJours(lundi, -1)) ?? 0,
+      entrees,
+      sorties,
+      marge: arrondi(entrees - sorties),
+      soldeFin: clotures.get(fin) ?? 0,
+      nbEntrees: credits.length,
+      nbSorties: debits.length,
+      interne: arrondi(siens.filter((m) => m.interne).reduce((s, m) => s + signe(m), 0)),
+      principalesEntrees: parTiers(credits, (m) => m.tiers).slice(0, 5),
+      principalesSorties: parTiers(debits, (m) => m.tiers).slice(0, 8),
+      sortiesParCompte: parTiers(debits, (m) => nomCompte.get(m.compteId) || 'Autre compte'),
+    }
+  })
+
+  const somme = (f: (s: SemainePilotage) => number, liste = semaines) => arrondi(liste.reduce((t, s) => t + f(s), 0))
+  const entieres = semaines.filter((s) => !s.enCours).slice(0, 4)
+  const rythme = entieres.length ? {
+    nbSemaines: entieres.length,
+    entrees: arrondi(somme((s) => s.entrees, entieres) / entieres.length),
+    sorties: arrondi(somme((s) => s.sorties, entieres) / entieres.length),
+    marge: arrondi(somme((s) => s.marge, entieres) / entieres.length),
+  } : null
+
+  return {
+    semaines,
+    total: { entrees: somme((s) => s.entrees), sorties: somme((s) => s.sorties), marge: somme((s) => s.marge) },
+    rythme,
+    joursCouverts: rythme && rythme.sorties > 0 ? Math.floor(total / (rythme.sorties / 7)) : null,
   }
 }
 

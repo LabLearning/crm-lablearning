@@ -3,12 +3,12 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
-import { Wallet, AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, Info, Landmark, Lock } from '@/components/ui/icons'
+import { Wallet, AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Info, Landmark, Lock } from '@/components/ui/icons'
 import { lireBanqueQonto, messageErreurQonto, qontoConfigure, type BanqueQonto } from '@/lib/qonto'
 import {
   JOURS_RELEVE, PERIODES, chargerEngagements, chargerFacturesCitees, encaissementsNonSaisis, jourParis, montantFr,
-  numerosFactureCites, peutVoirTresorerie, rapprocher, synthetiserBanque,
-  type Engagements, type FluxSemaine, type LigneTiers, type PointSolde, type VirementRapproche,
+  numerosFactureCites, peutVoirTresorerie, piloterParSemaine, rapprocher, synthetiserBanque,
+  type Engagements, type LigneTiers, type Pilotage, type PointSolde, type SemainePilotage, type VirementRapproche,
 } from '@/lib/tresorerie'
 import { BoutonActualiser } from './BoutonActualiser'
 import { MouvementsTable, type LigneMouvement } from './MouvementsTable'
@@ -82,37 +82,143 @@ function Courbe({ points }: { points: PointSolde[] }) {
   )
 }
 
-/** Entrées (pin) et sorties (gris) de chaque semaine, hors virements entre comptes de la société. */
-function Semaines({ semaines }: { semaines: FluxSemaine[] }) {
-  const max = Math.max(1, ...semaines.flatMap((s) => [s.entrees, s.sorties]))
-  const pasLibelle = Math.ceil(semaines.length / 9)
+const signe = (n: number) => `${n > 0 ? '+' : ''}${montantFr(n)}`
+/** Part des entrées qui reste après les sorties ; rien à dire quand la semaine est déficitaire ou sans entrée. */
+const taux = (marge: number, entrees: number) => (entrees > 0 && marge >= 0 ? `${Math.round((marge / entrees) * 100)} % des entrées` : '')
+const couleurMarge = (n: number) => (n < 0 ? 'text-danger-600' : 'text-brand-600')
+
+function Cellule({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <div>
-      <div className="flex h-40 items-end gap-1 sm:gap-2">
-        {semaines.map((s) => (
-          <div
-            key={s.lundi}
-            className="flex h-full min-w-0 flex-1 items-end justify-center gap-0.5"
-            title={`Semaine du ${dateCourte(s.lundi)} : ${montantFr(s.entrees)} entrés, ${montantFr(s.sorties)} sortis`}
-          >
-            <span className="w-1/2 max-w-[18px] rounded-t-[3px] bg-brand-500" style={{ height: `${(s.entrees / max) * 100}%`, minHeight: s.entrees > 0 ? 2 : 0 }} />
-            <span className="w-1/2 max-w-[18px] rounded-t-[3px] bg-surface-300" style={{ height: `${(s.sorties / max) * 100}%`, minHeight: s.sorties > 0 ? 2 : 0 }} />
-          </div>
-        ))}
-      </div>
-      <div className="mt-1.5 flex gap-1 border-t border-surface-200 pt-1.5 sm:gap-2" aria-hidden="true">
-        {semaines.map((s, i) => (
-          <span key={s.lundi} className="min-w-0 flex-1 overflow-visible whitespace-nowrap text-center font-mono text-[10px] tabular-nums text-surface-400">
-            {i % pasLibelle === 0 ? `${s.lundi.slice(8, 10)}/${s.lundi.slice(5, 7)}` : ''}
-          </span>
-        ))}
-      </div>
-      <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-surface-500">
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px] bg-brand-500" /> Entrées</span>
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-[3px] bg-surface-300" /> Sorties</span>
-        <span className="text-surface-400">Par semaine, virements entre vos comptes exclus.</span>
-      </p>
+    <span className={cn('flex items-baseline justify-between gap-2 md:block md:text-right', className)}>
+      <span className="text-xs text-surface-400 md:hidden">{label}</span>
+      <span className="font-mono text-sm tabular-nums text-surface-800">{children}</span>
+    </span>
+  )
+}
+
+function Detail({ titre, lignes, vide }: { titre: string; lignes: LigneTiers[]; vide: string }) {
+  return (
+    <div className="min-w-0">
+      <h4 className="section-label">{titre}</h4>
+      {lignes.length === 0 ? <p className="mt-1.5 text-xs text-surface-400">{vide}</p> : (
+        <ul className="mt-1.5 space-y-1">
+          {lignes.map((l) => (
+            <li key={l.nom} className="flex items-baseline justify-between gap-3 text-xs">
+              <span className="min-w-0 truncate text-surface-700">{l.nom}{l.nb > 1 && <span className="text-surface-400"> ({l.nb})</span>}</span>
+              <span className="shrink-0 font-mono tabular-nums text-surface-800">{montantFr(l.montant)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
+  )
+}
+
+const GRILLE = 'md:grid md:grid-cols-[minmax(0,1.6fr)_repeat(5,minmax(0,1fr))_1.25rem] md:items-center md:gap-3'
+
+function LigneSemaine({ s, maxSolde }: { s: SemainePilotage; maxSolde: number }) {
+  return (
+    <details className="group border-t border-surface-100">
+      <summary className={cn('cursor-pointer list-none px-4 py-3 transition-colors hover:bg-surface-50/70 sm:px-5 [&::-webkit-details-marker]:hidden', GRILLE)}>
+        <span className="flex items-center justify-between gap-3 md:block">
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-surface-800">
+              {s.lundi === s.fin ? `Le ${dateCourte(s.lundi)}` : `Du ${dateCourte(s.lundi)} au ${dateCourte(s.fin)}`}
+              {s.enCours && <span className="ml-2 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">En cours</span>}
+            </span>
+            <span className="block text-xs text-surface-400">{s.nbEntrees} {pluriel(s.nbEntrees, 'entrée', 'entrées')} · {s.nbSorties} {pluriel(s.nbSorties, 'sortie', 'sorties')}</span>
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-surface-300 transition-transform group-open:rotate-180 md:hidden" />
+        </span>
+        <span className="mt-2 grid grid-cols-2 gap-x-5 gap-y-1 md:mt-0 md:contents">
+          <Cellule label="Au début" className="hidden md:block"><span className="text-surface-500">{montantFr(s.soldeDebut)}</span></Cellule>
+          <Cellule label="Entrées">{montantFr(s.entrees)}</Cellule>
+          <Cellule label="Sorties">{montantFr(s.sorties)}</Cellule>
+          <span className="flex items-baseline justify-between gap-2 md:block md:text-right">
+            <span className="text-xs text-surface-400 md:hidden">Marge</span>
+            <span>
+              <span className={cn('font-mono text-sm font-semibold tabular-nums', couleurMarge(s.marge))}>{signe(s.marge)}</span>
+              <span className="hidden text-[11px] text-surface-400 md:block">{taux(s.marge, s.entrees)}</span>
+            </span>
+          </span>
+          <span className="flex items-baseline justify-between gap-2 md:block md:text-right">
+            <span className="text-xs text-surface-400 md:hidden">Reste</span>
+            <span className="md:block">
+              <span className="font-mono text-sm font-semibold tabular-nums text-surface-900">{montantFr(s.soldeFin)}</span>
+              <span aria-hidden="true" className="mt-1 hidden h-1 overflow-hidden rounded-full bg-surface-100 md:block">
+                <span className="ml-auto block h-full rounded-full bg-brand-500/60" style={{ width: `${Math.max(2, (Math.max(0, s.soldeFin) / maxSolde) * 100)}%` }} />
+              </span>
+            </span>
+          </span>
+        </span>
+        <ChevronDown className="hidden h-4 w-4 text-surface-300 transition-transform group-open:rotate-180 md:block" />
+      </summary>
+      <div className="grid gap-4 bg-surface-50/60 px-4 py-4 sm:px-5 md:grid-cols-3">
+        <Detail titre="Ce qui est entré" lignes={s.principalesEntrees} vide="Aucune entrée cette semaine-là." />
+        <Detail titre="Ce qui est sorti" lignes={s.principalesSorties} vide="Aucune sortie cette semaine-là." />
+        <div className="min-w-0">
+          <Detail titre="Sorties par compte" lignes={s.sortiesParCompte} vide="Aucune sortie." />
+          {Math.abs(s.interne) >= 0.01 && (
+            <p className="mt-2 text-xs text-surface-500">Virements entre vos comptes à cheval sur deux semaines : {signe(s.interne)}.</p>
+          )}
+        </div>
+      </div>
+    </details>
+  )
+}
+
+/** Le tableau de bord de la semaine : ce qui entre, ce qui sort, la marge, ce qu'il reste. */
+function PilotageSemaines({ p, total }: { p: Pilotage; total: number }) {
+  const maxSolde = Math.max(1, ...p.semaines.map((s) => s.soldeFin))
+  const r = p.rythme
+  const semainesAvantZero = r && r.marge < 0 ? Math.floor(total / -r.marge) : null
+  return (
+    <section className="card overflow-hidden" aria-labelledby="pilotage-titre">
+      <div className="p-4 sm:p-5">
+        <h2 id="pilotage-titre" className="font-heading font-semibold text-surface-900">Pilotage semaine par semaine</h2>
+        <p className="mt-0.5 text-xs text-surface-500">Du lundi au dimanche. Les virements entre vos comptes ne comptent ni en entrée ni en sortie. Ouvrez une semaine pour voir son détail.</p>
+      </div>
+      <div className={cn('hidden border-t border-surface-100 bg-surface-50/60 px-5 py-2 text-right text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-surface-400', GRILLE)}>
+        <span className="text-left">Semaine</span>
+        <span>En banque au début</span>
+        <span>Entrées</span>
+        <span>Sorties</span>
+        <span>Marge</span>
+        <span>Reste en banque</span>
+        <span />
+      </div>
+      {p.semaines.map((s) => <LigneSemaine key={s.lundi} s={s} maxSolde={maxSolde} />)}
+      <div className={cn('border-t-2 border-surface-200 bg-surface-50/60 px-4 py-3 sm:px-5', GRILLE)}>
+        <span className="block text-sm font-semibold text-surface-900">Total des {p.semaines.length} semaines</span>
+        <span className="mt-2 grid grid-cols-2 gap-x-5 gap-y-1 md:mt-0 md:contents">
+          <span className="hidden md:block" />
+          <Cellule label="Entrées">{montantFr(p.total.entrees)}</Cellule>
+          <Cellule label="Sorties">{montantFr(p.total.sorties)}</Cellule>
+          <span className="flex items-baseline justify-between gap-2 md:block md:text-right">
+            <span className="text-xs text-surface-400 md:hidden">Marge</span>
+            <span>
+              <span className={cn('font-mono text-sm font-semibold tabular-nums', couleurMarge(p.total.marge))}>{signe(p.total.marge)}</span>
+              <span className="hidden text-[11px] text-surface-400 md:block">{taux(p.total.marge, p.total.entrees)}</span>
+            </span>
+          </span>
+          <span className="hidden md:block" />
+        </span>
+        <span className="hidden md:block" />
+      </div>
+      <div className="space-y-2 border-t border-surface-100 p-4 text-sm text-surface-600 sm:p-5">
+        {r && (
+          <p>
+            Sur {r.nbSemaines === 1 ? 'la dernière semaine entière' : `les ${r.nbSemaines} dernières semaines entières`}, il entre en moyenne <b className="font-semibold text-surface-900">{montantFr(r.entrees)}</b> et il sort <b className="font-semibold text-surface-900">{montantFr(r.sorties)}</b> par semaine, soit une marge de <b className={cn('font-semibold', couleurMarge(r.marge))}>{signe(r.marge)}</b> par semaine.
+            {' '}À ce rythme, il resterait {montantFr(total + r.marge)} dans une semaine et {montantFr(total + 4 * r.marge)} dans quatre semaines
+            {semainesAvantZero !== null && semainesAvantZero <= 12 && <> : <b className="font-semibold text-danger-600">le solde passerait sous zéro {semainesAvantZero < 1 ? 'dès la semaine prochaine' : `dans ${semainesAvantZero} ${pluriel(semainesAvantZero, 'semaine', 'semaines')}`}</b></>}.
+          </p>
+        )}
+        <p className="text-xs text-surface-500">
+          La marge affichée ici est une marge de trésorerie : ce qui est entré en banque moins ce qui en est sorti. Une prévision au rythme passé n’est pas une promesse : un versement de l’affactureur en plus ou en moins la change. Pour la marge par session (chiffre d’affaires moins coûts), voir{' '}
+          <Link href="/dashboard/rentabilite" className="font-semibold text-brand-600 hover:text-brand-700">Rentabilité</Link>.
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -368,7 +474,10 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
     erreur = 'Le compte Qonto relié appartient à une autre société que cet organisme (SIREN différent). Vérifiez le SIRET dans les paramètres, ou la clé enregistrée.'
   }
 
+  const periode = PERIODES.find((p) => p.jours === jours)!
   const synthese = banque ? synthetiserBanque(banque, jours, aujourdhui) : null
+  const pilotage = banque ? piloterParSemaine(banque, periode.semaines, aujourdhui) : null
+  const [cetteSemaine, semaineDerniere] = pilotage?.semaines || []
   const premierJour = synthese?.courbe[0]?.jour
   const mouvementsPeriode = banque && premierJour ? banque.mouvements.filter((m) => jourParis(m.date) >= premierJour) : []
   const nomCompte = new Map((banque?.comptes || []).map((c) => [c.id, c.nom]))
@@ -388,8 +497,7 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
     compte: nomCompte.get(m.compteId) || '',
     interne: m.interne,
   }))
-  const net = synthese ? synthese.entrees - synthese.sorties : 0
-  const periodeLabel = PERIODES.find((p) => p.jours === jours)!.label
+  const periodeLabel = periode.label
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
@@ -402,20 +510,20 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
             <h1 className="text-xl font-heading font-bold text-surface-900">Trésorerie</h1>
             <p className="text-sm text-surface-500">
               {banque
-                ? `Relevé Qonto de ${heureParis(banque.luLe)}, ${banque.comptes.length} ${pluriel(banque.comptes.length, 'compte', 'comptes')}. Encaissements attendus et paiements à prévoir.`
+                ? `Relevé Qonto de ${heureParis(banque.luLe)}, ${banque.comptes.length} ${pluriel(banque.comptes.length, 'compte', 'comptes')}. Ce qui entre, ce qui sort et ce qu’il reste, semaine par semaine.`
                 : 'Encaissements attendus et paiements à prévoir, d’après le CRM.'}
             </p>
           </div>
         </div>
         {banque && (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <nav aria-label="Période" className="inline-flex rounded-lg bg-surface-100 p-0.5 self-start">
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+            <nav aria-label="Période" className="inline-flex shrink-0 rounded-lg bg-surface-100 p-0.5 self-start">
               {PERIODES.map((p) => (
                 <Link
                   key={p.jours}
                   href={p.jours === 30 ? '/dashboard/tresorerie' : `/dashboard/tresorerie?periode=${p.jours}`}
                   aria-current={p.jours === jours ? 'page' : undefined}
-                  className={cn('inline-flex min-h-9 items-center rounded-md px-3 text-xs font-semibold transition-colors', p.jours === jours ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-500 hover:text-surface-800')}
+                  className={cn('inline-flex min-h-9 items-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition-colors', p.jours === jours ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-500 hover:text-surface-800')}
                 >
                   {p.label}
                 </Link>
@@ -439,20 +547,24 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <Tuile
               fort
-              label="En banque aujourd’hui"
-              valeur={montantFr(synthese.total)}
-              sous={synthese.disponible < synthese.total - 0.5 ? `${montantFr(synthese.disponible)} disponibles, cartes en attente déduites` : `Sur ${banque.comptes.length} ${pluriel(banque.comptes.length, 'compte', 'comptes')}`}
+              label="Il vous reste en banque"
+              valeur={montantFr(synthese.total, 2)}
+              sous={pilotage?.joursCouverts != null && pilotage.rythme
+                ? `Soit ${pilotage.joursCouverts} ${pluriel(pilotage.joursCouverts, 'jour', 'jours')} de sorties, au rythme des ${pilotage.rythme.nbSemaines} dernières semaines`
+                : `Sur ${banque.comptes.length} ${pluriel(banque.comptes.length, 'compte', 'comptes')}`}
             />
-            <Tuile label={`Encaissé sur ${periodeLabel}`} valeur={montantFr(synthese.entrees)} sous={`${synthese.nbEntrees} ${pluriel(synthese.nbEntrees, 'entrée', 'entrées')}`} />
-            <Tuile label={`Décaissé sur ${periodeLabel}`} valeur={montantFr(synthese.sorties)} sous={`${synthese.nbSorties} ${pluriel(synthese.nbSorties, 'sortie', 'sorties')}`} />
-            <Tuile label="Variation nette" valeur={`${net > 0 ? '+' : ''}${montantFr(net)}`} sous={net >= 0 ? 'Plus d’entrées que de sorties' : 'Plus de sorties que d’entrées'} />
+            <Tuile label="Entré cette semaine" valeur={montantFr(cetteSemaine?.entrees || 0)} sous={semaineDerniere ? `Semaine dernière : ${montantFr(semaineDerniere.entrees)}` : 'Depuis lundi'} />
+            <Tuile label="Sorti cette semaine" valeur={montantFr(cetteSemaine?.sorties || 0)} sous={semaineDerniere ? `Semaine dernière : ${montantFr(semaineDerniere.sorties)}` : 'Depuis lundi'} />
+            <Tuile label="Marge de la semaine" valeur={signe(cetteSemaine?.marge || 0)} sous={semaineDerniere ? `Semaine dernière : ${signe(semaineDerniere.marge)}` : 'Entrées moins sorties'} />
           </div>
+
+          {pilotage && pilotage.semaines.length > 0 && <PilotageSemaines p={pilotage} total={synthese.total} />}
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Bloc titre="Solde total" sous={`Tous comptes confondus, à la clôture de chaque jour, sur ${periodeLabel}.`} className="lg:col-span-2">
               <Courbe points={synthese.courbe} />
             </Bloc>
-            <Bloc titre="Comptes" sous={banque.raisonSociale || undefined}>
+            <Bloc titre="Comptes" sous={synthese.disponible < synthese.total - 0.5 ? `${montantFr(synthese.disponible, 2)} disponibles, paiements par carte en attente déduits.` : banque.raisonSociale || undefined}>
               <ul className="divide-y divide-surface-100">
                 {banque.comptes.map((c) => (
                   <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
@@ -469,10 +581,6 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
               </ul>
             </Bloc>
           </div>
-
-          <Bloc titre="Entrées et sorties" sous={`Semaine par semaine, sur ${periodeLabel}.`}>
-            <Semaines semaines={synthese.semaines} />
-          </Bloc>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Bloc titre="D’où vient l’argent" sous={`Encaissements par tiers, sur ${periodeLabel}.`}>
