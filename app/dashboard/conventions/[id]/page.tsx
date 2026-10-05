@@ -14,7 +14,7 @@ import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { ConventionDetailsEditor } from './ConventionDetailsEditor'
 import { ConventionHistory } from './ConventionHistory'
 import { RetirerAvenantBouton } from './RetirerAvenantBouton'
-import { ReprendreProgramme } from './ReprendreProgramme'
+import { EcartsSession } from './EcartsSession'
 import { citerProgramme, ecartFormation, estSigneeParLeClient } from '@/lib/convention-formation'
 
 export const dynamic = 'force-dynamic'
@@ -30,7 +30,7 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
       client:clients(id, raison_sociale, nom_commercial, sigle, type, adresse, code_postal, ville, telephone, email, siret),
       contact:contacts(id, prenom, nom, email, telephone, poste),
       formation:formations(id, intitule, reference, modalite, duree_heures, duree_jours),
-      session:sessions(id, reference, status, date_debut, date_fin, lieu, formateur:formateurs(prenom, nom)),
+      session:sessions(id, reference, status, date_debut, date_fin, lieu, prix_ht, formateur:formateurs(prenom, nom)),
       dossier:dossiers_formation(id, numero, status, opco_workflow_status)
     `)
     .eq('id', params.id)
@@ -60,6 +60,9 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
       .order('numero', { ascending: true }),
     c.session_id && c.status !== 'annulee' ? ecartFormation(supabase, c.id, session.organization.id) : null,
   ])
+  // Une session porte une seule convention : leur prix doit être le même
+  const ecartPrix = c.status !== 'annulee' && c.session?.prix_ht != null && c.montant_ht != null && Number(c.session.prix_ht) !== Number(c.montant_ht)
+  const euros = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 
   return (
     <div className="space-y-5 animate-fade-in max-w-5xl">
@@ -93,15 +96,15 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         </div>
       </div>
 
-      {/* La session est passée sur un autre programme : la convention peut le reprendre */}
-      {ecartProgramme && (
-        <ReprendreProgramme
+      {/* Programme ou prix différents de ceux de la session : la convention peut les reprendre */}
+      {(ecartProgramme || ecartPrix) && (
+        <EcartsSession
           conventionId={c.id}
           numero={c.numero}
           signee={estSigneeParLeClient(c.status)}
-          sessionReference={ecartProgramme.sessionReference}
-          avant={citerProgramme(ecartProgramme.avant)}
-          apres={citerProgramme(ecartProgramme.apres)}
+          sessionReference={c.session?.reference || null}
+          programme={ecartProgramme ? { convention: citerProgramme(ecartProgramme.avant), session: citerProgramme(ecartProgramme.apres) } : null}
+          prix={ecartPrix ? { convention: euros(c.montant_ht), session: euros(c.session.prix_ht) } : null}
           peutReprendre={['super_admin', 'gestionnaire'].includes(session.user.role)}
         />
       )}

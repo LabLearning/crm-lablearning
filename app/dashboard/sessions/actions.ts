@@ -511,7 +511,7 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
   // Détecte un changement de formateur → relance le workflow mission
   const { data: before } = await supabase
     .from('sessions')
-    .select('formateur_id, mission_status')
+    .select('formateur_id, mission_status, prix_ht')
     .eq('id', id)
     .eq('organization_id', session.organization.id)
     .single()
@@ -559,6 +559,20 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
 
   // Le prix modifié sur la session se répercute sur la convention liée
   await syncConventionPrix(supabase, id, session.organization.id, parsed.data.prix_ht)
+  // Prix réellement modifié : la convention déjà envoyée ou signée est corrigée de même, sans avenant.
+  // Un simple réenregistrement ne touche pas au prix d'une convention.
+  const nouveauPrix = parsed.data.prix_ht
+  if (nouveauPrix != null && (before?.prix_ht == null || Number(before.prix_ht) !== Number(nouveauPrix))) {
+    try {
+      const { syncConventionMontantSession } = await import('@/lib/convention-avenants')
+      const corrections = await syncConventionMontantSession(supabase, id, session.organization.id, Number(nouveauPrix), session.user.id)
+      for (const c of corrections) {
+        await logAudit({ action: 'corriger_prix_convention', entity_type: 'convention', entity_id: c.conventionId, details: { numero: c.numero, avant: c.avant, apres: c.apres, origine: 'session' } })
+        revalidatePath(`/dashboard/conventions/${c.conventionId}`)
+      }
+      if (corrections.length) revalidatePath('/dashboard/conventions')
+    } catch (e) { console.error('[prix convention]', e) }
+  }
 
   // Nouveau formateur assigné → notification + email de proposition de mission
   if (formateurChanged && newFormateurId) {

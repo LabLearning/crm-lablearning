@@ -220,6 +220,36 @@ export async function reprendreFormationSessionAction(conventionId: string): Pro
 }
 
 /**
+ * La convention ne porte plus le prix de sa session (prix modifié sur la
+ * session avant que la convention ne suive d'elle-même) : elle le reprend.
+ * Un prix modifié est une correction : ni avenant ni mention, trace interne.
+ */
+export async function reprendrePrixSessionAction(conventionId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+
+  const { data: conv } = await supabase
+    .from('conventions').select('id, status, session_id')
+    .eq('id', conventionId).eq('organization_id', session.organization.id).maybeSingle()
+  if (!conv?.session_id) return { success: false, error: 'Cette convention n’est liée à aucune session' }
+  if (conv.status === 'annulee') return { success: false, error: 'Cette convention est annulée' }
+  const { data: sess } = await supabase
+    .from('sessions').select('prix_ht')
+    .eq('id', conv.session_id).eq('organization_id', session.organization.id).maybeSingle()
+  if (sess?.prix_ht == null) return { success: false, error: 'La session n’a pas de prix' }
+
+  const { corrigerPrixConvention } = await import('@/lib/convention-avenants')
+  const c = await corrigerPrixConvention(supabase, conventionId, Number(sess.prix_ht), session.user.id)
+  if (!c) return { success: false, error: 'Cette convention porte déjà le prix de sa session' }
+
+  await logAudit({ action: 'corriger_prix_convention', entity_type: 'convention', entity_id: conventionId, details: { numero: c.numero, avant: c.avant, apres: c.apres, origine: 'fiche' } })
+  revalidatePath('/dashboard/conventions')
+  revalidatePath(`/dashboard/conventions/${conventionId}`)
+  return { success: true }
+}
+
+/**
  * Retire un avenant de prix créé pour corriger une erreur de saisie : le prix
  * signé était faux, le client connaît le bon. La convention garde le prix
  * corrigé et n'en fait plus mention ; la correction reste tracée dans les

@@ -306,7 +306,7 @@ export async function syncConventionMontantSession(
     .select('id')
     .eq('session_id', sessionId)
     .eq('organization_id', organizationId)
-    .in('status', STATUTS_CONTRACTUELS)
+    .not('status', 'in', '("brouillon","annulee")')
   const faites: CorrectionPrix[] = []
   for (const c of (convs || []) as any[]) {
     const r = await corrigerPrixConvention(supabase, c.id, montant, actorUserId)
