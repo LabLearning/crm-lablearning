@@ -87,6 +87,8 @@ export const navigation: NavSection[] = [
       { label: 'Factures formateurs', href: '/dashboard/factures-formateurs', icon: 'ReceiptText', module: 'factures' },
       { label: 'Affacturage', href: '/dashboard/affacturage', icon: 'Banknote', module: 'factures' },
       { label: 'Rentabilité', href: '/dashboard/rentabilite', icon: 'PieChart', module: 'factures', hideForRoles: ['commercial', 'directeur_commercial', 'formateur', 'apprenant', 'apporteur_affaires', 'franchise'] },
+      // Soldes et mouvements bancaires : direction et comptabilité seulement (lib/tresorerie.ts, ROLES_TRESORERIE)
+      { label: 'Trésorerie', href: '/dashboard/tresorerie', icon: 'Wallet', module: 'factures', hideForRoles: ['gestionnaire', 'commercial', 'directeur_commercial', 'formateur', 'apprenant', 'apporteur_affaires', 'franchise'] },
     ],
   },
   // ── QUALITÉ ──────────────────────────────────────────────

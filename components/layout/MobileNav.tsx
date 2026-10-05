@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { X, History,
+import { X, History, Wallet, Landmark,
 } from '@/components/ui/icons'
 import {
   LayoutDashboard, UserPlus, Building2, Users, Handshake, FileText,
@@ -27,7 +27,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ShieldCheck, MessageSquareWarning, BarChart3, Shield, Settings, Globe,
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers, MapPin, Clock,
   CheckSquare, Briefcase, UserCog, Banknote, Store, AlertTriangle, Compass, ReceiptText, ReceiptEuro, LifeBuoy,
-  FolderCheck,
+  FolderCheck, Wallet, Landmark,
 }
 
 interface MobileNavProps {
