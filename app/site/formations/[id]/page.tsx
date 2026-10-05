@@ -9,6 +9,7 @@ import { photoFormation } from '@/lib/formations-photos'
 import { structurerProgramme } from '@/lib/programme-structure'
 import { ProgrammeStructure } from '@/components/formations/ProgrammeStructure'
 import { altFormation } from '../../alt'
+import { jsonLd } from '../../jsonld'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,8 +129,8 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaCourse) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaBreadcrumb) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schemaCourse) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schemaBreadcrumb) }} />
       <section className="relative overflow-hidden border-b border-[#205040]/10">
         <div className="absolute inset-0 -z-10 bg-[#205040]" />
         {/* La photo en fond opacité, comme avant — le hero reste sobre */}

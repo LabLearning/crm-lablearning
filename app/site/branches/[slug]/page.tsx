@@ -9,6 +9,7 @@ import { titreFormation } from '@/lib/utils'
 import { metierStyle } from '../../metier'
 import { photoFormation } from '@/lib/formations-photos'
 import { altFormation } from '../../alt'
+import { jsonLd } from '../../jsonld'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +56,7 @@ export default async function SiteBranche({ params }: { params: { slug: string }
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schemas) }} />
       {/* Hero métier */}
       <section className="relative overflow-hidden border-b border-[#205040]/10">
         <img src={`/site/metiers/${b.img}.webp`} alt={`Formation ${b.label.toLowerCase()}`} className="absolute inset-0 -z-10 h-full w-full object-cover" />

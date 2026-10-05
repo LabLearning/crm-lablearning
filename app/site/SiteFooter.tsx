@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Mail, PhoneCall, MapPin } from './icons'
+import { guidesPublies } from '@/lib/guides'
 
 export function SiteFooter() {
   return (
@@ -40,6 +41,7 @@ export function SiteFooter() {
             <li><Link href="/branches/boucherie-charcuterie" className="text-[#D6D3D1] hover:text-white transition-colors">Boucherie-charcuterie</Link></li>
             <li><Link href="/branches/boulangerie-patisserie" className="text-[#D6D3D1] hover:text-white transition-colors">Boulangerie-pâtisserie</Link></li>
             <li><Link href="/formations" className="text-[#D6D3D1] hover:text-white transition-colors">Tout le catalogue</Link></li>
+            <li><Link href="/formation-restauration-rapide" className="text-[#D6D3D1] hover:text-white transition-colors">Nos villes</Link></li>
             <li><Link href="/financements" className="text-[#D6D3D1] hover:text-white transition-colors">Financements</Link></li>
           </ul>
         </div>
@@ -52,6 +54,7 @@ export function SiteFooter() {
             <li><Link href="/resultats" className="text-[#D6D3D1] hover:text-white transition-colors">Nos résultats</Link></li>
             <li><Link href="/a-propos" className="text-[#D6D3D1] hover:text-white transition-colors">À propos</Link></li>
             <li><Link href="/faq" className="text-[#D6D3D1] hover:text-white transition-colors">Questions fréquentes</Link></li>
+            {guidesPublies().length > 0 && <li><Link href="/guides" className="text-[#D6D3D1] hover:text-white transition-colors">Guides</Link></li>}
             <li><Link href="/recrutement" className="text-[#D6D3D1] hover:text-white transition-colors">Recrutement</Link></li>
             <li><Link href="/contact" className="text-[#D6D3D1] hover:text-white transition-colors">Contact</Link></li>
           </ul>
