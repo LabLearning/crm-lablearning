@@ -16,7 +16,8 @@ export { FACTURE_MODELES, type FactureModele }
 
 function fmt(n: number | string | null | undefined): string {
   if (n == null) return '—'
-  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[  ]/g, ' ')
+  // Le séparateur de milliers de fr-FR (espace fine insécable) n'existe pas dans la police : il s'imprimait comme une barre
+  return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202f\u00a0\u2009]/g, ' ')
 }
 function fmtDate(s: string | null | undefined): string {
   if (!s) return '—'
