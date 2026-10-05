@@ -2,10 +2,16 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ArrowRight, ChevronDown, Info } from '@/components/ui/icons'
 import { montantFr, type VersementsFormateur } from '@/lib/tresorerie'
+import type { Acompte } from '@/lib/rapprochement-formateurs'
 import { SUIVI_LABEL, type Lot, type PilotageFormateur, type PilotageFormateurs as Pilotage, type SessionFormateur, type SuiviSession } from '@/lib/pilotage-formateurs'
 
 /** Ce que la banque a versé à un formateur ; `equipe` : il est payé comme membre de l'équipe, pas comme formateur. */
-export interface BanqueFormateur { versements: VersementsFormateur | null; equipe: boolean }
+export interface BanqueFormateur {
+  versements: VersementsFormateur | null
+  equipe: boolean
+  /** Virements qui désignent une facture sans en avoir le montant : avances et acomptes. */
+  acomptes: Acompte[]
+}
 
 const dateCourte = (jour: string) => new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${jour}T12:00:00Z`))
 const pluriel = (n: number, un: string, plusieurs: string) => (n > 1 ? plusieurs : un)
@@ -121,6 +127,28 @@ function LigneFormateur({ p, banque, avecBanque }: { p: PilotageFormateur; banqu
                 <li key={f.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2 text-sm">
                   <span className="min-w-0 flex-1 truncate text-surface-700">{f.numero}{f.objet ? ` · ${f.objet}` : ''}</span>
                   <span className="font-mono tabular-nums text-surface-800">{montantFr(f.montantTtc)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {avecBanque && !!banque?.acomptes.length && (
+          <div>
+            <h4 className="section-label">Avances et acomptes versés</h4>
+            <p className="mt-1 text-xs text-surface-500">
+              Ces virements n’ont le montant d’aucune facture : ils ne soldent rien, mais ils viennent en déduction de ce qui reste à payer.
+              Total : <b className="font-semibold text-surface-800">{montantFr(banque.acomptes.reduce((s, a) => s + a.virement.montant, 0), 2)}</b>.
+            </p>
+            <ul className="mt-1 divide-y divide-surface-100">
+              {banque.acomptes.map((a) => (
+                <li key={a.virement.id} className="flex items-baseline gap-3 py-1.5 text-xs">
+                  <span className="w-16 shrink-0 whitespace-nowrap font-mono tabular-nums text-surface-400">{dateCourte(a.virement.jour)}</span>
+                  <span className="min-w-0 flex-1 truncate text-surface-700" title={a.virement.libelle}>
+                    {a.virement.libelle || 'Sans libellé'}
+                    <span className="text-surface-400"> · {a.factures.length ? `sur ${a.factures.join(', ')}` : 'facture non précisée'}</span>
+                  </span>
+                  <span className="shrink-0 font-mono tabular-nums text-surface-800">{montantFr(a.virement.montant, 2)}</span>
                 </li>
               ))}
             </ul>

@@ -231,7 +231,8 @@ export function piloterParSemaine(banque: BanqueQonto, nbSemaines: number, aujou
 
 /** Une personne de l'organisme : ses accès Qonto (pour ses paiements par carte) et les jetons de son nom. */
 export interface PersonneEquipe { cle: string; nom: string; membreIds: string[]; jetonsPrenom: string[]; jetonsNom: string[] }
-export interface LigneDetail { jour: string; libelle: string; montant: number; compte: string }
+/** Un virement : `id` est celui du mouvement Qonto, pour ne jamais le rapprocher deux fois. */
+export interface LigneDetail { id: string; jour: string; libelle: string; montant: number; compte: string }
 
 export interface DepensesPersonne {
   cle: string
@@ -409,7 +410,7 @@ export function ventilerParPersonne(
       continue
     }
     if (!estVirement(m)) { reste += m.montant; continue }
-    const ligne: LigneDetail = { jour, libelle: m.reference || m.libelle, montant: m.montant, compte }
+    const ligne: LigneDetail = { id: m.id, jour, libelle: m.reference || m.libelle, montant: m.montant, compte }
     const r = reconnaitre(m.tiers)
     if (r.equipe) {
       const p = personne(r.equipe.cle, r.equipe.nom)

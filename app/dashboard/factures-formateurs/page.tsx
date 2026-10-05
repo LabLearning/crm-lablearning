@@ -7,8 +7,10 @@ import { SESSION_DETAIL_SELECT, chargerDetailsPrestations, periodeFr } from '@/l
 import { chargerPilotageFormateurs } from '@/lib/pilotage-formateurs'
 import { JOURS_RELEVE, constituerEquipe, estLaPersonne, jourParis, peutVoirTresorerie, ventilerParPersonne } from '@/lib/tresorerie'
 import { banqueDeLOrganisme } from '@/lib/tresorerie-banque'
+import { chargerRapprochements, type Acompte, type Proposition } from '@/lib/rapprochement-formateurs'
 import { FacturesFormateursList } from './FacturesFormateursList'
 import { PilotageFormateurs, type BanqueFormateur } from './PilotageFormateurs'
+import { RapprochementBanque } from './RapprochementBanque'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,7 +104,13 @@ export default async function FacturesFormateursPage({ searchParams }: { searchP
 
     let banque: Record<string, BanqueFormateur> | null = null
     let banqueNote: string | null = null
+    let propositions: Proposition[] = []
+    let acomptes: Acompte[] = []
     if (lecture.banque && pilotage) {
+      // Factures ouvertes que la banque montre réglées, et virements d'acompte, sur tout le relevé
+      const rapprochements = await chargerRapprochements(supabase, organizationId, lecture.banque).catch(() => null)
+      propositions = rapprochements?.propositions || []
+      acomptes = rapprochements?.acomptes || []
       const equipe = constituerEquipe(lecture.banque.membres, (utilisateurs.data || []) as any[])
       const joursBanque = Math.min(joursPeriode, JOURS_RELEVE - 1)
       const ventilation = ventilerParPersonne(lecture.banque, equipe, (formateurs.data || []) as any[], joursBanque, aujourdhui)
@@ -114,6 +122,7 @@ export default async function FacturesFormateursPage({ searchParams }: { searchP
           versements: parFiche.get(f.id) || null,
           // Un formateur qui est aussi salarié ou dirigeant est payé avec l'équipe : ses virements ne sont pas des honoraires
           equipe: equipe.some((p) => estLaPersonne(nom, p.jetonsPrenom, p.jetonsNom)),
+          acomptes: acomptes.filter((a) => a.formateurId === f.id),
         }
       }
       if (joursBanque < joursPeriode) banqueNote = `sur les ${Math.round(joursBanque / 30)} derniers mois seulement`
@@ -128,6 +137,7 @@ export default async function FacturesFormateursPage({ searchParams }: { searchP
             <p className="text-sm text-surface-600">{lecture.erreur}</p>
           </div>
         )}
+        <RapprochementBanque propositions={propositions} />
         {pilotage
           ? <PilotageFormateurs pilotage={pilotage} banque={banque} periode={periode.phrase || `depuis le 1er janvier ${aujourdhui.slice(0, 4)}`} banqueNote={banqueNote} />
           : (

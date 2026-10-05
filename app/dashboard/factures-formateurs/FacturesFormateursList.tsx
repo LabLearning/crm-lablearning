@@ -7,7 +7,9 @@ import { ReceiptEuro, Download, CheckCircle2, Clock, XCircle, Search, Calendar, 
 import { useToast } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { dureeFr, type DetailPrestation } from '@/lib/facture-formateur-detail'
+import { referenceLisible } from '@/lib/rapprochement-formateurs'
 import { rattacherSessionFactureFormateurAction, updateFactureFormateurStatusAction } from '@/app/dashboard/formateurs/actions'
+import { annulerPaiementFactureFormateurAction } from './actions'
 
 const STATUT: Record<string, { label: string; cls: string; Icon: any }> = {
   brouillon: { label: 'Brouillon', cls: 'bg-surface-100 text-surface-600', Icon: ReceiptEuro },
@@ -144,6 +146,15 @@ export function FacturesFormateursList({ factures, fileUrls, details, candidates
     })
   }
 
+  function annulerPaiement(f: any) {
+    if (!confirm(`Annuler le paiement de la facture ${f.numero} ? Elle redeviendra à payer.`)) return
+    start(async () => {
+      const r = await annulerPaiementFactureFormateurAction(f.id)
+      if (r.success) { toast('success', 'Paiement annulé'); router.refresh() }
+      else toast('error', r.error || 'Erreur')
+    })
+  }
+
   function rattacher(id: string, sessionId: string) {
     start(async () => {
       const r = await rattacherSessionFactureFormateurAction(id, sessionId)
@@ -257,6 +268,17 @@ export function FacturesFormateursList({ factures, fileUrls, details, candidates
                   {d
                     ? <Detail d={d} montantHt={Number(f.montant_ht) || 0} />
                     : <SansSession f={f} candidates={candidates[f.formateur_id] || []} pending={pending} onRattacher={(sessionId) => rattacher(f.id, sessionId)} />}
+                  {f.status === 'payee' && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-emerald-700">
+                      <span>
+                        Payée{f.date_paiement ? ` le ${formatDate(f.date_paiement, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        {referenceLisible(f.reference_paiement) && <span className="text-surface-500"> · {referenceLisible(f.reference_paiement)}</span>}
+                      </span>
+                      <button type="button" onClick={() => annulerPaiement(f)} disabled={pending} className="font-medium text-surface-500 underline decoration-surface-300 underline-offset-2 hover:text-danger-600 disabled:opacity-50">
+                        Annuler le paiement
+                      </button>
+                    </div>
+                  )}
                   {f.status === 'rejetee' && f.motif_rejet && <div className="mt-1.5 text-xs text-danger-600">Motif : {f.motif_rejet}</div>}
                 </div>
               )
