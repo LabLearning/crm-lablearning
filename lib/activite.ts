@@ -287,6 +287,7 @@ export function phraseEvenement(action: string, entityType: string, entityId: st
     case 'pointer_arrivee': return { verbe: 'a pointé son arrivée', objet: session ? `sur la session ${session}` : null, precisions: [d.heure ? `à ${d.heure}` : ''].filter(Boolean) }
     case 'pointer_depart': return { verbe: 'a pointé son départ', objet: session ? `de la session ${session}` : null, precisions: [d.heure ? `à ${d.heure}` : ''].filter(Boolean) }
     case 'update_prix_session': return { verbe: 'a fixé le prix de la session', objet: cible, precisions: [d.montant != null ? `à ${euro(d.montant)} HT` : ''].filter(Boolean) }
+    case 'corriger_prix_convention': return { verbe: 'a corrigé le prix de la convention', objet: d.numero ? String(d.numero) : cible, precisions: [d.avant != null ? `de ${euro(d.avant)} à ${euro(d.apres)}` : `fixé à ${euro(d.apres)}`, 'sans avenant'] }
     case 'update_cout_formateur': return { verbe: 'a fixé la rémunération du formateur', objet: cible ? `sur la session ${cible}` : null, precisions: [d.montant != null ? `à ${euro(d.montant)}` : ''].filter(Boolean) }
     case 'commission_session_validee': return { verbe: 'a validé la commission franchise', objet: cible ? `de la session ${cible}` : null, precisions }
     case 'generate_signature_link': return { verbe: 'a généré un lien de signature', objet: cible ? `pour la convention ${cible}` : null, precisions }

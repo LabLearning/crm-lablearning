@@ -19,7 +19,7 @@ interface Props {
   numeroPriseEnCharge: string | null
 }
 
-/** Statuts où la convention engage déjà le client : la modification passe par un avenant. */
+/** Statuts où la convention engage déjà le client : durée et prise en charge passent par un avenant, pas le prix. */
 const CONTRACTUELS = ['envoyee', 'signee_client', 'signee_complete']
 
 const financeurOptions = [
@@ -36,9 +36,12 @@ export function ConventionDetailsEditor({ conventionId, sessionId, financeurType
   const [duree, setDuree] = useState(dureeHeures != null ? String(dureeHeures) : '')
   const [pec, setPec] = useState(numeroPriseEnCharge || '')
   const [savingContenu, setSavingContenu] = useState(false)
-  const dirtyContenu = (montant || '') !== (montantHt != null ? String(montantHt) : '')
-    || (duree || '') !== (dureeHeures != null ? String(dureeHeures) : '')
+  const dirtyPrix = (montant || '') !== (montantHt != null ? String(montantHt) : '')
+  const dirtyAutres = (duree || '') !== (dureeHeures != null ? String(dureeHeures) : '')
     || (pec || '') !== (numeroPriseEnCharge || '')
+  const dirtyContenu = dirtyPrix || dirtyAutres
+  // Seules la durée et la prise en charge créent un avenant : le prix se corrige sans
+  const avecAvenant = contractuelle && dirtyAutres
 
   async function saveContenu() {
     setSavingContenu(true)
@@ -92,7 +95,7 @@ export function ConventionDetailsEditor({ conventionId, sessionId, financeurType
       </div>
       <p className="text-xs text-surface-500 -mt-2">
         {contractuelle
-          ? 'La convention a été envoyée ou signée : la modification est appliquée au document et un avenant numéroté en garde la trace. Aucune nouvelle signature à demander ; l\u2019avenant peut être transmis au client si le financeur le demande.'
+          ? 'La convention a été envoyée ou signée. Le prix se corrige directement, sans avenant ni mention sur le document ; l\u2019ancien prix reste noté en interne. Une modification de la durée ou de la prise en charge crée un avenant numéroté.'
           : 'La convention est encore en brouillon : la modification est directe.'}
       </p>
       <div className="grid sm:grid-cols-3 gap-3">
@@ -104,8 +107,8 @@ export function ConventionDetailsEditor({ conventionId, sessionId, financeurType
         Les participants et les dates se modifient sur la session liée : la convention les reprend automatiquement, avec un avenant si elle est déjà signée.
       </p>
       <div className="flex justify-end">
-        <Button onClick={saveContenu} isLoading={savingContenu} disabled={!dirtyContenu} icon={contractuelle ? <FilePen className="h-4 w-4" /> : <Save className="h-4 w-4" />}>
-          {contractuelle ? 'Mettre à jour et créer l\u2019avenant' : 'Enregistrer'}
+        <Button onClick={saveContenu} isLoading={savingContenu} disabled={!dirtyContenu} icon={avecAvenant ? <FilePen className="h-4 w-4" /> : <Save className="h-4 w-4" />}>
+          {avecAvenant ? 'Mettre à jour et créer l\u2019avenant' : 'Enregistrer'}
         </Button>
       </div>
     </div>

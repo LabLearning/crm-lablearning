@@ -150,7 +150,7 @@ export async function updateConventionContenuAction(
     .eq('id', id).eq('organization_id', session.organization.id).maybeSingle()
   if (!conv) return { success: false, error: 'Convention introuvable' }
 
-  const { STATUTS_CONTRACTUELS, enregistrerAvenantModification } = await import('@/lib/convention-avenants')
+  const { STATUTS_CONTRACTUELS, corrigerPrixConvention, enregistrerAvenantModification } = await import('@/lib/convention-avenants')
   const changements: { champ: string; libelle: string; avant: string | number | null; apres: string | number | null }[] = []
   if ('duree_heures' in contenu && Number(contenu.duree_heures ?? 0) !== Number(conv.duree_heures ?? 0)) {
     changements.push({ champ: 'duree_heures', libelle: 'Durée (h)', avant: conv.duree_heures ?? null, apres: contenu.duree_heures ?? null })
@@ -162,15 +162,22 @@ export async function updateConventionContenuAction(
   if (!montantChange && changements.length === 0) return { success: true, data: { avenant: null } }
 
   if (STATUTS_CONTRACTUELS.includes(conv.status)) {
-    const r = await enregistrerAvenantModification(supabase, id, {
-      montantApres: montantChange ? Number(contenu.montant_ht) : null,
-      changements,
-    }, session.user.id)
-    if (!r) return { success: false, error: "L'avenant n'a pas pu être créé" }
-    await logAudit({ action: 'avenant_convention', entity_type: 'convention', entity_id: id, details: { numero: r.numero, contenu } })
+    // Le prix se corrige sans avenant ni mention ; la durée et la prise en charge gardent leur avenant
+    if (montantChange) {
+      const c = await corrigerPrixConvention(supabase, id, Number(contenu.montant_ht), session.user.id)
+      if (!c) return { success: false, error: 'Le prix n’a pas pu être corrigé' }
+      await logAudit({ action: 'corriger_prix_convention', entity_type: 'convention', entity_id: id, details: { numero: c.numero, avant: c.avant, apres: c.apres } })
+    }
+    let numeroAvenant: number | null = null
+    if (changements.length) {
+      const r = await enregistrerAvenantModification(supabase, id, { changements }, session.user.id)
+      if (!r) return { success: false, error: "L'avenant n'a pas pu être créé" }
+      numeroAvenant = r.numero
+      await logAudit({ action: 'avenant_convention', entity_type: 'convention', entity_id: id, details: { numero: r.numero, changements } })
+    }
     revalidatePath(`/dashboard/conventions/${id}`)
     revalidatePath('/dashboard/conventions')
-    return { success: true, data: { avenant: r.numero } }
+    return { success: true, data: { avenant: numeroAvenant } }
   }
 
   const patch: Record<string, unknown> = {}

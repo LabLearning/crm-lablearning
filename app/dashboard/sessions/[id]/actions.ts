@@ -735,8 +735,8 @@ export async function updateCoutFormateurAction(sessionId: string, montant: numb
 /**
  * Prix de vente HT de la session (celui qui figure sur la convention).
  * Modifiable directement depuis la fiche session ; répercuté sur la convention
- * liée : directement tant qu'elle est en brouillon, par avenant numéroté dès
- * qu'elle est envoyée ou signée. Organisme exonéré de TVA → TTC = HT.
+ * liée, brouillon comme envoyée ou signée : un prix modifié est une correction,
+ * il ne crée ni avenant ni mention. Organisme exonéré de TVA → TTC = HT.
  */
 export async function updateSessionPrixAction(sessionId: string, montant: number | null): Promise<ActionResult> {
   const session = await getSession()
@@ -764,20 +764,24 @@ export async function updateSessionPrixAction(sessionId: string, montant: number
     conventionMaj = !!(conv && conv.length)
   }
 
-  // Convention déjà envoyée ou signée : elle suit, par avenant
-  let avenants: { conventionId: string; numero: number }[] = []
+  // Convention déjà envoyée ou signée : son prix est corrigé de même, sans avenant ni mention
+  let corrections: { conventionId: string; numero: string; avant: number | null; apres: number }[] = []
   if (montant != null) {
     const { syncConventionMontantSession } = await import('@/lib/convention-avenants')
-    avenants = await syncConventionMontantSession(supabase, sessionId, montant, session.user.id)
-    if (avenants.length) {
+    corrections = await syncConventionMontantSession(supabase, sessionId, session.organization.id, montant, session.user.id)
+    if (corrections.length) {
       conventionMaj = true
-      for (const a of avenants) revalidatePath(`/dashboard/conventions/${a.conventionId}`)
+      for (const c of corrections) {
+        await logAudit({ action: 'corriger_prix_convention', entity_type: 'convention', entity_id: c.conventionId, details: { numero: c.numero, avant: c.avant, apres: c.apres, origine: 'session' } })
+        revalidatePath(`/dashboard/conventions/${c.conventionId}`)
+      }
+      revalidatePath('/dashboard/conventions')
     }
   }
 
-  await logAudit({ action: 'update_prix_session', entity_type: 'session', entity_id: sessionId, details: { montant, avenants: avenants.map((a) => a.numero) } })
+  await logAudit({ action: 'update_prix_session', entity_type: 'session', entity_id: sessionId, details: { montant, conventions_corrigees: corrections.map((c) => c.numero) } })
   revalidatePath(`/dashboard/sessions/${sessionId}`)
-  return { success: true, data: { conventionMaj, avenant: avenants[0]?.numero ?? null } }
+  return { success: true, data: { conventionMaj } }
 }
 
 /**

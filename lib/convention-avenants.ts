@@ -1,7 +1,8 @@
 // Avenants de convention : quand les participants d'une session changent
 // APRÈS l'envoi (ou la signature) de la convention, un avenant numéroté est
 // créé automatiquement avec le détail des ajouts/retraits, et les
-// gestionnaires sont notifiés.
+// gestionnaires sont notifiés. Un changement de prix n'en crée jamais :
+// c'est une correction, voir corrigerPrixConvention.
 //
 // À appeler après toute mutation des inscriptions d'une session.
 // No-op si la session n'a pas de convention envoyée/signée, ou si la
@@ -113,7 +114,7 @@ export async function syncConventionAvenant(
   return { avenantId: avenant.id, numero: avenant.numero }
 }
 
-/** Statuts où la convention engage déjà le client : toute modification passe par un avenant. */
+/** Statuts où la convention engage déjà le client : une modification de contenu passe par un avenant, sauf le prix. */
 export const STATUTS_CONTRACTUELS = ['envoyee', 'signee_client', 'signee_complete']
 
 export interface ChangementConvention {
@@ -126,9 +127,80 @@ export interface ChangementConvention {
 // Espaces ordinaires : l'espace fine insécable de fr-FR n'existe pas dans la police des PDF, où elle s'imprimait comme une barre
 const fmtEuro = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202f\u00a0\u2009]/g, ' ')} €`
 
+/** Ce qu'une correction de prix a changé sur une convention. */
+export interface CorrectionPrix {
+  conventionId: string
+  numero: string
+  avant: number | null
+  apres: number
+}
+
 /**
- * Applique une modification (prix, durée, prise en charge…) à une convention
- * déjà envoyée ou signée, et en garde la trace dans un avenant numéroté.
+ * Corrige le prix d'une convention déjà envoyée ou signée.
+ *
+ * Règle de la direction : un prix modifié après coup est toujours une erreur
+ * de saisie que le client connaît. La convention porte donc le bon prix, sans
+ * avenant ni mention sur le document. L'ancien prix reste écrit dans les notes
+ * internes de la convention ; l'appelant consigne la correction au journal.
+ */
+export async function corrigerPrixConvention(
+  supabase: any,
+  conventionId: string,
+  montant: number,
+  actorUserId?: string | null,
+): Promise<CorrectionPrix | null> {
+  const { data: conv } = await supabase
+    .from('conventions')
+    .select('id, organization_id, numero, montant_ht, taux_tva, notes_internes, formation:formations(intitule), client:clients(raison_sociale)')
+    .eq('id', conventionId)
+    .maybeSingle()
+  if (!conv || !Number.isFinite(Number(montant))) return null
+  if (conv.montant_ht != null && Number(conv.montant_ht) === Number(montant)) return null
+
+  const avant = conv.montant_ht != null ? Number(conv.montant_ht) : null
+  const apres = Number(montant)
+  const tva = Number(conv.taux_tva || 0)
+  const quoi = avant != null ? `Prix corrigé de ${fmtEuro(avant)} à ${fmtEuro(apres)}` : `Prix fixé à ${fmtEuro(apres)}`
+  const note = `[${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}] ${quoi}, sans avenant.`
+  const { error } = await supabase
+    .from('conventions')
+    .update({
+      montant_ht: apres,
+      montant_ttc: Math.round(apres * (1 + tva / 100) * 100) / 100,
+      notes_internes: [conv.notes_internes, note].filter(Boolean).join('\n'),
+    })
+    .eq('id', conv.id)
+  if (error) return null
+
+  try {
+    const { createNotification } = await import('./email')
+    const { data: managers } = await supabase
+      .from('users').select('id')
+      .eq('organization_id', conv.organization_id).in('role', ['super_admin', 'gestionnaire']).eq('status', 'active')
+    for (const m of managers || []) {
+      if (actorUserId && m.id === actorUserId) continue
+      await createNotification({
+        organizationId: conv.organization_id,
+        userId: m.id,
+        titre: `Prix corrigé, convention ${conv.numero}`,
+        message: `${quoi} (${[conv.client?.raison_sociale, conv.formation?.intitule].filter(Boolean).join(', ')}). La convention affiche le nouveau prix, sans avenant.`,
+        type: 'convention',
+        lienUrl: `/dashboard/conventions/${conv.id}`,
+        lienLabel: 'Voir la convention',
+        entityType: 'convention',
+        entityId: conv.id,
+      })
+    }
+  } catch (e) { console.error('[prix convention notif]', e) }
+
+  return { conventionId: conv.id, numero: conv.numero, avant, apres }
+}
+
+/**
+ * Applique une modification de contenu (durée, prise en charge…) à une
+ * convention déjà envoyée ou signée, et en garde la trace dans un avenant
+ * numéroté. Le prix n'en fait pas partie : il se corrige sans avenant, par
+ * `corrigerPrixConvention`.
  *
  * La convention elle-même est mise à jour : son PDF, régénéré à la volée,
  * porte la nouvelle valeur et mentionne l'avenant. Rien n'est à refaire
@@ -137,29 +209,20 @@ const fmtEuro = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { mini
 export async function enregistrerAvenantModification(
   supabase: any,
   conventionId: string,
-  modif: { montantApres?: number | null; changements?: ChangementConvention[]; motif?: string | null },
+  modif: { changements: ChangementConvention[]; motif?: string | null },
   actorUserId?: string | null,
 ): Promise<{ avenantId: string; numero: number } | null> {
   const { data: conv } = await supabase
     .from('conventions')
-    .select('id, organization_id, numero, status, montant_ht, montant_ttc, taux_tva, participants_snapshot, formation:formations(intitule), client:clients(raison_sociale)')
+    .select('id, organization_id, numero, status, participants_snapshot, formation:formations(intitule), client:clients(raison_sociale)')
     .eq('id', conventionId)
     .maybeSingle()
   if (!conv) return null
 
-  const patch: Record<string, unknown> = {}
   const changements: ChangementConvention[] = [...(modif.changements || [])]
-  let montantAvant: number | null = null
-  let montantApres: number | null = null
-  if (modif.montantApres != null && Number(modif.montantApres) !== Number(conv.montant_ht)) {
-    montantAvant = Number(conv.montant_ht || 0)
-    montantApres = Number(modif.montantApres)
-    const tva = Number(conv.taux_tva || 0)
-    patch.montant_ht = montantApres
-    patch.montant_ttc = Math.round(montantApres * (1 + tva / 100) * 100) / 100
-  }
+  if (changements.length === 0) return null
+  const patch: Record<string, unknown> = {}
   for (const c of changements) patch[c.champ] = c.apres
-  if (montantApres == null && changements.length === 0) return null
 
   const { count } = await supabase
     .from('convention_avenants')
@@ -167,10 +230,7 @@ export async function enregistrerAvenantModification(
     .eq('convention_id', conv.id)
   const numero = (count || 0) + 1
 
-  const motif = modif.motif || [
-    montantApres != null ? `Prix : ${fmtEuro(montantAvant)} → ${fmtEuro(montantApres)}` : null,
-    ...changements.map((c) => `${c.libelle} : ${c.avant ?? 'vide'} → ${c.apres ?? 'vide'}`),
-  ].filter(Boolean).join(' ; ')
+  const motif = modif.motif || changements.map((c) => `${c.libelle} : ${c.avant ?? 'vide'} → ${c.apres ?? 'vide'}`).join(' ; ')
 
   const participants = Array.isArray(conv.participants_snapshot) ? conv.participants_snapshot : []
   const base = {
@@ -190,11 +250,11 @@ export async function enregistrerAvenantModification(
   {
     const { data, error } = await supabase
       .from('convention_avenants')
-      .insert({ ...base, montant_avant: montantAvant, montant_apres: montantApres, changements: changements.length ? changements : null })
+      .insert({ ...base, changements })
       .select('id, numero')
       .single()
     if (error && ['42703', 'PGRST204'].includes(String(error.code))) {
-      // Migration 156 non appliquée : l'avenant est créé sans le détail du prix, le motif le porte
+      // Migration 156 non appliquée : l'avenant est créé sans le détail, le motif le porte
       const repli = await supabase.from('convention_avenants').insert(base).select('id, numero').single()
       avenant = repli.data
     } else if (!error) {
@@ -231,25 +291,26 @@ export async function enregistrerAvenantModification(
 
 /**
  * Le prix d'une session change : les conventions liées déjà envoyées ou
- * signées suivent, chacune par un avenant. Les brouillons sont mis à jour
- * directement par l'appelant.
+ * signées suivent, chacune corrigée sans avenant. Les brouillons sont mis à
+ * jour directement par l'appelant.
  */
 export async function syncConventionMontantSession(
   supabase: any,
   sessionId: string,
+  organizationId: string,
   montant: number,
   actorUserId?: string | null,
-): Promise<{ conventionId: string; numero: number }[]> {
+): Promise<CorrectionPrix[]> {
   const { data: convs } = await supabase
     .from('conventions')
-    .select('id, montant_ht')
+    .select('id')
     .eq('session_id', sessionId)
+    .eq('organization_id', organizationId)
     .in('status', STATUTS_CONTRACTUELS)
-  const faits: { conventionId: string; numero: number }[] = []
+  const faites: CorrectionPrix[] = []
   for (const c of (convs || []) as any[]) {
-    if (Number(c.montant_ht) === Number(montant)) continue
-    const r = await enregistrerAvenantModification(supabase, c.id, { montantApres: montant }, actorUserId)
-    if (r) faits.push({ conventionId: c.id, numero: r.numero })
+    const r = await corrigerPrixConvention(supabase, c.id, montant, actorUserId)
+    if (r) faites.push(r)
   }
-  return faits
+  return faites
 }

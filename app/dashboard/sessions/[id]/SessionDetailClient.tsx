@@ -234,8 +234,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     startTransition(async () => {
       const r = await updateSessionPrixAction(session.id, montant)
       const d = (r as any)?.data
-      if ((r as any)?.success && d?.avenant) toast('success', `Prix mis à jour ; la convention signée est actualisée, avenant n°${d.avenant} créé`)
-      else if ((r as any)?.success && d?.conventionMaj) toast('success', 'Prix mis à jour, convention en brouillon actualisée')
+      if ((r as any)?.success && d?.conventionMaj) toast('success', 'Prix mis à jour, convention actualisée')
       router.refresh()
     })
   }

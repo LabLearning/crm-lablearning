@@ -241,13 +241,14 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
   // Un avenant n'est mentionné que s'il est postérieur à la signature du client : c'est alors que la
   // convention affichée diffère de ce qui a été signé. Une convention pas encore signée, ou resignée
   // depuis la modification, porte la valeur à jour sous sa signature : il n'y a rien à signaler.
-  const tousAvenants: any[] = Array.isArray(convention.avenants) ? convention.avenants : []
+  // Un prix modifié est une correction (règle de la direction) : il n'est jamais mentionné, pas plus
+  // que les anciens avenants de prix encore en base.
+  const tousAvenants: any[] = (Array.isArray(convention.avenants) ? convention.avenants : []).filter((a: any) => a.montant_apres == null)
   const signeeParLeClient = ['signee_client', 'signee_of', 'signee_complete'].includes(String(convention.status || ''))
   const signeLe = convention.signature_client_signed_at ? Date.parse(String(convention.signature_client_signed_at)) : NaN
   const avenants: any[] = !signeeParLeClient ? []
     : Number.isNaN(signeLe) ? tousAvenants
     : tousAvenants.filter((a: any) => !(Date.parse(String(a.created_at)) <= signeLe))
-  const avenantsPrix = avenants.filter((a: any) => a.montant_apres != null)
   const hasTva = Number(convention.taux_tva) > 0
 
   const objectifs = toList(formation.objectifs_pedagogiques)
@@ -425,11 +426,6 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             <MoneyRow label={hasTva ? 'Total TTC' : 'Coût total'} amount={`${fmt(cout)} €`} bold top />
           </View>
           <Text style={{ fontSize: 8, color: SURFACE_500, marginTop: 6 }}>Soit {eurosEnLettres(cout)}.</Text>
-          {avenantsPrix.length > 0 && (
-            <Text style={{ fontSize: 7.5, color: SURFACE_700, marginTop: 4 }}>
-              {`Prix actualisé par ${avenantsPrix.length > 1 ? 'avenants' : 'avenant'} ${avenantsPrix.map((a: any) => `n°${a.numero} du ${fmtDate(a.created_at)}`).join(', ')} (montant initial : ${fmt(avenantsPrix[0].montant_avant)} €).`}
-            </Text>
-          )}
           {!hasTva && (
             <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 3 }}>
               TVA non applicable — article 261-4-4°a du CGI (action de formation professionnelle continue).

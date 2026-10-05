@@ -2,6 +2,8 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { formatDateTime } from '@/lib/utils'
 import { FilePlus2, Send, PenLine, XCircle, RefreshCw, Building2, CheckCircle2, History } from '@/components/ui/icons'
 
+const euros = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+
 const ACTION_META: Record<string, { label: (d: any) => string; Icon: any; cls: string }> = {
   create: { label: () => 'Convention créée', Icon: FilePlus2, cls: 'bg-surface-100 text-surface-600' },
   send_convention_signature: { label: () => 'Envoyée en signature au client', Icon: Send, cls: 'bg-brand-50 text-brand-600' },
@@ -9,6 +11,8 @@ const ACTION_META: Record<string, { label: (d: any) => string; Icon: any; cls: s
   cancel_signature_request: { label: () => 'Demande de signature annulée', Icon: XCircle, cls: 'bg-danger-50 text-danger-600' },
   update_status: { label: (d) => `Statut mis à jour${d?.status ? ` → ${d.status}` : ''}`, Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
   update: { label: () => 'Convention modifiée', Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
+  corriger_prix_convention: { label: (d) => (d?.avant != null ? `Prix corrigé de ${euros(d.avant)} à ${euros(d?.apres)}, sans avenant` : `Prix fixé à ${euros(d?.apres)}`), Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
+  retirer_avenant_correction: { label: (d) => `Avenant n°${d?.avenant ?? ''} retiré : prix corrigé de ${euros(d?.montant_avant)} à ${euros(d?.montant_apres)}`, Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
   akto_envoye: { label: () => 'Dossier envoyé à AKTO', Icon: Building2, cls: 'bg-amber-50 text-amber-700' },
   akto_accord_recu: { label: () => 'Accord de prise en charge AKTO reçu', Icon: CheckCircle2, cls: 'bg-emerald-50 text-emerald-600' },
   akto_refuse: { label: () => 'Dossier AKTO refusé', Icon: XCircle, cls: 'bg-danger-50 text-danger-600' },
