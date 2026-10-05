@@ -123,7 +123,8 @@ export interface ChangementConvention {
   apres: string | number | null
 }
 
-const fmtEuro = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+// Espaces ordinaires : l'espace fine insécable de fr-FR n'existe pas dans la police des PDF, où elle s'imprimait comme une barre
+const fmtEuro = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202f\u00a0\u2009]/g, ' ')} €`
 
 /**
  * Applique une modification (prix, durée, prise en charge…) à une convention

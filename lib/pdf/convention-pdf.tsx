@@ -523,7 +523,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
             </Text>
             {avenants.map((a: any) => (
               <Text key={a.id} style={{ fontSize: 7.5, color: SURFACE_700, lineHeight: 1.45 }}>
-                {`Avenant n°${a.numero} du ${fmtDate(a.created_at)} : ${a.motif || 'modification'}.`}
+                {`Avenant n°${a.numero} du ${fmtDate(a.created_at)} : ${String(a.motif || 'modification').replace(/[\u202f\u00a0\u2009]/g, ' ')}.`}
               </Text>
             ))}
             <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 2 }}>
