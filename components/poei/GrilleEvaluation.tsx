@@ -317,8 +317,8 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-surface-600 mb-1">Avis du stagiaire sur la formation</label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
+                <label className="block text-xs font-medium text-surface-600 mb-1">Avis du stagiaire sur la formation <span className="font-normal text-surface-400">· cette appréciation s’imprime sur le bilan</span></label>
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {APPRECIATIONS_STAGIAIRE.map((n) => (
                     <button key={n} type="button" disabled={!!app[SIGNATURE_BILAN.signeLe]}
                       onClick={() => setFt(F.noteStagiaire, app[F.noteStagiaire] === n ? '' : n)}
@@ -327,6 +327,7 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
                     </button>
                   ))}
                 </div>
+                <label className="block text-xs font-medium text-surface-600 mb-1">Commentaire du stagiaire <span className="font-normal text-surface-400">· gardé pour nous, il n’est pas imprimé sur le bilan</span></label>
                 <textarea rows={2} className="input-base resize-none disabled:bg-surface-50 disabled:text-surface-600" value={app[F.avisStagiaire] || ''} onChange={(e) => setFt(F.avisStagiaire, e.target.value)}
                   disabled={!!app[SIGNATURE_BILAN.signeLe]}
                   placeholder="Le stagiaire note la formation et écrit son commentaire lui-même en signant. Vous pouvez aussi reporter ici ce qu’il a exprimé." />

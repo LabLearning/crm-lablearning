@@ -22,8 +22,9 @@ export const CHAMPS_BILAN_FT = {
   repriseFinDurable: 'ft_reprise_fin_durable',
   repriseFinDate: 'ft_reprise_fin_date',
   reprisePrevue: 'ft_reprise_prevue',
-  /** Appréciation de la formation par le stagiaire (une des APPRECIATIONS_STAGIAIRE) */
+  /** Appréciation de la formation par le stagiaire (une des APPRECIATIONS_STAGIAIRE) : c'est elle qui s'imprime sur le bilan */
   noteStagiaire: 'ft_note_stagiaire',
+  /** Commentaire libre du stagiaire : gardé pour l'organisme, jamais imprimé sur le bilan */
   avisStagiaire: 'ft_avis_stagiaire',
   avisCentre: 'ft_avis_centre',
 } as const
@@ -177,7 +178,9 @@ export function construireBilanFt(src: {
     repriseFinDate: dateFr(saisie('repriseFinDate') || (embauche ? dateEmbauche(c, poei) : '')),
     // Tant que l'embauche n'est pas constatée, la date de la fiche candidat est prévisionnelle
     reprisePrevue: dateFr(saisie('reprisePrevue') || (abandon || embauche || nonRetenu ? '' : c?.date_embauche_prevue)),
-    avisStagiaire: [saisie('noteStagiaire') ? `Appréciation : ${saisie('noteStagiaire').toLowerCase()}` : '', saisie('avisStagiaire')].filter(Boolean).join('. '),
+    // Seule l'appréciation s'imprime. Le commentaire libre du stagiaire reste dans le CRM : le bilan part chez
+    // l'employeur et chez France Travail, et un stagiaire y écrit parfois ce qu'il ne dirait pas devant eux.
+    avisStagiaire: saisie('noteStagiaire') ? `Appréciation : ${saisie('noteStagiaire').toLowerCase()}` : '',
     avisCentre: saisie('avisCentre') || avisCentreParDefaut(grille?.avis_final, grille?.motivation_avis),
   }
 }
