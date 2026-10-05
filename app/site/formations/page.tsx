@@ -5,12 +5,13 @@ import { BRANCHES } from '../branches'
 import { MetierVisual } from '../MetierVisual'
 import { Reveal } from '../Reveal'
 import { Kicker } from '../Kicker'
+import { altFormation } from '../alt'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
-  title: 'Nos formations',
+  title: 'Formations restauration rapide et CHR',
   description:
-    'Le catalogue Lab Learning : hygiène alimentaire HACCP, sécurité, management et formations métier pour la restauration, la boucherie, la boulangerie et la pâtisserie, en établissement, financées par votre OPCO.',
+    'Catalogue Lab Learning : hygiène alimentaire HACCP, sécurité, management et métiers de bouche. Formations en établissement, partout en France, éligibles OPCO.',
   alternates: { canonical: '/formations' },
 }
 
@@ -55,7 +56,7 @@ const PHARES = [
     texte:
       "Rentabilité, coûts matières, management d'équipe, relation client, développement commercial : des formations pour gérants et responsables, travaillées sur les chiffres réels de votre établissement.",
     points: ['Sur vos propres chiffres', 'Plans d’action concrets et mesurables'],
-    lien: { href: '/site/branches/restaurant-hcr', label: 'Voir les formations gestion' },
+    lien: { href: '/branches/restaurant-hcr', label: 'Voir les formations gestion' },
     accent: '#1D4ED8',
   },
   {
@@ -65,7 +66,7 @@ const PHARES = [
     texte:
       "Découvrir et utiliser l'IA dans votre commerce : gagner du temps sur les tâches administratives, la communication, les réseaux sociaux et la relation client, sans jargon, avec des cas concrets de votre métier.",
     points: ['Initiation accessible à tous', 'Cas pratiques de votre établissement'],
-    lien: { href: '/site/contact', label: 'En parler avec nous' },
+    lien: { href: '/contact', label: 'En parler avec nous' },
     accent: '#6D28D9',
   },
 ]
@@ -97,7 +98,7 @@ export default async function SiteFormations() {
               {/* En-tête photo façon tuiles métier de l'accueil : image + teinte
                   de la formation + scrim, titre posé sur la photo. */}
               <div className="relative h-48 md:h-56 overflow-hidden">
-                <img loading="lazy" src={(p as any).photo} alt=""
+                <img loading="lazy" src={(p as any).photo} alt={altFormation(p.titre)}
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                 <div className="absolute inset-0" style={{ background: `linear-gradient(155deg, ${p.accent}99 0%, ${p.accent}26 55%, transparent 100%)` }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -124,7 +125,7 @@ export default async function SiteFormations() {
                   {p.secteurs ? (
                     <div className="mt-5 flex flex-wrap gap-2">
                       {SECTEURS.map((s) => (
-                        <Link key={s.slug} href={`/site/branches/${s.slug}`}
+                        <Link key={s.slug} href={`/branches/${s.slug}`}
                           className="inline-flex items-center gap-1.5 rounded-full border border-[#E7E5E4] bg-[#FAFAF9] px-4 py-2 text-sm font-medium text-[#44403C] hover:border-[#205040]/40 hover:text-[#205040] transition-colors">
                           {s.label}
                           <ArrowRight className="h-3.5 w-3.5" />
@@ -159,7 +160,7 @@ export default async function SiteFormations() {
             const d = bySlug.get(b.slug)
             return (
               <Reveal key={b.slug} delay={(i % 2) * 90}>
-                <Link href={`/site/branches/${b.slug}`} className="group block rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-lg ll-lift">
+                <Link href={`/branches/${b.slug}`} className="group block rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-lg ll-lift">
                   <MetierVisual nom={b.label} label={b.label} height="h-52 md:h-60" />
                   <div className="p-5 md:p-6 flex items-center justify-between gap-4">
                     <div>
@@ -177,7 +178,7 @@ export default async function SiteFormations() {
         </div>
 
         <p className="mt-8 text-center text-sm text-[#78716C]">
-          Vous ne trouvez pas votre secteur ? <Link href="/site/contact" className="font-semibold text-[#205040] hover:underline">Parlons-en</Link> : on construit du sur-mesure.
+          Vous ne trouvez pas votre secteur ? <Link href="/contact" className="font-semibold text-[#205040] hover:underline">Parlons-en</Link> : on construit du sur-mesure.
         </p>
       </section>
     </>

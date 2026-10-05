@@ -100,7 +100,7 @@ export function ResultatsForm({ current, tableReady, reussiteCalc, nbEvals, assi
 
         <div className="flex items-center justify-between gap-3 pt-2 border-t border-surface-100">
           <div className="flex flex-col gap-1">
-            <Link href="/site/resultats" target="_blank" className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
+            <Link href="https://www.lab-learning.fr/resultats" target="_blank" className="inline-flex items-center gap-1.5 text-sm text-brand-600 hover:underline">
               <ExternalLink className="h-4 w-4" /> Voir la page publique
             </Link>
             <a href="/api/pdf/pointage-papier" className="inline-flex items-center gap-1.5 text-sm text-surface-600 hover:underline">

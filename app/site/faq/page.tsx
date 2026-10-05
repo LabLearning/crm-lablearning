@@ -4,7 +4,7 @@ import { Kicker } from '../Kicker'
 import { Reveal } from '../Reveal'
 
 export const metadata = {
-  title: 'Questions fréquentes',
+  title: 'FAQ formation, OPCO et Qualiopi',
   description: 'Financement OPCO, formations en établissement, délais, Qualiopi, accessibilité : les réponses aux questions les plus posées.',
   alternates: { canonical: '/faq' },
 }
@@ -69,7 +69,7 @@ export default function SiteFaq() {
           <h1 className="ll-display ll-fluid-h1 text-[#14110F] text-balance">Les questions qu&apos;on nous pose <span className="text-[#205040]">tout le temps</span></h1>
           <p className="mt-5 text-lg text-[#57534E] leading-relaxed">
             Financement, délais, déroulement : tout ce qu&apos;il faut savoir avant de lancer une formation.
-            Il manque la vôtre ? <Link href="/site/contact" className="font-semibold text-[#205040] hover:underline">Posez-la nous directement</Link>.
+            Il manque la vôtre ? <Link href="/contact" className="font-semibold text-[#205040] hover:underline">Posez-la nous directement</Link>.
           </p>
         </div>
       </section>
@@ -93,7 +93,7 @@ export default function SiteFaq() {
       <section className="max-w-3xl mx-auto px-5 md:px-8 pb-20 text-center">
         <p className="text-[#57534E]">
           Une question sur votre situation précise ?{' '}
-          <Link href="/site/contact" className="inline-flex items-center gap-1.5 font-semibold text-[#205040] hover:gap-2.5 transition-all">
+          <Link href="/contact" className="inline-flex items-center gap-1.5 font-semibold text-[#205040] hover:gap-2.5 transition-all">
             Contactez-nous <ArrowRight className="h-4 w-4" />
           </Link>
         </p>

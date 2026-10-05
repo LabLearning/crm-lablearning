@@ -14,27 +14,28 @@ import { useLienWhatsapp } from './useLienWhatsapp'
  * direct, et le bouton WhatsApp en haut à droite.
  */
 const ORGANISME = [
-  { href: '/site/a-propos', label: 'À propos', desc: 'Qui nous sommes, notre pédagogie', Icon: Users },
-  { href: '/site/partenaires', label: 'Nos clients', desc: 'Enseignes et établissements accompagnés', Icon: HeartHandshake },
-  { href: '/site/resultats', label: 'Résultats', desc: 'Nos indicateurs, en toute transparence', Icon: TrendingUp },
-  { href: '/site/faq', label: 'FAQ', desc: 'Les réponses aux questions fréquentes', Icon: Bulb },
+  { href: '/a-propos', label: 'À propos', desc: 'Qui nous sommes, notre pédagogie', Icon: Users },
+  { href: '/partenaires', label: 'Nos clients', desc: 'Enseignes et établissements accompagnés', Icon: HeartHandshake },
+  { href: '/resultats', label: 'Résultats', desc: 'Nos indicateurs, en toute transparence', Icon: TrendingUp },
+  { href: '/faq', label: 'FAQ', desc: 'Les réponses aux questions fréquentes', Icon: Bulb },
 ]
 
 /** Les outils maison de Lab Learning ; d'autres viendront s'ajouter ici. */
 const OUTILS = [
-  { href: '/site/audit-plus', label: 'Audit+', desc: 'Audits hygiène, DUERP et allergènes', Icon: ClipboardCheck },
-  { href: '/site/starkk', label: 'Starkk', desc: 'Notre intelligence artificielle', Icon: AiChat },
+  { href: '/audit-plus', label: 'Audit+', desc: 'Audits hygiène, DUERP et allergènes', Icon: ClipboardCheck },
+  { href: '/starkk', label: 'Starkk', desc: 'Notre intelligence artificielle', Icon: AiChat },
 ]
 
 export function SiteNav() {
-  const pathname = usePathname()
+  // Sur lab-learning.fr l'adresse est propre (/formations) ; hors du domaine public la même page vit sous /site
+  const pathname = (usePathname() || '/').replace(/^\/site(?=\/|$)/, '') || '/'
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [dropdown, setDropdown] = useState<null | 'formations' | 'organisme' | 'outils'>(null)
   const lienWhatsapp = useLienWhatsapp()
   const fermeture = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isActive = (h: string) => (h === '/site' ? pathname === '/site' : pathname.startsWith(h))
-  const formationsActive = pathname.startsWith('/site/formations') || pathname.startsWith('/site/branches')
+  const isActive = (h: string) => (h === '/' ? pathname === '/' : pathname.startsWith(h))
+  const formationsActive = pathname.startsWith('/formations') || pathname.startsWith('/branches')
   const organismeActive = ORGANISME.some((l) => isActive(l.href))
   const outilsActive = OUTILS.some((l) => isActive(l.href))
 
@@ -62,7 +63,7 @@ export function SiteNav() {
         : 'bg-white/60 backdrop-blur-md border-b border-transparent'
     }`}>
       <div className="max-w-6xl mx-auto px-5 md:px-8 h-16 flex items-center justify-between gap-6">
-        <Link href="/site" className="flex items-center shrink-0" aria-label="Lab Learning, accueil">
+        <Link href="/" className="flex items-center shrink-0" aria-label="Lab Learning, accueil">
           <img src="/logo-lablearning.svg" alt="Lab Learning" className="h-7 w-auto" />
         </Link>
 
@@ -97,7 +98,7 @@ export function SiteNav() {
 
           {/* Formations : menu par métier */}
           <div className="relative" onMouseEnter={() => ouvrir('formations')} onMouseLeave={fermer}>
-            <Link href="/site/formations" className={lienNav(formationsActive)}>
+            <Link href="/formations" className={lienNav(formationsActive)}>
               Formations
               <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${dropdown === 'formations' ? 'rotate-180' : ''}`} />
               <span className={soulignement(formationsActive)} />
@@ -108,7 +109,7 @@ export function SiteNav() {
                   {/* Un métier par carte : photo vignette teintée + icône + texte */}
                   <div className="grid grid-cols-2 gap-1.5">
                     {BRANCHES.map((b) => (
-                      <Link key={b.slug} href={`/site/branches/${b.slug}`} onClick={() => setDropdown(null)}
+                      <Link key={b.slug} href={`/branches/${b.slug}`} onClick={() => setDropdown(null)}
                         className="group/item flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#FAFAF9] transition-colors">
                         <span className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden ring-1 ring-black/5">
                           <img loading="lazy" src={`/site/metiers/${b.img}.webp`} alt=""
@@ -126,13 +127,13 @@ export function SiteNav() {
                     ))}
                   </div>
                   <div className="mt-2 pt-2 border-t border-[#F0EEE9] grid grid-cols-2 gap-1.5">
-                    <Link href="/site/formations" onClick={() => setDropdown(null)}
+                    <Link href="/formations" onClick={() => setDropdown(null)}
                       className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-sm font-semibold text-[#205040] hover:bg-[#205040]/5 transition-colors">
                       <span className="h-8 w-8 rounded-lg bg-[#205040]/8 flex items-center justify-center shrink-0"><GraduationCap className="h-4 w-4" /></span>
                       Toutes nos formations
                       <ArrowRight className="h-4 w-4 ml-auto" />
                     </Link>
-                    <Link href="/site/financements" onClick={() => setDropdown(null)}
+                    <Link href="/financements" onClick={() => setDropdown(null)}
                       className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl text-sm font-semibold text-[#205040] hover:bg-[#205040]/5 transition-colors">
                       <span className="h-8 w-8 rounded-lg bg-[#205040]/8 flex items-center justify-center shrink-0"><Banknote className="h-4 w-4" /></span>
                       Faire financer
@@ -145,9 +146,9 @@ export function SiteNav() {
           </div>
 
           {/* Financements : accès direct */}
-          <Link href="/site/financements" className={lienNav(isActive('/site/financements'))}>
+          <Link href="/financements" className={lienNav(isActive('/financements'))}>
             Financements
-            <span className={soulignement(isActive('/site/financements'))} />
+            <span className={soulignement(isActive('/financements'))} />
           </Link>
 
           {/* Nos outils : Audit+, Starkk */}
@@ -178,9 +179,9 @@ export function SiteNav() {
           </div>
 
           {/* Contact : accès direct */}
-          <Link href="/site/contact" className={lienNav(isActive('/site/contact'))}>
+          <Link href="/contact" className={lienNav(isActive('/contact'))}>
             Contact
-            <span className={soulignement(isActive('/site/contact'))} />
+            <span className={soulignement(isActive('/contact'))} />
           </Link>
         </nav>
 
@@ -215,7 +216,7 @@ export function SiteNav() {
             ))}
             <div className="my-1 border-t border-[#F0EEE9]" />
             <div className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#A8A29E]">Formations</div>
-            <Link href="/site/formations" onClick={() => setOpen(false)}
+            <Link href="/formations" onClick={() => setOpen(false)}
               className={`flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-semibold transition-colors ${
                 formationsActive ? 'bg-[#205040]/8 text-[#205040]' : 'text-[#14110F] hover:bg-black/[0.03]'
               }`}>
@@ -223,9 +224,9 @@ export function SiteNav() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             {BRANCHES.map((b) => (
-              <Link key={b.slug} href={`/site/branches/${b.slug}`} onClick={() => setOpen(false)}
+              <Link key={b.slug} href={`/branches/${b.slug}`} onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 pl-4 pr-3 py-2 rounded-2xl text-sm transition-colors ${
-                  pathname.startsWith(`/site/branches/${b.slug}`) ? 'bg-[#205040]/8 text-[#205040] font-medium' : 'text-[#57534E] hover:bg-black/[0.03]'
+                  pathname.startsWith(`/branches/${b.slug}`) ? 'bg-[#205040]/8 text-[#205040] font-medium' : 'text-[#57534E] hover:bg-black/[0.03]'
                 }`}>
                 <span className="relative h-9 w-9 shrink-0 rounded-lg overflow-hidden ring-1 ring-black/5">
                   <img loading="lazy" src={`/site/metiers/${b.img}.webp`} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -235,19 +236,19 @@ export function SiteNav() {
                 <ArrowRight className="h-3.5 w-3.5 opacity-30" />
               </Link>
             ))}
-            <Link href="/site/financements" onClick={() => setOpen(false)}
+            <Link href="/financements" onClick={() => setOpen(false)}
               className={`flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isActive('/site/financements') ? 'bg-[#205040]/8 text-[#205040]' : 'text-[#44403C] hover:bg-black/[0.03]'
+                isActive('/financements') ? 'bg-[#205040]/8 text-[#205040]' : 'text-[#44403C] hover:bg-black/[0.03]'
               }`}>
               Financements
-              <ArrowRight className={`h-4 w-4 ${isActive('/site/financements') ? 'opacity-100' : 'opacity-30'}`} />
+              <ArrowRight className={`h-4 w-4 ${isActive('/financements') ? 'opacity-100' : 'opacity-30'}`} />
             </Link>
-            <Link href="/site/contact" onClick={() => setOpen(false)}
+            <Link href="/contact" onClick={() => setOpen(false)}
               className={`flex items-center justify-between px-3 py-3 rounded-2xl text-sm font-medium transition-colors ${
-                isActive('/site/contact') ? 'bg-[#205040]/8 text-[#205040]' : 'text-[#44403C] hover:bg-black/[0.03]'
+                isActive('/contact') ? 'bg-[#205040]/8 text-[#205040]' : 'text-[#44403C] hover:bg-black/[0.03]'
               }`}>
               Contact
-              <ArrowRight className={`h-4 w-4 ${isActive('/site/contact') ? 'opacity-100' : 'opacity-30'}`} />
+              <ArrowRight className={`h-4 w-4 ${isActive('/contact') ? 'opacity-100' : 'opacity-30'}`} />
             </Link>
 
             <div className="my-1 border-t border-[#F0EEE9]" />

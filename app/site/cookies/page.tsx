@@ -41,7 +41,7 @@ export default function Cookies() {
       <h2>En savoir plus</h2>
       <p>
         Pour toute question relative aux cookies ou à vos données : <a href="mailto:dpo@lab-learning.fr">dpo@lab-learning.fr</a>.
-        Voir aussi notre <a href="/site/confidentialite">politique de confidentialité</a>.
+        Voir aussi notre <a href="/confidentialite">politique de confidentialité</a>.
       </p>
     </LegalPage>
   )

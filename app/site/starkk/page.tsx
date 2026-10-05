@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = {
   title: 'Starkk, notre intelligence artificielle',
   description:
-    "Starkk est l'assistant IA de Lab Learning : il renseigne clients, formateurs et apprenants sur leur espace, retrouve leurs documents, explique et relance. Vous demandez, il s'en occupe.",
+    'Starkk, l’assistant IA de Lab Learning : il renseigne clients, formateurs et apprenants sur leur espace, retrouve leurs documents, explique et relance.',
   alternates: { canonical: '/starkk' },
 }
 
@@ -76,10 +76,10 @@ export default function SiteStarkk() {
               votre compte, un document, une explication, une relance. Vous demandez, il s’en occupe.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link href="/site/contact" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
+              <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
                 Découvrir Starkk <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/site/formations" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-white/20 text-white text-sm font-semibold hover:bg-white/5 transition-colors">
+              <Link href="/formations" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-white/20 text-white text-sm font-semibold hover:bg-white/5 transition-colors">
                 Nos formations
               </Link>
             </div>
@@ -213,10 +213,10 @@ export default function SiteStarkk() {
                 immédiates et un suivi sans faille. Bientôt, il vous les apportera aussi.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <Link href="/site/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
+                <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
                   Parler à un conseiller <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/site/formations" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-white/25 text-white text-sm font-semibold hover:bg-white/5 transition-colors">
+                <Link href="/formations" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-white/25 text-white text-sm font-semibold hover:bg-white/5 transition-colors">
                   Voir nos formations
                 </Link>
               </div>

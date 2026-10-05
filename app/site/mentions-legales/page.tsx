@@ -55,8 +55,8 @@ export default function MentionsLegales() {
       <h2>Données personnelles &amp; cookies</h2>
       <p>
         Le traitement de vos données personnelles est décrit dans notre
-        {' '}<a href="/site/confidentialite">politique de confidentialité</a>. L’usage des cookies est détaillé dans notre
-        {' '}<a href="/site/cookies">politique de gestion des cookies</a>.
+        {' '}<a href="/confidentialite">politique de confidentialité</a>. L’usage des cookies est détaillé dans notre
+        {' '}<a href="/cookies">politique de gestion des cookies</a>.
       </p>
 
       <h2>Contact</h2>

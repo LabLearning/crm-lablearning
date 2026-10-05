@@ -8,7 +8,7 @@ import { Reveal } from '../Reveal'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
-  title: 'Nos résultats',
+  title: 'Résultats : satisfaction et réussite',
   description:
     'Nos indicateurs de résultats publiés : satisfaction, réussite et assiduité des stagiaires, formation par formation. La transparence exigée par Qualiopi.',
   alternates: { canonical: '/resultats' },
@@ -106,7 +106,7 @@ export default async function SiteResultats() {
                   {(parFormation || []).map((f: any) => (
                     <tr key={f.id} className="hover:bg-[#FAFAF9] transition-colors">
                       <td className="px-5 py-3.5">
-                        <Link href={`/site/formations/${f.id}`} className="text-[#14110F] hover:text-[#205040] transition-colors">
+                        <Link href={`/formations/${f.id}`} className="text-[#14110F] hover:text-[#205040] transition-colors">
                           {titreFormation(f.intitule)}
                         </Link>
                         {f.duree_heures ? <span className="block text-xs text-[#A8A29E] mt-0.5">{f.duree_heures} heures</span> : null}
@@ -128,7 +128,7 @@ export default async function SiteResultats() {
             <h2 className="ll-display text-2xl md:text-3xl text-balance text-white">Envie de former vos équipes ?</h2>
             <p className="mt-3 text-white/70 max-w-xl">Parlons de votre projet : on construit le parcours et on vous accompagne dans le financement.</p>
           </div>
-          <Link href="/site/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] transition-colors">
+          <Link href="/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] transition-colors">
             Nous contacter <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

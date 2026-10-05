@@ -41,7 +41,7 @@ export function CookieBanner() {
         <p className="text-sm text-white/80 leading-relaxed">
           Ce site n&apos;utilise que des cookies strictement nécessaires à son fonctionnement.
           Votre choix ci-dessous vaudra pour d&apos;éventuelles mesures d&apos;audience anonymes à venir.{' '}
-          <Link href="/site/cookies" className="underline underline-offset-2 text-white hover:text-white/80">
+          <Link href="/cookies" className="underline underline-offset-2 text-white hover:text-white/80">
             En savoir plus
           </Link>
         </p>

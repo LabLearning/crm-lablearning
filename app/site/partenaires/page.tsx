@@ -5,7 +5,7 @@ import { Reveal } from '../Reveal'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
-  title: 'Clients & partenaires',
+  title: 'Nos clients : franchises de restauration',
   description:
     'Chamas Tacos, Dream\'s Donuts, New School Tacos, Chickeez, Kassia Food… : les réseaux et les restaurants qui forment leurs équipes avec Lab Learning.',
   alternates: { canonical: '/partenaires' },
@@ -130,7 +130,7 @@ export default function SiteClients() {
             <h2 className="ll-display text-2xl md:text-4xl text-balance text-white">Vous dirigez un restaurant ou un réseau ?</h2>
             <p className="mt-3 text-white/70 max-w-xl">Construisons ensemble le plan de formation de vos équipes, et on vous accompagne dans le financement.</p>
           </div>
-          <Link href="/site/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] transition-colors">
+          <Link href="/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] transition-colors">
             Parlons de vos équipes <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

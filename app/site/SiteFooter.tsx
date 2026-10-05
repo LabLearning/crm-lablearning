@@ -35,25 +35,25 @@ export function SiteFooter() {
         <div className="md:col-span-3">
           <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C] mb-4">Nos formations</div>
           <ul className="space-y-2.5 text-sm">
-            <li><Link href="/site/branches/restauration-rapide" className="text-[#D6D3D1] hover:text-white transition-colors">Restauration rapide</Link></li>
-            <li><Link href="/site/branches/restaurant-hcr" className="text-[#D6D3D1] hover:text-white transition-colors">Restaurant &amp; HCR</Link></li>
-            <li><Link href="/site/branches/boucherie-charcuterie" className="text-[#D6D3D1] hover:text-white transition-colors">Boucherie-charcuterie</Link></li>
-            <li><Link href="/site/branches/boulangerie-patisserie" className="text-[#D6D3D1] hover:text-white transition-colors">Boulangerie-pâtisserie</Link></li>
-            <li><Link href="/site/formations" className="text-[#D6D3D1] hover:text-white transition-colors">Tout le catalogue</Link></li>
-            <li><Link href="/site/financements" className="text-[#D6D3D1] hover:text-white transition-colors">Financements</Link></li>
+            <li><Link href="/branches/restauration-rapide" className="text-[#D6D3D1] hover:text-white transition-colors">Restauration rapide</Link></li>
+            <li><Link href="/branches/restaurant-hcr" className="text-[#D6D3D1] hover:text-white transition-colors">Restaurant &amp; HCR</Link></li>
+            <li><Link href="/branches/boucherie-charcuterie" className="text-[#D6D3D1] hover:text-white transition-colors">Boucherie-charcuterie</Link></li>
+            <li><Link href="/branches/boulangerie-patisserie" className="text-[#D6D3D1] hover:text-white transition-colors">Boulangerie-pâtisserie</Link></li>
+            <li><Link href="/formations" className="text-[#D6D3D1] hover:text-white transition-colors">Tout le catalogue</Link></li>
+            <li><Link href="/financements" className="text-[#D6D3D1] hover:text-white transition-colors">Financements</Link></li>
           </ul>
         </div>
 
         <div className="md:col-span-2">
           <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C] mb-4">Lab Learning</div>
           <ul className="space-y-2.5 text-sm">
-            <li><Link href="/site" className="text-[#D6D3D1] hover:text-white transition-colors">Accueil</Link></li>
-            <li><Link href="/site/partenaires" className="text-[#D6D3D1] hover:text-white transition-colors">Clients</Link></li>
-            <li><Link href="/site/resultats" className="text-[#D6D3D1] hover:text-white transition-colors">Nos résultats</Link></li>
-            <li><Link href="/site/a-propos" className="text-[#D6D3D1] hover:text-white transition-colors">À propos</Link></li>
-            <li><Link href="/site/faq" className="text-[#D6D3D1] hover:text-white transition-colors">Questions fréquentes</Link></li>
-            <li><Link href="/site/recrutement" className="text-[#D6D3D1] hover:text-white transition-colors">Recrutement</Link></li>
-            <li><Link href="/site/contact" className="text-[#D6D3D1] hover:text-white transition-colors">Contact</Link></li>
+            <li><Link href="/" className="text-[#D6D3D1] hover:text-white transition-colors">Accueil</Link></li>
+            <li><Link href="/partenaires" className="text-[#D6D3D1] hover:text-white transition-colors">Clients</Link></li>
+            <li><Link href="/resultats" className="text-[#D6D3D1] hover:text-white transition-colors">Nos résultats</Link></li>
+            <li><Link href="/a-propos" className="text-[#D6D3D1] hover:text-white transition-colors">À propos</Link></li>
+            <li><Link href="/faq" className="text-[#D6D3D1] hover:text-white transition-colors">Questions fréquentes</Link></li>
+            <li><Link href="/recrutement" className="text-[#D6D3D1] hover:text-white transition-colors">Recrutement</Link></li>
+            <li><Link href="/contact" className="text-[#D6D3D1] hover:text-white transition-colors">Contact</Link></li>
           </ul>
         </div>
 
@@ -81,12 +81,12 @@ export function SiteFooter() {
             Enregistrée sous le numéro 76341315134. Cet enregistrement ne vaut pas agrément de l’État.
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <Link href="/site/mentions-legales" className="hover:text-[#D6D3D1]">Mentions légales</Link>
-            <Link href="/site/cgv" className="hover:text-[#D6D3D1]">CGV</Link>
-            <Link href="/site/reglement-interieur" className="hover:text-[#D6D3D1]">Règlement intérieur</Link>
-            <Link href="/site/reclamation" className="hover:text-[#D6D3D1]">Réclamations</Link>
-            <Link href="/site/confidentialite" className="hover:text-[#D6D3D1]">Confidentialité</Link>
-            <Link href="/site/cookies" className="hover:text-[#D6D3D1]">Cookies</Link>
+            <Link href="/mentions-legales" className="hover:text-[#D6D3D1]">Mentions légales</Link>
+            <Link href="/cgv" className="hover:text-[#D6D3D1]">CGV</Link>
+            <Link href="/reglement-interieur" className="hover:text-[#D6D3D1]">Règlement intérieur</Link>
+            <Link href="/reclamation" className="hover:text-[#D6D3D1]">Réclamations</Link>
+            <Link href="/confidentialite" className="hover:text-[#D6D3D1]">Confidentialité</Link>
+            <Link href="/cookies" className="hover:text-[#D6D3D1]">Cookies</Link>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <span>© {new Date().getFullYear()} Lab Learning. Tous droits réservés.</span>

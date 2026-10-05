@@ -14,6 +14,7 @@ import { Kicker } from './Kicker'
 import { Marquee } from './Marquee'
 import { PhotoStrip } from './PhotoStrip'
 import { BRANCHES } from './branches'
+import { altFormation } from './alt'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,10 +91,10 @@ export default async function SiteHome() {
               pendant l’exploitation, puis formation continue en e-learning avec Learnexa.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link href="/site/formations" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] ll-lift">
+              <Link href="/formations" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] ll-lift">
                 Découvrir nos formations <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link href="/site/contact" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-[#205040]/25 text-[#205040] text-sm font-semibold hover:bg-[#205040]/5 transition-colors">
+              <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-[#205040]/25 text-[#205040] text-sm font-semibold hover:bg-[#205040]/5 transition-colors">
                 Parler à un conseiller
               </Link>
             </div>
@@ -110,7 +111,7 @@ export default async function SiteHome() {
           {BRANCHES.length >= 2 && (
             <div className="ll-rise lg:col-span-6 grid grid-cols-2 gap-4 sm:gap-5 relative" style={{ animationDelay: '0.12s' }}>
               {BRANCHES.map((b, i) => (
-                <Link key={b.slug} href={`/site/branches/${b.slug}`}
+                <Link key={b.slug} href={`/branches/${b.slug}`}
                   className={`group rounded-3xl overflow-hidden shadow-sm ring-1 ring-black/5 ll-lift ${i % 2 === 1 ? 'translate-y-6 sm:translate-y-10' : ''}`}>
                   <MetierVisual nom={b.label} label={b.label} height={i % 2 === 1 ? 'h-56 sm:h-72' : 'h-52 sm:h-64'} />
                   <div className="bg-white px-4 py-3 flex items-center justify-between">
@@ -146,7 +147,7 @@ export default async function SiteHome() {
             <Marquee items={franchises.map((f) => ({ nom: f.nom, logo_url: f.logo_url, nombre_etablissements: f.nombre_etablissements }))} />
           </div>
           <div className="mt-10 text-center">
-            <Link href="/site/partenaires" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+            <Link href="/partenaires" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
               Voir tous nos clients et partenaires <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -162,18 +163,18 @@ export default async function SiteHome() {
                 <Kicker className="mb-4">Les plus demandées</Kicker>
                 <h2 className="ll-display ll-fluid-h2 text-[#14110F] text-balance">Nos formations les plus suivies</h2>
               </div>
-              <Link href="/site/formations" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+              <Link href="/formations" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
                 Toutes nos formations <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="grid gap-5 md:grid-cols-3">
               {populaires.map((p: any, i: number) => (
                 <Reveal key={p.id} delay={(i % 3) * 80} className="h-full">
-                  <Link href={`/site/formations/${p.id}`}
+                  <Link href={`/formations/${p.id}`}
                     className="group h-full flex flex-col rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-xl hover:shadow-black/5 ll-lift">
                     {photoFormation(p.id) && (
                       <div className="relative h-44 overflow-hidden">
-                        <img loading="lazy" src={photoFormation(p.id)!} alt=""
+                        <img loading="lazy" src={photoFormation(p.id)!} alt={altFormation(titreFormation(p.intitule))}
                           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         {p.taux_satisfaction != null && (
                           <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-[#14110F] shadow-sm">
@@ -215,7 +216,7 @@ export default async function SiteHome() {
         <div className="mt-12 grid gap-5 sm:grid-cols-2">
           {BRANCHES.map((b, i) => (
             <Reveal key={b.slug} delay={(i % 2) * 90} className="h-full">
-              <Link href={`/site/branches/${b.slug}`} className="group h-full flex flex-col rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-xl hover:shadow-black/5 ll-lift">
+              <Link href={`/branches/${b.slug}`} className="group h-full flex flex-col rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-xl hover:shadow-black/5 ll-lift">
                 <MetierVisual nom={b.label} label={b.label} height="h-48 md:h-52" />
                 <div className="p-5 md:p-6 flex items-center justify-between gap-4">
                   <div>
@@ -302,7 +303,7 @@ export default async function SiteHome() {
           </div>
           <Reveal><Temoignages items={temoignages} /></Reveal>
           <div className="mt-8 text-center">
-            <Link href="/site/resultats" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+            <Link href="/resultats" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
               Voir tous nos résultats <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -326,7 +327,7 @@ export default async function SiteHome() {
           ))}
         </div>
         <div className="max-w-6xl mx-auto px-5 md:px-8 pb-10 -mt-2 text-center">
-          <Link href="/site/resultats" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+          <Link href="/resultats" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
             Tous nos indicateurs de résultats <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -357,7 +358,7 @@ export default async function SiteHome() {
           ))}
         </div>
         <div className="mt-7 text-center">
-          <Link href="/site/faq" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+          <Link href="/faq" className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
             Toutes les questions fréquentes <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -372,7 +373,7 @@ export default async function SiteHome() {
             <Kicker tone="light" center className="mb-5 justify-center">Prêt à démarrer</Kicker>
             <h2 className="ll-display ll-fluid-h1 text-balance max-w-3xl mx-auto text-white">Prêt à faire monter vos équipes en compétences ?</h2>
             <p className="mt-4 text-white/70 max-w-xl mx-auto text-lg">Nous étudions votre besoin, vous accompagnons dans le financement OPCO et planifions les sessions.</p>
-            <Link href="/site/contact" className="mt-8 inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#14110F] text-sm font-semibold hover:bg-[#F6F4EF] ll-lift">
+            <Link href="/contact" className="mt-8 inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#14110F] text-sm font-semibold hover:bg-[#F6F4EF] ll-lift">
               Demander un devis <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

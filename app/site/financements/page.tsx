@@ -4,7 +4,7 @@ import { Kicker } from '../Kicker'
 import { Reveal } from '../Reveal'
 
 export const metadata = {
-  title: 'Financements',
+  title: 'Financement formation : OPCO, AGEFICE, CPF',
   description:
     'OPCO, AGEFICE, CPF : les dispositifs qui financent vos formations professionnelles. On vous accompagne pour que chaque formation soit prise en charge.',
   alternates: { canonical: '/financements' },
@@ -60,7 +60,7 @@ const CPF: Dispositif = {
   points: ['Mobilisable depuis votre compte, en quelques clics', 'Formation Création d’entreprise éligible'],
   logos: [{ src: '/site/logos/financeurs/mon-compte-formation.svg', alt: 'Mon Compte Formation' }],
   photo: '/site/metiers/management.webp',
-  href: '/site/formations/d8bcc0e2-80de-4784-b4c8-5bb2e1bf72f8',
+  href: '/formations/d8bcc0e2-80de-4784-b4c8-5bb2e1bf72f8',
   cta: 'Voir la formation éligible',
 }
 
@@ -120,7 +120,7 @@ function CarteDispositif({ x, delay = 0, className = '' }: { x: Dispositif; dela
               </li>
             ))}
           </ul>
-          <Link href={x.href || '/site/contact'} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+          <Link href={x.href || '/contact'} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
             {x.cta || 'Étudier ce dispositif'} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -153,7 +153,7 @@ function CarteHorizontale({ x, imageADroite = true, delay = 0 }: { x: Dispositif
               </li>
             ))}
           </ul>
-          <Link href={x.href || '/site/contact'} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+          <Link href={x.href || '/contact'} className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
             {x.cta || 'Étudier ce dispositif'} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -213,7 +213,7 @@ export default function SiteFinancements() {
               Nous formons vos équipes, et on vous accompagne dans votre démarche de prise en charge :
               le bon dispositif, les bons documents, au bon moment. Voilà comment ça se passe, dans l&apos;ordre.
             </p>
-            <Link href="/site/contact" className="mt-7 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] ll-lift">
+            <Link href="/contact" className="mt-7 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] ll-lift">
               Lancer la première étape <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -251,7 +251,7 @@ export default function SiteFinancements() {
             <h2 className="ll-display text-2xl md:text-4xl text-balance text-white">Faites prendre en charge vos formations</h2>
             <p className="mt-3 text-white/70 max-w-xl">Dites-nous qui former et pour quel objectif : on vous accompagne à chaque étape.</p>
           </div>
-          <Link href="/site/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] transition-colors">
+          <Link href="/contact" className="mt-6 md:mt-0 shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#205040] text-sm font-semibold hover:bg-[#F6F4EF] transition-colors">
             Étudier mon financement <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

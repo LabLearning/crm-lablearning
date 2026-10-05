@@ -26,7 +26,7 @@ export default function Confidentialite() {
       <ul>
         <li>Identité et coordonnées (nom, prénom, email, téléphone, entreprise) ;</li>
         <li>Informations relatives à votre demande de formation ou de financement ;</li>
-        <li>Données de navigation (via les cookies ; voir notre <a href="/site/cookies">politique cookies</a>).</li>
+        <li>Données de navigation (via les cookies ; voir notre <a href="/cookies">politique cookies</a>).</li>
       </ul>
 
       <h2>Finalités &amp; bases légales</h2>

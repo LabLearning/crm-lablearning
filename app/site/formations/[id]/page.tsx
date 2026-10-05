@@ -8,6 +8,7 @@ import { titreFormation } from '@/lib/utils'
 import { photoFormation } from '@/lib/formations-photos'
 import { structurerProgramme } from '@/lib/programme-structure'
 import { ProgrammeStructure } from '@/components/formations/ProgrammeStructure'
+import { altFormation } from '../../alt'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,16 +22,23 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     || `Formation ${titreFormation(f.intitule)} : ${f.duree_heures || ''} h, financement OPCO, certifiée Qualiopi.`)
     .slice(0, 158)
   return {
-    title: titreFormation(f.intitule).slice(0, 58),
+    title: titreCourt(titreFormation(f.intitule)),
     description,
     alternates: { canonical: `/formations/${f.id}` },
     openGraph: {
       title: titreFormation(f.intitule),
       description,
-      url: `/site/formations/${f.id}`,
+      url: `/formations/${f.id}`,
       type: 'website',
     },
   }
+}
+
+/** Titre de page : coupé sur un mot pour tenir, avec « | Lab Learning », dans les 60 caractères affichés par les moteurs. */
+function titreCourt(titre: string, max = 45) {
+  if (titre.length <= max) return titre
+  const coupe = titre.slice(0, max + 1)
+  return coupe.slice(0, coupe.lastIndexOf(' ')).replace(/[\s,;:.\-–&]+$/, '').replace(/\s+(?:et|de|des|du|la|le|les|en|à|au|aux)$/i, '').trim()
 }
 
 function Prose({ text }: { text: string }) {
@@ -75,7 +83,7 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
     '@type': 'Course',
     name: f.intitule,
     description: f.sous_titre || (f.objectifs[0] ? f.objectifs.join('. ').slice(0, 300) : undefined),
-    provider: { '@id': 'https://crm.lab-learning.fr/site#organization' },
+    provider: { '@id': 'https://www.lab-learning.fr/#organization' },
     ...(f.tarif_inter_ht || f.tarif_intra_ht ? {
       offers: {
         '@type': 'Offer',
@@ -125,11 +133,11 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
       <section className="relative overflow-hidden border-b border-[#205040]/10">
         <div className="absolute inset-0 -z-10 bg-[#205040]" />
         {/* La photo en fond opacité, comme avant — le hero reste sobre */}
-        <img src={photoFormation(f.id) || metierStyle(f.intitule || f.categorie || '').img} alt="" aria-hidden="true" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-25" />
+        <img src={photoFormation(f.id) || metierStyle(f.intitule || f.categorie || '').img} alt={altFormation(titreFormation(f.intitule))} className="absolute inset-0 -z-10 h-full w-full object-cover opacity-25" />
         <div className="absolute inset-0 -z-10" style={{ background: 'linear-gradient(115deg, #205040 0%, rgba(25,81,68,0.92) 45%, rgba(18,63,52,0.75) 100%)' }} />
         <div className="absolute inset-0 -z-10 opacity-[0.15]" style={{ background: 'radial-gradient(60% 80% at 80% 0%, #6366F1 0%, transparent 60%)' }} />
         <div className="max-w-6xl mx-auto px-5 md:px-8 pt-10 md:pt-14 pb-12 md:pb-16 text-white">
-          <Link href="/site/formations" className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors">
+          <Link href="/formations" className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" /> Toutes les formations
           </Link>
           {f.categorie && <div className="mt-6"><span className="ll-kicker ll-kicker--light">{f.categorie}</span></div>}
@@ -213,7 +221,7 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
               <div className="flex items-center justify-between gap-3"><span className="text-[#78716C] shrink-0">Dates</span><span className="font-medium text-[#14110F] text-right">Planifiées avec votre établissement</span></div>
               {f.delai_acces ? <div className="flex items-start justify-between gap-3"><span className="text-[#78716C] shrink-0">Délai d’accès</span><span className="font-medium text-[#14110F] text-right">{f.delai_acces}</span></div> : null}
             </div>
-            <Link href="/site/contact" className="mt-5 flex items-center justify-center gap-2 w-full px-5 py-3 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] transition-colors">
+            <Link href="/contact" className="mt-5 flex items-center justify-center gap-2 w-full px-5 py-3 rounded-full bg-[#205040] text-white text-sm font-semibold hover:bg-[#123f34] transition-colors">
               Demander cette formation <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -240,7 +248,7 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
             <p className="mt-3 text-[10px] text-[#A8A29E]">
               Indicateurs calculés sur les sessions réalisées, mis à jour en continu (questionnaires de satisfaction
               et évaluations des acquis). Un taux n&apos;est publié qu&apos;à partir de cinq réponses.{' '}
-              <Link href="/site/resultats" className="underline underline-offset-2 hover:text-[#205040]">Tous nos résultats</Link>
+              <Link href="/resultats" className="underline underline-offset-2 hover:text-[#205040]">Tous nos résultats</Link>
             </p>
           </div>
         </div>
@@ -262,11 +270,11 @@ export default async function SiteFormationDetail({ params }: { params: { id: st
             <h2 className="ll-display text-2xl md:text-3xl text-[#14110F] mb-8">À découvrir aussi</h2>
             <div className="grid gap-5 md:grid-cols-3">
               {liees.map((l: any) => (
-                <Link key={l.id} href={`/site/formations/${l.id}`}
+                <Link key={l.id} href={`/formations/${l.id}`}
                   className="group flex flex-col rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-lg hover:shadow-black/5 ll-lift">
                   {photoFormation(l.id) && (
                     <div className="relative h-36 overflow-hidden">
-                      <img loading="lazy" src={photoFormation(l.id)!} alt=""
+                      <img loading="lazy" src={photoFormation(l.id)!} alt={altFormation(titreFormation(l.intitule))}
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
                   )}

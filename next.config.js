@@ -32,13 +32,27 @@ const nextConfig = {
       'reglement-interieur', 'mentions-legales', 'cgv', 'confidentialite', 'cookies', 'faq',
       'audit-plus', 'starkk',
     ]
-    return hosts.flatMap((h) => [
-      { source: '/site', has: [{ type: 'host', value: h }], destination: '/', permanent: true },
-      ...sections.flatMap((s) => [
-        { source: `/site/${s}`, has: [{ type: 'host', value: h }], destination: `/${s}`, permanent: true },
-        { source: `/site/${s}/:path*`, has: [{ type: 'host', value: h }], destination: `/${s}/:path*`, permanent: true },
-      ]),
-    ])
+    // base vide : même domaine ; sinon le domaine public
+    const regles = (h, base) => [
+      { source: '/site', has: [{ type: 'host', value: h }], destination: `${base}/`, permanent: true },
+      ...sections.flatMap((s) => s === 'formations'
+        // Une fiche formation est un identifiant ; les photos de formation
+        // (/site/formations/<id>.webp) vivent au même chemin et restent servies telles quelles
+        ? [
+          { source: '/site/formations', has: [{ type: 'host', value: h }], destination: `${base}/formations`, permanent: true },
+          { source: '/site/formations/:id([0-9a-f-]{36})', has: [{ type: 'host', value: h }], destination: `${base}/formations/:id`, permanent: true },
+        ]
+        : [
+          { source: `/site/${s}`, has: [{ type: 'host', value: h }], destination: `${base}/${s}`, permanent: true },
+          { source: `/site/${s}/:path*`, has: [{ type: 'host', value: h }], destination: `${base}/${s}/:path*`, permanent: true },
+        ]),
+    ]
+    return [
+      ...hosts.flatMap((h) => regles(h, '')),
+      // L'ancienne adresse crm.lab-learning.fr/site renvoie au domaine public :
+      // le site n'existe qu'à une adresse, celle que les moteurs référencent
+      ...regles('crm.lab-learning.fr', 'https://www.lab-learning.fr'),
+    ]
   },
   async rewrites() {
     const hosts = ['lab-learning.fr', 'www.lab-learning.fr']
@@ -48,14 +62,21 @@ const nextConfig = {
       'reglement-interieur', 'mentions-legales', 'cgv', 'confidentialite', 'cookies', 'faq',
       'audit-plus', 'starkk',
     ]
+    const pages = (condition) => sections.flatMap((s) => [
+      { source: `/${s}`, ...condition, destination: `/site/${s}` },
+      { source: `/${s}/:path*`, ...condition, destination: `/site/${s}/:path*` },
+    ])
     return {
-      beforeFiles: hosts.flatMap((h) => [
-        { source: '/', has: [{ type: 'host', value: h }], destination: '/site' },
-        ...sections.flatMap((s) => [
-          { source: `/${s}`, has: [{ type: 'host', value: h }], destination: `/site/${s}` },
-          { source: `/${s}/:path*`, has: [{ type: 'host', value: h }], destination: `/site/${s}/:path*` },
+      beforeFiles: [
+        ...hosts.flatMap((h) => [
+          { source: '/', has: [{ type: 'host', value: h }], destination: '/site' },
+          ...pages({ has: [{ type: 'host', value: h }] }),
         ]),
-      ]),
+        // Les liens du site sont écrits en adresses propres (/formations) : hors du
+        // domaine public (aperçus Vercel, poste de développement) elles mènent aux mêmes pages
+        ...pages({ has: [{ type: 'host', value: '.*\\.vercel\\.app' }] }),
+        ...(process.env.NODE_ENV === 'development' ? pages({}) : []),
+      ],
     }
   },
   typescript: {

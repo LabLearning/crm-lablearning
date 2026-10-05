@@ -4,7 +4,7 @@ import { ContactForm } from './ContactForm'
 import { Kicker } from '../Kicker'
 
 export const metadata = {
-  title: 'Contact',
+  title: 'Contact et devis de formation',
   description:
     'Contactez Lab Learning pour former vos équipes : étude de votre besoin, accompagnement au financement OPCO, réponse sous 24 à 48 h ouvrées.',
   alternates: { canonical: '/contact' },

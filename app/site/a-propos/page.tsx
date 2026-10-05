@@ -6,7 +6,7 @@ import { CountUp } from '../CountUp'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
-  title: 'À propos',
+  title: 'À propos de notre organisme de formation',
   description:
     'Lab Learning, organisme de formation certifié Qualiopi à Montpellier : formateurs praticiens des métiers de bouche, interventions en établissement partout en France.',
   alternates: { canonical: '/a-propos' },
@@ -107,7 +107,7 @@ export default async function SiteAPropos() {
           <div className="relative">
           <h2 className="ll-display ll-fluid-h2 text-balance text-white">Travaillons ensemble</h2>
           <p className="mt-3 text-white/60 max-w-xl mx-auto text-lg">Parlez-nous de vos équipes et de vos objectifs : on construit le parcours.</p>
-          <Link href="/site/contact" className="mt-7 inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#14110F] text-sm font-semibold hover:bg-[#F6F4EF] ll-lift">
+          <Link href="/contact" className="mt-7 inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#14110F] text-sm font-semibold hover:bg-[#F6F4EF] ll-lift">
             Nous contacter <ArrowRight className="h-4 w-4" />
           </Link>
           </div>

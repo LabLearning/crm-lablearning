@@ -12,7 +12,7 @@ export function MetierVisual({ nom, label, className = '', height = 'h-32' }: { 
     <div className={`relative overflow-hidden ${height} ${className}`} style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})` }}>
       {s.img ? (
         <>
-          <img loading="lazy" src={s.img} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img loading="lazy" src={s.img} alt={label ? `Formation ${label.toLowerCase()}` : ''} aria-hidden={label ? undefined : true} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
           <div className="absolute inset-0" style={{ background: `linear-gradient(155deg, ${s.from}B3 0%, ${s.to}40 55%, transparent 100%)` }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
         </>

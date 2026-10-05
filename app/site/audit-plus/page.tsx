@@ -11,7 +11,7 @@ import { lienWhatsapp } from '../whatsapp'
 export const metadata = {
   title: 'Audit+, notre outil d’audit terrain',
   description:
-    'Audit+ réunit l’audit hygiène HACCP, le document unique (DUERP) et le tableau des allergènes dans une seule application, sur ordinateur, tablette et smartphone : grille guidée, photos, score en direct, rapport PDF en un clic.',
+    'Audit+ réunit audit hygiène HACCP, document unique (DUERP) et tableau des allergènes dans une seule application : grille guidée, photos, score, rapport PDF.',
   alternates: { canonical: '/audit-plus' },
 }
 
@@ -97,7 +97,7 @@ export default function SiteAuditPlus() {
               photos à l’appui, score calculé en direct et rapport envoyé en un clic.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link href="/site/contact" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
+              <Link href="/contact" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
                 Demander une démo <ArrowRight className="h-4 w-4" />
               </Link>
               <a href="#film" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-white/20 text-white text-sm font-semibold hover:bg-white/5 transition-colors">
@@ -282,7 +282,7 @@ export default function SiteAuditPlus() {
                 Nous vous montrons Audit+ sur un cas concret de votre métier : audit hygiène, DUERP ou allergènes.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <Link href="/site/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
+                <Link href="/contact" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-[#5CD9A0] text-[#0C1210] text-sm font-semibold hover:bg-[#38C588] ll-lift">
                   Demander une démo <ArrowRight className="h-4 w-4" />
                 </Link>
                 <a href={DEMO_WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full border border-white/25 text-white text-sm font-semibold hover:bg-white/5 transition-colors">

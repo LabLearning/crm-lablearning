@@ -217,7 +217,7 @@ export default async function QualiopiPage() {
   // Mapping indicateur → preuves réelles du CRM (compteurs honnêtes).
   // warn:true = trou à combler avant l'audit.
   const crmEvidence: Record<number, CrmEvidence[]> = {
-    1: [{ label: 'Site & catalogue publics', href: '/site/formations', count: nbFormations }],
+    1: [{ label: 'Site & catalogue publics', href: 'https://www.lab-learning.fr/formations', count: nbFormations }],
     2: [{ label: resultatsPublies ? 'Indicateurs de résultats publiés' : 'Indicateurs de résultats — à publier', href: '/dashboard/indicateurs-resultats', count: resultatsPublies ? 1 : 0, warn: !resultatsPublies }],
     4: [
       { label: 'Formations avec besoin validé', href: '/dashboard/formations', count: nbFormBesoin, warn: nbFormBesoin === 0 },

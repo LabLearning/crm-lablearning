@@ -393,7 +393,7 @@ export function FormationForm({ formation, onSuccess, onCancel }: FormationFormP
         </label>
         <label className="flex items-center gap-2 text-sm text-surface-700">
           <input type="checkbox" name="site_publie" value="true" defaultChecked={(formation as any)?.site_publie ?? true} className="rounded border-surface-300" />
-          Afficher sur le site vitrine (crm.lab-learning.fr/site)
+          Afficher sur le site vitrine (lab-learning.fr)
         </label>
       </div>
 

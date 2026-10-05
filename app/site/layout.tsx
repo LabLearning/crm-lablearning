@@ -13,27 +13,27 @@ import { CookieBanner } from './CookieBanner'
  */
 export const metadata: Metadata = {
   // Le domaine public de référence : les canonicals consolident le SEO sur
-  // lab-learning.fr, même quand la page est servie via crm.lab-learning.fr/site.
+  // lab-learning.fr (crm.lab-learning.fr/site y redirige).
   metadataBase: new URL('https://www.lab-learning.fr'),
   title: {
-    default: 'Formations Qualiopi métiers de bouche & CHR | Lab Learning',
+    default: 'Formation restauration rapide, Qualiopi | Lab Learning',
     template: '%s | Lab Learning',
   },
   description:
-    'Organisme de formation certifié Qualiopi : hygiène HACCP, sécurité, management pour la restauration, boucherie, boulangerie, pâtisserie. Financement OPCO.',
+    'Organisme de formation certifié Qualiopi, spécialiste de la restauration rapide : hygiène HACCP, sécurité, management. Partout en France, éligible OPCO.',
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
     siteName: 'Lab Learning',
-    title: 'Formations Qualiopi métiers de bouche & CHR | Lab Learning',
+    title: 'Formation restauration rapide, Qualiopi | Lab Learning',
     description:
-      'Formations professionnelles en intra-entreprise, prises en charge OPCO : hygiène alimentaire HACCP, sécurité, management en restauration.',
+      'Formations en établissement pour la restauration rapide et les métiers de bouche : hygiène alimentaire HACCP, sécurité, management. Éligibles OPCO.',
     url: '/',
     images: [{ url: '/site/metiers/formation.webp', width: 1200, height: 630, alt: 'Formation aux métiers de la restauration avec Lab Learning' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Formations Qualiopi métiers de bouche & CHR | Lab Learning',
+    title: 'Formation restauration rapide, Qualiopi | Lab Learning',
     description: 'Formations professionnelles certifiées Qualiopi, financées par les OPCO.',
   },
   robots: { index: true, follow: true },
@@ -49,9 +49,12 @@ const SCHEMA_ORGANISATION = {
   '@context': 'https://schema.org',
   '@graph': [
     {
-      '@type': 'Organization',
+      '@type': ['Organization', 'EducationalOrganization'],
       '@id': 'https://www.lab-learning.fr/#organization',
       name: 'Lab Learning',
+      description: 'Organisme de formation certifié Qualiopi, spécialiste de la restauration rapide et des métiers de bouche.',
+      areaServed: { '@type': 'Country', name: 'France' },
+      knowsAbout: ['Formation en restauration rapide', 'Hygiène alimentaire HACCP', 'Document unique (DUERP)', 'Sécurité au travail', 'Management en restauration', 'Métiers de bouche'],
       legalName: 'SAS Lab-Learning',
       url: 'https://www.lab-learning.fr',
       logo: 'https://www.lab-learning.fr/logo-lablearning.svg',

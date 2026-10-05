@@ -64,7 +64,7 @@ export default function CGV() {
 
       <h2>8. Réclamations</h2>
       <p>
-        Toute réclamation peut être déposée via notre <a href="/site/reclamation">formulaire de réclamation</a> ou
+        Toute réclamation peut être déposée via notre <a href="/reclamation">formulaire de réclamation</a> ou
         adressée par email à <a href="mailto:contact@lab-learning.fr">contact@lab-learning.fr</a>.
         Elle fait l’objet d’un traitement dans le cadre de notre démarche qualité Qualiopi.
       </p>
@@ -77,7 +77,7 @@ export default function CGV() {
 
       <h2>10. Données personnelles</h2>
       <p>
-        Le traitement des données est décrit dans notre <a href="/site/confidentialite">politique de confidentialité</a>.
+        Le traitement des données est décrit dans notre <a href="/confidentialite">politique de confidentialité</a>.
       </p>
 
       <h2>11. Droit applicable</h2>
