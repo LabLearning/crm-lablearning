@@ -4,12 +4,13 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import { Wallet, AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Info, Landmark, Lock } from '@/components/ui/icons'
-import { lireBanqueQonto, messageErreurQonto, qontoConfigure, type BanqueQonto } from '@/lib/qonto'
+import { qontoConfigure } from '@/lib/qonto'
 import {
-  JOURS_RELEVE, PERIODES, chargerEngagements, chargerFacturesCitees, constituerEquipe, encaissementsNonSaisis, jourParis, montantFr,
+  PERIODES, chargerEngagements, chargerFacturesCitees, constituerEquipe, encaissementsNonSaisis, jourParis, montantFr,
   numerosFactureCites, peutVoirTresorerie, piloterParSemaine, rapprocher, synthetiserBanque, ventilerParPersonne,
   type Engagements, type LigneTiers, type Pilotage, type PointSolde, type SemainePilotage, type VirementRapproche,
 } from '@/lib/tresorerie'
+import { banqueDeLOrganisme } from '@/lib/tresorerie-banque'
 import { BoutonActualiser } from './BoutonActualiser'
 import { MouvementsTable, type LigneMouvement } from './MouvementsTable'
 import { VuePersonnes } from './VuePersonnes'
@@ -470,22 +471,10 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
   const aujourdhui = jourParis(new Date())
   const relie = qontoConfigure()
 
-  const [engagements, org, lecture] = await Promise.all([
+  const [engagements, { banque, erreur }] = await Promise.all([
     chargerEngagements(supabase, organizationId, aujourdhui).catch(() => null),
-    supabase.from('organizations').select('siret').eq('id', organizationId).single(),
-    relie
-      ? lireBanqueQonto(JOURS_RELEVE).then((b) => ({ banque: b as BanqueQonto | null, erreur: null as string | null }))
-        .catch((e) => ({ banque: null, erreur: messageErreurQonto(e) }))
-      : Promise.resolve({ banque: null as BanqueQonto | null, erreur: null as string | null }),
+    banqueDeLOrganisme(supabase, organizationId),
   ])
-
-  // Le relevé d'une société n'est montré qu'à l'organisme qui porte le même SIREN
-  let { banque, erreur } = lecture
-  const sirenOrganisme = String(org.data?.siret || '').replace(/\D/g, '').slice(0, 9)
-  if (banque && (!banque.siren || banque.siren !== sirenOrganisme)) {
-    banque = null
-    erreur = 'Le compte Qonto relié appartient à une autre société que cet organisme (SIREN différent). Vérifiez le SIRET dans les paramètres, ou la clé enregistrée.'
-  }
 
   const periode = PERIODES.find((p) => p.jours === jours)!
   const synthese = banque ? synthetiserBanque(banque, jours, aujourdhui) : null
