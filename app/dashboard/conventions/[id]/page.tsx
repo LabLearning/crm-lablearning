@@ -13,6 +13,7 @@ import { ConventionSignatureBlock } from './ConventionSignatureBlock'
 import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { ConventionDetailsEditor } from './ConventionDetailsEditor'
 import { ConventionHistory } from './ConventionHistory'
+import { RetirerAvenantBouton } from './RetirerAvenantBouton'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,6 +122,10 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
                   {a.motif && <div className="text-xs text-surface-500 truncate">{a.motif}</div>}
                   <div className="text-xs text-surface-400">{new Date(a.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
+                {/* Un prix mal saisi se corrige sans avenant : le dernier avenant de prix peut être retiré */}
+                {a.montant_apres != null && a.numero === Math.max(...(avenants || []).map((x: any) => x.numero)) && ['super_admin', 'gestionnaire'].includes(session.user.role) && (
+                  <RetirerAvenantBouton avenantId={a.id} numero={a.numero} />
+                )}
                 <a href={`/api/pdf/avenant/${a.id}`} target="_blank" rel="noreferrer"
                   className="text-xs text-brand-600 hover:underline flex items-center gap-1 shrink-0">
                   <Download className="h-3 w-3" /> PDF
