@@ -224,6 +224,223 @@ export function piloterParSemaine(banque: BanqueQonto, nbSemaines: number, aujou
   }
 }
 
+// ─── Par personne et par formateur ──────────────────────────────────────────
+
+/** Une personne de l'organisme : ses accès Qonto (pour ses paiements par carte) et les jetons de son nom. */
+export interface PersonneEquipe { cle: string; nom: string; membreIds: string[]; jetonsPrenom: string[]; jetonsNom: string[] }
+export interface LigneDetail { jour: string; libelle: string; montant: number; compte: string }
+
+export interface DepensesPersonne {
+  cle: string
+  nom: string
+  /** Virements dont la personne est bénéficiaire. */
+  verse: number
+  versements: LigneDetail[]
+  /** Paiements faits avec sa carte, regroupés par commerçant. */
+  carte: number
+  nbPaiements: number
+  commercants: LigneTiers[]
+  total: number
+}
+
+export interface VersementsFormateur {
+  cle: string
+  nom: string
+  /** Fiche formateur du CRM quand le nom du bénéficiaire la désigne sans ambiguïté. */
+  formateurId: string | null
+  total: number
+  dernier: string
+  lignes: LigneDetail[]
+}
+
+export interface Ventilation {
+  equipe: DepensesPersonne[]
+  totalEquipe: number
+  formateurs: VersementsFormateur[]
+  totalFormateurs: number
+  /** Autres virements émis, par bénéficiaire : fournisseurs, apporteurs, sociétés de formateurs non reconnues… */
+  autres: LigneTiers[]
+  totalAutres: number
+  /** Le reste des sorties : prélèvements, frais bancaires, cartes sans titulaire connu. */
+  reste: number
+  sorties: number
+}
+
+/** Mots qui ne font pas partie d'un nom de personne dans un libellé de virement. */
+const MOTS_VIDES = new Set(['EI', 'EIRL', 'EURL', 'SARL', 'SAS', 'SASU', 'SA', 'M', 'MR', 'MME', 'MLLE', 'MONSIEUR', 'MADAME', 'ENTREPRISE', 'INDIVIDUELLE', 'ET', 'OU'])
+const jetons = (s: string) => cle(s).split(/[^A-Z]+/).filter((t) => t.length >= 2 && !MOTS_VIDES.has(t))
+const capitale = (s: string) => s.toLowerCase().replace(/(^|[\s\-'])([a-zà-ÿ])/g, (_, a, b) => a + b.toUpperCase())
+
+/** Distance d'édition, bornée : on ne s'intéresse qu'aux fautes de frappe (« Phillipe » pour « Philippe »). */
+function distance(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 2) return 9
+  let avant = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const ligne = [i]
+    for (let j = 1; j <= b.length; j++) ligne[j] = Math.min(avant[j] + 1, ligne[j - 1] + 1, avant[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    avant = ligne
+  }
+  return avant[b.length]
+}
+const proche = (a: string, b: string) => {
+  if (a === b) return true
+  const court = Math.min(a.length, b.length)
+  return court >= 5 && distance(a, b) <= (court >= 7 ? 2 : 1)
+}
+
+/**
+ * Le bénéficiaire d'un virement est-il cette personne ? Règle stricte : tout
+ * le nom de famille et au moins un prénom s'y retrouvent, et le libellé ne
+ * contient rien d'autre (sinon « Jean-Philippe Durand » passerait pour le
+ * formateur « Philippe Jean »). Un doute laisse le virement dans « autres ».
+ */
+export function estLaPersonne(tiers: string, jetonsPrenom: string[], jetonsNom: string[]): boolean {
+  const t = jetons(tiers)
+  const nom = jetonsNom.filter((x) => x.length >= 3)
+  const prenom = jetonsPrenom.filter((x) => x.length >= 3)
+  if (!t.length || !nom.length || !prenom.length) return false
+  const tous = [...jetonsPrenom, ...jetonsNom]
+  return nom.every((x) => t.some((y) => proche(x, y)))
+    && prenom.some((x) => t.some((y) => proche(x, y)))
+    && t.every((y) => tous.some((x) => proche(x, y)))
+}
+
+/**
+ * Les personnes de l'organisme : les membres Qonto et les utilisateurs internes
+ * du CRM, la même personne des deux côtés ne comptant qu'une fois.
+ */
+export function constituerEquipe(
+  membres: { id: string; prenom: string; nom: string }[],
+  utilisateurs: { first_name: string | null; last_name: string | null }[],
+): PersonneEquipe[] {
+  const equipe: PersonneEquipe[] = []
+  const ajouter = (prenom: string, nom: string, membreId: string | null) => {
+    const jp = jetons(prenom)
+    const jn = jetons(nom)
+    if (!jn.length) return
+    const deja = equipe.find((p) => jn.every((x) => p.jetonsNom.includes(x)) && jp.some((x) => p.jetonsPrenom.includes(x)))
+    if (deja) {
+      if (membreId) deja.membreIds.push(membreId)
+      for (const x of jp) if (!deja.jetonsPrenom.includes(x)) deja.jetonsPrenom.push(x)
+      return
+    }
+    equipe.push({
+      cle: [...jn, ...jp.slice(0, 1)].join('-'),
+      nom: `${capitale(prenom.split(/[\s,]+/)[0] || '')} ${capitale(nom)}`.trim(),
+      membreIds: membreId ? [membreId] : [],
+      jetonsPrenom: jp,
+      jetonsNom: jn,
+    })
+  }
+  for (const m of membres) ajouter(m.prenom, m.nom, m.id)
+  for (const u of utilisateurs) ajouter(String(u.first_name || ''), String(u.last_name || ''), null)
+  return equipe
+}
+
+/** Un paiement par carte, un prélèvement et des frais ne sont pas des virements. */
+const estVirement = (m: MouvementQonto) => !['card', 'direct_debit', 'qonto_fee', 'cheque', 'check'].includes(m.type)
+
+/**
+ * Qui reçoit quoi sur les `jours` derniers jours : par personne de l'organisme
+ * (virements reçus et paiements par carte), par formateur (virements reçus),
+ * et les autres virements. Une personne de l'équipe qui est aussi formateur
+ * est comptée une seule fois, avec l'équipe.
+ */
+export function ventilerParPersonne(
+  banque: BanqueQonto,
+  equipe: PersonneEquipe[],
+  formateurs: { id: string; prenom: string | null; nom: string | null }[],
+  jours: number,
+  aujourdhui: string,
+): Ventilation {
+  const premier = plusJours(aujourdhui, -(jours - 1))
+  const nomCompte = new Map(banque.comptes.map((c) => [c.id, c.nom]))
+  const sorties = banque.mouvements
+    .map((m) => ({ m, jour: jourParis(m.date) }))
+    .filter((x) => x.m.sens === 'debit' && !x.m.interne && x.jour >= premier && x.jour <= aujourdhui)
+  const parMembre = new Map<string, PersonneEquipe>()
+  for (const p of equipe) for (const id of p.membreIds) parMembre.set(id, p)
+  const fiches = formateurs.map((f) => ({ id: f.id, nom: `${capitale(String(f.prenom || ''))} ${capitale(String(f.nom || ''))}`.trim(), jp: jetons(String(f.prenom || '')), jn: jetons(String(f.nom || '')) }))
+
+  const personnes = new Map<string, DepensesPersonne & { paiements: MouvementQonto[] }>()
+  const personne = (cleP: string, nom: string) => {
+    let p = personnes.get(cleP)
+    if (!p) { p = { cle: cleP, nom, verse: 0, versements: [], carte: 0, nbPaiements: 0, commercants: [], total: 0, paiements: [] }; personnes.set(cleP, p) }
+    return p
+  }
+  const verses = new Map<string, VersementsFormateur>()
+  const autres: MouvementQonto[] = []
+  let reste = 0
+  // Le même bénéficiaire revient souvent : on ne cherche sa fiche qu'une fois
+  const reconnus = new Map<string, { equipe?: PersonneEquipe; fiche?: (typeof fiches)[number] }>()
+  const reconnaitre = (tiers: string) => {
+    const k = cle(tiers)
+    let r = reconnus.get(k)
+    if (!r) {
+      const e = equipe.find((p) => estLaPersonne(tiers, p.jetonsPrenom, p.jetonsNom))
+      const candidates = e ? [] : fiches.filter((f) => estLaPersonne(tiers, f.jp, f.jn))
+      // Deux fiches pour le même nom : on ne tranche pas
+      r = { equipe: e, fiche: candidates.length === 1 ? candidates[0] : undefined }
+      reconnus.set(k, r)
+    }
+    return r
+  }
+
+  for (const { m, jour } of sorties) {
+    const compte = nomCompte.get(m.compteId) || ''
+    if (m.type === 'card') {
+      const titulaire = m.initiateurId ? parMembre.get(m.initiateurId) : undefined
+      if (!titulaire && !m.carte) { reste += m.montant; continue }
+      const p = titulaire ? personne(titulaire.cle, titulaire.nom) : personne(`carte-${m.carte}`, `Carte se terminant par ${m.carte}`)
+      p.carte += m.montant
+      p.nbPaiements++
+      p.paiements.push(m)
+      continue
+    }
+    if (!estVirement(m)) { reste += m.montant; continue }
+    const ligne: LigneDetail = { jour, libelle: m.reference || m.libelle, montant: m.montant, compte }
+    const r = reconnaitre(m.tiers)
+    if (r.equipe) {
+      const p = personne(r.equipe.cle, r.equipe.nom)
+      p.verse += m.montant
+      p.versements.push(ligne)
+      continue
+    }
+    // Sans fiche reconnue, un virement parti du compte réservé aux formateurs reste un versement à un formateur
+    if (r.fiche || /formateur/i.test(compte)) {
+      const k = r.fiche ? r.fiche.id : `tiers-${cle(m.tiers)}`
+      const v = verses.get(k) || { cle: k, nom: r.fiche ? r.fiche.nom : m.tiers, formateurId: r.fiche?.id || null, total: 0, dernier: jour, lignes: [] }
+      v.total += m.montant
+      if (jour > v.dernier) v.dernier = jour
+      v.lignes.push(ligne)
+      verses.set(k, v)
+      continue
+    }
+    autres.push(m)
+  }
+
+  const equipeTriee: DepensesPersonne[] = [...personnes.values()].map(({ paiements, ...p }) => ({
+    ...p,
+    verse: arrondi(p.verse),
+    carte: arrondi(p.carte),
+    total: arrondi(p.verse + p.carte),
+    commercants: parTiers(paiements, (m) => m.tiers),
+  })).sort((a, b) => b.total - a.total)
+  const formateursTries = [...verses.values()].map((v) => ({ ...v, total: arrondi(v.total) })).sort((a, b) => b.total - a.total)
+  const autresTries = parTiers(autres, (m) => m.tiers)
+
+  return {
+    equipe: equipeTriee,
+    totalEquipe: arrondi(equipeTriee.reduce((s, p) => s + p.total, 0)),
+    formateurs: formateursTries,
+    totalFormateurs: arrondi(formateursTries.reduce((s, v) => s + v.total, 0)),
+    autres: autresTries,
+    totalAutres: arrondi(autresTries.reduce((s, l) => s + l.montant, 0)),
+    reste: arrondi(reste),
+    sorties: arrondi(sorties.reduce((s, x) => s + x.m.montant, 0)),
+  }
+}
+
 // ─── Rapprochement ──────────────────────────────────────────────────────────
 
 /** Numéros de facture cités dans un texte de virement : « FA-2026-0108 », « FA 2026 108 »… → « FA-2026-0108 ». */

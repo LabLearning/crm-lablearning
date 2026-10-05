@@ -6,12 +6,20 @@ import { cn } from '@/lib/utils'
 import { Wallet, AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Info, Landmark, Lock } from '@/components/ui/icons'
 import { lireBanqueQonto, messageErreurQonto, qontoConfigure, type BanqueQonto } from '@/lib/qonto'
 import {
-  JOURS_RELEVE, PERIODES, chargerEngagements, chargerFacturesCitees, encaissementsNonSaisis, jourParis, montantFr,
-  numerosFactureCites, peutVoirTresorerie, piloterParSemaine, rapprocher, synthetiserBanque,
+  JOURS_RELEVE, PERIODES, chargerEngagements, chargerFacturesCitees, constituerEquipe, encaissementsNonSaisis, jourParis, montantFr,
+  numerosFactureCites, peutVoirTresorerie, piloterParSemaine, rapprocher, synthetiserBanque, ventilerParPersonne,
   type Engagements, type LigneTiers, type Pilotage, type PointSolde, type SemainePilotage, type VirementRapproche,
 } from '@/lib/tresorerie'
 import { BoutonActualiser } from './BoutonActualiser'
 import { MouvementsTable, type LigneMouvement } from './MouvementsTable'
+import { VuePersonnes } from './VuePersonnes'
+
+/** Rôles internes du CRM : leurs titulaires sont « les personnes de l'organisme », avec les membres Qonto. */
+const ROLES_INTERNES = ['super_admin', 'gestionnaire', 'commercial', 'directeur_commercial', 'comptable']
+const VUES = [
+  { valeur: 'semaines', label: 'Semaine par semaine' },
+  { valeur: 'personnes', label: 'Personnes et formateurs' },
+] as const
 
 /** Au-delà, la liste des mouvements ne garde que les plus récents (le reste alourdirait la page). */
 const MOUVEMENTS_MAX = 800
@@ -448,12 +456,17 @@ function Attendus({ e, affacturage }: { e: Engagements; affacturage: boolean }) 
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-export default async function TresoreriePage({ searchParams }: { searchParams: { periode?: string } }) {
+export default async function TresoreriePage({ searchParams }: { searchParams: { periode?: string; vue?: string } }) {
   const session = await getSession()
   if (!peutVoirTresorerie(session.user.role)) redirect('/dashboard')
   const supabase = await createServiceRoleClient()
   const organizationId = session.organization.id
   const jours = PERIODES.find((p) => String(p.jours) === searchParams.periode)?.jours ?? 30
+  const vue = searchParams.vue === 'personnes' ? 'personnes' : 'semaines'
+  const lien = (v: string, j: number) => {
+    const q = [v !== 'semaines' && `vue=${v}`, j !== 30 && `periode=${j}`].filter(Boolean).join('&')
+    return q ? `/dashboard/tresorerie?${q}` : '/dashboard/tresorerie'
+  }
   const aujourdhui = jourParis(new Date())
   const relie = qontoConfigure()
 
@@ -499,6 +512,16 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
   }))
   const periodeLabel = periode.label
 
+  // Vue par personne : l'équipe (membres Qonto et utilisateurs internes) et les fiches formateurs du CRM
+  let ventilation = null
+  if (banque && vue === 'personnes') {
+    const [utilisateurs, formateurs] = await Promise.all([
+      supabase.from('users').select('first_name, last_name').eq('organization_id', organizationId).in('role', ROLES_INTERNES),
+      supabase.from('formateurs').select('id, prenom, nom').eq('organization_id', organizationId).limit(1000),
+    ])
+    ventilation = ventilerParPersonne(banque, constituerEquipe(banque.membres, (utilisateurs.data || []) as any[]), (formateurs.data || []) as any[], jours, aujourdhui)
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -521,7 +544,7 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
               {PERIODES.map((p) => (
                 <Link
                   key={p.jours}
-                  href={p.jours === 30 ? '/dashboard/tresorerie' : `/dashboard/tresorerie?periode=${p.jours}`}
+                  href={lien(vue, p.jours)}
                   aria-current={p.jours === jours ? 'page' : undefined}
                   className={cn('inline-flex min-h-9 items-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition-colors', p.jours === jours ? 'bg-white text-surface-900 shadow-xs' : 'text-surface-500 hover:text-surface-800')}
                 >
@@ -534,6 +557,22 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
         )}
       </div>
 
+      {banque && (
+        <nav aria-label="Vue" className="flex gap-5 border-b border-surface-200">
+          {VUES.map((v) => (
+            <Link
+              key={v.valeur}
+              href={lien(v.valeur, jours)}
+              aria-current={v.valeur === vue ? 'page' : undefined}
+              className={cn('-mb-px inline-flex min-h-10 items-center whitespace-nowrap border-b-2 text-sm font-semibold transition-colors',
+                v.valeur === vue ? 'border-brand-600 text-brand-700' : 'border-transparent text-surface-500 hover:text-surface-800')}
+            >
+              {v.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+
       {!relie && <ConnecterQonto />}
       {erreur && (
         <div className="card p-4 flex items-start gap-2.5">
@@ -542,7 +581,9 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
         </div>
       )}
 
-      {banque && synthese && (
+      {ventilation && <VuePersonnes v={ventilation} periode={periodeLabel} />}
+
+      {!ventilation && banque && synthese && (
         <>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <Tuile
@@ -597,7 +638,7 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
         </>
       )}
 
-      {ecart && engagements && engagements.aEncaisser.nb > 0 && (
+      {!ventilation && ecart && engagements && engagements.aEncaisser.nb > 0 && (
         <div className="card flex items-start gap-3 border-warning-500/30 bg-warning-50/60 p-4 sm:p-5">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" />
           <div className="min-w-0 text-sm text-surface-700">
@@ -616,9 +657,9 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
         </div>
       )}
 
-      {virements.length > 0 && <Rapprochement virements={virements} />}
+      {!ventilation && virements.length > 0 && <Rapprochement virements={virements} />}
 
-      {engagements
+      {ventilation ? null : engagements
         ? <Attendus e={engagements} affacturage={affacturage} />
         : (
           <div className="card p-4 flex items-start gap-2.5">
@@ -627,7 +668,7 @@ export default async function TresoreriePage({ searchParams }: { searchParams: {
           </div>
         )}
 
-      {banque && <MouvementsTable lignes={lignes} comptes={banque.comptes.map((c) => c.nom)} tronque={mouvementsPeriode.length > MOUVEMENTS_MAX} />}
+      {!ventilation && banque && <MouvementsTable lignes={lignes} comptes={banque.comptes.map((c) => c.nom)} tronque={mouvementsPeriode.length > MOUVEMENTS_MAX} />}
     </div>
   )
 }

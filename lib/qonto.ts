@@ -47,6 +47,18 @@ export interface MouvementQonto {
   type: string
   /** Mouvement entre deux comptes de la société : ni une recette ni une dépense. */
   interne: boolean
+  /** Membre Qonto à l'origine de l'opération (titulaire de la carte, auteur du virement). */
+  initiateurId: string | null
+  /** Quatre derniers chiffres de la carte, pour un paiement par carte. */
+  carte: string | null
+}
+
+/** Une personne qui a un accès Qonto (et le plus souvent une carte). */
+export interface MembreQonto {
+  id: string
+  prenom: string
+  nom: string
+  actif: boolean
 }
 
 export interface BanqueQonto {
@@ -54,6 +66,8 @@ export interface BanqueQonto {
   /** SIREN de la société titulaire (9 chiffres) : le relevé n'est montré qu'à l'organisme du même SIREN. */
   siren: string | null
   comptes: CompteQonto[]
+  /** Personnes ayant un accès Qonto ; vide si la clé ne permet pas de les lire. */
+  membres: MembreQonto[]
   /** Mouvements réglés depuis `depuis`, du plus récent au plus ancien, tous comptes confondus. */
   mouvements: MouvementQonto[]
   /** Premier jour couvert, « AAAA-MM-JJ ». */
@@ -129,6 +143,25 @@ export function versMouvement(t: any, ibansSociete: Set<string>): MouvementQonto
     categorie: t.cashflow_category?.name ? String(t.cashflow_category.name) : null,
     type: String(t.operation_type || ''),
     interne: ibansSociete.has(ibanContrepartie(t)),
+    initiateurId: t.initiator_id ? String(t.initiator_id) : null,
+    carte: t.card_last_digits ? String(t.card_last_digits) : null,
+  }
+}
+
+/** Les membres servent à dire qui a payé par carte. Sans eux la page fonctionne : une lecture refusée rend une liste vide. */
+async function lireMembres(): Promise<MembreQonto[]> {
+  try {
+    const membres: MembreQonto[] = []
+    for (let n = 1; n <= 5; n++) {
+      const r = await appel('/memberships', { per_page: 100, page: n })
+      for (const m of r.memberships || []) {
+        membres.push({ id: String(m.id), prenom: String(m.first_name || '').trim(), nom: String(m.last_name || '').trim(), actif: !m.status || m.status === 'active' })
+      }
+      if (!r.meta?.next_page) break
+    }
+    return membres
+  } catch {
+    return []
   }
 }
 
@@ -168,7 +201,10 @@ async function lire(jours: number): Promise<BanqueQonto> {
   const actifs = bruts.filter((c) => !c.status || c.status === 'active')
   const ibansSociete = new Set(bruts.map((c) => sansEspace(c.iban)).filter(Boolean))
 
-  const parCompte = await Promise.all(actifs.map((c) => lireMouvements(c, `${depuis}T00:00:00.000Z`)))
+  const [membres, parCompte] = await Promise.all([
+    lireMembres(),
+    Promise.all(actifs.map((c) => lireMouvements(c, `${depuis}T00:00:00.000Z`))),
+  ])
   const vus = new Set<string>()
   const mouvements = parCompte
     .flatMap((r, i) => r.lignes.map((t) => versMouvement({ ...t, bank_account_id: t.bank_account_id || actifs[i].id || actifs[i].iban }, ibansSociete)))
@@ -189,6 +225,7 @@ async function lire(jours: number): Promise<BanqueQonto> {
         principal: !!c.main,
       }))
       .sort((a, b) => Number(b.principal) - Number(a.principal) || b.solde - a.solde),
+    membres,
     mouvements,
     depuis,
     luLe: new Date().toISOString(),
@@ -205,5 +242,5 @@ export const lireReleveQonto = lire
  */
 export function lireBanqueQonto(jours: number): Promise<BanqueQonto> {
   if (!qontoConfigure()) throw new Error('Qonto non configuré')
-  return unstable_cache(() => lire(jours), ['qonto-banque', LOGIN, String(jours)], { revalidate: FRAICHEUR, tags: [TAG_QONTO] })()
+  return unstable_cache(() => lire(jours), ['qonto-banque-v2', LOGIN, String(jours)], { revalidate: FRAICHEUR, tags: [TAG_QONTO] })()
 }
