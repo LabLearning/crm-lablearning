@@ -112,7 +112,7 @@ function LigneFormateur({ f }: { f: VersementsFormateur }) {
         <span className="flex items-center justify-between gap-3 md:block">
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium text-surface-800">{f.nom}</span>
-            <span className="block text-xs text-surface-400">{f.formateurId ? 'Fiche formateur reconnue' : 'Payé depuis le compte des formateurs, sans fiche reconnue'}</span>
+            <span className="block text-xs text-surface-400">{f.formateurId ? 'Fiche formateur reconnue' : 'Payé depuis le compte des formateurs, pas de fiche à ce nom'}</span>
           </span>
           <ChevronDown className="h-4 w-4 shrink-0 text-surface-300 transition-transform group-open:rotate-180 md:hidden" />
         </span>

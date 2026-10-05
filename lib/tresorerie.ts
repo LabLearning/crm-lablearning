@@ -78,11 +78,14 @@ export interface SyntheseBanque {
   destinations: LigneTiers[]
 }
 
+/** Clé de regroupement d'un tiers : ni casse, ni accents, ni ponctuation (« PRO-FORMATION » = « PRO FORMATION », « AUDIT & FORMATION » = « AUDIT FORMATION »). */
+const cleTiers = (s: string) => cle(s).replace(/[^A-Z0-9]+/g, ' ').trim()
+
 function parTiers(mouvements: MouvementQonto[], nomDe: (m: MouvementQonto) => string): LigneTiers[] {
   const groupes = new Map<string, LigneTiers>()
   for (const m of mouvements) {
     const nom = nomDe(m)
-    const k = cle(nom)
+    const k = cleTiers(nom)
     const g = groupes.get(k)
     if (g) { g.montant += m.montant; g.nb++ } else groupes.set(k, { nom, montant: m.montant, nb: 1 })
   }
@@ -289,18 +292,20 @@ const proche = (a: string, b: string) => {
 }
 
 /**
- * Le bénéficiaire d'un virement est-il cette personne ? Règle stricte : tout
- * le nom de famille et au moins un prénom s'y retrouvent, et le libellé ne
- * contient rien d'autre (sinon « Jean-Philippe Durand » passerait pour le
- * formateur « Philippe Jean »). Un doute laisse le virement dans « autres ».
+ * Le bénéficiaire d'un virement est-il cette personne ? Règle stricte : au
+ * moins un nom de famille et au moins un prénom s'y retrouvent, et le libellé
+ * ne contient rien d'autre que ses noms et prénoms (sinon « Jean-Philippe
+ * Durand » passerait pour le formateur « Philippe Jean »). La banque abrège
+ * parfois : « IRFAN SYED » pour « Irfan SYED SHAJAHAN » est accepté. Un doute
+ * laisse le virement dans « autres ».
  */
 export function estLaPersonne(tiers: string, jetonsPrenom: string[], jetonsNom: string[]): boolean {
   const t = jetons(tiers)
   const nom = jetonsNom.filter((x) => x.length >= 3)
   const prenom = jetonsPrenom.filter((x) => x.length >= 3)
-  if (!t.length || !nom.length || !prenom.length) return false
+  if (t.length < 2 || !nom.length || !prenom.length) return false
   const tous = [...jetonsPrenom, ...jetonsNom]
-  return nom.every((x) => t.some((y) => proche(x, y)))
+  return nom.some((x) => t.some((y) => proche(x, y)))
     && prenom.some((x) => t.some((y) => proche(x, y)))
     && t.every((y) => tous.some((x) => proche(x, y)))
 }
@@ -362,6 +367,12 @@ export function ventilerParPersonne(
   for (const p of equipe) for (const id of p.membreIds) parMembre.set(id, p)
   const fiches = formateurs.map((f) => ({ id: f.id, nom: `${capitale(String(f.prenom || ''))} ${capitale(String(f.nom || ''))}`.trim(), jp: jetons(String(f.prenom || '')), jn: jetons(String(f.nom || '')) }))
 
+  // Un bénéficiaire payé au moins une fois depuis le compte réservé aux formateurs (sur tout le relevé) est un formateur,
+  // même quand un autre de ses virements part d'un autre compte
+  const payesCommeFormateurs = new Set(banque.mouvements
+    .filter((m) => m.sens === 'debit' && !m.interne && estVirement(m) && /formateur/i.test(nomCompte.get(m.compteId) || ''))
+    .map((m) => cleTiers(m.tiers)))
+
   const personnes = new Map<string, DepensesPersonne & { paiements: MouvementQonto[] }>()
   const personne = (cleP: string, nom: string) => {
     let p = personnes.get(cleP)
@@ -374,7 +385,7 @@ export function ventilerParPersonne(
   // Le même bénéficiaire revient souvent : on ne cherche sa fiche qu'une fois
   const reconnus = new Map<string, { equipe?: PersonneEquipe; fiche?: (typeof fiches)[number] }>()
   const reconnaitre = (tiers: string) => {
-    const k = cle(tiers)
+    const k = cleTiers(tiers)
     let r = reconnus.get(k)
     if (!r) {
       const e = equipe.find((p) => estLaPersonne(tiers, p.jetonsPrenom, p.jetonsNom))
@@ -406,9 +417,9 @@ export function ventilerParPersonne(
       p.versements.push(ligne)
       continue
     }
-    // Sans fiche reconnue, un virement parti du compte réservé aux formateurs reste un versement à un formateur
-    if (r.fiche || /formateur/i.test(compte)) {
-      const k = r.fiche ? r.fiche.id : `tiers-${cle(m.tiers)}`
+    // Sans fiche reconnue, un bénéficiaire payé depuis le compte réservé aux formateurs reste un formateur
+    if (r.fiche || payesCommeFormateurs.has(cleTiers(m.tiers))) {
+      const k = r.fiche ? r.fiche.id : `tiers-${cleTiers(m.tiers)}`
       const v = verses.get(k) || { cle: k, nom: r.fiche ? r.fiche.nom : m.tiers, formateurId: r.fiche?.id || null, total: 0, dernier: jour, lignes: [] }
       v.total += m.montant
       if (jour > v.dernier) v.dernier = jour
