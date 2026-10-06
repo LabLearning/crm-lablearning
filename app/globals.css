@@ -629,3 +629,23 @@
 @media (prefers-reduced-motion: reduce) {
   .ll-obj *, .ll-obj *::before, .ll-obj *::after { animation: none !important; transition: none !important; }
 }
+
+/* ── Site vitrine — page e-learning (Learnexa) ── */
+@keyframes ll-el-flotte { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes ll-el-barre { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes ll-el-pop { 0% { opacity: 0; transform: translateY(10px) scale(.92); } 12%,78% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-8px) scale(.98); } }
+@keyframes ll-el-curseur { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+@keyframes ll-el-entree { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes ll-el-gain { 0% { opacity: 0; transform: translateY(6px) scale(.9); } 20% { opacity: 1; transform: translateY(0) scale(1.06); } 100% { opacity: 0; transform: translateY(-22px) scale(1); } }
+.ll-el-flotte { animation: ll-el-flotte 5.5s ease-in-out infinite; }
+.ll-el-flotte-lent { animation: ll-el-flotte 7.5s ease-in-out infinite; }
+/* Barre de progression : elle se remplit quand son bloc se révèle (ou tout de suite hors d'un bloc révélé) */
+.ll-el-barre { transform-origin: left; animation: ll-el-barre 1.4s cubic-bezier(.22,1,.36,1) both; }
+.ll-reveal:not(.ll-reveal-in) .ll-el-barre { animation: none; transform: scaleX(0); }
+.ll-el-pop { animation: ll-el-pop 5s cubic-bezier(.22,1,.36,1) infinite; }
+.ll-el-curseur { animation: ll-el-curseur 1s steps(1) infinite; }
+.ll-el-entree { animation: ll-el-entree .5s cubic-bezier(.22,1,.36,1) both; }
+.ll-el-gain { animation: ll-el-gain 1.3s cubic-bezier(.22,1,.36,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .ll-el-flotte, .ll-el-flotte-lent, .ll-el-barre, .ll-el-pop, .ll-el-curseur, .ll-el-entree, .ll-el-gain { animation: none !important; opacity: 1 !important; transform: none !important; }
+}

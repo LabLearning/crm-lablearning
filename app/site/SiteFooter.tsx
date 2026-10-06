@@ -56,6 +56,7 @@ export function SiteFooter() {
             <li><Link href="/faq" className="text-[#D6D3D1] hover:text-white transition-colors">Questions fréquentes</Link></li>
             {guidesPublies().length > 0 && <li><Link href="/guides" className="text-[#D6D3D1] hover:text-white transition-colors">Guides</Link></li>}
             <li><Link href="/modeles" className="text-[#D6D3D1] hover:text-white transition-colors">Modèles gratuits</Link></li>
+            <li><Link href="/e-learning" className="text-[#D6D3D1] hover:text-white transition-colors">E-learning</Link></li>
             <li><Link href="/recrutement" className="text-[#D6D3D1] hover:text-white transition-colors">Recrutement</Link></li>
             <li><Link href="/contact" className="text-[#D6D3D1] hover:text-white transition-colors">Contact</Link></li>
           </ul>

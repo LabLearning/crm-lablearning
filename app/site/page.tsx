@@ -65,7 +65,7 @@ export default async function SiteHome() {
       Icon: MonitorPlay, from: '#4C1D95', to: '#7C3AED',
       img: '/site/formations/18570280-76ec-474e-8312-3f30a12005d9.webp',
       chips: [{ Icon: Laptop, label: 'Plateforme Learnexa' }, { Icon: GraduationCap, label: `${fmt(stats.apprenants)} stagiaires formés` }],
-      href: 'https://learnexa.fr', cta: 'Découvrir Learnexa',
+      href: '/e-learning', cta: 'Découvrir Learnexa',
     },
   ]
 
