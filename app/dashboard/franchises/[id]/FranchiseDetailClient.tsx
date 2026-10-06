@@ -319,7 +319,7 @@ export default function FranchiseDetailClient({
                               ) : (
                                 <>
                                   <div className="text-sm tabular-nums text-surface-700">{fmtEuro(l.base_montant)}</div>
-                                  <div className="text-[10px] text-surface-400">{l.base_source === 'opco' ? 'PEC OPCO' : 'prix HT'}</div>
+                                  <div className="text-[10px] text-surface-400">{l.base_source === 'opco' ? 'PEC OPCO' : l.base_source === 'poei' ? 'montant du parcours' : l.base_source === 'factures' ? 'facturé' : 'prix HT'}</div>
                                 </>
                               )}
                             </div>
