@@ -101,6 +101,12 @@ export async function connaissanceStarkk(): Promise<string> {
     '# MODÈLES GRATUITS (PDF à imprimer, remis contre des coordonnées)',
     ...MODELES.map((m) => `- ${m.nom} (${formatModele(m)}) : /modeles/${m.slug}. ${m.accroche}`),
     '',
+    '# REPÈRES CHIFFRÉS (vérifiés sur les textes officiels, repris des modèles gratuits)',
+    '- Températures maximales de conservation (arrêté du 21 décembre 2009, annexe I) : produits surgelés et glaces −18 °C ; viandes hachées +2 °C ; produits de la pêche frais +2 °C ; préparations culinaires élaborées à l’avance +3 °C ; viandes, volailles, préparations de viandes et denrées très périssables +4 °C ; denrées périssables +8 °C. Plats chauds : +63 °C au moins jusqu’au service. Quand l’étiquette du fabricant indique une température plus basse, c’est elle qui s’applique.',
+    '- Huiles de friture (décret n° 2008-184 du 26 février 2008, article 8) : au-delà de 25 % de composés polaires, l’huile est réputée impropre à la consommation. Les services de l’État conseillent de ne pas dépasser 180 °C dans la friteuse. L’huile usagée est un déchet à faire collecter : ni à la poubelle, ni à l’évier.',
+    '- Refroidissement et remise en température : passer de +63 °C à +10 °C en moins de 2 heures, puis conserver à +3 °C au plus ; remonter de +10 °C à la température de service en moins d’une heure. Ces durées sont imposées à la restauration collective (arrêté du 21 décembre 2009, annexe IV) ; en restauration commerciale, ce sont des références de bonne pratique, pas une obligation.',
+    '- Traçabilité (règlement (CE) n° 178/2002, articles 18 et 19) : l’exploitant doit pouvoir dire qui lui a fourni chaque denrée, retirer un produit qui présente un risque et en informer les autorités.',
+    '',
     '# GUIDES (textes sourcés sur les règles officielles)',
     ...GUIDES.filter((g) => g.publie).map(texteGuide),
   ].join('\n')

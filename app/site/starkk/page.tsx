@@ -86,6 +86,7 @@ export default function SiteStarkk() {
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/50">
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> Pour nos clients, formateurs et apprenants</span>
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> Directement dans votre espace</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#5CD9A0]" /> Déjà là pour répondre à vos questions : la bulle en bas à droite</span>
             </div>
           </div>
           <div className="lg:col-span-6 ll-rise" style={{ animationDelay: '0.12s' }}>

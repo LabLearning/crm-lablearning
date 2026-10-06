@@ -17,4 +17,4 @@ export const CERTIFICAT_SIGNATURE_CONVENTION = false
  * - 'apercu' : affichée seulement après une visite avec ?starkk=1 (pour l'essayer en ligne avant ouverture) ;
  * - 'coupe'  : bulle masquée et route fermée.
  */
-export const STARKK_SITE: 'tous' | 'apercu' | 'coupe' = 'apercu'
+export const STARKK_SITE: 'tous' | 'apercu' | 'coupe' = 'tous'
