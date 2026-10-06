@@ -19,6 +19,8 @@ export async function middleware(request: NextRequest) {
     // Supabase ne répond plus (elles vérifient elles-mêmes leur secret)
     pathname.startsWith('/api/sante') ||
     pathname.startsWith('/api/cron') ||
+    // Téléchargements du site public : un lien signé, pas de session
+    pathname.startsWith('/api/site') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {

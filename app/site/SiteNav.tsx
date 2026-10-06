@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { Menu, X, ArrowRight, ChevronDown, GraduationCap, Banknote, HeartHandshake, TrendingUp, Users, Bulb, ClipboardCheck, AiChat, Whatsapp, BookOpen } from './icons'
+import { Menu, X, ArrowRight, ChevronDown, GraduationCap, Banknote, HeartHandshake, TrendingUp, Users, Bulb, ClipboardCheck, AiChat, Whatsapp, BookOpen, Download } from './icons'
 import { BRANCHES } from './branches'
 import { useLienWhatsapp } from './useLienWhatsapp'
 
@@ -25,6 +25,7 @@ const ORGANISME = [
 const OUTILS = [
   { href: '/audit-plus', label: 'Audit+', desc: 'Audits hygiène, DUERP et allergènes', Icon: ClipboardCheck },
   { href: '/starkk', label: 'Starkk', desc: 'Notre intelligence artificielle', Icon: AiChat },
+  { href: '/modeles', label: 'Modèles gratuits', desc: 'Allergènes, températures, nettoyage, document unique', Icon: Download },
 ]
 
 export function SiteNav() {

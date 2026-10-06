@@ -32,6 +32,7 @@ export default function Confidentialite() {
       <h2>Finalités &amp; bases légales</h2>
       <ul>
         <li><strong>Répondre à vos demandes</strong> (formulaire de contact) : intérêt légitime / mesures précontractuelles ;</li>
+        <li><strong>Vous envoyer un modèle gratuit et vous recontacter</strong> au sujet de la formation de votre équipe (demande d&apos;un modèle sur le site) : intérêt légitime ; vous pouvez vous y opposer à tout moment en nous écrivant ;</li>
         <li><strong>Gérer les inscriptions et le suivi des formations</strong> : exécution du contrat ;</li>
         <li><strong>Respecter nos obligations</strong> (Qualiopi, comptables, légales) : obligation légale ;</li>
         <li><strong>Amélioration du site et statistiques</strong> : consentement / intérêt légitime.</li>

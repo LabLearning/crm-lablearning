@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { guidesPublies } from '@/lib/guides'
 import { getVilles } from '@/lib/site-villes'
+import { MODELES } from '@/lib/modeles'
 
 const BASE = 'https://www.lab-learning.fr'
 const ORG = 'ff747dfe-c034-44d8-98d7-e53892263fb5'
@@ -60,6 +61,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...guidesPublies().map((g) => ({ url: `${BASE}/guides/${g.slug}`, lastModified: g.majLe, changeFrequency: 'monthly' as const, priority: 0.7 })),
     ]
     : []
+  const modeles: MetadataRoute.Sitemap = [
+    { url: `${BASE}/modeles`, changeFrequency: 'monthly', priority: 0.7 },
+    ...MODELES.map((m) => ({ url: `${BASE}/modeles/${m.slug}`, lastModified: m.majLe, changeFrequency: 'monthly' as const, priority: 0.7 })),
+  ]
   let villes: MetadataRoute.Sitemap = []
   try {
     const liste = await getVilles()
@@ -73,5 +78,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sans base joignable, le plan garde ses autres pages.
   }
 
-  return [...fixes, ...branches, ...formations, ...guides, ...villes]
+  return [...fixes, ...branches, ...formations, ...guides, ...modeles, ...villes]
 }

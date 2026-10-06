@@ -1,18 +1,18 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowRight, ArrowLeft, Clock, CalendarCheck, CheckCircle2, BookOpen } from '../../icons'
+import { ArrowRight, ArrowLeft, Clock, CalendarCheck, CheckCircle2, BookOpen, Download } from '../../icons'
 import { Kicker } from '../../Kicker'
 import { GuideCorps } from '../GuideCorps'
 import { jsonLd } from '../../jsonld'
 import { lienWhatsapp } from '../../whatsapp'
 import { guideParSlug, guidesPublies } from '@/lib/guides'
-import { createServiceRoleClient } from '@/lib/supabase/server'
+import { formationsLiees } from '../../formations-liees'
+import { modelesDuGuide, apercuModele, nomModele } from '@/lib/modeles'
 import { titreFormation } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
 const BASE = 'https://www.lab-learning.fr'
-const ORG = 'ff747dfe-c034-44d8-98d7-e53892263fb5'
 
 const dateFr = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' })
 
@@ -37,23 +37,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-/** Formations publiées dont l'intitulé correspond au sujet du guide. */
-async function formationsLiees(motif: string) {
-  if (!motif) return []
-  const supabase = await createServiceRoleClient()
-  const { data } = await supabase.from('formations')
-    .select('id, intitule, duree_heures')
-    .eq('organization_id', ORG).eq('is_active', true).eq('site_publie', true).not('is_poei', 'is', true)
-    .order('intitule').limit(200)
-  const re = new RegExp(motif, 'i')
-  return ((data || []) as any[]).filter((f) => re.test(String(f.intitule || ''))).slice(0, 3)
-}
-
 export default async function SiteGuide({ params }: { params: { slug: string } }) {
   const g = guideParSlug(params.slug)
   if (!g) notFound()
   const [liees] = await Promise.all([formationsLiees(g.formations)])
   const autres = guidesPublies().filter((x) => x.slug !== g.slug).slice(0, 3)
+  const modeles = modelesDuGuide(g.slug)
 
   const schemas = [
     {
@@ -149,6 +138,26 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
           <div className="mt-12">
             <GuideCorps sections={g.sections} />
           </div>
+
+          {modeles.length > 0 && (
+            <aside className="mt-12 rounded-3xl bg-[#F6F4EF] p-5 md:p-6">
+              <div className="font-heading text-lg font-bold text-[#14110F]">{modeles.length > 1 ? 'Modèles gratuits à imprimer' : 'Modèle gratuit à imprimer'}</div>
+              <div className="mt-4 space-y-3">
+                {modeles.map((m) => (
+                  <Link key={m.slug} href={`/modeles/${m.slug}`} className="group flex items-center gap-4 rounded-2xl bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 p-3 pr-4 ll-lift">
+                    <img loading="lazy" src={apercuModele(m.slug)} alt="" width={1287} height={910} className="w-24 sm:w-32 shrink-0 rounded-lg ring-1 ring-black/10" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-heading font-semibold leading-snug text-[#14110F] group-hover:text-[#205040] transition-colors">{nomModele(m)}</div>
+                      <div className="mt-0.5 text-sm text-[#78716C]">{m.format}</div>
+                    </div>
+                    <span className="shrink-0 h-9 w-9 rounded-full bg-[#205040]/8 flex items-center justify-center text-[#205040] group-hover:bg-[#205040] group-hover:text-white transition-colors">
+                      <Download className="h-4 w-4" />
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </aside>
+          )}
 
           {g.faq.length > 0 && (
             <section id="questions" className="mt-12 scroll-mt-24">

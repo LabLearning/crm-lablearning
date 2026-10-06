@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Clock } from '../icons'
+import { ArrowRight, Clock, Download } from '../icons'
 import { Kicker } from '../Kicker'
 import { Reveal } from '../Reveal'
 import { jsonLd } from '../jsonld'
@@ -88,6 +88,15 @@ export default function SiteGuides({ searchParams }: { searchParams: { apercu?: 
             ))}
           </div>
         )}
+
+        <Link href="/modeles" className="group mt-8 flex items-center gap-4 rounded-3xl bg-[#F6F4EF] hover:bg-[#EFEBE2] p-5 md:p-6 transition-colors">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#205040] text-white"><Download className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-heading font-bold text-[#14110F]">Modèles gratuits à imprimer</span>
+            <span className="mt-0.5 block text-sm text-[#57534E]">Tableau des allergènes, relevé de températures, plan de nettoyage, trame de document unique.</span>
+          </span>
+          <ArrowRight className="h-5 w-5 shrink-0 text-[#205040] group-hover:translate-x-1 transition-transform" />
+        </Link>
       </section>
     </>
   )

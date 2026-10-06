@@ -17,7 +17,7 @@ import {
   ManagerIcon, CleaningBucketIcon, FirstAidKitIcon, GraduationScrollIcon,
   StarIcon, ArrowDown01Icon,
   AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon, PlayIcon,
-  PauseIcon, FullScreenIcon,
+  PauseIcon, FullScreenIcon, Download01Icon, PrinterIcon,
 } from '@hugeicons/core-free-icons'
 
 type P = { className?: string; strokeWidth?: number }
@@ -33,6 +33,8 @@ export const Menu = make(Menu01Icon)
 export const X = make(Cancel01Icon)
 export const Send = make(SentIcon)
 export const Loader2 = make(Loading03Icon)
+export const Download = make(Download01Icon)           // modèle à télécharger
+export const Printer = make(PrinterIcon)                // document à imprimer
 
 // ── Confiance / éducation ──
 export const ShieldCheck = make(Certificate02Icon)     // Qualiopi / certification
