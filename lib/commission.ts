@@ -183,6 +183,69 @@ export interface SessionCommissionResult {
   status: CommissionStatus
 }
 
+/** D'où vient le coût formateur retenu pour une commission. */
+export type SourceCoutFormateur = 'contrat' | 'facture' | 'session' | 'manuel' | 'fiche' | 'intervention' | 'aucune'
+
+export const SOURCE_COUT_LABEL: Record<SourceCoutFormateur, string> = {
+  contrat: 'Contrat formateur',
+  facture: 'Facture du formateur',
+  session: 'Rémunération saisie sur la session',
+  manuel: 'Tarif journalier saisi autrefois ici',
+  fiche: 'Tarif de la fiche formateur',
+  intervention: 'Rémunération prévue des interventions',
+  aucune: 'Aucun coût connu',
+}
+
+/**
+ * Coût formateur d'une session (HT), trouvé sans que personne ait à le
+ * ressaisir sur la fiche franchise. Dans l'ordre, comme pour la rentabilité
+ * (lib/rentabilite) :
+ *   1. le contrat ou la facture du formateur (le plus élevé des deux) ;
+ *   2. la rémunération saisie sur la session ;
+ *   3. le tarif journalier saisi autrefois sur la fiche franchise × jours ;
+ *   4. le tarif journalier de la fiche du formateur × jours.
+ */
+export function coutFormateurDeSession(e: {
+  coutContratsHt: number
+  coutFacturesFormateurHt?: number
+  coutFormateurSession: number | null
+  coutFormateurManuelJour: number | null
+  tarifJournalierFormateur?: number | null
+  nbJours: number
+}): { montant: number; source: SourceCoutFormateur } {
+  const jours = Math.max(1, e.nbJours || 1)
+  const contrats = Number(e.coutContratsHt || 0)
+  const factures = Number(e.coutFacturesFormateurHt || 0)
+  if (contrats > 0 || factures > 0) return factures > contrats ? { montant: round2(factures), source: 'facture' } : { montant: round2(contrats), source: 'contrat' }
+  const session = Number(e.coutFormateurSession || 0)
+  if (session > 0) return { montant: round2(session), source: 'session' }
+  const manuel = e.coutFormateurManuelJour == null ? 0 : Number(e.coutFormateurManuelJour) || 0
+  if (manuel > 0) return { montant: round2(manuel * jours), source: 'manuel' }
+  const fiche = Number(e.tarifJournalierFormateur || 0)
+  if (fiche > 0) return { montant: round2(fiche * jours), source: 'fiche' }
+  return { montant: 0, source: 'aucune' }
+}
+
+/**
+ * Coût formateur d'un parcours POEI (HT) : les contrats de ses interventions,
+ * chaque intervention sans contrat comptant pour sa rémunération prévue ; à
+ * défaut de tout contrat d'intervention, ceux de la session chapeau (la même
+ * mission y est souvent contractée deux fois) ; sinon la rémunération prévue
+ * des interventions.
+ */
+export function coutFormateurDePoei(e: {
+  interventions: { contratsHt: number; montantHt: number | null }[]
+  contratsChapeauHt: number
+}): { montant: number; source: SourceCoutFormateur } {
+  const avecContrat = e.interventions.some((i) => Number(i.contratsHt || 0) > 0)
+  if (avecContrat) {
+    return { montant: round2(e.interventions.reduce((t, i) => t + (Number(i.contratsHt || 0) > 0 ? Number(i.contratsHt) : Number(i.montantHt || 0)), 0)), source: 'contrat' }
+  }
+  if (Number(e.contratsChapeauHt || 0) > 0) return { montant: round2(Number(e.contratsChapeauHt)), source: 'contrat' }
+  const prevu = e.interventions.reduce((t, i) => t + Number(i.montantHt || 0), 0)
+  return prevu > 0 ? { montant: round2(prevu), source: 'intervention' } : { montant: 0, source: 'aucune' }
+}
+
 /** Ligne `commissions_sessions` déjà enregistrée, telle que relue. */
 export interface CommissionSessionExistante {
   status: CommissionStatus | string | null
@@ -211,6 +274,10 @@ export interface EntreeCommissionSession {
   totalFacturesSession: number
   /** Σ montant_ht des contrats formateur non annulés de la session */
   coutContratsHt: number
+  /** Σ montant_ht des factures du formateur rattachées à la session */
+  coutFacturesFormateurHt?: number
+  /** Tarif journalier de la fiche du formateur de la session */
+  tarifJournalierFormateur?: number | null
   coutFormateurManuelJour: number | null
   /** max(1, jours planifiés || durée catalogue || 1) */
   nbJours: number
@@ -278,12 +345,8 @@ export function calculerCommissionSession(e: EntreeCommissionSession & { force?:
     const facture = Number(e.totalFacturesSession || 0)
     if (facture > 0) { base = facture; baseSource = 'factures' }
   }
-  // Coût formateur de la session : contrats, sinon tarif journalier saisi × jours, sinon champ session
-  let coutFormateur = Number(e.coutContratsHt || 0)
-  if (coutFormateur <= 0 && e.coutFormateurManuelJour != null) {
-    coutFormateur = (Number(e.coutFormateurManuelJour) || 0) * Math.max(1, e.nbJours || 1)
-  }
-  if (coutFormateur <= 0) coutFormateur = Number(e.coutFormateurSession || 0)
+  // Coût formateur de la session : trouvé seul, voir coutFormateurDeSession
+  const coutFormateur = coutFormateurDeSession(e).montant
 
   const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur })
   const exStatus = e.existante?.status
@@ -347,7 +410,9 @@ export function calculerCommissionPoei(e: EntreeCommissionPoei & { force?: boole
  * Recalcule et persiste la commission d'une session.
  * - Franchise déduite de l'établissement (clients.franchise_id) : sans
  *   franchise, la ligne éventuelle est supprimée.
- * - Coût formateur : contrats formateur de la session, sinon tarif journalier
+ * - Coût formateur : trouvé seul (contrat ou facture du formateur, rémunération
+ *   de la session, tarif de sa fiche), voir coutFormateurDeSession. Ancienne règle :
+ *   contrats formateur de la session, sinon tarif journalier
  *   saisi × nombre de jours, sinon le champ cout_formateur de la session.
  * - N'écrase PAS une commission validée/payée (snapshot figé), sauf force.
  * - Une session annulée garde sa ligne au statut 'annulee' (hors totaux).
@@ -362,7 +427,7 @@ export async function recalcSessionCommission(
     .from('sessions')
     // client:client_id(*) : franchise_hors_partenariat n'existe qu'après la
     // migration 150, une liste de colonnes ferait échouer la lecture avant.
-    .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formation:formation_id(duree_jours), client:client_id(*)')
+    .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formateur_id, formation:formation_id(duree_jours), client:client_id(*)')
     .eq('id', sessionId)
     .eq('organization_id', organizationId)
     .maybeSingle()
@@ -378,7 +443,7 @@ export async function recalcSessionCommission(
       return null
     }
   }
-  const [{ data: existante }, { data: poei }, { count: nbInscrits }, franchiseRes, { data: factures }, { data: contrats }] = await Promise.all([
+  const [{ data: existante }, { data: poei }, { count: nbInscrits }, franchiseRes, { data: factures }, { data: contrats }, { data: facturesFormateur }, { data: formateur }] = await Promise.all([
     supabase.from('commissions_sessions')
       .select('id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type')
       .eq('session_id', sessionId).maybeSingle(),
@@ -393,6 +458,10 @@ export async function recalcSessionCommission(
     supabase.from('factures').select('montant_ht, status').eq('session_id', sessionId)
       .not('status', 'in', '("brouillon","annulee")'),
     supabase.from('contrats_formateur').select('montant_ht').eq('session_id', sessionId).neq('status', 'annule'),
+    supabase.from('factures_formateur').select('montant_ht').eq('session_id', sessionId).eq('organization_id', organizationId),
+    sess.formateur_id
+      ? supabase.from('formateurs').select('tarif_journalier').eq('id', sess.formateur_id).eq('organization_id', organizationId).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
   const retirer = async () => {
     if (existante && !['validee', 'payee'].includes(existante.status)) {
@@ -414,6 +483,8 @@ export async function recalcSessionCommission(
     prixHt: sess.prix_ht,
     totalFacturesSession: (factures || []).reduce((s: number, f: any) => s + Number(f.montant_ht || 0), 0),
     coutContratsHt: (contrats || []).reduce((s: number, c: any) => s + Number(c.montant_ht || 0), 0),
+    coutFacturesFormateurHt: (facturesFormateur || []).reduce((s: number, f: any) => s + Number(f.montant_ht || 0), 0),
+    tarifJournalierFormateur: (formateur as any)?.tarif_journalier ?? null,
     coutFormateurManuelJour: existante?.cout_formateur_manuel ?? null,
     nbJours: Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1),
     coutFormateurSession: sess.cout_formateur,
@@ -486,20 +557,25 @@ export async function syncFranchiseCommissions(
   const sessions = (await Promise.all(paquets(clientIds).map((ids) => toutLire((f, t) =>
     supabase.from('sessions')
       // client:client_id(*) : franchise_hors_partenariat n'existe qu'après la migration 150
-      .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formation:formation_id(duree_jours), client:client_id(*)')
+      .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, cout_formateur, horaires_jours, poei_intervention_id, formateur_id, formation:formation_id(duree_jours), client:client_id(*)')
       .eq('organization_id', organizationId).in('client_id', ids).range(f, t))))).flat()
   if (!sessions.length) return 0
   const ids = sessions.map((x: any) => x.id)
 
   const lire = (table: string, colonnes: string, filtre: (q: any) => any) =>
     Promise.all(paquets(ids).map((p) => toutLire((f, t) => filtre(supabase.from(table).select(colonnes).in('session_id', p)).range(f, t)))).then((r) => r.flat())
-  const [existantes, poeis, inscriptions, factures, contrats] = await Promise.all([
+  const formateurIds = Array.from(new Set(sessions.map((x: any) => x.formateur_id).filter(Boolean))) as string[]
+  const [existantes, poeis, inscriptions, factures, contrats, facturesFormateur, formateurs] = await Promise.all([
     lire('commissions_sessions', 'id, session_id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type, commission_taux, franchise_id, client_id', (q) => q),
     lire('poei', 'id, session_id', (q) => q),
     lire('inscriptions', 'session_id', (q) => q.not('status', 'in', '("annule","abandonne")')),
     lire('factures', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","annulee")')),
     lire('contrats_formateur', 'id, session_id, montant_ht', (q) => q.neq('status', 'annule')),
+    lire('factures_formateur', 'session_id, montant_ht', (q) => q),
+    Promise.all(paquets(formateurIds).map((p) => supabase.from('formateurs').select('id, tarif_journalier').eq('organization_id', organizationId).in('id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
   ])
+  const facturesFormateurDe = (() => { const m = new Map<string, any[]>(); for (const x of facturesFormateur as any[]) { if (!m.has(x.session_id)) m.set(x.session_id, []); m.get(x.session_id)!.push(x) } return m })()
+  const tarifDuFormateur = new Map((formateurs as any[]).map((f) => [f.id, f.tarif_journalier]))
   const parSession = <T,>(l: any[]) => { const m = new Map<string, any[]>(); for (const x of l) { const k = x.session_id; if (!m.has(k)) m.set(k, []); m.get(k)!.push(x) } return m }
   const existanteDe = new Map(existantes.map((e: any) => [e.session_id, e]))
   const poeiDe = new Set(poeis.map((p: any) => p.session_id))
@@ -525,14 +601,13 @@ export async function syncFranchiseCommissions(
       Promise.all(paquets(poeiIds).map((p) => supabase.from('poei_candidats')
         .select('poei_id').in('poei_id', p).not('statut', 'in', '("abandonne","refuse")').then((r: any) => r.data || []))).then((r) => r.flat()),
       Promise.all(paquets(poeiIds).map((p) => supabase.from('poei_interventions')
-        .select('id, poei_id').in('poei_id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
+        .select('id, poei_id, montant_ht').in('poei_id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
     ])
     const ivIds = toutesInterventions.map((i: any) => i.id)
     const contratsIv = ivIds.length
       ? (await Promise.all(paquets(ivIds).map((p) => supabase.from('contrats_formateur')
           .select('id, poei_intervention_id, montant_ht').in('poei_intervention_id', p).neq('status', 'annule').then((r: any) => r.data || [])))).flat()
       : []
-    const poeiDeIv = new Map(toutesInterventions.map((i: any) => [i.id, i.poei_id]))
     for (const p of lignesPoei as any[]) {
       const sessionsDuParcours = (sessions as any[]).filter((x) => poeiDeSession.get(x.id) === p.id)
       const chapeau = sessionsDuParcours.find((x) => x.id === p.session_id)
@@ -542,12 +617,14 @@ export async function syncFranchiseCommissions(
       infosPoei.set(p.id, {
         poei: p,
         candidats: (candidats as any[]).filter((c) => c.poei_id === p.id).length,
-        // Contrats des interventions du parcours ; ceux de la session chapeau
-        // seulement à défaut (la même mission y est souvent contractée deux fois)
-        couts: (() => {
-          const desInterventions = (contratsIv as any[]).filter((c) => poeiDeIv.get(c.poei_intervention_id) === p.id)
-          return somme(desInterventions.length ? desInterventions : (p.session_id ? contratsDe.get(p.session_id) : []))
-        })(),
+        // Contrats des interventions, rémunération prévue à défaut : voir coutFormateurDePoei
+        couts: coutFormateurDePoei({
+          interventions: (toutesInterventions as any[]).filter((i) => i.poei_id === p.id).map((i) => ({
+            contratsHt: somme((contratsIv as any[]).filter((c) => c.poei_intervention_id === i.id)),
+            montantHt: i.montant_ht == null ? null : Number(i.montant_ht),
+          })),
+          contratsChapeauHt: somme(p.session_id ? contratsDe.get(p.session_id) : []),
+        }).montant,
         representative,
       })
     }
@@ -587,6 +664,8 @@ export async function syncFranchiseCommissions(
       prixHt: sess.prix_ht,
       totalFacturesSession: somme(facturesDe.get(sess.id)),
       coutContratsHt: somme(contratsDe.get(sess.id)),
+      coutFacturesFormateurHt: somme(facturesFormateurDe.get(sess.id)),
+      tarifJournalierFormateur: sess.formateur_id ? tarifDuFormateur.get(sess.formateur_id) ?? null : null,
       coutFormateurManuelJour: existante?.cout_formateur_manuel ?? null,
       nbJours: Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1),
       coutFormateurSession: sess.cout_formateur,

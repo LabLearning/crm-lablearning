@@ -1,5 +1,6 @@
 import type { CommissionStatus } from '@/lib/commission'
 import { estFormationHygiene } from '@/lib/formation-hygiene'
+import { coutFormateurDeSession, type SourceCoutFormateur } from '@/lib/commission'
 
 /**
  * Agrégations de données pour le portail franchise, assises sur les SESSIONS
@@ -144,6 +145,8 @@ export interface LigneCommissionSession {
   base_source: string
   cout_formateur: number
   cout_formateur_manuel: number | null
+  /** D'où vient le coût formateur (renseigné seulement à la demande, pour la fiche franchise de l'administration). */
+  cout_source?: SourceCoutLigne
   commission_montant: number
   commission_taux: number
   commission_type: string
@@ -156,8 +159,15 @@ export interface LigneCommissionSession {
   } | null
 }
 
-/** Les lignes de commission d'une franchise, session par session, les plus récentes d'abord. */
-export async function getFranchiseCommissionLines(supabase: any, franchiseId: string, orgId: string): Promise<LigneCommissionSession[]> {
+/** Source du coût d'une ligne : celle du calcul, « parcours » pour une POEI, « figé » pour une ligne validée ou payée. */
+export type SourceCoutLigne = SourceCoutFormateur | 'parcours' | 'fige'
+
+/**
+ * Les lignes de commission d'une franchise, session par session, les plus récentes d'abord.
+ * `avecSources` relit ce qui a servi à trouver le coût formateur de chaque session
+ * (contrat, facture, rémunération de la session, fiche du formateur) pour le dire à l'écran.
+ */
+export async function getFranchiseCommissionLines(supabase: any, franchiseId: string, orgId: string, opts?: { avecSources?: boolean }): Promise<LigneCommissionSession[]> {
   const { data } = await supabase
     .from('commissions_sessions')
     .select(`
@@ -172,6 +182,38 @@ export async function getFranchiseCommissionLines(supabase: any, franchiseId: st
     client: Array.isArray(l.client) ? l.client[0] || null : l.client,
     session: Array.isArray(l.session) ? l.session[0] || null : l.session,
   }))
+  if (opts?.avecSources && lignes.length) {
+    const ids = lignes.map((l) => l.session_id)
+    const paquets = <T,>(l: T[], n = 100) => Array.from({ length: Math.ceil(l.length / n) }, (_, i) => l.slice(i * n, i * n + n))
+    const lire = (table: string, colonnes: string, filtre: (q: any) => any = (q) => q) =>
+      Promise.all(paquets(ids).map((p) => filtre(supabase.from(table).select(colonnes).in(table === 'sessions' ? 'id' : 'session_id', p)).then((r: any) => r.data || []))).then((r) => r.flat())
+    const [sessions, contrats, facturesFormateur] = await Promise.all([
+      lire('sessions', 'id, cout_formateur, formateur_id, horaires_jours, formation:formation_id(duree_jours)'),
+      lire('contrats_formateur', 'session_id, montant_ht', (q) => q.neq('status', 'annule')),
+      lire('factures_formateur', 'session_id, montant_ht'),
+    ])
+    const formateurIds = Array.from(new Set((sessions as any[]).map((s) => s.formateur_id).filter(Boolean)))
+    const formateurs = formateurIds.length
+      ? (await Promise.all(paquets(formateurIds).map((p) => supabase.from('formateurs').select('id, tarif_journalier').eq('organization_id', orgId).in('id', p).then((r: any) => r.data || [])))).flat()
+      : []
+    const sessionDe = new Map((sessions as any[]).map((s) => [s.id, s]))
+    const tarifDe = new Map((formateurs as any[]).map((f) => [f.id, f.tarif_journalier]))
+    const somme = (l: any[], id: string) => l.filter((x) => x.session_id === id).reduce((t, x) => t + Number(x.montant_ht || 0), 0)
+    for (const l of lignes) {
+      if (['validee', 'payee'].includes(String(l.status))) { l.cout_source = 'fige'; continue }
+      if (l.base_source === 'poei') { l.cout_source = Number(l.cout_formateur) > 0 ? 'parcours' : 'aucune'; continue }
+      const s = sessionDe.get(l.session_id)
+      const nbHoraires = Array.isArray(s?.horaires_jours) ? s.horaires_jours.length : 0
+      l.cout_source = coutFormateurDeSession({
+        coutContratsHt: somme(contrats as any[], l.session_id),
+        coutFacturesFormateurHt: somme(facturesFormateur as any[], l.session_id),
+        coutFormateurSession: s?.cout_formateur ?? null,
+        coutFormateurManuelJour: l.cout_formateur_manuel ?? null,
+        tarifJournalierFormateur: s?.formateur_id ? tarifDe.get(s.formateur_id) ?? null : null,
+        nbJours: Math.max(1, nbHoraires || Number(s?.formation?.duree_jours) || 1),
+      }).source
+    }
+  }
   return lignes.sort((a, b) => String(b.session?.date_debut || '').localeCompare(String(a.session?.date_debut || '')))
 }
 

@@ -239,7 +239,7 @@ export interface FactureRentab {
 }
 export interface LigneFactureRentab { id?: string; facture_id: string; session_id: string | null; montant_ht: Num }
 export interface ContratRentab { id: string; numero: string | null; session_id: string | null; poei_intervention_id: string | null; formateur_id: string | null; status: string | null; montant_ht: Num }
-export interface FactureFormateurRentab { id: string; numero: string | null; session_id: string | null; formateur_id: string | null; status: string | null; montant_ttc: Num; fichier_url: string | null }
+export interface FactureFormateurRentab { id: string; numero: string | null; session_id: string | null; formateur_id: string | null; status: string | null; montant_ht?: Num; montant_ttc: Num; fichier_url: string | null }
 export interface CommissionSessionRentab {
   session_id: string; franchise_id: string | null; status: string | null
   commission_montant: Num; base_montant: Num; base_source: string | null
@@ -1228,6 +1228,8 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
       coutContratsHt: (d.idx.contratsParSession.get(s.id) || [])
         .filter((c) => c.status !== 'annule')
         .reduce((a, c) => a + n(c.montant_ht), 0),
+      coutFacturesFormateurHt: (d.idx.ffParSession.get(s.id) || []).reduce((a, f) => a + n(f.montant_ht), 0),
+      tarifJournalierFormateur: s.formateur_id ? n(d.idx.formateurParId.get(s.formateur_id)?.tarif_journalier) || null : null,
       coutFormateurManuelJour: existante?.cout_formateur_manuel == null ? null : n(existante.cout_formateur_manuel),
       nbJours: jours,
       coutFormateurSession: s.cout_formateur == null ? null : n(s.cout_formateur),

@@ -14,7 +14,6 @@ import { updateFranchiseCommissionConfigAction } from '../actions'
 import {
   recalcSessionCommissionAction,
   updateSessionCommissionStatusAction,
-  updateSessionCoutFormateurAction,
   payAllValidatedSessionsAction,
   syncFranchiseCommissionsAction,
 } from '../session-commission-actions'
@@ -369,34 +368,40 @@ export default function FranchiseDetailClient({
   )
 }
 
-/** Coût formateur d'une session : contrats formateur sinon tarif journalier saisi ici (× jours de session). */
+/** Libellé court de l'origine du coût formateur d'une ligne. */
+const SOURCE_COUT: Record<string, string> = {
+  contrat: 'contrat formateur',
+  facture: 'facture du formateur',
+  session: 'saisi sur la session',
+  manuel: 'tarif saisi ici autrefois',
+  fiche: 'fiche formateur × jours, estimation',
+  parcours: 'formateurs du parcours',
+  intervention: 'formateurs du parcours',
+  fige: 'figé à la validation',
+}
+
+/**
+ * Coût formateur d'une ligne : il est repris seul de la session (contrat, facture
+ * du formateur, rémunération saisie, tarif de sa fiche) ou des interventions du
+ * parcours POEI. Rien ne se saisit ici : un coût manquant se renseigne sur la session.
+ */
 function CoutFormateurCell({ ligne }: { ligne: LigneCommissionSession }) {
-  const router = useRouter()
-  const [val, setVal] = useState<string>(ligne.cout_formateur_manuel != null ? String(ligne.cout_formateur_manuel) : '')
-  const [pending, start] = useTransition()
-
-  function save() {
-    const n = Number((val || '0').replace(',', '.'))
-    if (!Number.isFinite(n)) return
-    start(async () => { await updateSessionCoutFormateurAction(ligne.session_id, n); router.refresh() })
-  }
-
-  const changed = String(ligne.cout_formateur_manuel ?? '') !== val
+  const cout = Number(ligne.cout_formateur) || 0
+  const net = ligne.commission_type === 'budget_net'
   return (
-    <div className="hidden md:flex flex-col items-end gap-0.5 w-28">
-      <div className="flex items-center gap-1">
-        <input type="number" step="0.01" min="0" value={val} onChange={(e) => setVal(e.target.value)}
-          placeholder="€/jour" disabled={pending}
-          className="w-16 rounded-md border border-surface-200 px-1.5 py-1 text-xs text-right tabular-nums focus:outline-none focus:border-brand-300" />
-        {changed && val !== '' && (
-          <button onClick={save} disabled={pending} title="Enregistrer et recalculer"
-            className="text-[10px] font-semibold px-1.5 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-40">
-            {pending ? '…' : 'OK'}
-          </button>
-        )}
-      </div>
-      {Number(ligne.cout_formateur) > 0 && (
-        <span className="text-[10px] text-surface-400 tabular-nums">= {fmtEuro(ligne.cout_formateur)}</span>
+    <div className="hidden md:flex flex-col items-end gap-0.5 w-36 text-right">
+      {cout > 0 ? (
+        <>
+          <span className="text-sm tabular-nums text-surface-700">{fmtEuro(cout)}</span>
+          <span className="text-[10px] leading-tight text-surface-400">{SOURCE_COUT[ligne.cout_source || ''] || 'coût formateur'}</span>
+        </>
+      ) : net && ligne.cout_source !== 'fige' ? (
+        <Link href={`/dashboard/sessions/${ligne.session_id}?tab=session`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:underline"
+          title="Aucun coût formateur trouvé : renseignez la rémunération du formateur sur la session, la commission se recalcule seule">
+          <AlertTriangle className="h-3 w-3" /> coût à renseigner
+        </Link>
+      ) : (
+        <span className="text-[10px] text-surface-400">coût non renseigné</span>
       )}
     </div>
   )

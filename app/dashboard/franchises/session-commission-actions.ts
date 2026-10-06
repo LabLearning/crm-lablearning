@@ -38,21 +38,6 @@ export async function recalcSessionCommissionAction(sessionId: string): Promise<
   return { success: true, data: r }
 }
 
-/** Tarif journalier formateur saisi à la main (quand aucun contrat ne porte le coût), puis recalcul forcé. */
-export async function updateSessionCoutFormateurAction(sessionId: string, montantJournalier: number): Promise<Result> {
-  const session = await getSession()
-  if (!peutGerer(session.user.role)) return { success: false, error: 'Accès non autorisé' }
-  const supabase = await createServiceRoleClient()
-  const val = Number.isFinite(montantJournalier) && montantJournalier >= 0 ? Math.round(montantJournalier * 100) / 100 : 0
-  const { error } = await supabase.from('commissions_sessions')
-    .update({ cout_formateur_manuel: val, updated_at: new Date().toISOString() })
-    .eq('session_id', sessionId).eq('organization_id', session.organization.id)
-  if (error) return { success: false, error: error.message }
-  const r = await recalcSessionCommission(supabase, sessionId, session.organization.id, { force: true })
-  revalidatePath('/dashboard/franchises')
-  return { success: true, data: r }
-}
-
 /** Valider / payer / annuler / remettre à venir la commission d'une session. */
 export async function updateSessionCommissionStatusAction(sessionId: string, status: CommStatus): Promise<Result> {
   const session = await getSession()

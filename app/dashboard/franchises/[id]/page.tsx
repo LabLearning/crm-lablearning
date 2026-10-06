@@ -66,7 +66,7 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
   // lignes de commission (création / recalcul des non figées) avant de lire.
   await syncFranchiseCommissions(supabase, params.id, orgId)
   const [lignes, groupes, audits, listeAudits] = await Promise.all([
-    getFranchiseCommissionLines(supabase, params.id, orgId),
+    getFranchiseCommissionLines(supabase, params.id, orgId, { avecSources: true }),
     // date_partenariat n'existe qu'après la migration 150 : absente, aucun
     // établissement ne bascule en « avant le partenariat ».
     getFranchiseParcours(supabase, params.id, orgId, (franchise as any).date_partenariat || null),

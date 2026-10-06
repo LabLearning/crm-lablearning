@@ -139,7 +139,7 @@ export async function chargerDonneesRentabilite(
       .select('id, numero, session_id, poei_intervention_id, formateur_id, status, montant_ht')
       .eq('organization_id', orgId).in('poei_intervention_id', p).neq('status', 'annule').order('id').range(from, to)),
     L.parIds<FactureFormateurRentab>(ids, (p, from, to) => supabase.from('factures_formateur')
-      .select('id, numero, session_id, formateur_id, status, montant_ttc, fichier_url')
+      .select('id, numero, session_id, formateur_id, status, montant_ht, montant_ttc, fichier_url')
       .eq('organization_id', orgId).in('session_id', p).order('id').range(from, to)),
     L.parIds<CommissionSessionRentab>(ids, (p, from, to) => supabase.from('commissions_sessions')
       .select('session_id, franchise_id, status, commission_montant, base_montant, base_source, cout_formateur, cout_formateur_manuel, commission_type, calculee_at')
