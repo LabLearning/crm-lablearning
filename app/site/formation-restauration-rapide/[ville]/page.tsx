@@ -176,9 +176,9 @@ export default async function SiteVille({ params }: { params: { ville: string } 
         </div>
       </section>
 
-      <section className="max-w-3xl mx-auto px-5 md:px-8 py-12 md:py-14">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-14">
         <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Questions fréquentes</h2>
-        <div className="mt-6 space-y-3">
+        <div className="mt-6 grid gap-3 md:grid-cols-2 items-start">
           {faq.map((f) => (
             <details key={f.q} className="group rounded-2xl bg-white ring-1 ring-black/5 open:ring-[#205040]/20">
               <summary className="flex items-center justify-between gap-4 cursor-pointer list-none px-5 py-4">
