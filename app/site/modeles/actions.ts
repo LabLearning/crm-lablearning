@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { isPlaceholderEmail } from '@/lib/utils'
 import { ageHorodatage } from '@/lib/inscription-formateur-garde'
 import { rendreModele, signerTelechargement, VALIDITE_LIEN_JOURS } from '@/lib/modeles-acces'
-import { CLE_GARDE_MODELES, EFFECTIFS, ORG_SITE_MODELES, modeleParSlug, nomModele, type DemandeModele, type ResultatModele } from '@/lib/modeles'
+import { CLE_GARDE_MODELES, EFFECTIFS, ORG_SITE_MODELES, modeleParSlug, nomModele, formatModele, type DemandeModele, type ResultatModele } from '@/lib/modeles'
 
 const SITE = 'https://www.lab-learning.fr'
 const GABARIT = 'modele_site'
@@ -170,7 +170,7 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
       subject: `Votre modèle : ${nomModele(modele)}`,
       docTitle: 'Votre modèle est prêt',
       intro: `Voici le modèle que vous avez demandé sur notre site, en pièce jointe. Il s’imprime en A4 paysage et se remplit à la main. ${esc(modele.usage[0])}`,
-      metadata: [['Modèle', esc(modele.titre)], ['Format', esc(modele.format)]],
+      metadata: [['Modèle', esc(modele.titre)], ['Format', esc(formatModele(modele))]],
       ctaLabel: 'Télécharger le modèle',
       ctaUrl: `${SITE}${chemin}`,
       footerNote: `Lien valable ${VALIDITE_LIEN_JOURS} jours. Une question sur l’hygiène, la sécurité ou le financement de la formation de votre équipe ? Répondez simplement à ce message.`,

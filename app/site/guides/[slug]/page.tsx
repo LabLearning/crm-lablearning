@@ -7,7 +7,7 @@ import { jsonLd } from '../../jsonld'
 import { lienWhatsapp } from '../../whatsapp'
 import { guideParSlug, guidesPublies } from '@/lib/guides'
 import { formationsLiees } from '../../formations-liees'
-import { modelesDuGuide, apercuModele, nomModele } from '@/lib/modeles'
+import { modelesDuGuide, apercuModele, nomModele, formatModele } from '@/lib/modeles'
 import { titreFormation } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -153,7 +153,7 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
                     <img loading="lazy" src={apercuModele(m.slug)} alt="" width={1287} height={910} className="w-24 sm:w-32 shrink-0 rounded-lg ring-1 ring-black/10" />
                     <div className="min-w-0 flex-1">
                       <div className="font-heading font-semibold leading-snug text-[#14110F] group-hover:text-[#205040] transition-colors">{nomModele(m)}</div>
-                      <div className="mt-0.5 text-sm text-[#78716C]">{m.format}</div>
+                      <div className="mt-0.5 text-sm text-[#78716C]">{formatModele(m)}</div>
                     </div>
                     <span className="shrink-0 h-9 w-9 rounded-full bg-[#205040]/8 flex items-center justify-center text-[#205040] group-hover:bg-[#205040] group-hover:text-white transition-colors">
                       <Download className="h-4 w-4" />
@@ -205,7 +205,7 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
               <div className="rounded-2xl bg-[#F6F4EF] p-5">
                 <div className="font-heading text-sm font-bold uppercase tracking-wider text-[#78716C]">{modeles.length > 1 ? 'Modèles gratuits' : 'Modèle gratuit'}</div>
                 <div className="mt-3 space-y-2.5">
-                  {modeles.map((m) => (
+                  {modeles.slice(0, 4).map((m) => (
                     <Link key={m.slug} href={`/modeles/${m.slug}`} className="group flex items-center gap-3 rounded-xl bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 p-2.5 pr-3 ll-lift">
                       <img loading="lazy" src={apercuModele(m.slug)} alt="" width={1287} height={910} className="w-20 shrink-0 rounded-md ring-1 ring-black/10" />
                       <span className="min-w-0 flex-1 font-heading text-sm font-semibold leading-snug text-[#14110F] group-hover:text-[#205040] transition-colors">{nomModele(m)}</span>
@@ -213,6 +213,11 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
                     </Link>
                   ))}
                 </div>
+                {modeles.length > 4 && (
+                  <Link href="/modeles" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">
+                    Tous les modèles <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                )}
               </div>
             )}
             <div className="rounded-2xl bg-[#205040] p-5 text-white">

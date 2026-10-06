@@ -286,3 +286,62 @@ export function CarteGuide({ titre, texte: corps, chemin, serre = false }: { tit
     </View>
   )
 }
+
+// ─────────────────────────────────────────────────────────── Repères et titres
+
+/** Couleurs des repères chiffrés : du froid au chaud. */
+export const TONS = {
+  bleu: { couleur: '#1E5FA8', fond: '#E6F0FA' },
+  sarcelle: { couleur: '#0F7A6C', fond: '#E1F4F0' },
+  pin: { couleur: PIN, fond: MENTHE_CLAIRE },
+  ambre: { couleur: '#8A6A00', fond: '#FBF2D2' },
+  rouge: { couleur: '#B4441B', fond: '#FCE8DE' },
+} as const
+
+/** Repère chiffré : une valeur en grand, ce qu'elle veut dire en dessous. */
+export function Repere({ valeur, sens, texte: corps, ton = 'pin', icone, dernier = false, hauteur = 98 }: {
+  valeur: string; sens: string; texte: string; ton?: keyof typeof TONS; icone?: NomIcone; dernier?: boolean; hauteur?: number
+}) {
+  const { couleur, fond } = TONS[ton]
+  return (
+    <View style={{ flex: 1, backgroundColor: fond, borderRadius: 11, padding: 10, marginRight: dernier ? 0 : 7, minHeight: hauteur }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 6.4, fontWeight: 700, color: couleur, letterSpacing: 0.9 }}>{sens.toUpperCase()}</Text>
+        {icone && <Icone nom={icone} taille={15} couleur={couleur} />}
+      </View>
+      <Text style={{ fontFamily: 'Montserrat', fontWeight: 800, fontSize: 22, color: couleur, marginTop: 4 }}>{valeur}</Text>
+      <Text style={{ fontSize: 8, lineHeight: 1.36, color: GRIS_FONCE, marginTop: 3 }}>{ins(corps)}</Text>
+    </View>
+  )
+}
+
+/** Titre d'une partie de page, avec son pictogramme et une précision à droite. */
+export function TitreSection({ icone, titre, note, haut = 10 }: { icone: NomIcone; titre: string; note?: string; haut?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: haut, marginBottom: 6 }}>
+      <Pastille nom={icone} taille={20} />
+      <Text style={{ fontFamily: 'Montserrat', fontWeight: 700, fontSize: 11, color: PIN, marginLeft: 7 }}>{titre}</Text>
+      {note && <Text style={{ flex: 1, fontSize: 8.2, color: GRIS, marginLeft: 8 }}>{ins(note)}</Text>}
+    </View>
+  )
+}
+
+export const etiquette = { fontSize: 5.6, fontWeight: 700, color: GRIS, letterSpacing: 0.7 } as const
+
+/** Une ligne à remplir à la main, sous son libellé. */
+export const ChampLigne = ({ libelle, hauteur = 13, marge = 7 }: { libelle: string; hauteur?: number; marge?: number }) => (
+  <View style={{ marginBottom: marge }}>
+    <Text style={etiquette}>{libelle.toUpperCase()}</Text>
+    <View style={{ height: hauteur, borderBottomWidth: 0.7, borderBottomColor: SURFACE_400 }} />
+  </View>
+)
+
+/** Bandeau teinté d'une ligne ou deux, avec son pictogramme. */
+export function Bandeau({ icone = 'info', children, haut = 8 }: { icone?: NomIcone; children: React.ReactNode; haut?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: TEINTE, borderRadius: 9, paddingVertical: 7, paddingHorizontal: 10, marginTop: haut }}>
+      <Pastille nom={icone} taille={18} fond="#FFFFFF" />
+      <Text style={{ flex: 1, fontSize: 7.8, lineHeight: 1.4, color: GRIS_FONCE, marginLeft: 8 }}>{insEnfants(children)}</Text>
+    </View>
+  )
+}

@@ -5,7 +5,7 @@ import { Kicker } from '../../Kicker'
 import { jsonLd } from '../../jsonld'
 import { formationsLiees } from '../../formations-liees'
 import { ModeleForm } from '../ModeleForm'
-import { MODELES, CLE_GARDE_MODELES, apercuModele, modeleParSlug, nomModele } from '@/lib/modeles'
+import { MODELES, CLE_GARDE_MODELES, apercuModele, formatModele, modeleParSlug, nomModele } from '@/lib/modeles'
 import { guideParSlug } from '@/lib/guides'
 import { emettreHorodatage } from '@/lib/inscription-formateur-garde'
 import { titreFormation } from '@/lib/utils'
@@ -39,7 +39,10 @@ export default async function SiteModele({ params }: { params: { slug: string } 
   if (!m) notFound()
   const liees = await formationsLiees(m.formations)
   const guides = m.guides.map((g) => guideParSlug(g)).filter((g) => g && g.publie) as NonNullable<ReturnType<typeof guideParSlug>>[]
+  // Les autres modèles : ceux du même thème d'abord, le classeur complet en tête
   const autres = MODELES.filter((x) => x.slug !== m.slug)
+    .sort((a, b) => Number(!!b.vedette) - Number(!!a.vedette) || Number(b.theme === m.theme) - Number(a.theme === m.theme))
+    .slice(0, 6)
   const nom = nomModele(m)
 
   const schemas = [
@@ -81,7 +84,7 @@ export default async function SiteModele({ params }: { params: { slug: string } 
           <h1 className="mt-3 ll-display ll-fluid-h1 text-[#14110F] text-balance max-w-3xl">{m.titre}</h1>
           <p className="mt-5 text-lg text-[#57534E] leading-relaxed max-w-2xl">{m.accroche}</p>
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#78716C]">
-            <span className="inline-flex items-center gap-1.5"><Printer className="h-4 w-4" />{m.format}</span>
+            <span className="inline-flex items-center gap-1.5"><Printer className="h-4 w-4" />{formatModele(m)}</span>
             <span className="inline-flex items-center gap-1.5"><CalendarCheck className="h-4 w-4" />Mis à jour le {dateFr(m.majLe)}</span>
           </div>
         </div>
@@ -110,12 +113,14 @@ export default async function SiteModele({ params }: { params: { slug: string } 
             ))}
           </ul>
 
-          <div className="mt-8 grid gap-3 rounded-3xl bg-[#F6F4EF] p-4 sm:grid-cols-2 sm:p-5">
-            {([2, 3] as const).map((n) => (
-              <img key={n} loading="lazy" src={apercuModele(m.slug, n)} alt={`Aperçu de la page ${n} : ${nom.toLowerCase()}`} width={1287} height={910}
-                className="w-full rounded-lg shadow-[0_6px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/5" />
-            ))}
-          </div>
+          {m.apercus.length > 1 && (
+            <div className={`mt-8 grid gap-3 rounded-3xl bg-[#F6F4EF] p-4 sm:p-5 ${m.apercus.length > 2 ? 'sm:grid-cols-2' : ''}`}>
+              {m.apercus.slice(1).map((page, i) => (
+                <img key={page} loading="lazy" src={apercuModele(m.slug, i + 2)} alt={`Aperçu de la page ${page} : ${nom.toLowerCase()}`} width={1287} height={910}
+                  className="w-full rounded-lg shadow-[0_6px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/5" />
+              ))}
+            </div>
+          )}
 
           <h2 className="mt-10 ll-display text-2xl md:text-[1.9rem] text-[#14110F]">Comment s&apos;en servir</h2>
           <ol className="mt-5 space-y-4">
@@ -172,8 +177,11 @@ export default async function SiteModele({ params }: { params: { slug: string } 
       )}
 
       <section className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-20">
-        <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Les autres modèles</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="flex items-end justify-between gap-4">
+          <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Les autres modèles</h2>
+          <Link href="/modeles" className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-[#205040] hover:gap-2.5 transition-all">Tous les modèles <ArrowRight className="h-3.5 w-3.5" /></Link>
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           {autres.map((x) => (
             <Link key={x.slug} href={`/modeles/${x.slug}`} className="group flex flex-col rounded-2xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 ll-lift">
               <div className="bg-[#F6F4EF] px-4 pt-4">
@@ -181,7 +189,7 @@ export default async function SiteModele({ params }: { params: { slug: string } 
               </div>
               <div className="p-5">
                 <div className="font-heading font-semibold text-[#14110F] leading-snug group-hover:text-[#205040] transition-colors">{nomModele(x)}</div>
-                <div className="mt-1 text-sm text-[#78716C]">{x.format}</div>
+                <div className="mt-1 text-sm text-[#78716C]">{formatModele(x)}</div>
               </div>
             </Link>
           ))}

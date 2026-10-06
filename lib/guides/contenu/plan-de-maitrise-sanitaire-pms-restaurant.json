@@ -1,0 +1,283 @@
+{
+  "slug": "plan-de-maitrise-sanitaire-pms-restaurant",
+  "titre": "Plan de maîtrise sanitaire (PMS) : à quoi il sert et ce qu’il doit contenir",
+  "titreCourt": "PMS restaurant : définition et contenu",
+  "description": "Le plan de maîtrise sanitaire (PMS) expliqué simplement : définition, obligation, contenu, documents à tenir. Avec une trame gratuite à télécharger.",
+  "chapeau": "Le PMS, c’est tout ce que votre restaurant fait pour servir des aliments sûrs, et les preuves que vous le faites. Voici ce qu’il contient, qui doit l’avoir et comment le tenir à jour sans y passer vos soirées.",
+  "categorie": "Hygiène alimentaire",
+  "publie": true,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 7,
+  "image": "/site/photos/guides/plan-de-maitrise-sanitaire-pms-restaurant.webp",
+  "imageAlt": "Classeur ouvert sur un plan de travail en inox dans une cuisine de restauration rapide, avec des feuilles de relevé, un stylo et un thermomètre sonde",
+  "aRetenir": [
+    "Le PMS décrit les mesures que vous prenez pour garantir l’hygiène et la sécurité de vos aliments.",
+    "Il repose sur trois piliers : les bonnes pratiques d’hygiène, la méthode HACCP, la traçabilité avec la gestion des produits non conformes.",
+    "Aucun modèle n’est imposé : il doit décrire votre établissement, pas un restaurant type.",
+    "Lors d’un contrôle, ce sont vos enregistrements qui prouvent que le plan est appliqué."
+  ],
+  "sections": [
+    {
+      "id": "definition",
+      "titre": "Qu’est-ce qu’un plan de maîtrise sanitaire ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plan de maîtrise sanitaire, ou **PMS**, décrit les mesures prises par un établissement pour assurer l’hygiène et la sécurité sanitaire de ce qu’il produit, face aux dangers **biologiques** (les microbes), **physiques** (les corps étrangers) et **chimiques** (les résidus de produits)."
+        },
+        {
+          "type": "p",
+          "texte": "Ce n’est pas un formulaire à remplir une fois : c’est un **classeur vivant**, qui réunit vos règles, vos plans et les relevés que l’équipe remplit chaque jour."
+        }
+      ]
+    },
+    {
+      "id": "obligation",
+      "titre": "Est-il obligatoire ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le règlement européen sur l’hygiène des denrées alimentaires impose deux choses à tout exploitant, restaurant rapide compris : respecter les **règles générales d’hygiène**, et mettre en place des **procédures fondées sur les principes HACCP**, puis en garder la trace."
+        },
+        {
+          "type": "p",
+          "texte": "S’y ajoutent la **traçabilité** des denrées et le retrait des produits dangereux, exigés par un second règlement. En France, l’ensemble de ces mesures et de leurs preuves porte un nom : le plan de maîtrise sanitaire. Les services de l’État le présentent comme l’un des documents essentiels en matière d’hygiène et de sécurité alimentaire."
+        },
+        {
+          "type": "encadre",
+          "titre": "Pas de modèle officiel",
+          "texte": "Aucun texte n’impose une forme ou un nombre de pages. Le règlement demande des procédures adaptées à la nature et à la taille de l’entreprise : un restaurant de cinq salariés n’a pas à produire le dossier d’une usine.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "contenu",
+      "titre": "Que contient un PMS ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Trois piliers, que l’on retrouve dans tous les plans :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Pilier",
+            "Ce qu’il couvre",
+            "Les documents"
+          ],
+          "lignes": [
+            [
+              "**Bonnes pratiques d’hygiène**",
+              "Équipe formée et en tenue, locaux et matériel entretenus, nettoyage, nuisibles, eau, températures, réception",
+              "Plan de nettoyage, plan de lutte contre les nuisibles, relevés de température, attestations de formation"
+            ],
+            [
+              "**Plan HACCP**",
+              "L’analyse de vos dangers, étape par étape, et les points à surveiller",
+              "Analyse des dangers, limites à respecter, actions correctives"
+            ],
+            [
+              "**Traçabilité et non-conformités**",
+              "D’où vient chaque produit, quoi faire d’un produit signalé ou d’une anomalie",
+              "Bons de livraison, étiquettes, fiches de non-conformité"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bonnes-pratiques",
+      "titre": "Les bonnes pratiques d’hygiène, le socle",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "C’est la partie la plus concrète, et celle qu’un inspecteur voit en premier. Elle répond à des questions simples :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**l’équipe** : qui est formé, quelle tenue, quand et comment on se lave les mains, que fait un équipier malade ;",
+            "**les locaux et le matériel** : qui entretient quoi, comment sortent les déchets ;",
+            "**le nettoyage** : quelle zone, quel produit, quelle fréquence, qui ;",
+            "**les nuisibles** : ce qui les empêche d’entrer, qui surveille ;",
+            "**les températures** : à combien chaque enceinte doit rester, qui relève, quoi faire en cas d’écart ;",
+            "**la réception** : ce qui est contrôlé à chaque livraison, et ce qui est refusé."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Dans un restaurant rapide, deux sujets pèsent plus qu’ailleurs : les **huiles de friture**, à changer avant qu’elles ne dépassent 25 % de composés polaires, et les **allergènes**, avec le risque de la friteuse partagée."
+        }
+      ]
+    },
+    {
+      "id": "haccp",
+      "titre": "La méthode HACCP, sans jargon",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "HACCP est une façon de raisonner, pas un document. Pour chaque étape, de la livraison au client, vous vous demandez ce qui peut mal tourner et comment vous l’empêchez. Le règlement la résume en sept principes :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "lister les dangers ;",
+            "repérer les points où un contrôle est indispensable ;",
+            "fixer pour chacun une limite à ne pas dépasser ;",
+            "surveiller ;",
+            "prévoir ce que l’on fait quand la limite est dépassée ;",
+            "vérifier de temps en temps que le système fonctionne ;",
+            "garder la trace de tout cela."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un exemple : la viande hachée. Le danger, ce sont les microbes qui se multiplient si elle est mal conservée. Le point à surveiller, c’est la chambre froide. La limite, +2 °C. La surveillance, un relevé à l’ouverture et à la fermeture. Si la limite est dépassée, on contrôle la viande à cœur et on la retire si besoin. La trace, c’est la feuille de relevé du mois."
+        },
+        {
+          "type": "encadre",
+          "titre": "PMS et HACCP, ce n’est pas la même chose",
+          "texte": "Le plan HACCP est une partie du PMS. Le PMS contient aussi les bonnes pratiques d’hygiène et la traçabilité, sans lesquelles l’analyse HACCP ne tient pas.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "tracabilite",
+      "titre": "Traçabilité et produits non conformes",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Vous devez pouvoir dire **qui vous a fourni** chaque denrée. En pratique : gardez les bons de livraison, et l’étiquette ou sa photo tant que le produit est en stock. Étiquetez tout ce qui est entamé avec sa date d’ouverture."
+        },
+        {
+          "type": "p",
+          "texte": "Quand un fournisseur rappelle un produit, vous le retirez tout de suite. Quand vous pensez qu’un aliment servi peut rendre malade, vous prévenez la DDPP sans attendre. Le PMS dit qui fait quoi dans ces cas-là, avant que le problème n’arrive."
+        }
+      ]
+    },
+    {
+      "id": "enregistrements",
+      "titre": "Quels enregistrements tenir ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Ce sont eux qui prouvent que le plan est appliqué. Les plus courants en restauration rapide, chacun avec son modèle gratuit :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "le [relevé des températures](/modeles/releve-temperatures-restaurant), avec le contrôle à réception ;",
+            "le [plan de nettoyage](/modeles/plan-nettoyage-desinfection-restaurant) et son enregistrement ;",
+            "le [suivi des huiles de friture](/modeles/suivi-huiles-friture-restaurant) ;",
+            "la [fiche de traçabilité](/modeles/fiche-tracabilite-etiquettes-restaurant) et les étiquettes des produits entamés ;",
+            "le [tableau des allergènes](/modeles/tableau-allergenes-restaurant) ;",
+            "le [plan de lutte contre les nuisibles](/modeles/plan-lutte-nuisibles-restaurant) ;",
+            "la [fiche de non-conformité](/modeles/fiche-non-conformite-alerte-sanitaire) ;",
+            "le [suivi des formations de l’équipe](/modeles/suivi-formations-equipe-restaurant)."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Un relevé parfait est suspect",
+          "texte": "Des relevés remplis d’avance, ou identiques d’un jour à l’autre, desservent plus qu’une feuille manquante. Notez ce que vous lisez, y compris les écarts et ce que vous avez fait pour les corriger.",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Le règlement ne fixe pas de durée de conservation : il demande de garder ces documents pendant une période appropriée. Gardez au moins les douze derniers mois sous la main."
+        }
+      ]
+    },
+    {
+      "id": "redaction",
+      "titre": "Qui le rédige, et comment le tenir à jour ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le responsable de l’établissement, avec la personne formée à l’hygiène alimentaire. La [formation de 14 heures](/guides/formation-hygiene-alimentaire-restauration-rapide) sert précisément à cela : son programme réglementaire couvre la mise en place d’un plan de maîtrise sanitaire."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "Partez d’une trame, puis retirez ce qui ne vous concerne pas et ajoutez ce qui manque.",
+            "Écrivez ce que vous faites réellement, pas ce qu’il faudrait faire.",
+            "Reprenez le plan à chaque changement de carte, de matériel, de fournisseur ou d’organisation, et au moins une fois par an."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Notre [trame de PMS gratuite](/modeles/plan-de-maitrise-sanitaire-pms-restauration-rapide) réunit les pages de présentation et toutes les feuilles de relevé dans un seul classeur de 32 pages. Pendant nos formations hygiène alimentaire, le formateur travaille sur le plan de maîtrise sanitaire de votre établissement, avec votre équipe."
+        }
+      ]
+    },
+    {
+      "id": "erreurs",
+      "titre": "Les erreurs qui reviennent",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "Un classeur acheté tout fait, jamais adapté : il décrit un autre restaurant.",
+            "Des relevés remplis en fin de semaine, de mémoire.",
+            "Un plan de nettoyage qui cite des produits que vous n’utilisez plus.",
+            "Un tableau des allergènes qui ne suit pas la carte.",
+            "Un classeur que seul le gérant sait trouver."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Voyez aussi [comment se déroule un contrôle d’hygiène](/guides/controle-hygiene-restaurant-ddpp) et ce que l’inspecteur demande à voir."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Le PMS est-il obligatoire pour un restaurant rapide ?",
+      "r": "Oui, dans son principe : tout exploitant du secteur alimentaire doit appliquer les règles d’hygiène et mettre en place des procédures fondées sur les principes HACCP, adaptées à sa taille. En France, cet ensemble de mesures et de preuves s’appelle le plan de maîtrise sanitaire."
+    },
+    {
+      "q": "Existe-t-il un modèle officiel de PMS ?",
+      "r": "Non. Aucun texte n’impose une forme. Vous pouvez partir d’une trame, à condition de l’adapter : le plan doit décrire votre établissement."
+    },
+    {
+      "q": "Quelle différence entre PMS et HACCP ?",
+      "r": "Le plan HACCP est l’une des trois parties du PMS, avec les bonnes pratiques d’hygiène et la traçabilité."
+    },
+    {
+      "q": "Combien de temps faut-il garder les relevés ?",
+      "r": "Le règlement demande de les conserver pendant une période appropriée, sans fixer de durée. Garder au moins les douze derniers mois à portée de main est une bonne pratique."
+    },
+    {
+      "q": "Qui contrôle le PMS ?",
+      "r": "Les agents de la DDPP, lors des contrôles sanitaires. Ils regardent ce qui se fait en cuisine, puis demandent les enregistrements."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Services de l’État dans la Meuse : Qu’est-ce que le PMS ?",
+      "url": "https://www.meuse.gouv.fr/Actions-de-l-Etat/Alimentation-consommation-et-commerce/Alimentation-et-Hygiene-alimentaire/Qu-est-ce-le-PMS"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Règlement (CE) n° 178/2002, articles 18 et 19 : traçabilité et retrait des denrées",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32002R0178"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Décret n° 2008-184 du 26 février 2008, article 8 : huiles de friture",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000018191070"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire"
+}

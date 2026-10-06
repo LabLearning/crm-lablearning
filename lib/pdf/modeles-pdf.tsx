@@ -39,15 +39,14 @@ const ALLERGENES: { court: string; long: string; exemples: string; icone: NomIco
   { court: 'Mollusques', long: 'Mollusques', exemples: 'moules, calamars, poulpe, huîtres', icone: 'coquillage' },
 ]
 
-export function TableauAllergenesPDF() {
+export function PagesAllergenes({ pied = 'Tableau des allergènes' }: { pied?: string }) {
   const colonnes: Colonne[] = [
     { titre: 'Plat, sandwich, sauce, dessert…', flex: 1, gras: true },
     ...ALLERGENES.map((a) => ({ titre: a.court, largeur: 43, icone: a.icone, coche: true })),
   ]
   const moitie = Math.ceil(ALLERGENES.length / 2)
-  const pied = 'Tableau des allergènes'
   return (
-    <Document title="Tableau des allergènes" author="Lab Learning" subject="Modèle gratuit à imprimer">
+    <>
       <Feuille icone="ble" surTitre="Hygiène alimentaire · à remplir et à afficher" titre="Tableau des allergènes" sousTitre="À afficher ou à tenir à la disposition de vos clients. Cochez chaque allergène présent dans le plat." pied={pied}>
         <Champs champs={[{ libelle: 'Établissement', flex: 2 }, { libelle: 'Mis à jour le' }, { libelle: 'Par' }]} />
         <Tableau colonnes={colonnes} lignes={vides(18, colonnes.length)} hauteur={20.6} entete={46} />
@@ -125,7 +124,7 @@ export function TableauAllergenesPDF() {
           </View>
         </View>
       </FeuilleLibre>
-    </Document>
+    </>
   )
 }
 
@@ -140,7 +139,7 @@ const REPERES: { valeur: string; sens: string; denrees: string; couleur: string;
   { valeur: '+63 °C', sens: 'Au moins', denrees: 'Plats chauds, jusqu’au service', couleur: '#B4441B', fond: '#FCE8DE', icone: 'flamme' },
 ]
 
-export function ReleveTemperaturesPDF() {
+export function PagesTemperatures({ pied = 'Relevé des températures' }: { pied?: string }) {
   const enceintes = [1, 2, 3, 4]
   const colonnes: Colonne[] = [
     { titre: 'Jour', largeur: 28, centre: true, gras: true },
@@ -149,9 +148,8 @@ export function ReleveTemperaturesPDF() {
     { titre: 'Visa', largeur: 46, centre: true },
   ]
   const lignes = Array.from({ length: 31 }, (_, i) => [String(i + 1), ...Array.from({ length: colonnes.length - 1 }, () => null as string | null)])
-  const pied = 'Relevé des températures'
   return (
-    <Document title="Relevé des températures" author="Lab Learning" subject="Modèle gratuit à imprimer">
+    <>
       <Feuille icone="thermometre" surTitre="Hygiène alimentaire · une feuille par mois" titre="Relevé des températures" sousTitre="Relevez chaque enceinte à l’ouverture et à la fermeture, et notez toute anomalie." pied={pied}>
         <Champs hauteur={23} marge={7} champs={[{ libelle: 'Établissement', flex: 2 }, { libelle: 'Mois' }, { libelle: 'Année' }]} />
         <Tableau
@@ -280,7 +278,7 @@ export function ReleveTemperaturesPDF() {
           ))}
         </View>
       </Feuille>
-    </Document>
+    </>
   )
 }
 
@@ -314,11 +312,10 @@ const ETAPES_NETTOYAGE: { icone: NomIcone; titre: string; texte: string }[] = [
   { icone: 'vent', titre: 'Sécher', texte: 'À l’air libre ou au papier à usage unique, jamais au torchon.' },
 ]
 
-export function PlanNettoyagePDF() {
+export function PagesNettoyage({ pied = 'Plan de nettoyage et de désinfection' }: { pied?: string }) {
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-  const pied = 'Plan de nettoyage et de désinfection'
   return (
-    <Document title="Plan de nettoyage et de désinfection" author="Lab Learning" subject="Modèle gratuit à imprimer">
+    <>
       <Feuille icone="seau" surTitre="Hygiène alimentaire · à compléter et à afficher" titre="Plan de nettoyage et de désinfection" sousTitre="Qui nettoie quoi, avec quel produit, à quelle fréquence. Complétez les produits d’après leur fiche technique." pied={pied}>
         <Champs champs={[{ libelle: 'Établissement', flex: 2 }, { libelle: 'Mis à jour le' }, { libelle: 'Par' }]} />
         <Tableau
@@ -331,7 +328,7 @@ export function PlanNettoyagePDF() {
             { titre: 'Qui', largeur: 74 },
           ]}
           lignes={[...ZONES_NETTOYAGE.map(([z, f]) => [z, f, null, null, null, null]), ...vides(3, 6)]}
-          hauteur={20.7}
+          hauteur={20.2}
         />
       </Feuille>
 
@@ -408,7 +405,7 @@ export function PlanNettoyagePDF() {
           entete={19}
         />
       </Feuille>
-    </Document>
+    </>
   )
 }
 
@@ -487,10 +484,9 @@ const Echelle = ({ titre, niveaux }: { titre: string; niveaux: string[] }) => (
   </View>
 )
 
-export function TrameDuerpPDF() {
-  const pied = 'Trame de document unique'
+export function PagesDuerp({ pied = 'Trame de document unique' }: { pied?: string }) {
   return (
-    <Document title="Trame de document unique (DUERP)" author="Lab Learning" subject="Modèle gratuit à imprimer">
+    <>
       <Feuille icone="bouclier" surTitre="Prévention des risques · trame à compléter" titre="Document unique d’évaluation des risques" sousTitre="Trame pour un restaurant rapide. Les lignes sont des exemples : gardez ce qui vous concerne, complétez le reste." pied={pied}>
         <Champs marge={6} hauteur={23} champs={[{ libelle: 'Entreprise', flex: 2 }, { libelle: 'Établissement', flex: 1.5 }, { libelle: 'Effectif', flex: 0.7 }, { libelle: 'Rédigé par', flex: 1.3 }, { libelle: 'Créé le', flex: 0.8 }, { libelle: 'Mis à jour le', flex: 0.8 }]} />
         <Tableau
@@ -568,6 +564,15 @@ export function TrameDuerpPDF() {
           </View>
         </View>
       </Feuille>
-    </Document>
+    </>
   )
 }
+
+// ─────────────────────────────────────────────────────────── Documents
+
+const enDocument = (titre: string, pages: React.ReactNode) => <Document title={titre} author="Lab Learning" subject="Modèle gratuit à imprimer">{pages}</Document>
+
+export const TableauAllergenesPDF = () => enDocument('Tableau des allergènes', <PagesAllergenes />)
+export const ReleveTemperaturesPDF = () => enDocument('Relevé des températures', <PagesTemperatures />)
+export const PlanNettoyagePDF = () => enDocument('Plan de nettoyage et de désinfection', <PagesNettoyage />)
+export const TrameDuerpPDF = () => enDocument('Trame de document unique (DUERP)', <PagesDuerp />)

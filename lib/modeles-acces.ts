@@ -5,6 +5,7 @@
  */
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createElement } from 'react'
+import type * as React from 'react'
 import { modeleParSlug } from '@/lib/modeles'
 
 const secret = () => process.env.INSCRIPTION_FORMATEUR_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -31,13 +32,21 @@ export function telechargementValide(slug: string, jeton: unknown): boolean {
 export async function rendreModele(slug: string): Promise<Buffer | null> {
   if (!modeleParSlug(slug)) return null
   const { renderToBuffer } = await import('@react-pdf/renderer')
-  const pdf = await import('@/lib/pdf/modeles-pdf')
-  const composant = {
+  const [pdf, pms] = await Promise.all([import('@/lib/pdf/modeles-pdf'), import('@/lib/pdf/modeles-pms')])
+  const composant = ({
+    'plan-de-maitrise-sanitaire-pms-restauration-rapide': pms.PmsCompletPDF,
     'tableau-allergenes-restaurant': pdf.TableauAllergenesPDF,
     'releve-temperatures-restaurant': pdf.ReleveTemperaturesPDF,
     'plan-nettoyage-desinfection-restaurant': pdf.PlanNettoyagePDF,
     'document-unique-duerp-restauration-rapide': pdf.TrameDuerpPDF,
-  }[slug]
+    'suivi-huiles-friture-restaurant': pms.SuiviHuilesPDF,
+    'fiche-tracabilite-etiquettes-restaurant': pms.TracabilitePDF,
+    'refroidissement-remise-en-temperature': pms.RefroidissementPDF,
+    'plan-lutte-nuisibles-restaurant': pms.PlanNuisiblesPDF,
+    'fiche-non-conformite-alerte-sanitaire': pms.NonConformitesPDF,
+    'affiche-lavage-des-mains': pms.AfficheLavageMainsPDF,
+    'suivi-formations-equipe-restaurant': pms.SuiviFormationsPDF,
+  } as Record<string, () => React.ReactElement>)[slug]
   if (!composant) return null
   return Buffer.from(await renderToBuffer(createElement(composant) as any))
 }

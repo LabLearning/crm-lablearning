@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { SiteNav } from './SiteNav'
+import { SiteBandeau } from './SiteBandeau'
 import { SiteFooter } from './SiteFooter'
 import { CookieBanner } from './CookieBanner'
 
@@ -101,6 +102,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(SCHEMA_ORGANISATION) }}
       />
+      <SiteBandeau />
       <SiteNav />
       <main>{children}</main>
       <SiteFooter />
