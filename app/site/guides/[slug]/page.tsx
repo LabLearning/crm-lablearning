@@ -43,6 +43,23 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
   const [liees] = await Promise.all([formationsLiees(g.formations)])
   const autres = guidesPublies().filter((x) => x.slug !== g.slug).slice(0, 3)
   const modeles = modelesDuGuide(g.slug)
+  const sommaire = (
+    <nav aria-label="Sommaire" className="rounded-2xl bg-white ring-1 ring-black/5 p-5">
+      <div className="font-heading text-sm font-bold uppercase tracking-wider text-[#78716C]">Sommaire</div>
+      <ol className="mt-3 space-y-1.5 text-[15px]">
+        {g.sections.map((s, i) => (
+          <li key={s.id}>
+            <a href={`#${s.id}`} className="inline-flex gap-2 text-[#44403C] hover:text-[#205040] transition-colors">
+              <span className="tabular-nums text-[#A8A29E]">{i + 1}.</span>{s.titre}
+            </a>
+          </li>
+        ))}
+        {g.faq.length > 0 && (
+          <li><a href="#questions" className="inline-flex gap-2 text-[#44403C] hover:text-[#205040] transition-colors"><span className="tabular-nums text-[#A8A29E]">{g.sections.length + 1}.</span>Questions fréquentes</a></li>
+        )}
+      </ol>
+    </nav>
+  )
 
   const schemas = [
     {
@@ -87,13 +104,13 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
       <article>
         <header className="relative overflow-hidden">
           <div className="absolute inset-0 -z-10 ll-grid-faint" />
-          <div className="max-w-3xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-8">
+          <div className="max-w-6xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-10">
             <Link href="/guides" className="inline-flex items-center gap-1.5 text-sm text-[#57534E] hover:text-[#205040] transition-colors">
               <ArrowLeft className="h-4 w-4" /> Tous les guides
             </Link>
             <div className="mt-6"><Kicker>{g.categorie}</Kicker></div>
-            <h1 className="mt-3 ll-display ll-fluid-h1 text-[#14110F] text-balance">{g.titre}</h1>
-            <p className="mt-5 text-lg md:text-xl text-[#57534E] leading-relaxed">{g.chapeau}</p>
+            <h1 className="mt-3 ll-display ll-fluid-h1 text-[#14110F] text-balance max-w-4xl">{g.titre}</h1>
+            <p className="mt-5 text-lg md:text-xl text-[#57534E] leading-relaxed max-w-3xl">{g.chapeau}</p>
             <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#78716C]">
               <span className="inline-flex items-center gap-1.5"><CalendarCheck className="h-4 w-4" />Mis à jour le {dateFr(g.majLe)}</span>
               <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" />{g.lecture} min de lecture</span>
@@ -101,11 +118,13 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
           </div>
         </header>
 
-        <div className="max-w-4xl mx-auto px-5 md:px-8">
-          <img src={g.image} alt={g.imageAlt} width={1600} height={900} className="aspect-[16/9] w-full rounded-3xl object-cover ring-1 ring-black/5" />
+        <div className="max-w-6xl mx-auto px-5 md:px-8">
+          <img src={g.image} alt={g.imageAlt} width={1600} height={900} className="aspect-[16/9] lg:aspect-[21/9] w-full rounded-3xl object-cover ring-1 ring-black/5" />
         </div>
 
-        <div className="max-w-3xl mx-auto px-5 md:px-8 py-10 md:py-14">
+        {/* Sur grand écran : le texte à gauche, le sommaire et les modèles à droite, qui suivent la lecture */}
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-10 md:py-14 grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-14">
+        <div className="min-w-0">
           {g.aRetenir.length > 0 && (
             <aside className="rounded-3xl bg-[#205040] text-white p-6 md:p-7">
               <div className="font-heading font-bold text-lg">À retenir</div>
@@ -119,28 +138,14 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
             </aside>
           )}
 
-          <nav aria-label="Sommaire" className="mt-8 rounded-2xl bg-white ring-1 ring-black/5 p-5">
-            <div className="font-heading text-sm font-bold uppercase tracking-wider text-[#78716C]">Sommaire</div>
-            <ol className="mt-3 space-y-1.5 text-[15px]">
-              {g.sections.map((s, i) => (
-                <li key={s.id}>
-                  <a href={`#${s.id}`} className="inline-flex gap-2 text-[#44403C] hover:text-[#205040] transition-colors">
-                    <span className="tabular-nums text-[#A8A29E]">{i + 1}.</span>{s.titre}
-                  </a>
-                </li>
-              ))}
-              {g.faq.length > 0 && (
-                <li><a href="#questions" className="inline-flex gap-2 text-[#44403C] hover:text-[#205040] transition-colors"><span className="tabular-nums text-[#A8A29E]">{g.sections.length + 1}.</span>Questions fréquentes</a></li>
-              )}
-            </ol>
-          </nav>
+          <div className="mt-8 lg:hidden">{sommaire}</div>
 
           <div className="mt-12">
             <GuideCorps sections={g.sections} />
           </div>
 
           {modeles.length > 0 && (
-            <aside className="mt-12 rounded-3xl bg-[#F6F4EF] p-5 md:p-6">
+            <aside className="mt-12 rounded-3xl bg-[#F6F4EF] p-5 md:p-6 lg:hidden">
               <div className="font-heading text-lg font-bold text-[#14110F]">{modeles.length > 1 ? 'Modèles gratuits à imprimer' : 'Modèle gratuit à imprimer'}</div>
               <div className="mt-4 space-y-3">
                 {modeles.map((m) => (
@@ -191,6 +196,34 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
               </p>
             </section>
           )}
+        </div>
+
+        <aside className="hidden lg:block">
+          <div className="sticky top-28 space-y-5">
+            {sommaire}
+            {modeles.length > 0 && (
+              <div className="rounded-2xl bg-[#F6F4EF] p-5">
+                <div className="font-heading text-sm font-bold uppercase tracking-wider text-[#78716C]">{modeles.length > 1 ? 'Modèles gratuits' : 'Modèle gratuit'}</div>
+                <div className="mt-3 space-y-2.5">
+                  {modeles.map((m) => (
+                    <Link key={m.slug} href={`/modeles/${m.slug}`} className="group flex items-center gap-3 rounded-xl bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 p-2.5 pr-3 ll-lift">
+                      <img loading="lazy" src={apercuModele(m.slug)} alt="" width={1287} height={910} className="w-20 shrink-0 rounded-md ring-1 ring-black/10" />
+                      <span className="min-w-0 flex-1 font-heading text-sm font-semibold leading-snug text-[#14110F] group-hover:text-[#205040] transition-colors">{nomModele(m)}</span>
+                      <Download className="h-4 w-4 shrink-0 text-[#205040]" />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="rounded-2xl bg-[#205040] p-5 text-white">
+              <div className="font-heading font-bold">Une question sur votre établissement ?</div>
+              <p className="mt-1.5 text-sm text-white/85 leading-relaxed">Nous regardons avec vous ce qui s&apos;applique à votre équipe.</p>
+              <Link href="/contact" className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[#205040] hover:bg-white/90 transition-colors">
+                Nous contacter <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </aside>
         </div>
       </article>
 

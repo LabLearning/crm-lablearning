@@ -73,7 +73,7 @@ export default async function SiteBranche({ params }: { params: { slug: string }
       <section className="relative overflow-hidden border-b border-[#205040]/10">
         <img src={`/site/metiers/${b.img}.webp`} alt={`Formation ${b.label.toLowerCase()}`} className="absolute inset-0 -z-10 h-full w-full object-cover" />
         <div className="absolute inset-0 -z-10" style={{ background: `linear-gradient(120deg, ${b.from}E6 0%, ${b.to}B3 55%, rgba(0,0,0,0.55) 100%)` }} />
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pt-10 md:pt-14 pb-14 md:pb-20 text-white">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-10 md:pt-14 pb-14 md:pb-20 text-white">
           <Link href="/formations" className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" /> Tous les métiers
           </Link>

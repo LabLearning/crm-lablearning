@@ -128,7 +128,7 @@ export default function RecrutementPage({ searchParams }: { searchParams: { post
   const posteInitial = POSTES_CANDIDATURE.some((p) => p.cle === searchParams?.poste) ? String(searchParams.poste) : null
   return (
     <>
-      <section className="max-w-4xl mx-auto px-5 md:px-8 pt-16 md:pt-20 pb-4">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-6">
         <span className="ll-kicker">Recrutement</span>
         <h1 className="mt-4 ll-display ll-fluid-h1 text-[#14110F] text-balance">
           Devenez formateur Lab Learning
@@ -149,7 +149,7 @@ export default function RecrutementPage({ searchParams }: { searchParams: { post
         </a>
       </section>
 
-      <section className="max-w-4xl mx-auto px-5 md:px-8 py-10 space-y-6">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 py-10 space-y-6">
         {POSTES.map((p, i) => {
           const Icone = p.icone
           const cle = POSTES_CANDIDATURE[i]?.cle
@@ -207,29 +207,33 @@ export default function RecrutementPage({ searchParams }: { searchParams: { post
       </section>
 
       <section id="postuler" className="scroll-mt-24 bg-[#F6F4EF]">
-        <div className="max-w-4xl mx-auto px-5 md:px-8 py-14 md:py-16">
-          <span className="ll-kicker">Candidature</span>
-          <h2 className="mt-4 ll-display text-2xl md:text-3xl text-[#14110F] text-balance">Postulez en deux minutes</h2>
-          <p className="mt-3 max-w-2xl text-[#57534E] leading-relaxed">
-            Pas de lettre de motivation ni de compte à créer. Dites-nous qui vous êtes et ce que vous savez transmettre ; nous vous recontactons.
-          </p>
-          <ol className="mt-7 grid gap-3 md:grid-cols-3">
-            {ETAPES_RECRUTEMENT.map((e, i) => (
-              <li key={e.t} className="rounded-2xl bg-white ring-1 ring-black/5 p-5">
-                <div className="font-heading text-sm font-bold text-[#205040] tabular-nums">Étape {i + 1}</div>
-                <div className="mt-1 font-heading font-semibold text-[#14110F]">{e.t}</div>
-                <p className="mt-1.5 text-sm text-[#57534E] leading-relaxed">{e.d}</p>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-8">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 md:py-20 grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
+          <div>
+            <span className="ll-kicker">Candidature</span>
+            <h2 className="mt-4 ll-display text-2xl md:text-3xl text-[#14110F] text-balance">Postulez en deux minutes</h2>
+            <p className="mt-3 text-[#57534E] leading-relaxed">
+              Pas de lettre de motivation ni de compte à créer. Dites-nous qui vous êtes et ce que vous savez transmettre ; nous vous recontactons.
+            </p>
+            <ol className="mt-7 space-y-3">
+              {ETAPES_RECRUTEMENT.map((e, i) => (
+                <li key={e.t} className="rounded-2xl bg-white ring-1 ring-black/5 p-5">
+                  <div className="font-heading text-sm font-bold text-[#205040] tabular-nums">Étape {i + 1}</div>
+                  <div className="mt-1 font-heading font-semibold text-[#14110F]">{e.t}</div>
+                  <p className="mt-1.5 text-sm text-[#57534E] leading-relaxed">{e.d}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-6 text-sm text-[#78716C] leading-relaxed">
+              Conformément à notre démarche qualité (Qualiopi), chaque candidature fait l&apos;objet d&apos;une vérification des compétences :
+              analyse du dossier, entretien, puis évaluation continue sur les premières sessions.
+            </p>
+            <p className="mt-3 text-sm text-[#78716C] leading-relaxed">
+              Vous préférez écrire ? <a href={`mailto:${EMAIL_RECRUTEMENT}?subject=Candidature formateur`} className="font-semibold text-[#205040] underline underline-offset-2">{EMAIL_RECRUTEMENT}</a>
+            </p>
+          </div>
+          <div className="min-w-0">
             <CandidatureForm key={posteInitial || 'spontanee'} jetonPage={emettreHorodatage(CLE_GARDE_CANDIDATURE)} posteInitial={posteInitial} />
           </div>
-          <p className="mt-5 text-sm text-[#78716C] leading-relaxed">
-            Conformément à notre démarche qualité (Qualiopi), chaque candidature fait l&apos;objet d&apos;une vérification des compétences :
-            analyse du dossier, entretien, puis évaluation continue sur les premières sessions.
-            Vous préférez écrire ? <a href={`mailto:${EMAIL_RECRUTEMENT}?subject=Candidature formateur`} className="font-semibold text-[#205040] underline underline-offset-2">{EMAIL_RECRUTEMENT}</a>
-          </p>
         </div>
       </section>
     </>
