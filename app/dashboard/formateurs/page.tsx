@@ -36,12 +36,20 @@ export default async function FormateursPage() {
     visible: ['super_admin', 'gestionnaire', 'commercial'].includes(session.user.role),
   }
 
+  // Candidatures déposées sur le site : fiches créées par le formulaire de recrutement, encore inactives et à étudier
+  const { data: depots } = await supabase.from('formateur_inscriptions').select('formateur_id')
+    .eq('organization_id', session.organization.id).eq('payload->>origine', 'candidature').eq('resultat', 'cree').limit(1000)
+  const deposees = new Set(((depots || []) as any[]).map((d) => d.formateur_id))
+  const candidatIds = (formateurs || []).filter((f: any) => deposees.has(f.id) && !f.is_active && f.a_verifier).map((f: any) => f.id)
+
   return (
     <div className="animate-fade-in">
       <FormateursList
         formateurs={(formateurs || []) as Formateur[]}
         sessionCounts={sessionCounts}
         lienInscription={lienInscription}
+        candidatIds={candidatIds}
+        peutTraiterCandidatures={['super_admin', 'gestionnaire'].includes(session.user.role)}
       />
     </div>
   )

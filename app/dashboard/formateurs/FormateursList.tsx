@@ -15,6 +15,7 @@ import {
 } from './actions'
 import { formatDate } from '@/lib/utils'
 import { LienInscriptionButton } from './LienInscriptionButton'
+import { CandidaturesFormateurs } from './CandidaturesFormateurs'
 import { FACTURE_MODELES } from '@/lib/pdf/facture-modeles'
 import type { Formateur } from '@/lib/types/formation'
 
@@ -22,6 +23,9 @@ interface FormateursListProps {
   formateurs: Formateur[]
   sessionCounts: Record<string, number>
   lienInscription?: { token: string | null; appUrl: string; peutRegenerer: boolean; visible: boolean }
+  /** Fiches créées par une candidature du site, encore à étudier. */
+  candidatIds?: string[]
+  peutTraiterCandidatures?: boolean
 }
 
 const contratLabels: Record<string, string> = {
@@ -247,7 +251,7 @@ function SortHeader({ label, k, sort, onSort, className = '' }: {
   )
 }
 
-export function FormateursList({ formateurs, sessionCounts, lienInscription }: FormateursListProps) {
+export function FormateursList({ formateurs, sessionCounts, lienInscription, candidatIds = [], peutTraiterCandidatures = false }: FormateursListProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -357,6 +361,8 @@ export function FormateursList({ formateurs, sessionCounts, lienInscription }: F
           <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="w-full sm:w-auto">Nouveau formateur</Button>
         </div>
       </div>
+
+      <CandidaturesFormateurs candidats={formateurs.filter((f) => candidatIds.includes(f.id))} peutTraiter={peutTraiterCandidatures} />
 
       <div className="flex items-center gap-2 bg-white rounded-xl px-3 sm:py-2 border border-surface-200/60 max-w-md mb-5">
         <Search className="h-4 w-4 text-surface-400 shrink-0" />

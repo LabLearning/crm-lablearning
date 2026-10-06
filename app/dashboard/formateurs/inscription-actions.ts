@@ -73,3 +73,31 @@ export async function marquerFormateurVerifieAction(formateurId: string): Promis
   revalidatePath(`/dashboard/formateurs/${formateurId}`)
   return { success: true }
 }
+
+/**
+ * Candidature reçue par la page Recrutement du site. La retenir active la fiche
+ * (elle reste « à vérifier » tant que les pièces ne sont pas relues) ; l'écarter
+ * la laisse inactive et la sort de la liste des candidatures. Aucun message
+ * n'est envoyé au candidat : l'équipe le contacte elle-même.
+ */
+export async function traiterCandidatureFormateurAction(formateurId: string, decision: 'retenir' | 'ecarter'): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) return { success: false, error: 'Action non autorisée' }
+  if (!['retenir', 'ecarter'].includes(decision)) return { success: false, error: 'Décision inconnue' }
+  const supabase = await createServiceRoleClient()
+  const { data: f } = await supabase.from('formateurs').select('id, notes, is_active')
+    .eq('id', formateurId).eq('organization_id', session.organization.id).maybeSingle()
+  if (!f) return { success: false, error: 'Fiche introuvable' }
+
+  const auteur = `${(session.user as any).first_name || ''} ${(session.user as any).last_name || ''}`.trim()
+  const note = `[${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}] Candidature ${decision === 'retenir' ? 'retenue' : 'écartée'}${auteur ? ` par ${auteur}` : ''}.`
+  const patch = decision === 'retenir'
+    ? { is_active: true, notes: [(f as any).notes, note].filter(Boolean).join('\n') }
+    : { is_active: false, a_verifier: false, notes: [(f as any).notes, note].filter(Boolean).join('\n') }
+  const { error } = await supabase.from('formateurs').update(patch).eq('id', formateurId).eq('organization_id', session.organization.id)
+  if (error) return { success: false, error: error.message }
+  await logAudit({ action: decision === 'retenir' ? 'candidature_formateur_retenue' : 'candidature_formateur_ecartee', entity_type: 'formateur', entity_id: formateurId, details: {} })
+  revalidatePath('/dashboard/formateurs')
+  revalidatePath(`/dashboard/formateurs/${formateurId}`)
+  return { success: true }
+}
