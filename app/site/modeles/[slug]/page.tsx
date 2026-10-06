@@ -73,7 +73,7 @@ export default async function SiteModele({ params }: { params: { slug: string } 
 
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 ll-grid-faint" />
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-8">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-12 md:pt-20 pb-10">
           <Link href="/modeles" className="inline-flex items-center gap-1.5 text-sm text-[#57534E] hover:text-[#205040] transition-colors">
             <ArrowLeft className="h-4 w-4" /> Tous les modèles
           </Link>
@@ -88,8 +88,8 @@ export default async function SiteModele({ params }: { params: { slug: string } 
       </header>
 
       {/* Ordre de lecture sur téléphone : aperçu, formulaire, détail. Sur grand écran le formulaire reste à droite. */}
-      <div className="max-w-5xl mx-auto px-5 md:px-8 pb-14 grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-x-10">
-        <div className="rounded-3xl bg-[#EEF1EF] p-4 sm:p-6">
+      <div className="max-w-6xl mx-auto px-5 md:px-8 pb-16 md:pb-20 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-x-12">
+        <div className="rounded-3xl bg-[#F6F4EF] p-4 sm:p-6">
           <img src={apercuModele(m.slug)} alt={`Aperçu de la première page : ${nom.toLowerCase()}`} width={1287} height={910}
             className="w-full rounded-lg shadow-[0_6px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/5" />
         </div>
@@ -110,7 +110,7 @@ export default async function SiteModele({ params }: { params: { slug: string } 
             ))}
           </ul>
 
-          <div className="mt-8 grid gap-3 rounded-3xl bg-[#EEF1EF] p-4 sm:grid-cols-2 sm:p-5">
+          <div className="mt-8 grid gap-3 rounded-3xl bg-[#F6F4EF] p-4 sm:grid-cols-2 sm:p-5">
             {([2, 3] as const).map((n) => (
               <img key={n} loading="lazy" src={apercuModele(m.slug, n)} alt={`Aperçu de la page ${n} : ${nom.toLowerCase()}`} width={1287} height={910}
                 className="w-full rounded-lg shadow-[0_6px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/5" />
@@ -152,8 +152,8 @@ export default async function SiteModele({ params }: { params: { slug: string } 
       </div>
 
       {liees.length > 0 && (
-        <section className="bg-[#F6F4EF]">
-          <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-14">
+        <section className="bg-[#FAFAFA] border-y border-[#205040]/10">
+          <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 md:py-16">
             <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Nos formations sur ce sujet</h2>
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               {liees.map((f) => (
@@ -171,12 +171,12 @@ export default async function SiteModele({ params }: { params: { slug: string } 
         </section>
       )}
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 py-16 md:py-20">
         <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Les autres modèles</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {autres.map((x) => (
             <Link key={x.slug} href={`/modeles/${x.slug}`} className="group flex flex-col rounded-2xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 ll-lift">
-              <div className="bg-[#EEF1EF] px-4 pt-4">
+              <div className="bg-[#F6F4EF] px-4 pt-4">
                 <img loading="lazy" src={apercuModele(x.slug)} alt="" width={1287} height={910} className="w-full rounded-t-md ring-1 ring-black/5" />
               </div>
               <div className="p-5">

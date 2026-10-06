@@ -88,7 +88,7 @@ export default async function SiteVille({ params }: { params: { ville: string } 
       <section className="relative overflow-hidden border-b border-[#205040]/10">
         <img src="/site/metiers/rapide.webp" alt={`Formation restauration rapide ${ou}`} className="absolute inset-0 -z-10 h-full w-full object-cover" />
         <div className="absolute inset-0 -z-10" style={{ background: 'linear-gradient(120deg, #9A3412E6 0%, #EA580CB3 55%, rgba(0,0,0,0.55) 100%)' }} />
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pt-10 md:pt-14 pb-14 md:pb-20 text-white">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-10 md:pt-14 pb-14 md:pb-20 text-white">
           <Link href="/formation-restauration-rapide" className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" /> Toutes nos villes
           </Link>
@@ -106,7 +106,7 @@ export default async function SiteVille({ params }: { params: { ville: string } 
       </section>
 
       {/* Nos chiffres dans cette ville, tirés des sessions réalisées */}
-      <section className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-14">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-14">
         <Kicker className="mb-4">Sur le terrain</Kicker>
         <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Ce que nous avons déjà fait {ou}</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -128,7 +128,7 @@ export default async function SiteVille({ params }: { params: { ville: string } 
       </section>
 
       {v.formations.length > 0 && (
-        <section className="max-w-5xl mx-auto px-5 md:px-8 pb-12 md:pb-14">
+        <section className="max-w-6xl mx-auto px-5 md:px-8 pb-12 md:pb-14">
           <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Les formations les plus suivies {ou}</h2>
           <ul className="mt-6 divide-y divide-[#205040]/10 rounded-2xl bg-white ring-1 ring-black/5">
             {v.formations.map((f) => {
@@ -155,7 +155,7 @@ export default async function SiteVille({ params }: { params: { ville: string } 
       )}
 
       <section className="bg-[#F6F4EF]">
-        <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-14">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-14">
           <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Comment se passe une formation {ou}</h2>
           <ol className="mt-6 grid gap-4 md:grid-cols-3">
             {[
@@ -192,7 +192,7 @@ export default async function SiteVille({ params }: { params: { ville: string } 
       </section>
 
       {proches.length > 0 && (
-        <section className="max-w-5xl mx-auto px-5 md:px-8 pb-12 md:pb-14">
+        <section className="max-w-6xl mx-auto px-5 md:px-8 pb-12 md:pb-14">
           <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Nous formons aussi près de chez vous</h2>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {proches.map((x) => (
@@ -205,7 +205,7 @@ export default async function SiteVille({ params }: { params: { ville: string } 
         </section>
       )}
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 pb-20">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pb-20">
         <div className="rounded-3xl bg-[#205040] text-white p-7 md:p-10">
           <h2 className="ll-display text-2xl md:text-3xl text-white">Former votre équipe {ou}</h2>
           <p className="mt-3 text-white/85 max-w-2xl">Dites-nous combien de personnes sont à former et sur quoi : nous revenons vers vous avec un programme et un calendrier.</p>

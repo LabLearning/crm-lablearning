@@ -48,7 +48,7 @@ export default function SiteGuides({ searchParams }: { searchParams: { apercu?: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schemas) }} />
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 ll-grid-faint" />
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-10">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-10">
           <Kicker className="mb-5">Guides</Kicker>
           <h1 className="ll-display ll-fluid-h1 text-[#14110F] text-balance">
             Les réponses aux questions <span className="text-[#205040]">des restaurateurs</span>
@@ -60,7 +60,7 @@ export default function SiteGuides({ searchParams }: { searchParams: { apercu?: 
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 pb-20">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pb-20">
         {guides.length === 0 ? (
           <div className="rounded-2xl bg-white ring-1 ring-black/5 p-10 text-center text-[#78716C]">
             Nos premiers guides arrivent. En attendant, <Link href="/faq" className="font-semibold text-[#205040]">consultez nos questions fréquentes</Link>.

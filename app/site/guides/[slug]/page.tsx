@@ -196,7 +196,7 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
 
       {liees.length > 0 && (
         <section className="bg-[#F6F4EF]">
-          <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-14">
+          <div className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-14">
             <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">Nos formations sur ce sujet</h2>
             <div className="mt-6 grid gap-4 md:grid-cols-3">
               {liees.map((f: any) => (
@@ -214,7 +214,7 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
         </section>
       )}
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 py-12 md:py-16">
         <div className="rounded-3xl bg-[#205040] text-white p-7 md:p-10">
           <h2 className="ll-display text-2xl md:text-3xl text-white">Une question sur votre établissement ?</h2>
           <p className="mt-3 text-white/85 max-w-2xl">Dites-nous où vous en êtes : nous regardons avec vous ce qui s&apos;applique à votre équipe et comment organiser la formation.</p>
@@ -231,7 +231,7 @@ export default async function SiteGuide({ params }: { params: { slug: string } }
       </section>
 
       {autres.length > 0 && (
-        <section className="max-w-5xl mx-auto px-5 md:px-8 pb-20">
+        <section className="max-w-6xl mx-auto px-5 md:px-8 pb-20">
           <h2 className="ll-display text-2xl md:text-3xl text-[#14110F]">À lire aussi</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {autres.map((x) => (

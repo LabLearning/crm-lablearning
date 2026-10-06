@@ -51,7 +51,7 @@ export default async function SiteVilles() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schemas) }} />
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 ll-grid-faint" />
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-10">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-10">
           <Kicker className="mb-5">Partout en France</Kicker>
           <h1 className="ll-display ll-fluid-h1 text-[#14110F] text-balance">
             Formation restauration rapide, <span className="text-[#205040]">ville par ville</span>
@@ -66,7 +66,7 @@ export default async function SiteVilles() {
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 pb-16 space-y-10">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pb-16 space-y-10">
         {groupes.map(([departement, liste]) => (
           <div key={departement}>
             <h2 className="flex items-center gap-2 font-heading text-lg font-bold text-[#14110F] border-b border-[#205040]/10 pb-3 mb-4">

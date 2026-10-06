@@ -37,7 +37,7 @@ export default function SiteModeles() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(schemas) }} />
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 ll-grid-faint" />
-        <div className="max-w-5xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-10">
+        <div className="max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-28 pb-12">
           <Kicker className="mb-5">Modèles gratuits</Kicker>
           <h1 className="ll-display ll-fluid-h1 text-[#14110F] text-balance">
             Les documents de votre cuisine, <span className="text-[#205040]">prêts à imprimer</span>
@@ -53,12 +53,12 @@ export default function SiteModeles() {
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 pb-14">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pb-16 md:pb-20">
         <div className="grid gap-5 md:grid-cols-2">
           {MODELES.map((m, i) => (
             <Reveal key={m.slug} delay={(i % 2) * 70}>
               <Link href={`/modeles/${m.slug}`} className="group h-full flex flex-col rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-lg hover:shadow-black/5 ll-lift">
-                <div className="bg-[#EEF1EF] px-6 pt-6">
+                <div className="bg-[#F6F4EF] px-6 pt-6">
                   <img loading={i > 1 ? 'lazy' : undefined} src={apercuModele(m.slug)} alt={`Aperçu du modèle : ${nomModele(m).toLowerCase()}`} width={1287} height={910}
                     className="w-full rounded-t-lg shadow-[0_-2px_18px_rgba(15,23,42,0.10)] ring-1 ring-black/5" />
                 </div>
@@ -79,7 +79,7 @@ export default function SiteModeles() {
         </p>
       </section>
 
-      <section className="max-w-5xl mx-auto px-5 md:px-8 pb-20">
+      <section className="max-w-6xl mx-auto px-5 md:px-8 pb-20 md:pb-24">
         <div className="rounded-3xl bg-[#205040] text-white p-7 md:p-10">
           <h2 className="ll-display text-2xl md:text-3xl text-white">Un document, c&apos;est bien. Une équipe formée, c&apos;est mieux.</h2>
           <p className="mt-3 text-white/85 max-w-2xl">Nos formateurs viennent dans votre établissement et travaillent sur vos propres documents, en hygiène alimentaire comme en prévention des risques.</p>
