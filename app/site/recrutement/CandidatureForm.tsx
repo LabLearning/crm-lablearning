@@ -54,6 +54,12 @@ export function CandidatureForm({ jetonPage, posteInitial }: { jetonPage: string
     if (etape > 0 || fini) haut.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [etape, fini])
 
+  // Arrivée depuis une fiche de poste (« Postuler à ce poste ») : le formulaire est amené à l'écran
+  useEffect(() => {
+    if (posteDepart && window.location.hash === '#postuler') document.getElementById('postuler')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function controler(n: number): string | null {
     if (n === 0) {
       if (!f.prenom.trim() || !f.nom.trim()) return 'Indiquez votre prénom et votre nom.'
@@ -168,6 +174,14 @@ export function CandidatureForm({ jetonPage, posteInitial }: { jetonPage: string
         ))}
       </ol>
       <p className="mt-3 text-sm text-[#78716C] sm:hidden">Étape {etape + 1} sur {ETAPES.length} : {ETAPES[etape]}</p>
+
+      {/* Le poste choisi sur la fiche est rappelé dès la première étape : le candidat voit que son clic a été pris en compte */}
+      {etape === 0 && poste && (
+        <p className="mt-5 inline-flex max-w-full items-center gap-2 rounded-full bg-[#205040]/[0.07] px-3.5 py-1.5 text-sm text-[#205040]">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span className="truncate">Poste visé : <span className="font-semibold">{POSTES_CANDIDATURE.find((p) => p.cle === poste)?.libelle}</span></span>
+        </p>
+      )}
 
       {/* Champ piège pour les robots : invisible, jamais rempli par une personne */}
       <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">

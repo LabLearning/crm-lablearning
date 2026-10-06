@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { Hygiene, FirstAid, ChefHat, Management, UserCheck, CheckCircle2, MapPin, Briefcase, GraduationCap, ArrowRight } from '../icons'
 import { emettreHorodatage } from '@/lib/inscription-formateur-garde'
 import { CandidatureForm } from './CandidatureForm'
+import { LienPostuler } from './LienPostuler'
 import { CLE_GARDE_CANDIDATURE, POSTES_CANDIDATURE, EMAIL_RECRUTEMENT } from './candidature'
 
 // La page émet un horodatage signé pour le formulaire : elle est rendue à chaque visite
@@ -195,10 +195,7 @@ export default function RecrutementPage({ searchParams }: { searchParams: { post
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#205040] underline underline-offset-4 decoration-[#205040]/30 hover:decoration-[#205040]">
                     Fiche de poste (PDF)
                   </a>
-                  <Link href={`/recrutement?poste=${cle}#postuler`} scroll={false}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#205040] px-5 text-sm font-semibold text-white hover:bg-[#1a4335] transition-colors">
-                    Postuler à ce poste <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  <LienPostuler poste={cle} />
                 </div>
               </div>
             </article>
