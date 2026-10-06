@@ -110,9 +110,11 @@ export default async function SiteModele({ params }: { params: { slug: string } 
             ))}
           </ul>
 
-          <div className="mt-8 rounded-3xl bg-[#EEF1EF] p-4 sm:p-6">
-            <img loading="lazy" src={apercuModele(m.slug, 2)} alt={`Aperçu de la seconde page : ${nom.toLowerCase()}`} width={1287} height={910}
-              className="w-full rounded-lg shadow-[0_6px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/5" />
+          <div className="mt-8 grid gap-3 rounded-3xl bg-[#EEF1EF] p-4 sm:grid-cols-2 sm:p-5">
+            {([2, 3] as const).map((n) => (
+              <img key={n} loading="lazy" src={apercuModele(m.slug, n)} alt={`Aperçu de la page ${n} : ${nom.toLowerCase()}`} width={1287} height={910}
+                className="w-full rounded-lg shadow-[0_6px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/5" />
+            ))}
           </div>
 
           <h2 className="mt-10 ll-display text-2xl md:text-[1.9rem] text-[#14110F]">Comment s&apos;en servir</h2>
