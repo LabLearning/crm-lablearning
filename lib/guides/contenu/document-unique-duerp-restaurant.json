@@ -1,0 +1,181 @@
+{
+  "slug": "document-unique-duerp-restaurant",
+  "titre": "Document unique (DUERP) en restauration : obligatoire dès le premier salarié",
+  "titreCourt": "Document unique (DUERP) en restauration",
+  "description": "Le document unique (DUERP) est obligatoire dès le premier salarié. Contenu, mise à jour, conservation, sanctions : l’essentiel pour un restaurant.",
+  "chapeau": "Dès que vous embauchez un salarié, vous devez évaluer les risques auxquels il est exposé et les consigner dans un document unique. Voici ce qu’il doit contenir, quand le mettre à jour et ce que vous risquez sans lui.",
+  "categorie": "Sécurité au travail",
+  "publie": false,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 5,
+  "image": "/site/guides/document-unique-duerp-restaurant.webp",
+  "imageAlt": "Équipier sortant un panier de frites d’une friteuse avec des gants de protection en cuisine de restauration rapide",
+  "aRetenir": [
+    "Le DUERP est obligatoire dans toute entreprise dès l’embauche du premier salarié.",
+    "À partir de 11 salariés, il doit être mis à jour au moins une fois par an.",
+    "Chaque version doit être conservée 40 ans.",
+    "Son absence est punie d’une amende pouvant atteindre 1 500 € pour une personne physique et 7 500 € pour une société."
+  ],
+  "sections": [
+    {
+      "id": "obligatoire-pour-qui",
+      "titre": "Qui doit avoir un document unique ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Toutes les entreprises, **dès l’embauche du premier salarié**, quelle que soit leur taille et leur activité. Un restaurant rapide avec un seul équipier à temps partiel est concerné."
+        },
+        {
+          "type": "p",
+          "texte": "Dans un réseau, l’évaluation se fait établissement par établissement : les risques ne sont pas les mêmes selon l’agencement de la cuisine, le matériel ou l’organisation du service."
+        }
+      ]
+    },
+    {
+      "id": "contenu",
+      "titre": "Que doit contenir le document unique ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le document unique, ou DUERP, rassemble deux choses :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "un **inventaire des dangers** et le résultat de l’évaluation des risques, poste par poste ou zone par zone ;",
+            "la **liste des actions de prévention et de protection** qui en découlent."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Vous êtes libre du support : papier ou numérique. Ce qui compte est qu’il soit cohérent, simple à utiliser et qu’il garde la trace de ce qui a été fait."
+        },
+        {
+          "type": "p",
+          "texte": "À partir de 50 salariés, les actions de prévention prennent la forme d’un programme annuel détaillé, avec des indicateurs de résultat et une estimation des coûts."
+        }
+      ]
+    },
+    {
+      "id": "risques-restauration-rapide",
+      "titre": "Quels risques évaluer dans un restaurant rapide ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le texte ne fournit pas de liste : c’est à vous de regarder ce qui se passe réellement dans votre établissement. Dans une cuisine de restauration rapide, on retrouve presque toujours :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "les **brûlures** : friteuses, plaques, grills, huile chaude, vapeur ;",
+            "les **coupures** : couteaux, trancheuses, ouverture des cartons et des boîtes ;",
+            "les **glissades et les chutes** : sol gras ou mouillé, zones de plonge, marches et réserves ;",
+            "le **port de charges** et les gestes répétitifs : sacs, bidons d’huile, cartons de surgelés ;",
+            "le **risque électrique et le risque d’incendie** liés aux appareils de cuisson ;",
+            "les **produits de nettoyage** ;",
+            "la **charge mentale** des coups de feu, des horaires décalés et de la relation avec les clients."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour chaque risque, notez qui est exposé, à quelle fréquence, et ce qui est déjà en place pour le réduire. Les idées des équipiers sont précieuses : ce sont eux qui connaissent les situations dangereuses."
+        }
+      ]
+    },
+    {
+      "id": "mise-a-jour",
+      "titre": "Quand faut-il le mettre à jour ?",
+      "blocs": [
+        {
+          "type": "tableau",
+          "entetes": [
+            "Effectif",
+            "Mise à jour"
+          ],
+          "lignes": [
+            [
+              "Moins de 11 salariés",
+              "Quand les conditions de travail changent, ou quand une information nouvelle sur un risque est connue"
+            ],
+            [
+              "11 salariés et plus",
+              "Dans les mêmes cas, et **au moins une fois par an**"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un nouvel appareil de cuisson, un réagencement de la cuisine, l’ouverture d’un service de livraison ou un accident du travail sont autant de raisons de le reprendre."
+        }
+      ]
+    },
+    {
+      "id": "conservation",
+      "titre": "Combien de temps le conserver, et qui peut le consulter ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Chaque version du document unique doit être **conservée 40 ans**. Il est tenu à la disposition des salariés, des représentants du personnel, du service de prévention et de santé au travail et de l’inspection du travail."
+        }
+      ]
+    },
+    {
+      "id": "sanctions",
+      "titre": "Que risquez-vous sans document unique ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’absence de document unique, ou le fait de ne pas le mettre à jour, est une contravention de cinquième classe : jusqu’à **1 500 € d’amende pour une personne physique et 7 500 € pour une société**, montants doublés en cas de récidive."
+        },
+        {
+          "type": "p",
+          "texte": "L’enjeu dépasse l’amende. En cas d’accident du travail, l’absence d’évaluation des risques pèse lourd dans l’appréciation de la responsabilité de l’employeur."
+        }
+      ]
+    },
+    {
+      "id": "formation-securite",
+      "titre": "Le document unique et la formation à la sécurité",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Évaluer les risques ne suffit pas : le code du travail impose aussi d’organiser une **formation pratique et appropriée à la sécurité** pour chaque salarié embauché, pour celui qui change de poste ou de technique, et pour les salariés temporaires."
+        },
+        {
+          "type": "p",
+          "texte": "Dans un restaurant rapide, où les équipes se renouvellent vite, cette formation à l’arrivée est l’action de prévention la plus utile de votre document unique. Elle s’appuie sur les risques que vous y avez recensés."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Le DUERP est-il obligatoire avec un seul salarié ?",
+      "r": "Oui. Le document unique d’évaluation des risques professionnels est obligatoire dans toutes les entreprises dès l’embauche du premier salarié."
+    },
+    {
+      "q": "À quelle fréquence mettre à jour le document unique ?",
+      "r": "Dans les entreprises de 11 salariés et plus, au moins une fois par an. Dans toutes les entreprises, il doit aussi être revu quand les conditions de travail changent ou quand une information nouvelle sur un risque est connue."
+    },
+    {
+      "q": "Combien de temps faut-il conserver le document unique ?",
+      "r": "Chaque version doit être conservée pendant 40 ans."
+    },
+    {
+      "q": "Quelle amende en l’absence de DUERP ?",
+      "r": "Jusqu’à 1 500 € pour une personne physique et 7 500 € pour une personne morale, montants doublés en cas de récidive."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Qu’est-ce que le document unique d’évaluation des risques professionnels (DUERP) ?",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F35360"
+    },
+    {
+      "libelle": "Code du travail, article L4141-2 : formation à la sécurité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006903166"
+    }
+  ],
+  "formations": "duerp|document unique|risques? professionnel|pr[eé]vention des risques"
+}

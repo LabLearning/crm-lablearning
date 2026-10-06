@@ -10,6 +10,8 @@ import { metierStyle } from '../../metier'
 import { photoFormation } from '@/lib/formations-photos'
 import { altFormation } from '../../alt'
 import { jsonLd } from '../../jsonld'
+import { IntroRapide, ContenuRapide, FAQ_RAPIDE } from '../RestaurationRapide'
+import { getChiffresRestaurationRapide, getVilles } from '@/lib/site-villes'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +30,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function SiteBranche({ params }: { params: { slug: string } }) {
   const b = brancheBySlug(params.slug)
   if (!b) notFound()
-  const data = await getBranchesData()
+  const rapide = b.slug === 'restauration-rapide'
+  const [data, chiffresRapide, villes] = await Promise.all([
+    getBranchesData(),
+    rapide ? getChiffresRestaurationRapide().catch(() => null) : null,
+    rapide ? getVilles().catch(() => []) : [],
+  ])
   const branche = data.find((d) => d.slug === params.slug)
   const groups = branche?.groups || []
   const autres = BRANCHES.filter((x) => x.slug !== b.slug)
@@ -52,6 +59,11 @@ export default async function SiteBranche({ params }: { params: { slug: string }
         '@type': 'ListItem', position: i + 1, name: titreFormation(f.intitule), url: `https://www.lab-learning.fr/formations/${f.id}`,
       })),
     },
+    ...(rapide ? [{
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: FAQ_RAPIDE.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.r } })),
+    }] : []),
   ]
 
   return (
@@ -65,8 +77,8 @@ export default async function SiteBranche({ params }: { params: { slug: string }
           <Link href="/formations" className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" /> Tous les métiers
           </Link>
-          <div className="mt-6"><span className="ll-kicker ll-kicker--light">Vous êtes</span></div>
-          <h1 className="mt-2 ll-display ll-fluid-hero text-balance text-white">{b.label}</h1>
+          <div className="mt-6"><span className="ll-kicker ll-kicker--light">Votre métier</span></div>
+          <h1 className="mt-2 ll-display ll-fluid-hero text-balance text-white">Formations {b.label.toLowerCase()}</h1>
           <p className="mt-4 text-lg md:text-xl text-white/85 max-w-2xl">{b.tagline}</p>
           <div className="mt-6 flex flex-wrap gap-2 text-sm">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 backdrop-blur-sm"><CheckCircle2 className="h-4 w-4" />{branche?.total || 0} formations pour vous</span>
@@ -75,6 +87,8 @@ export default async function SiteBranche({ params }: { params: { slug: string }
           </div>
         </div>
       </section>
+
+      {rapide && chiffresRapide && <IntroRapide chiffres={chiffresRapide} />}
 
       {/* Formations groupées par thème */}
       <div className="max-w-6xl mx-auto px-5 md:px-8 py-14 md:py-16 space-y-14">
@@ -138,6 +152,8 @@ export default async function SiteBranche({ params }: { params: { slug: string }
           </section>
         ))}
       </div>
+
+      {rapide && <ContenuRapide villes={villes} />}
 
       {/* Autres métiers */}
       <section className="max-w-6xl mx-auto px-5 md:px-8 pb-16">

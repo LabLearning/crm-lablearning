@@ -1,0 +1,185 @@
+{
+  "slug": "controle-hygiene-restaurant-ddpp",
+  "titre": "Contrôle d’hygiène dans un restaurant : comment il se passe et comment s’y préparer",
+  "titreCourt": "Contrôle d’hygiène : comment s’y préparer",
+  "description": "Contrôle sanitaire de la DDPP, niveaux Alim’confiance, documents demandés : comment se déroule une inspection d’hygiène au restaurant.",
+  "chapeau": "Un contrôle sanitaire arrive sans prévenir, pendant le service. Son résultat est publié et consultable par vos clients. Voici ce que regarde l’inspecteur et ce qu’il faut pouvoir lui montrer.",
+  "categorie": "Hygiène alimentaire",
+  "publie": false,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 5,
+  "image": "/site/guides/controle-hygiene-restaurant-ddpp.webp",
+  "imageAlt": "Inspection d’hygiène dans une cuisine professionnelle : relevé sur une grille de contrôle devant une armoire réfrigérée",
+  "aRetenir": [
+    "Les contrôles ont lieu sans préavis, pendant les heures d’ouverture.",
+    "Le résultat est publié sur Alim’confiance selon quatre niveaux d’hygiène.",
+    "Les suites vont du simple avertissement à la fermeture de l’établissement.",
+    "Relevés de température, traçabilité et plan de nettoyage sont les premiers documents demandés."
+  ],
+  "sections": [
+    {
+      "id": "qui-controle",
+      "titre": "Qui contrôle, et quand ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les contrôles sont menés par les agents de la **DDPP**, la direction départementale de la protection des populations. Ils interviennent **sans préavis, pendant les périodes d’ouverture** : vous ne pouvez ni les prévoir, ni les reporter."
+        }
+      ]
+    },
+    {
+      "id": "ce-qui-est-regarde",
+      "titre": "Que regarde l’inspecteur ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le contrôle porte sur le respect des règles d’hygiène fixées par la réglementation européenne et sur la façon dont vous les maîtrisez au quotidien :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "l’**état et la propreté** des locaux, du matériel et des équipements ;",
+            "le **respect des températures** : stockage au froid, cuisson, maintien au chaud, refroidissement ;",
+            "la **traçabilité** des produits et la gestion des dates ;",
+            "l’**hygiène du personnel** : lavage des mains, tenue ;",
+            "le **nettoyage et la désinfection** ;",
+            "la **formation** : la personne formée à l’hygiène alimentaire, et les instructions données à l’équipe."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La fiche officielle rappelle que la chaîne du froid ne doit jamais être rompue et que les aliments cuits doivent atteindre rapidement 63 °C."
+        }
+      ]
+    },
+    {
+      "id": "documents",
+      "titre": "Quels documents préparer ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La réglementation vous demande de mettre en place des procédures fondées sur les principes HACCP et d’en garder la trace. C’est ce qu’on appelle le plan de maîtrise sanitaire. Le jour du contrôle, vous devez pouvoir présenter sans chercher :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "les **relevés de température** des chambres froides, des réfrigérateurs et des congélateurs ;",
+            "les enregistrements de **cuisson et de refroidissement** ;",
+            "les documents de **traçabilité** : bons de livraison, étiquettes, fiches fournisseurs ;",
+            "le **plan de nettoyage et de désinfection**, avec ses enregistrements ;",
+            "l’**attestation de formation** à l’hygiène alimentaire, ou le justificatif de dispense ;",
+            "le **tableau des allergènes**."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Le piège le plus courant",
+          "texte": "Des relevés remplis d’avance, ou tous identiques d’un jour à l’autre, desservent plus qu’une feuille manquante. Un inspecteur les repère en quelques secondes.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "alim-confiance",
+      "titre": "Qu’est-ce qu’Alim’confiance ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Depuis le 1er mars 2017, le résultat des contrôles sanitaires est rendu public sur le site Alim’confiance et son application. Tous les établissements de la chaîne alimentaire sont concernés, dont les restaurants. Quatre niveaux existent :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Niveau",
+            "Ce qu’il signifie"
+          ],
+          "lignes": [
+            [
+              "**Très satisfaisant**",
+              "Aucune non-conformité, ou seulement des non-conformités mineures"
+            ],
+            [
+              "**Satisfaisant**",
+              "Des non-conformités qui ne justifient pas de mesure administrative"
+            ],
+            [
+              "**À améliorer**",
+              "L’exploitant a été mis en demeure de procéder à des mesures correctives"
+            ],
+            [
+              "**À corriger de manière urgente**",
+              "Des non-conformités susceptibles de mettre en danger la santé du consommateur"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Vos clients peuvent consulter ce résultat avant de pousser votre porte."
+        }
+      ]
+    },
+    {
+      "id": "suites",
+      "titre": "Quelles suites après un contrôle ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les suites dépendent de la gravité de ce qui est constaté : un **avertissement** pour une infraction bénigne, un **procès-verbal**, et jusqu’à la **fermeture de l’établissement** quand la santé des consommateurs est mise en danger."
+        },
+        {
+          "type": "p",
+          "texte": "Quand une mise en demeure vous est adressée, corriger dans le délai fixé et pouvoir le prouver est ce qui compte."
+        }
+      ]
+    },
+    {
+      "id": "se-preparer",
+      "titre": "Comment s’y préparer ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "Désignez une personne responsable de l’hygiène à chaque service, pas seulement le gérant.",
+            "Faites un tour de contrôle interne chaque semaine, avec une grille écrite.",
+            "Rangez tous les documents au même endroit, connu de toute l’équipe.",
+            "Formez chaque nouvel équipier dès son arrivée : c’est lui que l’inspecteur verra travailler."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Notre outil [Audit+](/audit-plus) permet de faire cet audit d’hygiène en interne, avec photos et rapport."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un contrôle d’hygiène est-il annoncé à l’avance ?",
+      "r": "Non. Les contrôles sont effectués sans préavis, pendant les périodes d’ouverture de l’établissement."
+    },
+    {
+      "q": "Quels sont les niveaux d’hygiène d’Alim’confiance ?",
+      "r": "Quatre niveaux : très satisfaisant, satisfaisant, à améliorer, à corriger de manière urgente."
+    },
+    {
+      "q": "Un restaurant peut-il être fermé après un contrôle d’hygiène ?",
+      "r": "Oui. Les sanctions vont de l’avertissement pour une infraction bénigne jusqu’au procès-verbal et à la fermeture de l’établissement en cas de mise en danger de la santé des consommateurs."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "DRAAF Bretagne : Alim’confiance, accéder aux résultats des contrôles sanitaires d’un établissement",
+      "url": "https://draaf.bretagne.agriculture.gouv.fr/alim-confiance-acceder-aux-resultats-des-controles-sanitaires-d-un-a830.html"
+    },
+    {
+      "libelle": "Alim’confiance : résultats des contrôles sanitaires",
+      "url": "https://www.alim-confiance.gouv.fr/"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|nettoyage|ma[iî]trise sanitaire"
+}

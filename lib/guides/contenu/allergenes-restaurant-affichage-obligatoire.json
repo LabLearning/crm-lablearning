@@ -1,0 +1,151 @@
+{
+  "slug": "allergenes-restaurant-affichage-obligatoire",
+  "titre": "Allergènes au restaurant : les 14 à déclarer et comment informer vos clients",
+  "titreCourt": "Allergènes au restaurant : vos obligations",
+  "description": "Les 14 allergènes à déclaration obligatoire, l’information écrite à donner aux clients d’un restaurant et ce que dit le code de la consommation.",
+  "chapeau": "Un client allergique doit pouvoir savoir, par écrit et sans avoir à le demander, ce que contiennent vos plats. Voici la liste des 14 allergènes concernés et la façon de vous mettre en règle.",
+  "categorie": "Hygiène alimentaire",
+  "publie": false,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 4,
+  "image": "/site/guides/allergenes-restaurant-affichage-obligatoire.webp",
+  "imageAlt": "Ingrédients allergènes disposés sur un plan de travail en inox : œufs, lait, farine, arachides, crevettes, poisson, soja, céleri, moutarde, sésame",
+  "aRetenir": [
+    "Quatorze allergènes doivent être signalés dès qu’ils entrent dans la préparation d’un plat.",
+    "Dans un lieu où l’on mange sur place, l’information doit être donnée par écrit, lisible et visible.",
+    "Le client doit pouvoir la consulter directement et librement, sans avoir à la demander.",
+    "Vos fournisseurs doivent vous remettre, à chaque livraison, un document indiquant les allergènes."
+  ],
+  "sections": [
+    {
+      "id": "les-14-allergenes",
+      "titre": "Quels sont les 14 allergènes à déclarer ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La liste est fixée par le règlement européen sur l’information du consommateur, dit INCO. Dès qu’un de ces produits, ou un ingrédient qui en est issu, entre dans la fabrication d’un plat, il doit être signalé :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "céréales contenant du gluten",
+            "crustacés",
+            "œufs",
+            "poissons",
+            "arachides",
+            "soja",
+            "lait",
+            "fruits à coque",
+            "céleri",
+            "moutarde",
+            "graines de sésame",
+            "anhydride sulfureux et sulfites",
+            "lupin",
+            "mollusques"
+          ],
+          "ordonnee": true
+        },
+        {
+          "type": "p",
+          "texte": "En restauration rapide, les plus fréquents sont le gluten des pains et des panures, le lait des fromages et des sauces, les œufs de la mayonnaise, la moutarde, le sésame des pains à burger et le soja de certaines sauces. Pensez aussi aux huiles de friture partagées entre plusieurs produits."
+        }
+      ]
+    },
+    {
+      "id": "information-ecrite",
+      "titre": "Comment informer vos clients ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le code de la consommation est précis : dans les lieux où sont proposés des repas à consommer sur place, l’information est portée à la connaissance du client **sous forme écrite, de façon lisible et visible**."
+        },
+        {
+          "type": "p",
+          "texte": "Vous choisissez le support, à condition que le client y accède directement et librement :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "une mention sur la carte ou le menu ;",
+            "une ardoise ou une affiche ;",
+            "un cahier ou un classeur des allergènes, signalé et laissé à disposition."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Ce qui ne suffit pas",
+          "texte": "Répondre « demandez à l’équipe » sans rien d’écrit n’est pas conforme pour un repas pris sur place. L’équipier peut compléter l’information, pas la remplacer.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "vente-au-comptoir",
+      "titre": "Et pour la vente au comptoir ou à emporter ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Pour les denrées présentées sans emballage sur le lieu de vente, l’information sur les allergènes doit figurer **sur la denrée elle-même ou à proximité**, de façon qu’il n’y ait aucun doute sur le produit concerné."
+        },
+        {
+          "type": "p",
+          "texte": "Un tableau des allergènes affiché près du comptoir ou de la borne de commande, tenu à jour, répond à cette exigence et sert aussi pour vos clients qui mangent sur place."
+        }
+      ]
+    },
+    {
+      "id": "fournisseurs",
+      "titre": "Que devez-vous exiger de vos fournisseurs ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Chaque livraison à un restaurant doit être **accompagnée d’un document indiquant les allergènes** présents dans les produits livrés. C’est la matière première de votre tableau : conservez ces fiches et mettez votre tableau à jour à chaque changement de recette ou de fournisseur."
+        },
+        {
+          "type": "p",
+          "texte": "C’est le point qui pose le plus de problèmes en pratique : une sauce dont la recette change, un pain remplacé par un autre, et le tableau n’est plus exact."
+        }
+      ]
+    },
+    {
+      "id": "equipe",
+      "titre": "Pourquoi former l’équipe ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le tableau écrit est une obligation. La sécurité du client, elle, se joue en cuisine : ustensiles communs, plans de travail, huile de friture, garnitures qui se mélangent. Une équipe qui connaît les 14 allergènes, sait lire le tableau et sait quoi répondre à un client allergique évite l’accident."
+        },
+        {
+          "type": "p",
+          "texte": "Cette sensibilisation fait partie de l’hygiène alimentaire au quotidien. Voyez aussi [qui doit suivre la formation hygiène alimentaire](/guides/formation-hygiene-alimentaire-restauration-rapide)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "L’information sur les allergènes peut-elle être seulement orale au restaurant ?",
+      "r": "Non. Pour les repas à consommer sur place, le code de la consommation impose une information écrite, lisible et visible, à laquelle le client accède directement et librement."
+    },
+    {
+      "q": "Combien d’allergènes sont à déclaration obligatoire ?",
+      "r": "Quatorze : céréales contenant du gluten, crustacés, œufs, poissons, arachides, soja, lait, fruits à coque, céleri, moutarde, graines de sésame, anhydride sulfureux et sulfites, lupin et mollusques."
+    },
+    {
+      "q": "Mes fournisseurs doivent-ils m’indiquer les allergènes ?",
+      "r": "Oui. Chaque livraison de denrées à un établissement de restauration doit être accompagnée d’un document portant l’information sur les allergènes."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Quels allergènes doivent être mentionnés sur un produit alimentaire ?",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32192"
+    },
+    {
+      "libelle": "Code de la consommation, articles R412-12 à R412-16 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000032807848"
+    }
+  ],
+  "formations": "allerg[eè]n|hygi[eè]ne|haccp"
+}

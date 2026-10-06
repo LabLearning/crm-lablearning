@@ -1,0 +1,170 @@
+{
+  "slug": "formation-hygiene-alimentaire-restauration-rapide",
+  "titre": "Formation hygiène alimentaire en restauration rapide : qui doit la suivre ?",
+  "titreCourt": "Formation hygiène alimentaire obligatoire",
+  "description": "Restauration rapide, vente à emporter, food-truck : qui doit suivre la formation hygiène alimentaire de 14 heures, et qui en est dispensé.",
+  "chapeau": "Tout établissement de restauration commerciale doit compter dans son équipe au moins une personne formée à l’hygiène alimentaire. Voici qui est concerné, combien de temps dure la formation et dans quels cas vous en êtes dispensé.",
+  "categorie": "Hygiène alimentaire",
+  "publie": false,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 5,
+  "image": "/site/guides/formation-hygiene-alimentaire-restauration-rapide.webp",
+  "imageAlt": "Contrôle de la température à cœur d’un steak haché avec un thermomètre sonde en cuisine de restauration rapide",
+  "aRetenir": [
+    "Au moins une personne de l’établissement doit avoir suivi la formation. Il n’est pas nécessaire de former toute l’équipe à ce titre.",
+    "La formation dure 14 heures au minimum.",
+    "L’attestation n’a pas de date de fin de validité et aucun recyclage n’est imposé.",
+    "Trois ans d’expérience comme gestionnaire ou exploitant, ou un diplôme du secteur, peuvent vous en dispenser."
+  ],
+  "sections": [
+    {
+      "id": "qui-est-concerne",
+      "titre": "Quels établissements sont concernés ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’obligation vise la **restauration commerciale**. La fiche officielle de Service-Public cite trois familles d’établissements :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "la restauration traditionnelle, avec service à table ;",
+            "les cafétérias et les libres-services ;",
+            "la restauration rapide et la vente à emporter, y compris les food-trucks."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un restaurant de burgers, de tacos, de pizzas, de poulet ou un kebab entre donc dans le champ, qu’il vende sur place, à emporter ou en livraison."
+        },
+        {
+          "type": "encadre",
+          "titre": "Qui n’est pas concerné",
+          "texte": "La même fiche écarte notamment les traiteurs, les rayons traiteur des grandes surfaces, les métiers de bouche comme les boulangers et les pâtissiers, et les hôtels qui ne servent que le petit-déjeuner. Ils restent soumis aux règles générales d’hygiène, mais pas à cette formation précise.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "combien-de-personnes",
+      "titre": "Combien de personnes faut-il former ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une seule. Le texte demande que l’établissement compte **dans son effectif au moins une personne** ayant suivi la formation. Il peut s’agir du gérant, d’un manager ou d’un équipier."
+        },
+        {
+          "type": "p",
+          "texte": "En pratique, beaucoup de restaurants en forment deux ou trois : si la seule personne formée quitte l’entreprise ou change d’établissement, celui-ci n’est plus en règle. Dans un réseau de franchise, c’est chaque établissement qui doit avoir sa personne formée."
+        }
+      ]
+    },
+    {
+      "id": "duree-et-contenu",
+      "titre": "Combien de temps dure la formation ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La formation dure **14 heures au minimum**. Elle peut être suivie en partie à distance, mais chaque séquence de 7 heures doit comporter au moins 2 heures en présentiel."
+        },
+        {
+          "type": "p",
+          "texte": "Son contenu est fixé par un cahier des charges réglementaire. Il couvre les dangers liés aux aliments, la réglementation applicable à la restauration commerciale et la mise en place d’un plan de maîtrise sanitaire dans l’établissement : bonnes pratiques d’hygiène, méthode HACCP, traçabilité."
+        }
+      ]
+    },
+    {
+      "id": "dispenses",
+      "titre": "Dans quels cas êtes-vous dispensé ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Deux situations vous dispensent de suivre la formation :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "vous justifiez d’**au moins trois ans d’activité** dans le secteur alimentaire comme gestionnaire ou exploitant ;",
+            "vous détenez un **diplôme du secteur de la cuisine ou de la restauration**, dont la plupart intègrent déjà cette formation."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Dans les deux cas, gardez le justificatif sur place : c’est lui qu’un inspecteur demandera à voir."
+        }
+      ]
+    },
+    {
+      "id": "validite",
+      "titre": "L’attestation a-t-elle une durée de validité ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Non. La fiche officielle est explicite : il n’y a ni date limite de validité, ni obligation de renouvellement. Une attestation obtenue il y a dix ans reste valable."
+        },
+        {
+          "type": "p",
+          "texte": "Cela ne veut pas dire que rien ne change : les règles d’hygiène, les allergènes à déclarer et les pratiques de vos équipes évoluent. Refaire le point tous les quelques années reste une bonne pratique, mais c’est votre choix, pas une exigence du texte."
+        }
+      ]
+    },
+    {
+      "id": "qui-peut-former",
+      "titre": "Qui peut dispenser cette formation ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Seuls les organismes de formation **enregistrés auprès de la DRAAF**, la direction régionale de l’alimentation, de l’agriculture et de la forêt, peuvent la dispenser. Chaque DRAAF publie la liste des organismes de sa région."
+        },
+        {
+          "type": "p",
+          "texte": "Depuis le 1er février 2026, ces organismes doivent répondre aux conditions du décret du 6 septembre 2025, dont la certification Qualiopi. Lab Learning est certifié Qualiopi et inscrit sur la liste DRAAF pour cette formation."
+        }
+      ]
+    },
+    {
+      "id": "reste-de-l-equipe",
+      "titre": "Et le reste de l’équipe ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La formation de 14 heures ne concerne qu’une personne, mais le règlement européen sur l’hygiène des denrées s’applique à tous : toute personne qui manipule des aliments doit être **encadrée et disposer d’instructions ou d’une formation adaptées à son poste**."
+        },
+        {
+          "type": "p",
+          "texte": "Pour cette formation-là, aucun contenu ni aucune durée ne sont imposés, et vous pouvez l’organiser vous-même. C’est pourtant sur elle que repose l’hygiène au quotidien : lavage des mains, températures, nettoyage, gestion des allergènes. Voyez aussi [comment se déroule un contrôle d’hygiène](/guides/controle-hygiene-restaurant-ddpp)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un food-truck doit-il avoir une personne formée à l’hygiène alimentaire ?",
+      "r": "Oui. La fiche officielle de Service-Public classe les food-trucks dans la restauration rapide et la vente à emporter, soumises à l’obligation de formation."
+    },
+    {
+      "q": "La formation hygiène alimentaire doit-elle être renouvelée ?",
+      "r": "Non. Aucune date limite de validité ni obligation de renouvellement n’est prévue par les textes."
+    },
+    {
+      "q": "Faut-il former tous les salariés du restaurant ?",
+      "r": "Non. Une seule personne de l’établissement doit avoir suivi la formation de 14 heures. Les autres salariés qui manipulent des aliments doivent être encadrés et recevoir des instructions ou une formation adaptées à leur poste."
+    },
+    {
+      "q": "J’ai dirigé un restaurant pendant trois ans, dois-je suivre la formation ?",
+      "r": "Non, si vous pouvez justifier d’au moins trois ans d’activité dans le secteur alimentaire comme gestionnaire ou exploitant."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "DRAAF Pays de la Loire : formation à l’hygiène alimentaire en restauration commerciale, un nouveau décret",
+      "url": "https://draaf.pays-de-la-loire.agriculture.gouv.fr/formation-a-l-hygiene-alimentaire-en-restauration-commerciale-un-nouveau-decret-a2052.html"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire"
+}

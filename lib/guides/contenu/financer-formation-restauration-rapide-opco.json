@@ -1,0 +1,171 @@
+{
+  "slug": "financer-formation-restauration-rapide-opco",
+  "titre": "Financer la formation de votre équipe en restauration rapide avec AKTO",
+  "titreCourt": "Financer sa formation en restauration rapide",
+  "description": "Restauration rapide : comment AKTO, l’OPCO de la branche, prend en charge la formation de vos salariés en 2026. Budgets, plafonds et conditions.",
+  "chapeau": "La restauration rapide relève d’AKTO, l’opérateur de compétences de la branche. Si votre entreprise compte moins de 50 salariés, il peut prendre en charge la formation de votre équipe. Voici les règles de 2026 et la marche à suivre.",
+  "categorie": "Financement",
+  "publie": false,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 5,
+  "image": "/site/guides/financer-formation-restauration-rapide-opco.webp",
+  "imageAlt": "Gérant de restaurant préparant un dossier de formation sur son ordinateur avant l’ouverture",
+  "aRetenir": [
+    "La branche de la restauration rapide (IDCC 1501) relève de l’OPCO AKTO.",
+    "En 2026, une entreprise de moins de 11 salariés dispose d’un budget annuel de 4 000 €, et de 9 000 € entre 11 et 49 salariés.",
+    "La prise en charge d’une formation est plafonnée à 25 € par heure et par salarié, dans la limite de 14 heures.",
+    "L’organisme de formation doit être certifié Qualiopi."
+  ],
+  "sections": [
+    {
+      "id": "quel-opco",
+      "titre": "De quel OPCO dépend un restaurant rapide ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les entreprises qui appliquent la convention collective nationale de la restauration rapide, identifiée par le code **IDCC 1501**, relèvent d’**AKTO**. Votre code IDCC figure sur les bulletins de paie de vos salariés."
+        },
+        {
+          "type": "p",
+          "texte": "C’est AKTO qui finance les formations de vos salariés, selon les règles décidées chaque année par la branche."
+        }
+      ]
+    },
+    {
+      "id": "budget",
+      "titre": "De quel budget disposez-vous en 2026 ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les entreprises de **moins de 50 salariés** bénéficient de la prise en charge des formations de leurs salariés au titre du plan de développement des compétences. Les règles publiées par AKTO pour la restauration rapide, applicables depuis le 15 janvier 2026, prévoient :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Effectif de l’entreprise",
+            "Budget annuel de formation"
+          ],
+          "lignes": [
+            [
+              "Moins de 11 salariés",
+              "4 000 €"
+            ],
+            [
+              "De 11 à 49 salariés",
+              "9 000 €"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour une formation choisie hors du catalogue d’AKTO, la prise en charge du coût pédagogique est plafonnée à **25 € par heure de formation et par salarié formé, dans la limite de 14 heures**. Une formation de 14 heures est donc prise en charge jusqu’à 350 € HT par salarié."
+        },
+        {
+          "type": "encadre",
+          "titre": "Des règles revues chaque année",
+          "texte": "Ces montants sont ceux des règles de prise en charge 2026 d’AKTO, consultées le 5 octobre 2026. Ils sont accordés dans la limite des fonds disponibles et changent d’une année à l’autre : vérifiez toujours la page officielle avant de bâtir votre plan.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "conditions",
+      "titre": "Quelles conditions faut-il remplir ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "L’organisme de formation doit détenir un **numéro de déclaration d’activité valide** et la **certification Qualiopi**.",
+            "La demande de prise en charge est adressée à AKTO par l’entreprise.",
+            "Les montants s’entendent hors taxes."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La rémunération des salariés pendant la formation reste en général à votre charge : AKTO ne la finance, à hauteur de 13 € par heure, que lorsque la formation n’a aucun coût pédagogique."
+        }
+      ]
+    },
+    {
+      "id": "paiement",
+      "titre": "Qui paie l’organisme de formation ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Deux possibilités sont prévues :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "vous confiez à AKTO le **paiement direct** de l’organisme de formation : vous n’avancez pas les frais pris en charge ;",
+            "vous réglez l’organisme, puis vous demandez le **remboursement** à AKTO."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La première solution est la plus simple pour la trésorerie d’un restaurant. Nos tarifs sont calés sur les barèmes de la branche, si bien que le reste à charge est souvent nul."
+        }
+      ]
+    },
+    {
+      "id": "plus-de-50",
+      "titre": "Et au-delà de 50 salariés ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "À partir de 50 salariés, l’entreprise ne bénéficie plus de ce budget. Elle garde accès à l’offre de formation négociée par AKTO, au coût réel, sous condition de versement volontaire."
+        }
+      ]
+    },
+    {
+      "id": "dirigeants",
+      "titre": "Et pour le gérant non salarié ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un dirigeant non salarié ne relève pas d’AKTO pour sa propre formation, mais de son fonds d’assurance formation, l’AGEFICE pour les dirigeants du commerce et des services. Les règles et les démarches sont différentes : voyez [les financements de votre formation](/financements)."
+        }
+      ]
+    },
+    {
+      "id": "accompagnement",
+      "titre": "Comment nous vous accompagnons",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Nous préparons avec vous la demande de prise en charge : programme, devis, convention, calendrier. Vous déposez la demande auprès d’AKTO ; nous vous guidons à chaque étape et répondons aux demandes de pièces."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Quel est l’OPCO de la restauration rapide ?",
+      "r": "AKTO. Les entreprises qui appliquent la convention collective nationale de la restauration rapide (IDCC 1501) en relèvent."
+    },
+    {
+      "q": "Quel budget de formation pour un restaurant rapide de moins de 11 salariés en 2026 ?",
+      "r": "Les règles de prise en charge 2026 d’AKTO pour la restauration rapide prévoient un budget annuel de 4 000 € pour une entreprise de moins de 11 salariés, dans la limite des fonds disponibles."
+    },
+    {
+      "q": "La formation est-elle payée directement par l’OPCO ?",
+      "r": "Vous pouvez confier à AKTO le paiement direct de l’organisme de formation, ou régler vous-même puis demander le remboursement."
+    },
+    {
+      "q": "Le salaire pendant la formation est-il pris en charge ?",
+      "r": "En règle générale non. Les règles 2026 d’AKTO pour la restauration rapide ne prévoient une prise en charge de la rémunération, à hauteur de 13 € par heure, que lorsque le coût pédagogique de la formation est nul."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "AKTO : règles de prise en charge 2026, restauration rapide",
+      "url": "https://www.akto.fr/regles-de-prise-en-charge-restauration-rapide/"
+    },
+    {
+      "libelle": "AKTO : la branche de la restauration rapide",
+      "url": "https://www.akto.fr/nos-secteurs-activite/restauration-rapide/"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|pr[eé]vention|manag"
+}

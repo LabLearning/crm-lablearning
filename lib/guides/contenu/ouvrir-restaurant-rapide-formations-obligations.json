@@ -1,0 +1,188 @@
+{
+  "slug": "ouvrir-restaurant-rapide-formations-obligations",
+  "titre": "Ouvrir un restaurant rapide : les formations et démarches à prévoir",
+  "titreCourt": "Ouvrir un restaurant rapide : obligations",
+  "description": "Formation hygiène alimentaire, permis d’exploitation, déclarations, affichages, document unique : ce qu’il faut prévoir avant d’ouvrir un restaurant rapide.",
+  "chapeau": "Avant le premier client, plusieurs formations et déclarations sont obligatoires. Certaines prennent du temps : mieux vaut les caler dès la signature du bail. Voici la liste, dans l’ordre où nous conseillons de les traiter.",
+  "categorie": "Ouverture",
+  "publie": false,
+  "publieLe": "2026-10-06",
+  "majLe": "2026-10-06",
+  "lecture": 6,
+  "image": "/site/guides/ouvrir-restaurant-rapide-formations-obligations.webp",
+  "imageAlt": "Remise des clés d’un restaurant rapide neuf avant son ouverture",
+  "aRetenir": [
+    "Au moins une personne de l’établissement doit avoir suivi la formation hygiène alimentaire de 14 heures.",
+    "Le permis d’exploitation, 20 heures de formation, n’est exigé que si vous servez de l’alcool à consommer sur place.",
+    "La déclaration en mairie se fait au moins 15 jours avant l’ouverture.",
+    "Le document unique est dû dès l’embauche du premier salarié."
+  ],
+  "sections": [
+    {
+      "id": "formations-obligatoires",
+      "titre": "Quelles formations avant l’ouverture ?",
+      "blocs": [
+        {
+          "type": "tableau",
+          "entetes": [
+            "Formation",
+            "Pour qui",
+            "Durée"
+          ],
+          "lignes": [
+            [
+              "**Hygiène alimentaire**",
+              "Au moins une personne de l’établissement",
+              "14 heures au minimum"
+            ],
+            [
+              "**Permis d’exploitation**",
+              "L’exploitant, seulement si de l’alcool est servi à consommer sur place",
+              "20 heures, sur au moins 3 jours"
+            ],
+            [
+              "**Sécurité au poste**",
+              "Chaque salarié embauché",
+              "Adaptée au poste"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La formation hygiène alimentaire concerne tous les restaurants rapides, y compris la vente à emporter et les food-trucks. Le détail est dans notre guide : [qui doit suivre la formation hygiène alimentaire](/guides/formation-hygiene-alimentaire-restauration-rapide)."
+        }
+      ]
+    },
+    {
+      "id": "permis-d-exploitation",
+      "titre": "Avez-vous besoin du permis d’exploitation ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Seuls les établissements où l’on **consomme sur place** des boissons alcoolisées doivent détenir un permis d’exploitation. Si vous servez de la bière ou du vin avec les repas, il vous faut une licence restaurant, et donc ce permis."
+        },
+        {
+          "type": "p",
+          "texte": "La formation dure au moins 20 heures, réparties sur au moins trois jours. Le permis est **valable 10 ans** ; il se renouvelle par une formation de 6 heures au minimum."
+        },
+        {
+          "type": "p",
+          "texte": "Si vous ne vendez aucun alcool, ce qui est le cas de beaucoup de restaurants rapides, vous n’êtes pas concerné. La vente d’alcool à emporter n’exige pas ce permis, sauf entre 22 heures et 8 heures, où une formation spécifique est demandée."
+        }
+      ]
+    },
+    {
+      "id": "declarations",
+      "titre": "Quelles déclarations faire, et quand ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "**Immatriculation** de l’entreprise sur le guichet des formalités des entreprises.",
+            "**Déclaration en mairie** du restaurant, au moins 15 jours avant l’ouverture.",
+            "**Déclaration à la DDPP**, la direction départementale de la protection des populations, si vous manipulez des denrées d’origine animale : viande, poisson, œufs, produits laitiers. Elle se fait avant l’ouverture, en ligne ou par courrier.",
+            "**Déclaration à la Sacem** si vous diffusez de la musique.",
+            "**Autorisation de la mairie** pour une terrasse sur le domaine public ou pour une enseigne."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "local",
+      "titre": "Le local : sécurité et accessibilité",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un restaurant est un **établissement recevant du public**. Il doit respecter les règles de sécurité contre l’incendie, disposer de sorties de secours adaptées et être accessible aux personnes handicapées. Si le local change d’usage ou si vous faites des travaux, une autorisation de la mairie est nécessaire avant de commencer."
+        },
+        {
+          "type": "p",
+          "texte": "C’est le poste qui réserve le plus de surprises sur le calendrier : interrogez la mairie avant de signer le bail."
+        }
+      ]
+    },
+    {
+      "id": "affichages",
+      "titre": "Quels affichages sont obligatoires ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "les **prix** de tous les produits ;",
+            "l’**origine des viandes** ;",
+            "l’**information sur les allergènes**, par écrit ;",
+            "l’**interdiction de fumer** à l’intérieur ;",
+            "si vous vendez de l’alcool, l’interdiction d’en vendre aux mineurs."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour les allergènes, voyez [les 14 allergènes à déclarer et comment informer vos clients](/guides/allergenes-restaurant-affichage-obligatoire)."
+        }
+      ]
+    },
+    {
+      "id": "premiere-embauche",
+      "titre": "Ce que déclenche la première embauche",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Dès le premier salarié, vous devez évaluer les risques professionnels et les consigner dans un [document unique](/guides/document-unique-duerp-restaurant), puis organiser pour chaque nouvel arrivant une formation pratique à la sécurité de son poste."
+        },
+        {
+          "type": "p",
+          "texte": "Tous ceux qui manipulent des aliments doivent aussi recevoir des instructions ou une formation en hygiène adaptées à leur poste. Autant le prévoir avant l’ouverture : une équipe formée la veille du premier service ne retient rien."
+        }
+      ]
+    },
+    {
+      "id": "calendrier",
+      "titre": "Dans quel ordre s’y prendre ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "Dès la signature du bail : autorisations de travaux, sécurité et accessibilité du local.",
+            "Deux à trois mois avant : formation hygiène alimentaire de la personne référente, permis d’exploitation si besoin.",
+            "Un mois avant : recrutement, document unique, tableau des allergènes.",
+            "Deux semaines avant : déclarations en mairie et à la DDPP, formation de l’équipe au poste et à l’hygiène."
+          ],
+          "ordonnee": true
+        },
+        {
+          "type": "p",
+          "texte": "Ce calendrier est un repère, à adapter à votre projet. Nous formons les équipes avant l’ouverture, directement dans l’établissement, pour que le premier service se passe avec des gestes déjà acquis."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Faut-il un permis d’exploitation pour un restaurant rapide sans alcool ?",
+      "r": "Non. Le permis d’exploitation ne concerne que les établissements où l’on consomme sur place des boissons alcoolisées."
+    },
+    {
+      "q": "Combien de temps avant l’ouverture faut-il déclarer son restaurant en mairie ?",
+      "r": "Au moins 15 jours avant l’ouverture."
+    },
+    {
+      "q": "La formation hygiène alimentaire est-elle obligatoire pour ouvrir un restaurant rapide ?",
+      "r": "Oui. Au moins une personne de l’établissement doit avoir suivi la formation à l’hygiène alimentaire, d’une durée minimale de 14 heures, sauf dispense par un diplôme du secteur ou trois ans d’expérience comme gestionnaire ou exploitant."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Ouvrir un restaurant",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F33794"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Licences de débits de boissons",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F22379"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|pr[eé]vention|[eé]quipier|accueil"
+}
