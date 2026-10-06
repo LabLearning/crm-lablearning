@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { X, Loader2, CheckCircle2, PhoneCall, Sparkles, Recommencer, Envoyer, ArrowLeft } from './icons'
+import { X, Loader2, CheckCircle2, PhoneCall, Recommencer, Envoyer, ArrowLeft } from './icons'
 import { STARKK_SITE } from '@/lib/fonctionnalites'
 import { CLE_COOKIES, EVT_COOKIES_CHOISIS } from './CookieBanner'
 import { demanderRappelStarkkAction } from './starkk-rappel'
@@ -287,7 +287,7 @@ export function StarkkBulle() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="font-heading text-sm font-bold">Starkk</div>
-          <div className="flex items-center gap-1 text-xs text-white/55"><Sparkles className="h-3 w-3 text-[#5CD9A0]" /> Assistant IA de Lab Learning</div>
+          <div className="text-xs text-white/55">Assistant IA de Lab Learning</div>
         </div>
         {vue === 'discussion' && messages.length > 0 && (
           <button type="button" onClick={recommencer} disabled={enCours} aria-label="Nouvelle discussion" title="Nouvelle discussion" className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-40">
