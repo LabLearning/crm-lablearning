@@ -259,12 +259,12 @@ export function StarkkBulle() {
           </div>
         )}
         <button type="button" onClick={() => setOuvert(true)} aria-label="Poser une question à Starkk, l’assistant de Lab Learning"
-          className="group relative h-16 w-16 shrink-0 rounded-full shadow-xl shadow-black/25 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]">
-          <span className="ll-ligne-verte absolute -inset-[3px] rounded-full" aria-hidden="true" />
+          className="group relative h-[52px] w-[52px] shrink-0 rounded-full shadow-lg shadow-black/25 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]">
+          <span className="ll-ligne-verte absolute -inset-[2px] rounded-full" aria-hidden="true" />
           <span className="absolute inset-0 overflow-hidden rounded-full bg-[#0C1210] ring-2 ring-[#0C1210]">
             <img src={AVATAR} alt="" width={160} height={160} className="h-full w-full object-cover" />
           </span>
-          <span className="absolute -right-0.5 bottom-0.5 h-4 w-4 rounded-full bg-[#5CD9A0] ring-2 ring-white" aria-hidden="true" />
+          <span className="absolute -right-0.5 bottom-0 h-3.5 w-3.5 rounded-full bg-[#5CD9A0] ring-2 ring-white" aria-hidden="true" />
         </button>
       </div>
     )
