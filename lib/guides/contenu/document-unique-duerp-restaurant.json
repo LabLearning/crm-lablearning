@@ -5,7 +5,7 @@
   "description": "Le document unique (DUERP) est obligatoire dès le premier salarié. Contenu, mise à jour, conservation, sanctions : l’essentiel pour un restaurant.",
   "chapeau": "Dès que vous embauchez un salarié, vous devez évaluer les risques auxquels il est exposé et les consigner dans un document unique. Voici ce qu’il doit contenir, quand le mettre à jour et ce que vous risquez sans lui.",
   "categorie": "Sécurité au travail",
-  "publie": false,
+  "publie": true,
   "publieLe": "2026-10-06",
   "majLe": "2026-10-06",
   "lecture": 5,

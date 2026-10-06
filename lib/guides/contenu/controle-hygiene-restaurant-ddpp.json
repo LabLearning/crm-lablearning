@@ -5,7 +5,7 @@
   "description": "Contrôle sanitaire de la DDPP, niveaux Alim’confiance, documents demandés : comment se déroule une inspection d’hygiène au restaurant.",
   "chapeau": "Un contrôle sanitaire arrive sans prévenir, pendant le service. Son résultat est publié et consultable par vos clients. Voici ce que regarde l’inspecteur et ce qu’il faut pouvoir lui montrer.",
   "categorie": "Hygiène alimentaire",
-  "publie": false,
+  "publie": true,
   "publieLe": "2026-10-06",
   "majLe": "2026-10-06",
   "lecture": 5,

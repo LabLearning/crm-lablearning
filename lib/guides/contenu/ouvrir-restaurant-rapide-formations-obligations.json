@@ -5,7 +5,7 @@
   "description": "Formation hygiène alimentaire, permis d’exploitation, déclarations, affichages, document unique : ce qu’il faut prévoir avant d’ouvrir un restaurant rapide.",
   "chapeau": "Avant le premier client, plusieurs formations et déclarations sont obligatoires. Certaines prennent du temps : mieux vaut les caler dès la signature du bail. Voici la liste, dans l’ordre où nous conseillons de les traiter.",
   "categorie": "Ouverture",
-  "publie": false,
+  "publie": true,
   "publieLe": "2026-10-06",
   "majLe": "2026-10-06",
   "lecture": 6,

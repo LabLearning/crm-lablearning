@@ -5,7 +5,7 @@
   "description": "Restauration rapide, vente à emporter, food-truck : qui doit suivre la formation hygiène alimentaire de 14 heures, et qui en est dispensé.",
   "chapeau": "Tout établissement de restauration commerciale doit compter dans son équipe au moins une personne formée à l’hygiène alimentaire. Voici qui est concerné, combien de temps dure la formation et dans quels cas vous en êtes dispensé.",
   "categorie": "Hygiène alimentaire",
-  "publie": false,
+  "publie": true,
   "publieLe": "2026-10-06",
   "majLe": "2026-10-06",
   "lecture": 5,

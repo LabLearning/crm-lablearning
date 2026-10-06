@@ -5,7 +5,7 @@
   "description": "Les 14 allergènes à déclaration obligatoire, l’information écrite à donner aux clients d’un restaurant et ce que dit le code de la consommation.",
   "chapeau": "Un client allergique doit pouvoir savoir, par écrit et sans avoir à le demander, ce que contiennent vos plats. Voici la liste des 14 allergènes concernés et la façon de vous mettre en règle.",
   "categorie": "Hygiène alimentaire",
-  "publie": false,
+  "publie": true,
   "publieLe": "2026-10-06",
   "majLe": "2026-10-06",
   "lecture": 4,
