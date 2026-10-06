@@ -28,9 +28,16 @@ export function telechargementValide(slug: string, jeton: unknown): boolean {
   return attendu.length === recu.length && timingSafeEqual(attendu, recu) && expire >= Date.now()
 }
 
+// Les modèles sont les mêmes pour tous : une fois fabriqué, un PDF est gardé en
+// mémoire tant que l'instance vit. Le classeur PMS (32 pages) met plusieurs
+// secondes à se fabriquer ; la demande puis le téléchargement ne le refont pas.
+const dejaRendus = new Map<string, Buffer>()
+
 /** Le PDF d'un modèle, généré à la demande ; null si le modèle n'existe pas. */
 export async function rendreModele(slug: string): Promise<Buffer | null> {
   if (!modeleParSlug(slug)) return null
+  const garde = dejaRendus.get(slug)
+  if (garde) return garde
   const { renderToBuffer } = await import('@react-pdf/renderer')
   const [pdf, pms] = await Promise.all([import('@/lib/pdf/modeles-pdf'), import('@/lib/pdf/modeles-pms')])
   const composant = ({
@@ -48,5 +55,7 @@ export async function rendreModele(slug: string): Promise<Buffer | null> {
     'suivi-formations-equipe-restaurant': pms.SuiviFormationsPDF,
   } as Record<string, () => React.ReactElement>)[slug]
   if (!composant) return null
-  return Buffer.from(await renderToBuffer(createElement(composant) as any))
+  const rendu = Buffer.from(await renderToBuffer(createElement(composant) as any))
+  dejaRendus.set(slug, rendu)
+  return rendu
 }
