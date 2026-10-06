@@ -173,6 +173,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .from('audit_logs')
       .select('action, entity_type, created_at, user:users(first_name, last_name)')
       .eq('organization_id', orgId)
+      .neq('entity_type', 'chat_site')
       .order('created_at', { ascending: false })
       .limit(10),
   ])

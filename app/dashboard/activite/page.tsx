@@ -166,6 +166,8 @@ export default async function ActivitePage({ searchParams }: { searchParams?: Pa
     let q = supabase.from('audit_logs')
       .select('id, user_id, action, entity_type, entity_id, details, created_at, acteur:user_id(first_name, last_name, avatar_url, email)', { count: 'exact' })
       .eq('organization_id', orgId)
+      // Les questions posées à Starkk sur le site public ont leur propre lecture : elles noieraient le journal
+      .neq('entity_type', 'chat_site')
     if (f.acteur === 'systeme') q = q.is('user_id', null)
     else if (f.acteur) q = q.eq('user_id', f.acteur)
     if (f.table) q = q.in('entity_type', entitesPourTable(f.table))

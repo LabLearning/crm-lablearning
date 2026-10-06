@@ -10,3 +10,11 @@
  * à tout moment en repassant cette valeur à true.
  */
 export const CERTIFICAT_SIGNATURE_CONVENTION = false
+
+/**
+ * Starkk sur le site public : la bulle de discussion qui renseigne les visiteurs.
+ * - 'tous'   : affichée à tous les visiteurs ;
+ * - 'apercu' : affichée seulement après une visite avec ?starkk=1 (pour l'essayer en ligne avant ouverture) ;
+ * - 'coupe'  : bulle masquée et route fermée.
+ */
+export const STARKK_SITE: 'tous' | 'apercu' | 'coupe' = 'apercu'

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { SiteNav } from './SiteNav'
 import { SiteBandeau } from './SiteBandeau'
+import { StarkkBulle } from './StarkkBulle'
 import { SiteFooter } from './SiteFooter'
 import { CookieBanner } from './CookieBanner'
 
@@ -107,6 +108,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <main>{children}</main>
       <SiteFooter />
       <CookieBanner />
+      <StarkkBulle />
     </div>
   )
 }

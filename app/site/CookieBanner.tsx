@@ -6,6 +6,10 @@ import Link from 'next/link'
 const CLE = 'll_cookies_choix'
 /** Événement global qui rouvre le bandeau (bouton « Modifier mon choix » de la page Cookies). */
 export const EVT_GERER_COOKIES = 'll-gerer-cookies'
+/** Émis quand le visiteur a répondu au bandeau. */
+export const EVT_COOKIES_CHOISIS = 'll-cookies-choisis'
+/** Clé du choix mémorisé. */
+export const CLE_COOKIES = 'll_cookies_choix'
 
 /**
  * Bandeau cookies RGPD : le choix est mémorisé en localStorage et le bandeau
@@ -30,6 +34,8 @@ export function CookieBanner() {
   function choisir(valeur: 'accepte' | 'refuse') {
     try { localStorage.setItem(CLE, valeur) } catch { /* ignore */ }
     setVisible(false)
+    // La bulle Starkk attend ce choix sur téléphone : le bandeau occupe sa place
+    window.dispatchEvent(new Event(EVT_COOKIES_CHOISIS))
   }
 
   if (!visible) return null

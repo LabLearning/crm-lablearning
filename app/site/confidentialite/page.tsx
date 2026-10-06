@@ -33,6 +33,7 @@ export default function Confidentialite() {
       <ul>
         <li><strong>Répondre à vos demandes</strong> (formulaire de contact) : intérêt légitime / mesures précontractuelles ;</li>
         <li><strong>Vous envoyer un modèle gratuit et vous recontacter</strong> au sujet de la formation de votre équipe (demande d&apos;un modèle sur le site) : intérêt légitime ; vous pouvez vous y opposer à tout moment en nous écrivant ;</li>
+        <li><strong>Répondre à vos questions par notre assistant Starkk</strong> (bulle de discussion du site) : intérêt légitime. Vos messages sont transmis à un modèle d&apos;intelligence artificielle, hébergé par notre sous-traitant Anthropic, uniquement pour produire la réponse. Ils sont conservés douze mois, avec votre adresse IP, pour améliorer les réponses et prévenir les abus. N&apos;y indiquez aucune information sensible ;</li>
         <li><strong>Gérer les inscriptions et le suivi des formations</strong> : exécution du contrat ;</li>
         <li><strong>Respecter nos obligations</strong> (Qualiopi, comptables, légales) : obligation légale ;</li>
         <li><strong>Amélioration du site et statistiques</strong> : consentement / intérêt légitime.</li>
@@ -59,6 +60,7 @@ export default function Confidentialite() {
         <li><strong>Supabase</strong> : base de données, hébergée dans l&apos;Union européenne (région Paris) ;</li>
         <li><strong>Resend</strong> : envoi des emails transactionnels (convocations, attestations) ;</li>
         <li><strong>Meta (WhatsApp Business)</strong> : notifications WhatsApp, uniquement avec votre consentement ;</li>
+        <li><strong>Anthropic</strong> : modèle d&apos;intelligence artificielle de l&apos;assistant Starkk ; ce traitement peut avoir lieu hors de l&apos;Union européenne ;</li>
         <li><strong>Google Workspace</strong> : messagerie et documents internes.</li>
       </ul>
 
