@@ -3,6 +3,7 @@ import { modeleParSlug } from '@/lib/modeles'
 import { rendreModele, telechargementValide } from '@/lib/modeles-acces'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 /**
  * Téléchargement d'un modèle gratuit du site. Le lien est signé et remis après

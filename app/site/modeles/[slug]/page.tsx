@@ -12,6 +12,8 @@ import { titreFormation } from '@/lib/utils'
 
 // La page émet un horodatage signé pour le formulaire : elle n'est jamais mise en cache
 export const dynamic = 'force-dynamic'
+// La demande fabrique le PDF avant de l'envoyer : le classeur PMS (32 pages) prend plusieurs secondes à froid
+export const maxDuration = 60
 
 const BASE = 'https://www.lab-learning.fr'
 
