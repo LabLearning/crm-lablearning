@@ -4,6 +4,9 @@
 /** L'organisme du site public. */
 export const ORG_SITE = 'ff747dfe-c034-44d8-98d7-e53892263fb5'
 
+/** Adresse du recrutement : affichée sur la page, et adresse de réponse du mail de confirmation envoyé au candidat. */
+export const EMAIL_RECRUTEMENT = 'recrutement@lab-learning.fr'
+
 /** Clé de l'horodatage signé émis par la page de recrutement (voir lib/inscription-formateur-garde). */
 export const CLE_GARDE_CANDIDATURE = `candidature.${ORG_SITE}`
 

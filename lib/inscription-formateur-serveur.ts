@@ -70,7 +70,7 @@ export async function enregistrerInscription(
   cleGarde: string,
   saisie: InscriptionFormateur,
   garde: { jeton: string; pot: string },
-  options: { mode: 'fiche' | 'candidature'; poste?: string | null } = { mode: 'fiche' },
+  options: { mode: 'fiche' | 'candidature'; poste?: string | null; /** Adresse de réponse du mail de confirmation (par défaut : le contact de l'organisme). */ emailReponse?: string } = { mode: 'fiche' },
 ): Promise<Resultat<{ resultat: 'cree' | 'complete' }>> {
   const candidature = options.mode === 'candidature'
   const poste = candidature ? nettoyer(options.poste, 120) || null : null
@@ -275,7 +275,7 @@ export async function enregistrerInscription(
     // Confirmation au formateur : texte fixe, seul le prénom (lettres uniquement) est repris
     await sendDocumentEmail({
       to: email,
-      orgName: org.name || 'Lab Learning', orgEmail: org.email_contact || org.email, orgLogoUrl: org.logo_url,
+      orgName: org.name || 'Lab Learning', orgEmail: options.emailReponse || org.email_contact || org.email, orgLogoUrl: org.logo_url,
       qualiopiCertified: org.is_qualiopi !== false,
       recipientName: esc(s.prenom),
       subject: candidature && resultat === 'cree' ? 'Votre candidature est bien reçue' : 'Votre fiche formateur est enregistrée',

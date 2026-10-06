@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Hygiene, FirstAid, ChefHat, Management, UserCheck, CheckCircle2, MapPin, Briefcase, GraduationCap, ArrowRight } from '../icons'
 import { emettreHorodatage } from '@/lib/inscription-formateur-garde'
 import { CandidatureForm } from './CandidatureForm'
-import { CLE_GARDE_CANDIDATURE, POSTES_CANDIDATURE } from './candidature'
+import { CLE_GARDE_CANDIDATURE, POSTES_CANDIDATURE, EMAIL_RECRUTEMENT } from './candidature'
 
 // La page émet un horodatage signé pour le formulaire : elle est rendue à chaque visite
 export const dynamic = 'force-dynamic'
@@ -228,7 +228,7 @@ export default function RecrutementPage({ searchParams }: { searchParams: { post
           <p className="mt-5 text-sm text-[#78716C] leading-relaxed">
             Conformément à notre démarche qualité (Qualiopi), chaque candidature fait l&apos;objet d&apos;une vérification des compétences :
             analyse du dossier, entretien, puis évaluation continue sur les premières sessions.
-            Vous préférez écrire ? <a href="mailto:sales@lab-learning.fr?subject=Candidature formateur" className="font-semibold text-[#205040] underline underline-offset-2">sales@lab-learning.fr</a>
+            Vous préférez écrire ? <a href={`mailto:${EMAIL_RECRUTEMENT}?subject=Candidature formateur`} className="font-semibold text-[#205040] underline underline-offset-2">{EMAIL_RECRUTEMENT}</a>
           </p>
         </div>
       </section>

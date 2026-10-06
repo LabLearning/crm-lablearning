@@ -3,7 +3,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import type { InscriptionFormateur } from '@/lib/inscription-formateur'
 import { enregistrerInscription, preparerDepotCv, type Resultat } from '@/lib/inscription-formateur-serveur'
-import { CLE_GARDE_CANDIDATURE, ORG_SITE, POSTES_CANDIDATURE } from './candidature'
+import { CLE_GARDE_CANDIDATURE, EMAIL_RECRUTEMENT, ORG_SITE, POSTES_CANDIDATURE } from './candidature'
 
 /**
  * L'organisme du site public : Lab Learning. Hors production, CANDIDATURE_ORG_TEST
@@ -39,5 +39,6 @@ export async function postulerFormateurAction(
   if (!org) return { success: false, error: 'L’envoi est indisponible pour le moment. Réessayez dans un instant.' }
   // Seul un poste de la liste publiée est retenu : le libellé part dans les notes et les mails internes
   const posteConnu = POSTES_CANDIDATURE.find((p) => p.cle === poste)?.libelle || null
-  return enregistrerInscription(supabase, org, CLE_GARDE_CANDIDATURE, saisie, garde, { mode: 'candidature', poste: posteConnu })
+  // Le candidat qui répond au mail de confirmation (pour joindre son CV, par exemple) écrit au recrutement
+  return enregistrerInscription(supabase, org, CLE_GARDE_CANDIDATURE, saisie, garde, { mode: 'candidature', poste: posteConnu, emailReponse: EMAIL_RECRUTEMENT })
 }
