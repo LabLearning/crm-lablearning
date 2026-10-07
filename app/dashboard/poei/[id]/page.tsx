@@ -26,6 +26,7 @@ import type { CandidatMail } from './PoeiMails'
 import type { CandidatDoc } from './PoeiDocuments'
 import type { LigneCandidat, Etat } from './PoeiPilotage'
 import type { Poei, PoeiCandidat } from '@/lib/types/poei'
+import { montantTotalPoei } from '@/lib/poei-candidat'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,11 +45,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   const p = poei as Poei
 
   // Formation « terminée » = statut POEI terminé, session terminée, ou date de fin
-  // passée (le statut de session peut être en retard).
+  // passée (le statut de session peut être en retard). Un parcours sans session
+  // chapeau se juge sur ses propres dates.
   const _sess = (p as any).session
   const formationTerminee = p.statut === 'terminee'
     || _sess?.status === 'terminee'
     || (!!_sess?.date_fin && new Date(_sess.date_fin) < new Date())
+    || (!_sess && !!(p as any).date_fin && new Date((p as any).date_fin) < new Date())
 
   const [{ data: candidatsRaw }, { data: clients }, { data: formations }, { data: apprenants }, { data: emailLogs }] = await Promise.all([
     supabase
@@ -414,7 +417,12 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     nom: `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat',
   })).filter((c: any) => c.id)
 
-  const montantTotal = (Number(p.duree_heures) || 0) * (Number(p.montant_horaire) || 0)
+  // Montant du dossier : la somme de ce que vaut chaque candidat, sur ses heures
+  // facturables (heures effectuées déclarées, abandon, entrée décalée).
+  const montantParCandidat = (Number(p.duree_heures) || 0) * (Number(p.montant_horaire) || 0)
+  const montantPrevu = montantParCandidat * candidats.length
+  const montantDossier = montantTotalPoei(candidats as any[], p as any) ?? 0
+  const euros = (v: number) => `${v.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`
   // Vérité financière unique : les factures du dossier.
   const finances = {
     total: (facturesPoei || []).reduce((a: number, f: any) => a + Number(f.montant_ttc || 0), 0),
@@ -455,13 +463,22 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
           { label: 'Candidats', valeur: candidats.length, alerte: candidats.length === 0 },
           { label: 'Durée', valeur: p.duree_heures ? `${p.duree_heures} h` : '—', alerte: !p.duree_heures },
           { label: 'Taux horaire', valeur: p.montant_horaire ? `${Number(p.montant_horaire).toLocaleString('fr-FR')} €` : '—', alerte: !p.montant_horaire },
-          { label: 'Montant par candidat', valeur: montantTotal ? `${montantTotal.toLocaleString('fr-FR')} €` : '—' },
+          {
+            label: 'Montant à facturer',
+            valeur: montantDossier ? euros(montantDossier) : montantParCandidat ? euros(montantParCandidat) : '—',
+            detail: !montantDossier
+              ? (montantParCandidat ? 'par candidat' : undefined)
+              : montantDossier < montantPrevu
+                ? `sur ${euros(montantPrevu)} prévus`
+                : `${euros(montantParCandidat)} par candidat`,
+          },
           { label: 'Factures', valeur: `${nbFactures}/${candidats.length}` },
           { label: 'Certificats signés', valeur: `${nbSignes}/${candidats.length}` },
         ].map((k) => (
           <div key={k.label} className="card p-3.5">
             <div className="text-[11px] text-surface-500">{k.label}</div>
             <div className={`text-lg font-heading font-bold ${k.alerte ? 'text-danger-600' : 'text-surface-900'}`}>{k.valeur}</div>
+            {(k as any).detail && <div className="text-[11px] text-surface-500 mt-0.5">{(k as any).detail}</div>}
           </div>
         ))}
       </div>
@@ -592,6 +609,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         facturation={
           <PoeiFacturation
             poeiId={p.id}
+            projet={{ duree_heures: p.duree_heures, montant_horaire: p.montant_horaire, date_debut: p.date_debut, date_fin: p.date_fin }}
             sessionId={(p as any).session?.id || null}
             sessionTerminee={formationTerminee}
             candidats={candidats as any[]}

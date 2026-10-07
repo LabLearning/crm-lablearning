@@ -243,7 +243,7 @@ export function PoeiDocuments({
             {f.cle === 'certificats' && candidats.length > 0 && (
               <div className="divide-y divide-surface-100">
                 <p className="px-4 pt-2.5 pb-1 text-xs text-surface-500">
-                  Heures portées sur le certificat : celles que vous saisissez. Case vide = durée du parcours.
+                  Heures portées sur le certificat et facturées à France Travail : celles que vous saisissez. Case vide = durée du parcours.
                 </p>
                 {candidats.map((c) => <LigneCertificat key={c.id} c={c} lien={f.lien(c)} />)}
               </div>
@@ -291,6 +291,7 @@ function LigneCertificat({ c, lien }: { c: CandidatDoc; lien: { href: string; te
     const r = await definirHeuresEffectueesAction(c.id, heures).catch(() => null)
     setEnCours(false)
     if (!r?.success) { toast('error', r?.error || 'Enregistrement impossible'); setValeur(initial); return }
+    if (r.warning) toast('warning', r.warning)
     setOk(true); setTimeout(() => setOk(false), 1500)
     router.refresh()
   }

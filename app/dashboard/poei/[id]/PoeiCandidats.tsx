@@ -334,6 +334,12 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                       <XCircle className="h-3.5 w-3.5" /> Non retenu à l&apos;issue de la formation
                     </div>
                   )}
+                  {c.statut !== 'abandonne' && (c as any).heures_effectuees != null
+                    && Number((c as any).heures_effectuees) < Number((c as any).duree_heures ?? projet.duree_heures ?? 0) && (
+                    <div className="text-xs text-warning-700 mt-0.5">
+                      {Number((c as any).heures_effectuees).toLocaleString('fr-FR')} h effectuées sur {Number((c as any).duree_heures ?? projet.duree_heures).toLocaleString('fr-FR')} h (seules ces heures sont facturées)
+                    </div>
+                  )}
                   {c.statut === 'abandonne' && (c as any).date_abandon && (
                     <div className="text-xs text-red-600 mt-0.5">
                       Abandon le {new Date((c as any).date_abandon).toLocaleDateString('fr-FR')}

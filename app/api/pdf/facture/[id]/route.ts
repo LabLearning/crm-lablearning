@@ -3,6 +3,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
+import { heuresFacturables, periodeCandidat } from '@/lib/poei-candidat'
 import { FacturePDF } from '@/lib/pdf/facture-pdf'
 import type { Facture } from '@/lib/types/facture'
 
@@ -70,7 +71,7 @@ export async function GET(
     const { data: poei } = await supabase.from('poei').select(CHAMPS_POEI).eq('id', marker[1]).maybeSingle()
     const { data: cand } = await supabase
       .from('poei_candidats')
-      .select('numero_engagement, numero_convention, apprenant:apprenant_id(prenom, nom)')
+      .select('numero_engagement, numero_convention, date_debut, date_fin, duree_heures, statut, date_abandon, heures_effectuees, apprenant:apprenant_id(prenom, nom)')
       .eq('id', marker[2])
       .maybeSingle()
 
@@ -79,7 +80,10 @@ export async function GET(
     const participant = cand
       ? `${(cand as any).apprenant?.prenom || ''} ${(cand as any).apprenant?.nom || ''}`.trim().toUpperCase()
       : ''
-    const heures = Number(p.duree_heures) || 0
+    // Dates et durée du candidat : une entrée décalée, un abandon ou des heures
+    // effectuées déclarées ne se facturent pas sur le calendrier du projet.
+    const periode = cand ? periodeCandidat(cand as any, p) : { debut: p.date_debut, fin: p.date_fin }
+    const heures = cand ? heuresFacturables(cand as any, p) : Number(p.duree_heures) || 0
     const jours = heures ? Math.round(heures / 7) : 0
     const lieu = [p.session?.adresse || p.session?.lieu, p.session?.code_postal, p.session?.ville]
       .filter(Boolean).join(', ')
@@ -87,7 +91,7 @@ export async function GET(
 
     if (p.session?.reference) detail.push({ label: 'Référence', valeur: p.session.reference })
     if (participant) detail.push({ label: 'Participant', valeur: participant })
-    if (p.date_debut) detail.push({ label: 'Dates', valeur: `du ${fr(p.date_debut)} au ${fr(p.date_fin)}` })
+    if (periode.debut) detail.push({ label: 'Dates', valeur: `du ${fr(periode.debut)} au ${fr(periode.fin)}` })
     if (heures) detail.push({ label: 'Durée', valeur: `${heures}h${jours ? ` (${jours} jours)` : ''}` })
     if (lieu) detail.push({ label: 'Lieu', valeur: lieu })
     // France Travail engage chaque candidat séparément : le numéro est le sien.

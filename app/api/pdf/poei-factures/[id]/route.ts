@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { zipSync } from 'fflate'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
-import { periodeCandidat } from '@/lib/poei-candidat'
+import { heuresFacturables, periodeCandidat } from '@/lib/poei-candidat'
 import { FacturePDF } from '@/lib/pdf/facture-pdf'
 import type { Facture } from '@/lib/types/facture'
 
@@ -82,7 +82,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     // Dates et durée du candidat : une entrée décalée ou un abandon ne se
     // facture pas sur le calendrier du projet.
     const periode = cand ? periodeCandidat(cand, p) : { debut: p.date_debut, fin: p.date_fin, heures: Number(p.duree_heures) || 0 }
-    const heures = Number(periode.heures) || 0
+    const heures = cand ? heuresFacturables(cand, p) : Number(periode.heures) || 0
     const jours = heures ? Math.round(heures / 7) : 0
     if (periode.debut) detail.push({ label: 'Dates', valeur: `du ${fr(periode.debut)} au ${fr(periode.fin)}` })
     if (heures) detail.push({ label: 'Durée', valeur: `${heures}h${jours ? ` (${jours} jours)` : ''}` })

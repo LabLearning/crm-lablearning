@@ -7,13 +7,24 @@ import { PoeiSection } from './PoeiSection'
 import { Button, useToast, Modal, Input } from '@/components/ui'
 import { generateFacturesPerCandidatPoeiAction, setCandidatNumeroEngagementAction, setPoeiAgenceFtAction } from '../actions'
 import { AgenceFtSelect } from '../AgenceFtSelect'
+import { ligneFactureCandidat, heuresPrevues } from '@/lib/poei-candidat'
 
 interface Candidat {
   id: string
   numero_engagement?: string | null
+  statut?: string | null
+  date_debut?: string | null
+  date_fin?: string | null
+  duree_heures?: number | string | null
+  date_abandon?: string | null
+  heures_effectuees?: number | string | null
   apprenant?: { id: string; prenom: string | null; nom: string | null } | null
 }
 interface FactureInfo { id: string; numero: string | null; status: string; montant_ttc: number | null }
+interface Projet { duree_heures?: number | string | null; montant_horaire?: number | string | null; date_debut?: string | null; date_fin?: string | null }
+
+const heuresFr = (h: number) => `${h.toLocaleString('fr-FR')} h`
+const eurosFr = (v: number) => `${v.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`
 
 const FACT_STATUS: Record<string, { label: string; cls: string }> = {
   brouillon: { label: 'Brouillon', cls: 'bg-surface-100 text-surface-600' },
@@ -58,9 +69,11 @@ function EngagementCandidat({ candidatId, valeur, verrouille }: { candidatId: st
 
 export function PoeiFacturation({
   poeiId, sessionId, sessionTerminee, candidats, facturesByCandidat, agences = [], currentAgenceId = null,
-  signatures = {},
+  signatures = {}, projet = {},
 }: {
   poeiId: string
+  /** Durée et taux du projet : ce que vaut la facture de chaque candidat. */
+  projet?: Projet
   sessionId: string | null
   sessionTerminee: boolean
   candidats: Candidat[]
@@ -98,6 +111,11 @@ export function PoeiFacturation({
   }
 
   const nbFactures = Object.keys(facturesByCandidat).length
+  // Ce que vaut la facture de chaque candidat : ses heures effectuées dès
+  // qu'elles sont déclarées (abandon ou non), sa durée prévue sinon.
+  const aTaux = Number(projet.montant_horaire) > 0
+  const lignes = new Map(candidats.map((c) => [c.id, ligneFactureCandidat(c, projet)]))
+  const totalAFacturer = Math.round(candidats.reduce((t, c) => t + (lignes.get(c.id)?.montantHt || 0), 0) * 100) / 100
 
   return (
     <PoeiSection
@@ -152,6 +170,11 @@ export function PoeiFacturation({
             const nom = `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat'
             const fac = facturesByCandidat[c.id]
             const st = fac ? (FACT_STATUS[fac.status] || FACT_STATUS.brouillon) : null
+            const ligne = lignes.get(c.id)!
+            const prevues = heuresPrevues(c, projet)
+            // Une facture existante qui ne vaut plus les heures réalisées
+            const ecart = !!fac && aTaux && fac.status !== 'annulee' && fac.montant_ttc != null
+              && Math.abs(Number(fac.montant_ttc) - ligne.montantHt) > 0.005
             return (
               <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5">
                 <div className="flex-1 min-w-0">
@@ -161,6 +184,15 @@ export function PoeiFacturation({
                       <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold ${st!.cls}`}>{st!.label}</span>
                       {fac.numero && <span>{fac.numero}</span>}
                       {fac.montant_ttc != null && <span className="tabular-nums">{Number(fac.montant_ttc).toLocaleString('fr-FR')} €</span>}
+                    </div>
+                  )}
+                  {aTaux && (!fac || ecart) && (
+                    <div className={`text-xs mt-0.5 ${ecart ? 'text-warning-700' : 'text-surface-500'}`}>
+                      {ecart ? 'Heures réalisées : ' : 'À facturer : '}
+                      <span className="tabular-nums">
+                        {heuresFr(ligne.heures)}{ligne.partielle && prevues ? ` sur ${heuresFr(prevues)}` : ''} · {eurosFr(ligne.montantHt)}
+                      </span>
+                      {ecart && (fac!.status === 'brouillon' ? ' — mettez les factures à jour' : ' — facture déjà émise, prévoir un avoir')}
                     </div>
                   )}
                 </div>
@@ -182,6 +214,12 @@ export function PoeiFacturation({
               </div>
             )
           })}
+          {aTaux && (
+            <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-surface-50 text-sm">
+              <span className="text-surface-600">Total à facturer, sur les heures réalisées</span>
+              <span className="font-semibold text-surface-900 tabular-nums">{eurosFr(totalAFacturer)}</span>
+            </div>
+          )}
         </div>
       )}
       </div>

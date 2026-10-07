@@ -10,6 +10,11 @@
  *   1. abandon déclaré → heures réellement effectuées (prorata France Travail)
  *   2. valeur saisie sur le candidat
  *   3. valeur du projet
+ *
+ * La FACTURE suit une règle plus large : France Travail ne paie que les heures
+ * réalisées. Dès que des heures effectuées sont déclarées pour un candidat,
+ * abandon ou non, ce sont elles qui sont facturées (voir heuresFacturables),
+ * et le certificat de réalisation porte le même chiffre.
  */
 
 export const MESSAGE_MIGRATION_PERIODE =
@@ -74,9 +79,66 @@ export function periodeCandidat(candidat: CandidatPeriode, projet: ProjetPeriode
   }
 }
 
-/** Heures à facturer à France Travail pour ce candidat. */
+/** Heures prévues pour ce candidat : sa durée propre, sinon celle du projet. */
+export function heuresPrevues(candidat: CandidatPeriode, projet: ProjetPeriode): number | null {
+  return nombre(candidat.duree_heures) ?? nombre(projet.duree_heures)
+}
+
+/**
+ * Heures à facturer à France Travail pour ce candidat : les heures effectuées
+ * dès qu'elles sont déclarées (abandon ou non), plafonnées aux heures prévues
+ * (la convention fixe un maximum) ; à défaut, les heures prévues.
+ */
+export function heuresFacturablesOuNull(candidat: CandidatPeriode, projet: ProjetPeriode): number | null {
+  const prevues = heuresPrevues(candidat, projet)
+  const declarees = nombre(candidat.heures_effectuees)
+  if (declarees == null) return periodeCandidat(candidat, projet).heures
+  return prevues != null ? Math.min(declarees, prevues) : declarees
+}
+
 export function heuresFacturables(candidat: CandidatPeriode, projet: ProjetPeriode): number {
-  return periodeCandidat(candidat, projet).heures ?? 0
+  return heuresFacturablesOuNull(candidat, projet) ?? 0
+}
+
+const heuresFr = (h: number) => h.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
+
+export interface LigneFactureCandidat {
+  heures: number
+  montantHt: number
+  /** Sous-titre de la ligne : le temps de présence, et pourquoi il est réduit. */
+  description: string
+  /** Moins d'heures facturées que prévu. */
+  partielle: boolean
+}
+
+/**
+ * La ligne de facture d'un candidat, identique partout où elle s'écrit
+ * (génération, abandon, saisie des heures effectuées).
+ */
+export function ligneFactureCandidat(
+  candidat: CandidatPeriode,
+  projet: ProjetPeriode & { montant_horaire?: number | string | null },
+): LigneFactureCandidat {
+  const heures = heuresFacturables(candidat, projet)
+  const taux = nombre(projet.montant_horaire) ?? 0
+  const dureeProjet = nombre(projet.duree_heures) ?? 0
+  const prevues = heuresPrevues(candidat, projet) ?? 0
+  const abandon = candidat.statut === 'abandonne' && nombre(candidat.heures_effectuees) != null
+  const declarees = !abandon && nombre(candidat.heures_effectuees) != null && heures < prevues
+  const entreeDecalee = !abandon && !declarees && nombre(candidat.duree_heures) != null && nombre(candidat.duree_heures) !== dureeProjet
+  const le = (d?: string | null) => (d ? ` le ${new Date(d).toLocaleDateString('fr-FR')}` : '')
+
+  let suite = ''
+  if (abandon) suite = ` sur ${heuresFr(prevues || dureeProjet)} prévues — abandon${le(candidat.date_abandon)}, facturation au prorata`
+  else if (declarees) suite = ` sur ${heuresFr(prevues)} prévues — facturation des heures réalisées`
+  else if (entreeDecalee) suite = ` sur ${heuresFr(dureeProjet)} du parcours — entrée en formation${le(candidat.date_debut)}`
+
+  return {
+    heures,
+    montantHt: Math.round(heures * taux * 100) / 100,
+    description: `Temps de présence : ${heuresFr(heures)}${suite}`,
+    partielle: prevues > 0 && heures < prevues,
+  }
 }
 
 /**
@@ -102,13 +164,13 @@ export function heuresDepuisInterventions(
   return total > 0 ? Math.round(total * 100) / 100 : null
 }
 
-/** Montant France Travail d'un candidat : ses heures au taux du projet. */
+/** Montant France Travail d'un candidat : ses heures facturables au taux du projet. */
 export function montantCandidat(
   candidat: CandidatPeriode,
   projet: ProjetPeriode & { montant_horaire?: number | string | null },
 ): number | null {
   const taux = nombre(projet.montant_horaire)
-  const heures = periodeCandidat(candidat, projet).heures
+  const heures = heuresFacturablesOuNull(candidat, projet)
   if (taux == null || heures == null) return null
   return Math.round(heures * taux * 100) / 100
 }
