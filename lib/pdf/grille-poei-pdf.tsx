@@ -20,7 +20,6 @@ interface Props {
    */
   signatures?: {
     beneficiaire?: { data?: string | null; nom?: string | null; date?: string | null } | null
-    tuteur?: { data?: string | null; nom?: string | null; date?: string | null } | null
     employeur?: { data?: string | null; nom?: string | null; date?: string | null } | null
   } | null
   semaine: number | null
@@ -170,9 +169,11 @@ const LigneVide = () => (
  *
  * Le suivi hebdomadaire reste un document interne. L'évaluation finale, elle,
  * suit le formulaire France Travail « Attestation de développement de
- * compétences » (novembre 2025) : mêmes mentions, mêmes trois signatures —
- * employeur, tuteur, bénéficiaire — et compétences en Oui/Non. C'est la pièce
- * remise à France Travail à la fin de la POEI, en trois exemplaires. Le détail
+ * compétences » (novembre 2025) : mêmes mentions, compétences en Oui/Non, et
+ * les signatures de l'employeur et du bénéficiaire, plus le cachet de
+ * l'organisme. La case du tuteur et la mention des trois exemplaires ont été
+ * retirées à la demande de Lab Learning (07/10/2026). C'est la pièce remise à
+ * France Travail à la fin de la POEI. Le détail
  * de l'évaluation du formateur suit en annexe : il nourrit l'attestation, il
  * ne la remplace pas.
  */
@@ -435,14 +436,13 @@ export function GrillePoeiPDF(p: Props) {
         {/*
           Les signatures du formulaire, plus le cachet de l'organisme. Chaque
           tracé reporté vient d'une signature électronique réellement donnée
-          dans la POEI — certificat du bénéficiaire, contrat du tuteur, lien de
-          signature de l'employeur. Une case sans signature en base reste
+          dans la POEI — certificat du bénéficiaire, lien de signature de
+          l'employeur. Une case sans signature en base reste
           vierge, à signer à la main : rien n'est fabriqué.
         */}
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }} wrap={false}>
           {([
             { titre: "L'employeur, son représentant", sous: '(Date, signature, cachet)', sig: p.signatures?.employeur || null, tampon: null },
-            { titre: 'Le tuteur', sous: '(Date, signature)', sig: p.signatures?.tuteur || null, tampon: null },
             { titre: 'Le bénéficiaire de la formation', sous: '(Date, signature)', sig: p.signatures?.beneficiaire || null, tampon: null },
             { titre: "L'organisme de formation", sous: '(Cachet et signature)', sig: null, tampon: p.org?.tampon_signature_url || null },
           ] as const).map((b) => (
@@ -464,10 +464,6 @@ export function GrillePoeiPDF(p: Props) {
             </View>
           ))}
         </View>
-
-        <Text style={{ fontSize: 7, color: SURFACE_500, marginTop: 8 }}>
-          3 exemplaires : 1 pour le stagiaire, 1 pour le tuteur et 1 pour l'employeur.
-        </Text>
 
         <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />
       </Page>
