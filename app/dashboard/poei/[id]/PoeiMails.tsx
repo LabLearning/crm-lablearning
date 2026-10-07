@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, Send, GraduationCap, Award, Users, Check, Loader2, PenLine, ArrowLeft, ArrowRight, Eye, Paperclip, AlertTriangle, ClipboardCheck, ShieldCheck, Download } from '@/components/ui/icons'
+import { Mail, Send, GraduationCap, Award, Users, Check, Loader2, PenLine, ArrowLeft, ArrowRight, Eye, Paperclip, AlertTriangle, ClipboardCheck, ShieldCheck, Download, Link2 } from '@/components/ui/icons'
 import { Button, Modal, Input, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { PoeiSection } from './PoeiSection'
 import { sendAttestationsEntreeAction, sendGroupEmailToCandidatsAction, getPoeiEmailTemplatesAction } from '../actions'
-import { sendCertificatSignatureAction, sendAllCertificatSignaturesAction } from '../certificat-signature-actions'
+import { sendCertificatSignatureAction, sendAllCertificatSignaturesAction, getCertificatSignatureLinkAction } from '../certificat-signature-actions'
 import { apercuEnvoiPoeiAction, type ApercuMail } from '../apercu-mail-actions'
 import { envoyerEvaluationsFormateursAction } from '../evaluation-formateur-actions'
 import { envoyerHygienePoeiAction } from '../hygiene-poei-actions'
@@ -172,6 +172,20 @@ export function PoeiMails({
     } else toast('error', r?.error || "L'envoi a échoué")
   }
 
+  // Le lien de signature du certificat d'un candidat, sans envoyer de mail : à
+  // lui transmettre soi-même (WhatsApp, SMS). Le même lien que celui du mail.
+  const [lienEnCours, setLienEnCours] = useState(false)
+  async function copierLienCertificat(candidatId: string, nom: string) {
+    const apprenantId = candidats.find((c) => c.id === candidatId)?.apprenantId
+    if (!apprenantId) { toast('error', 'Ce candidat n’est pas rattaché à une fiche apprenant'); return }
+    setLienEnCours(true)
+    const r = await getCertificatSignatureLinkAction(poeiId, apprenantId).catch(() => null)
+    setLienEnCours(false)
+    if (!r?.success || !r.data?.url) { toast('error', r?.error || 'Impossible de préparer le lien'); return }
+    try { await navigator.clipboard.writeText(r.data.url); toast('success', `Lien de signature de ${nom} copié`) }
+    catch { window.prompt(`Lien de signature de ${nom}, à copier :`, r.data.url) }
+  }
+
   const etatPour = (c: CandidatMail, t: TypeEnvoi) => {
     if (t === 'attestation') return c.attestationEnvoyeeLe ? `Envoyée le ${formatDate(c.attestationEnvoyeeLe)}` : null
     if (t === 'certificat') {
@@ -331,6 +345,11 @@ export function PoeiMails({
               </Button>
               <div className="flex flex-wrap justify-end gap-2 ml-auto">
                 <Button variant="secondary" onClick={fermer}>Annuler</Button>
+                {type === 'certificat' && (
+                  <Button variant="secondary" onClick={() => copierLienCertificat(courant.candidatId, courant.nom)} isLoading={lienEnCours} icon={<Link2 className="h-4 w-4" />}>
+                    Copier le lien de {courant.nom}
+                  </Button>
+                )}
                 <Button onClick={envoyer} isLoading={envoi} icon={<Send className="h-4 w-4" />} disabled={nbEnvoyables === 0}>
                   Confirmer l&apos;envoi à {nbEnvoyables} candidat{nbEnvoyables > 1 ? 's' : ''}
                 </Button>

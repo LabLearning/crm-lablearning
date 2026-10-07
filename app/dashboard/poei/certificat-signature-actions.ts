@@ -10,6 +10,12 @@ import { ensureCertificatSignature, paramsCertificatSignature, urlSignatureCerti
 const APP = () => process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 const VALIDITE_LIEN_JOURS = 60
 
+// Un lien remis ou envoyé aujourd'hui vaut 60 jours à partir d'aujourd'hui :
+// sans cela, une relance tardive transmettrait un lien déjà expiré.
+const prolongerLien = (supabase: any, sigId: string) => supabase.from('certificat_signatures')
+  .update({ token_expires_at: new Date(Date.now() + VALIDITE_LIEN_JOURS * 86400000).toISOString() })
+  .eq('id', sigId)
+
 /** Envoie au candidat, par email, le lien de signature de son certificat. */
 export async function sendCertificatSignatureAction(poeiId: string, apprenantId: string): Promise<ActionResult & { data?: { email: string } }> {
   const session = await getSession()
@@ -25,6 +31,7 @@ export async function sendCertificatSignatureAction(poeiId: string, apprenantId:
 
   const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
 
+  await prolongerLien(supabase, sig.id)
   try {
     const { sendDocumentEmail } = await import('@/lib/email')
     // Textes partagés avec l'aperçu (lib/poei-emails)
@@ -74,7 +81,11 @@ export async function getCertificatSignatureLinkAction(poeiId: string, apprenant
   const supabase = await createServiceRoleClient()
   const r = await ensureCertificatSignature(supabase, session.organization.id, poeiId, apprenantId, session.user.id)
   if ('error' in r) return { success: false, error: r.error }
-  return { success: true, data: { url: urlSignatureCertificat((r as any).sig.token) } }
+  const sig = (r as any).sig
+  if (sig.signed_at) return { success: false, error: 'Ce certificat est déjà signé' }
+  await prolongerLien(supabase, sig.id)
+  await logAudit({ action: 'lien_signature_certificat', entity_type: 'certificat_signature', entity_id: sig.id, details: { poei_id: poeiId, apprenant_id: apprenantId } })
+  return { success: true, data: { url: urlSignatureCertificat(sig.token) } }
 }
 
 /**
@@ -151,11 +162,7 @@ export async function sendSignatureEmployeurAction(
   }
 
   const url = `${APP()}/certificat/${sig.token}/signer`
-  // Un lien remis ou envoyé aujourd'hui vaut 60 jours à partir d'aujourd'hui :
-  // sans cela, une relance tardive transmettrait un lien déjà expiré.
-  const prolonger = () => supabase.from('certificat_signatures')
-    .update({ token_expires_at: new Date(Date.now() + VALIDITE_LIEN_JOURS * 86400000).toISOString() })
-    .eq('id', sig.id)
+  const prolonger = () => prolongerLien(supabase, sig.id)
 
   if (opts?.lienSeul) {
     const { error } = await prolonger()
