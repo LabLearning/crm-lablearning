@@ -260,11 +260,11 @@ export function StarkkBulle() {
         )}
         <button type="button" onClick={() => setOuvert(true)} aria-label="Poser une question à Starkk, l’assistant de Lab Learning"
           className="group relative h-[52px] w-[52px] shrink-0 rounded-full shadow-lg shadow-black/25 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-[3px] focus-visible:ring-[#5CD9A0]">
-          <span className="ll-ligne-verte absolute -inset-[2px] rounded-full" aria-hidden="true" />
+          <span className="absolute -inset-[2px] rounded-full bg-[#5CD9A0]/45" aria-hidden="true" />
           <span className="absolute inset-0 overflow-hidden rounded-full bg-[#0C1210] ring-2 ring-[#0C1210]">
             <img src={AVATAR} alt="" width={160} height={160} className="h-full w-full object-cover" />
           </span>
-          <span className="absolute -right-0.5 bottom-0 h-3.5 w-3.5 rounded-full bg-[#5CD9A0] ring-2 ring-white" aria-hidden="true" />
+          <span className="absolute -right-0.5 bottom-0 flex h-[15px] w-[15px] items-center justify-center rounded-full bg-white" aria-hidden="true"><span className="ll-direct h-[9px] w-[9px]"><span /></span></span>
         </button>
       </div>
     )
@@ -283,11 +283,11 @@ export function StarkkBulle() {
         )}
         <span className="relative h-10 w-10 shrink-0">
           <img src={AVATAR} alt="" width={160} height={160} className="h-10 w-10 rounded-full object-cover ring-1 ring-white/20" />
-          <span className="absolute -right-0.5 bottom-0 h-3 w-3 rounded-full bg-[#5CD9A0] ring-2 ring-[#0C1210]" />
+          <span className="absolute -right-0.5 bottom-0 flex h-[13px] w-[13px] items-center justify-center rounded-full bg-[#0C1210]" aria-hidden="true"><span className="ll-direct h-[8px] w-[8px]"><span /></span></span>
         </span>
         <div className="min-w-0 flex-1">
           <div className="font-heading text-sm font-bold">Starkk</div>
-          <div className="text-xs text-white/55">Assistant IA de Lab Learning</div>
+          <div className="text-xs text-white/55">Assistant IA de Lab Learning · en ligne</div>
         </div>
         {vue === 'discussion' && messages.length > 0 && (
           <button type="button" onClick={recommencer} disabled={enCours} aria-label="Nouvelle discussion" title="Nouvelle discussion" className="flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:bg-white/10 hover:text-white disabled:opacity-40">

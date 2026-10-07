@@ -649,3 +649,15 @@
 @media (prefers-reduced-motion: reduce) {
   .ll-el-flotte, .ll-el-flotte-lent, .ll-el-barre, .ll-el-pop, .ll-el-curseur, .ll-el-entree, .ll-el-gain { animation: none !important; opacity: 1 !important; transform: none !important; }
 }
+
+/* ── Starkk sur le site : voyant « en direct » (point vert et ondes qui s'en échappent) ── */
+@keyframes ll-direct-onde { 0% { transform: scale(1); opacity: .8; } 75%, 100% { transform: scale(3.1); opacity: 0; } }
+@keyframes ll-direct-coeur { 0%, 100% { transform: scale(1); } 50% { transform: scale(.86); } }
+.ll-direct { position: relative; display: inline-flex; }
+.ll-direct::before, .ll-direct::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: #5CD9A0; animation: ll-direct-onde 2s cubic-bezier(0, 0, .2, 1) infinite; }
+.ll-direct::after { animation-delay: 1s; }
+.ll-direct > span { position: relative; width: 100%; height: 100%; border-radius: 9999px; background: #5CD9A0; animation: ll-direct-coeur 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ll-direct::before, .ll-direct::after { animation: none; opacity: 0; }
+  .ll-direct > span { animation: none; }
+}
