@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icons'
 import { Button } from '@/components/ui'
 import { signerBilanAction } from './actions'
+import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 import { AvisFormationStagiaire } from '@/components/poei/AvisFormationStagiaire'
 
 export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, avisInitial, noteInitiale = '', dejaSigne, certificatASigner = false, apercu = false }: {
@@ -52,6 +53,8 @@ export function BilanSignatureClient({ token, orgNom, logo, nomStagiaire, avisIn
     setErr(null)
     if (!note) { setErr('Merci d’indiquer votre appréciation de la formation.'); return }
     if (!hasDrawn) { setErr('Merci de signer dans le cadre.'); return }
+    // Un simple appui dans le cadre ne trace rien : on vérifie qu'il y a bien un tracé
+    if (!cadreSigne(canvasRef.current)) { setErr(MESSAGE_SIGNATURE_VIDE); return }
     if (!nom.trim()) { setErr("Merci d'indiquer votre nom."); return }
     setSaving(true)
     const r = await signerBilanAction(token, canvasRef.current!.toDataURL('image/png'), nom.trim(), { note, avis })

@@ -4,6 +4,8 @@ import { headers } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { SIGNATURE_BILAN } from '@/lib/poei-bilan-ft'
 import { signerBilan, signerCertificatSiBesoin } from '@/lib/poei-signature-documents'
+import { signatureVide } from '@/lib/signature-image'
+import { MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 
 /**
  * Signature publique (par lien personnel) des documents de fin de POEI par le
@@ -19,6 +21,8 @@ export async function signerBilanAction(
 ): Promise<{ success: boolean; error?: string }> {
   if (!/^[0-9a-f]{64}$/.test(token || '')) return { success: false, error: 'Lien invalide' }
   if (!signatureBase64?.startsWith('data:image/png;base64,') || signatureBase64.length > 400_000) return { success: false, error: 'Signature invalide' }
+  // Un cadre validé sans tracé n'est pas une signature
+  if (signatureVide(signatureBase64)) return { success: false, error: MESSAGE_SIGNATURE_VIDE }
   if (!nom?.trim()) return { success: false, error: 'Nom requis' }
 
   const supabase = await createServiceRoleClient()

@@ -11,6 +11,7 @@
  * couvre pas le bilan, qui se signe alors par son propre lien.
  */
 import { APPRECIATIONS_STAGIAIRE, CHAMPS_BILAN_FT, SIGNATURE_BILAN, construireBilanFt, lignesBilanFt } from '@/lib/poei-bilan-ft'
+import { signatureVide } from '@/lib/signature-image'
 
 export interface BilanPourSignature {
   grilleId: string
@@ -109,4 +110,33 @@ export async function signerCertificatSiBesoin(supabase: any, orgId: string, poe
         apprenant_id: apprenantId, email: appr?.email || null, ...champs,
       })
   if (error) console.error('[signature certificat depuis le bilan]', error)
+}
+
+/**
+ * Rouvre une signature de certificat enregistrée sans tracé : jusqu'au
+ * 07/10/2026, un simple appui dans le cadre suffisait à valider la page, et
+ * l'image enregistrée était blanche. Le certificat redevient « à signer »,
+ * avec le même lien, valable 60 jours de plus.
+ *
+ * Ne touche jamais une signature qui porte un tracé, ni une image illisible.
+ * L'acte d'origine (date, nom saisi, adresse IP) reste dans le journal.
+ */
+export async function rouvrirCertificatSiVide(supabase: any, sig: any, userId?: string | null): Promise<boolean> {
+  if (!sig?.id || !sig.signed_at || !signatureVide(sig.signature_data)) return false
+  const { data, error } = await supabase.from('certificat_signatures').update({
+    signed_at: null, signature_data: null, signataire_nom: null, ip_address: null, user_agent: null,
+    token_expires_at: new Date(Date.now() + 60 * 86400000).toISOString(),
+  }).eq('id', sig.id).eq('signed_at', sig.signed_at).select('id')
+  if (error || !data?.length) { if (error) console.error('[signature vide]', error); return false }
+  const { error: eJournal } = await supabase.from('audit_logs').insert({
+    organization_id: sig.organization_id, user_id: userId || null,
+    action: 'signature_vide_rouverte', entity_type: 'certificat_signature', entity_id: sig.id,
+    details: {
+      poei_id: sig.poei_id, apprenant_id: sig.apprenant_id, role: sig.role || 'candidat',
+      motif: 'image de signature sans tracé', validee_le: sig.signed_at,
+      nom_saisi: sig.signataire_nom || null, ip: sig.ip_address || null,
+    },
+  })
+  if (eJournal) console.error('[signature vide, journal]', eJournal)
+  return true
 }

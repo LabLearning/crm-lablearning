@@ -5,6 +5,7 @@ import { CheckCircle2, Eraser, PenTool, ShieldCheck } from '@/components/ui/icon
 import { Button } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { signCertificatAction } from './actions'
+import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 import { AvisFormationStagiaire } from '@/components/poei/AvisFormationStagiaire'
 
 /** 63.5 → « 63,5 » */
@@ -65,6 +66,8 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
     setErr(null)
     if (bilan && !note) { setErr('Merci d’indiquer votre appréciation de la formation.'); return }
     if (!hasDrawn) { setErr('Merci de signer dans le cadre.'); return }
+    // Un simple appui dans le cadre ne trace rien : on vérifie qu'il y a bien un tracé
+    if (!cadreSigne(canvasRef.current)) { setErr(MESSAGE_SIGNATURE_VIDE); return }
     if (!nom.trim()) { setErr('Merci d\'indiquer votre nom.'); return }
     setSaving(true)
     const data = canvasRef.current!.toDataURL('image/png')
@@ -86,7 +89,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
             ? `Merci. Votre signature sera portée sur l'attestation de développement de compétences de chaque candidat${dateAffichee ? ` (datée du ${formatDate(dateAffichee, { day: 'numeric', month: 'long', year: 'numeric' })})` : ''}.`
             : bilan
               ? 'Merci. Votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation ont bien été signés.'
-              : `Merci. Votre certificat de réalisation a bien été signé${dateAffichee ? ` (daté du ${formatDate(dateAffichee, { day: 'numeric', month: 'long', year: 'numeric' })})` : ''}.`}
+              : `Merci. Votre certificat de réalisation et votre attestation de compétences ont bien été signés${dateAffichee ? ` (datés du ${formatDate(dateAffichee, { day: 'numeric', month: 'long', year: 'numeric' })})` : ''}.`}
         </p>
         <p className="text-xs text-surface-400 mt-6">{sig.organization?.name || 'Lab Learning'}</p>
       </div>
@@ -165,7 +168,7 @@ export function CertificatSignatureClient({ sig, token, nbCandidats = 0, employe
             ? 'En signant, vous attestez, en qualité de représentant de l\u2019employeur, l\u2019exactitude des informations portées sur les attestations de développement de compétences des candidats du projet.'
             : bilan
               ? 'En signant, vous attestez avoir suivi la formation mentionnée ci-dessus et vous signez votre certificat de réalisation, votre attestation de compétences et votre bilan de fin de formation, qui sera transmis à France Travail.'
-              : 'En signant, vous attestez avoir suivi la formation mentionnée ci-dessus.'}
+              : 'En signant, vous attestez avoir suivi la formation mentionnée ci-dessus et vous signez votre certificat de réalisation et votre attestation de compétences.'}
         </p>
       </div>
     </div>

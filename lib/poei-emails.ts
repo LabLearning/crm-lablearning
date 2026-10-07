@@ -238,6 +238,12 @@ export async function ensureCertificatSignature(supabase: any, orgId: string, po
 
   const dateSignature = poei.date_fin || poei.date_debut || null
   if (existing) {
+    // Une signature validée sans tracé n'en est pas une : le certificat se
+    // redemande comme s'il n'avait jamais été signé.
+    const { rouvrirCertificatSiVide } = await import('@/lib/poei-signature-documents')
+    if (await rouvrirCertificatSiVide(supabase, existing, userId)) {
+      Object.assign(existing, { signed_at: null, signature_data: null, signataire_nom: null })
+    }
     // Réaligne la date affichée si la POEI a changé de date de fin
     if (dateSignature && existing.date_signature !== dateSignature) {
       await supabase.from('certificat_signatures').update({ date_signature: dateSignature }).eq('id', existing.id)
