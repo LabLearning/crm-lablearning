@@ -232,7 +232,12 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     const r = await supabase.from('certificat_signatures')
       .select('apprenant_id, signed_at, sent_at')
       .eq('poei_id', params.id).eq('organization_id', session.organization.id)
-    if (!r.error) for (const x of r.data || []) sigMap[String((x as any).apprenant_id)] = { signed_at: (x as any).signed_at, sent_at: (x as any).sent_at }
+    // La ligne sans candidat est la signature de l'employeur sur l'attestation :
+    // elle ne compte pas parmi les certificats des candidats.
+    if (!r.error) for (const x of r.data || []) {
+      if (!(x as any).apprenant_id) continue
+      sigMap[String((x as any).apprenant_id)] = { signed_at: (x as any).signed_at, sent_at: (x as any).sent_at }
+    }
   }
 
   // Grilles d'évaluation des candidats (résilient : table absente avant migration 108)
