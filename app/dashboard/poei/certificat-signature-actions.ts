@@ -8,6 +8,7 @@ import type { ActionResult } from '@/lib/types'
 import { ensureCertificatSignature, paramsCertificatSignature, urlSignatureCertificat } from '@/lib/poei-emails'
 
 const APP = () => process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+const VALIDITE_LIEN_JOURS = 60
 
 /** Envoie au candidat, par email, le lien de signature de son certificat. */
 export async function sendCertificatSignatureAction(poeiId: string, apprenantId: string): Promise<ActionResult & { data?: { email: string } }> {
@@ -84,11 +85,15 @@ export async function getCertificatSignatureLinkAction(poeiId: string, apprenant
  * France Travail qui veut sa signature sur chaque attestation, pas neuf
  * cérémonies de signature. Le destinataire est le représentant renseigné sur
  * le projet ; à défaut, le contact signataire du client.
+ *
+ * `preview` renvoie le mail sans l'envoyer. `lienSeul` renvoie le lien de
+ * signature sans rien envoyer, pour le transmettre soi-même : il fonctionne
+ * aussi quand l'entreprise n'a aucun contact avec email.
  */
 export async function sendSignatureEmployeurAction(
   poeiId: string,
-  opts?: { preview?: boolean },
-): Promise<ActionResult & { data?: { email: string; html?: string; subject?: string } }> {
+  opts?: { preview?: boolean; lienSeul?: boolean },
+): Promise<ActionResult & { data?: { email: string | null; html?: string; subject?: string; url?: string } }> {
   const session = await getSession()
   if (['apprenant', 'formateur'].includes(session.user.role)) {
     return { success: false, error: 'Accès non autorisé' }
@@ -113,7 +118,7 @@ export async function sendSignatureEmployeurAction(
       || (contacts || []).find((x: any) => x.email)
     if (c) { email = c.email; nom = nom || [c.prenom, c.nom].filter(Boolean).join(' ').trim() }
   }
-  if (!email) {
+  if (!email && !opts?.lienSeul) {
     return { success: false, error: "Aucun contact référent avec email sur l'entreprise : ajoutez-le sur la fiche client" }
   }
 
@@ -141,8 +146,22 @@ export async function sendSignatureEmployeurAction(
       return { success: false, error: 'Erreur lors de la préparation du lien (migration 131 appliquée ?)' }
     }
     sig = created
-  } else if (existing.email !== email) {
+  } else if (email && existing.email !== email) {
     await supabase.from('certificat_signatures').update({ email }).eq('id', existing.id)
+  }
+
+  const url = `${APP()}/certificat/${sig.token}/signer`
+  // Un lien remis ou envoyé aujourd'hui vaut 60 jours à partir d'aujourd'hui :
+  // sans cela, une relance tardive transmettrait un lien déjà expiré.
+  const prolonger = () => supabase.from('certificat_signatures')
+    .update({ token_expires_at: new Date(Date.now() + VALIDITE_LIEN_JOURS * 86400000).toISOString() })
+    .eq('id', sig.id)
+
+  if (opts?.lienSeul) {
+    const { error } = await prolonger()
+    if (error) return { success: false, error: 'Erreur lors de la préparation du lien' }
+    await logAudit({ action: 'lien_signature_employeur', entity_type: 'poei', entity_id: poeiId })
+    return { success: true, data: { email, url } }
   }
 
   const { count: nbCandidats } = await supabase
@@ -151,7 +170,6 @@ export async function sendSignatureEmployeurAction(
   const { data: org } = await supabase.from('organizations').select('*').eq('id', session.organization.id).single()
   const clientNom = (poei as any).client?.nom_commercial || (poei as any).client?.raison_sociale || 'votre établissement'
   const formationNom = (poei as any).formation?.intitule || 'la formation'
-  const url = `${APP()}/certificat/${sig.token}/signer`
 
   // Mêmes textes pour l'aperçu et l'envoi : un aperçu qui divergerait de ce
   // qui part vraiment ferait pire que pas d'aperçu du tout.
@@ -166,7 +184,7 @@ export async function sendSignatureEmployeurAction(
     intro: `La POEI menée chez ${clientNom} sur « ${formationNom} » touche à sa fin. En qualité de représentant de l'établissement, votre signature est requise sur l'attestation de développement de compétences remise à France Travail — une seule signature couvre les ${nbCandidats || ''} candidats du projet.`,
     ctaLabel: "Signer l'attestation",
     ctaUrl: url,
-    footerNote: 'Lien personnel, à ne pas transmettre. Valable 60 jours.',
+    footerNote: `Lien personnel, à ne pas transmettre. Valable ${VALIDITE_LIEN_JOURS} jours.`,
   }
 
   if (opts?.preview) {
@@ -174,11 +192,12 @@ export async function sendSignatureEmployeurAction(
     return { success: true, data: { email, html: buildDocumentEmailHtml(emailParams), subject: emailParams.subject } }
   }
 
+  await prolonger()
   try {
     const { sendDocumentEmail } = await import('@/lib/email')
     await sendDocumentEmail({
       ...emailParams,
-      to: email,
+      to: email!,
       organizationId: session.organization.id,
       entityType: 'poei', entityId: poeiId, triggeredBy: session.user.id,
     })

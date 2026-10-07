@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ClipboardCheck, CheckCircle2, Clock, Download, Minus, Plus, PenLine, Send, Loader2, Building2, Eye } from '@/components/ui/icons'
+import { ClipboardCheck, CheckCircle2, Clock, Download, Minus, Plus, PenLine, Send, Loader2, Building2, Eye, Link2, Copy } from '@/components/ui/icons'
 import { Badge, Button, Modal, useToast } from '@/components/ui'
 import { sendSignatureEmployeurAction } from '../certificat-signature-actions'
 import { demanderSignatureBilanAction, demanderSignaturesBilansAction } from '../bilan-signature-actions'
@@ -36,6 +36,16 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
   const [apercuSig, setApercuSig] = useState<{ html: string; subject?: string; to?: string; stagiaire?: string; tous?: string[] } | null>(null)
   const [bilansDemandes, setBilansDemandes] = useState<string[]>([])
   const [signatureEnvoyee, setSignatureEnvoyee] = useState(false)
+  // Lien de signature à transmettre soi-même, montré quand la copie automatique échoue
+  const [lienAMontrer, setLienAMontrer] = useState<{ url: string; pour: string } | null>(null)
+  const [lienEnCours, setLienEnCours] = useState(false)
+
+  // Copie un lien de signature ; si le navigateur refuse (Safari après une
+  // attente), on l'affiche dans une fenêtre où il se copie d'un clic.
+  async function remettreLien(url: string, pour: string, message: string) {
+    try { await navigator.clipboard.writeText(url); toast('success', message) }
+    catch { setLienAMontrer({ url, pour }) }
+  }
 
   // On montre le mail avant qu'il parte : destinataire, objet, rendu complet.
   async function ouvrirApercuEmployeur() {
@@ -44,9 +54,22 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
     setEnvoiSig(false)
     if (r.success && (r as any).data?.html) {
       setApercuSig({ html: (r as any).data.html, subject: (r as any).data.subject, to: (r as any).data.email })
+    } else if ((r.error || '').includes('Aucun contact référent avec email')) {
+      await copierLienEmployeur("Pas d'email sur le contact de l'entreprise : lien de signature copié, à transmettre à l'employeur")
     } else {
       toast('error', r.error || "Impossible de générer l'aperçu")
     }
+  }
+
+  // Le lien de signature de l'employeur, sans envoyer de mail : à transmettre
+  // soi-même (WhatsApp, SMS, autre adresse). Le même lien que celui du mail.
+  async function copierLienEmployeur(message = "Lien de signature de l'employeur copié") {
+    setLienEnCours(true)
+    const r = await sendSignatureEmployeurAction(poeiId, { lienSeul: true })
+    setLienEnCours(false)
+    const url = (r as any).data?.url as string | undefined
+    if (!r.success || !url) { toast('error', r.error || 'Impossible de préparer le lien'); return }
+    await remettreLien(url, "l'employeur", message)
   }
 
   async function confirmerEnvoiEmployeur() {
@@ -106,8 +129,7 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
   async function copierLienBilan(apprenantId: string, message = 'Lien de signature copié') {
     const r = await demanderSignatureBilanAction(poeiId, apprenantId, { lienSeul: true })
     if (!r.success || !r.data?.url) { toast('error', r.error || 'Erreur'); return }
-    try { await navigator.clipboard.writeText(r.data.url); toast('success', message) }
-    catch { toast('success', `Lien de signature : ${r.data.url}`) }
+    await remettreLien(r.data.url, 'le stagiaire', message)
   }
 
   async function confirmerEnvoiBilan(apprenantId: string) {
@@ -164,6 +186,14 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
               className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-60">
               {envoiSig && !apercuSig ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
               {signatureEmployeur?.sent_at || signatureEnvoyee ? 'Relancer la signature employeur' : 'Faire signer l\u2019employeur'}
+            </button>
+          )}
+          {!signatureEmployeur?.signed_at && (
+            <button onClick={() => copierLienEmployeur()} disabled={lienEnCours}
+              title="Copier le lien de signature de l'employeur pour le transmettre vous-même, sans envoyer de mail"
+              className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm disabled:opacity-60">
+              {lienEnCours ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              Copier le lien employeur
             </button>
           )}
           {bilansASigner.length > 1 && (
@@ -299,9 +329,30 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
               {apercuSig.stagiaire && (
                 <Button variant="secondary" onClick={() => copierLienBilan(apercuSig.stagiaire!)}>Copier le lien</Button>
               )}
+              {!apercuSig.stagiaire && !apercuSig.tous && (
+                <Button variant="secondary" onClick={() => copierLienEmployeur()} isLoading={lienEnCours} icon={<Link2 className="h-4 w-4" />}>Copier le lien</Button>
+              )}
               <Button onClick={() => (apercuSig.tous ? confirmerEnvoiTous(apercuSig.tous) : apercuSig.stagiaire ? confirmerEnvoiBilan(apercuSig.stagiaire) : confirmerEnvoiEmployeur())} isLoading={envoiSig} icon={<Send className="h-4 w-4" />}>
                 Confirmer l'envoi
               </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={!!lienAMontrer} onClose={() => setLienAMontrer(null)} title="Lien de signature" size="md">
+        {lienAMontrer && (
+          <div className="space-y-3">
+            <p className="text-sm text-surface-600">
+              À transmettre à {lienAMontrer.pour}. Ce lien est personnel : la personne qui l&apos;ouvre peut signer.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input readOnly value={lienAMontrer.url} onFocus={(e) => e.currentTarget.select()}
+                aria-label="Lien de signature" className="input-base font-mono text-xs flex-1 min-w-0" />
+              <Button icon={<Copy className="h-4 w-4" />} onClick={async () => {
+                try { await navigator.clipboard.writeText(lienAMontrer.url); toast('success', 'Lien de signature copié'); setLienAMontrer(null) }
+                catch { toast('error', 'Copie impossible : sélectionnez le lien et copiez-le') }
+              }}>Copier</Button>
             </div>
           </div>
         )}
