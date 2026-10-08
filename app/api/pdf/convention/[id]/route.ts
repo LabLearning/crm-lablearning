@@ -12,6 +12,44 @@ export async function GET(
 ) {
   const supabase = await createServiceRoleClient()
 
+  // Exemplaire signé archivé (?exemplaire=signe) : le fichier figé à l'instant
+  // de la signature, servi tel quel, sans être régénéré. C'est le seul PDF dont
+  // l'empreinte est celle du certificat de signature. Réservé aux comptes du
+  // tableau de bord : le lien du signataire n'y donne jamais accès, et cette
+  // consultation interne n'est pas une preuve de lecture.
+  if (req.nextUrl.searchParams.get('exemplaire') === 'signe') {
+    const auth = await requireApiUser()
+    if ('error' in auth) return auth.error
+    const { data: c } = await supabase.from('conventions')
+      .select('id, numero, signature_document_path')
+      .eq('id', params.id).eq('organization_id', auth.user.organizationId).maybeSingle()
+    if (!c) return NextResponse.json({ error: 'Convention introuvable' }, { status: 404 })
+    const chemin = String(c.signature_document_path || '')
+    if (!chemin) {
+      return NextResponse.json({
+        error: 'Aucun exemplaire signé n’est archivé pour cette convention : l’archivage se fait à la signature électronique, et les signatures les plus anciennes n’en ont pas.',
+      }, { status: 404 })
+    }
+    // Un exemplaire figé est toujours rangé dans le dossier de sa convention :
+    // un chemin qui en sortirait n'est pas le sien et n'est pas servi
+    let fichier: Blob | null = null
+    if (chemin.startsWith(`${auth.user.organizationId}/conventions/${c.id}/`)) {
+      const { data, error } = await supabase.storage.from('documents').download(chemin)
+      if (error) console.error('[exemplaire signé]', error.message)
+      fichier = data
+    }
+    if (!fichier) {
+      return NextResponse.json({ error: 'L’exemplaire signé archivé de cette convention est introuvable dans le stockage.' }, { status: 404 })
+    }
+    return new NextResponse(new Uint8Array(await fichier.arrayBuffer()), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="convention-${c.numero || c.id}-exemplaire-signe.pdf"`,
+        'Cache-Control': 'private, no-store',
+      },
+    })
+  }
+
   // Le signataire lit la convention complète depuis sa page de signature :
   // son lien personnel lui en donne l'accès, et chaque lecture est une preuve
   const token = req.nextUrl.searchParams.get('token')

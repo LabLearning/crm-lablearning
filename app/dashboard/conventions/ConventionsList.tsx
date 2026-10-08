@@ -4,21 +4,48 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Search, Send, Check, Trash2,
-  FileSignature, Building2, Euro, Clock, PenTool, Download, Link2, Copy, ShieldCheck,
+  FileSignature, Building2, Euro, Clock, PenTool, Download, Link2, Copy, ShieldCheck, Archive,
 } from '@/components/ui/icons'
 import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast, RowMenu } from '@/components/ui'
-import { CERTIFICAT_SIGNATURE_CONVENTION } from '@/lib/fonctionnalites'
 import { createConventionAction, updateConventionStatusAction, deleteConventionAction } from './actions'
 import { annulerConventionSigneeAction } from './signature-actions'
 import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
 import { FINANCEUR_LABELS } from '@/lib/types/crm'
 import { formatDate, companyLabel } from '@/lib/utils'
-import type { Convention, ConventionStatus, ConventionType } from '@/lib/types/dossier'
+import type { ConventionStatus, ConventionType } from '@/lib/types/dossier'
 import type { Client } from '@/lib/types/crm'
 import type { Formation } from '@/lib/types/formation'
 
+/**
+ * Ligne de la liste : les seules colonnes qu'elle affiche. Les preuves de
+ * signature (image, jeton du lien, adresse IP, navigateur) restent sur le
+ * serveur, qui n'en transmet que des indicateurs.
+ */
+export interface ConventionListe {
+  id: string
+  numero: string
+  type: ConventionType
+  status: ConventionStatus
+  objet: string | null
+  montant_ttc: number
+  duree_heures: number | null
+  nombre_stagiaires: number
+  financeur_type: string | null
+  /** Dates portées sur la convention, côté client et côté organisme : au jour près. */
+  signature_client_date: string | null
+  signature_of_date: string | null
+  /** Horodatage réel de la signature électronique du client. */
+  signature_client_signed_at: string | null
+  /** Signée électroniquement par le client : certificat de signature disponible. */
+  certificat_signature: boolean
+  /** Un exemplaire PDF figé à la signature est archivé. */
+  exemplaire_archive: boolean
+  client?: { raison_sociale: string | null; nom_commercial?: string | null; sigle?: string | null } | null
+  formation?: { intitule: string } | null
+}
+
 interface ConventionsListProps {
-  conventions: Convention[]
+  conventions: ConventionListe[]
   clients: Pick<Client, 'id' | 'raison_sociale'>[]
   formations: Pick<Formation, 'id' | 'intitule' | 'duree_heures'>[]
   sessions?: any[]
@@ -26,6 +53,52 @@ interface ConventionsListProps {
 
 const typeOptions = Object.entries(CONVENTION_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))
 const financeurOptions = [{ value: '', label: 'Aucun' }, ...Object.entries(FINANCEUR_LABELS).map(([v, l]) => ({ value: v, label: l }))]
+
+/** Horodatage réel d'une signature : date et heure de Paris, quel que soit le fuseau du serveur ou du poste. */
+function horodatageParis(d: string): string {
+  const heure = new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+  return `${formatDate(d, { month: 'short', timeZone: 'Europe/Paris' })} à ${heure}`
+}
+
+/**
+ * Date portée sur la convention : le jour seul. Il est enregistré en temps
+ * universel, avec l'heure du clic, et le PDF rendu par le serveur l'imprime
+ * ainsi ; lu à l'heure de Paris, un clic tardif le ferait glisser au lendemain.
+ */
+const jourPorte = (d: string) => formatDate(d, { month: 'short', timeZone: 'UTC' })
+
+const INFO_DATE_PORTEE = 'Date portée : le jour inscrit sur la convention. Il peut différer du jour réel de la signature.'
+const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature : c'est son empreinte qui figure sur le certificat."
+
+/**
+ * Signature du client : l'horodatage réel quand elle est électronique et, à
+ * part, la date portée sur la convention. Sans horodatage réel (signée sur
+ * papier, ou ancienne), la date portée seule.
+ */
+function signatureClient(c: ConventionListe): string | null {
+  const portee = c.signature_client_date ? `date portée : ${jourPorte(c.signature_client_date)}` : null
+  if (c.signature_client_signed_at) {
+    return `signée électroniquement le ${horodatageParis(c.signature_client_signed_at)}${portee ? ` (${portee})` : ''}`
+  }
+  return portee ? `signée (${portee})` : null
+}
+
+/** Les deux signatures d'une convention, sous sa ligne. */
+function EtatSignatures({ c }: { c: ConventionListe }) {
+  const client = signatureClient(c)
+  return (
+    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+      <div title={c.signature_client_date ? INFO_DATE_PORTEE : undefined} className={`flex items-center gap-1 text-xs ${client ? 'text-success-600' : 'text-surface-400'}`}>
+        <PenTool className="h-3 w-3 shrink-0" />
+        {client ? `Client : ${client}` : 'Client en attente'}
+      </div>
+      <div title={c.signature_of_date ? INFO_DATE_PORTEE : undefined} className={`flex items-center gap-1 text-xs ${c.signature_of_date ? 'text-success-600' : 'text-surface-400'}`}>
+        <PenTool className="h-3 w-3 shrink-0" />
+        {c.signature_of_date ? `OF : signée (date portée : ${jourPorte(c.signature_of_date)})` : 'OF en attente'}
+      </div>
+    </div>
+  )
+}
 
 export function ConventionsList({ conventions, clients, formations, sessions = [] }: ConventionsListProps) {
   const { toast } = useToast()
@@ -181,16 +254,7 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
                   {c.financeur_type && <Badge variant="warning">{FINANCEUR_LABELS[c.financeur_type as keyof typeof FINANCEUR_LABELS] || c.financeur_type}</Badge>}
                 </div>
                 {/* Signature status */}
-                <div className="flex gap-3 mt-2">
-                  <div className={`flex items-center gap-1 text-xs ${c.signature_client_date ? 'text-success-600' : 'text-surface-400'}`}>
-                    <PenTool className="h-3 w-3" />
-                    Client {c.signature_client_date ? `signé ${formatDate(c.signature_client_date, { day: 'numeric', month: 'short' })}` : 'en attente'}
-                  </div>
-                  <div className={`flex items-center gap-1 text-xs ${c.signature_of_date ? 'text-success-600' : 'text-surface-400'}`}>
-                    <PenTool className="h-3 w-3" />
-                    OF {c.signature_of_date ? `signé ${formatDate(c.signature_of_date, { day: 'numeric', month: 'short' })}` : 'en attente'}
-                  </div>
-                </div>
+                <EtatSignatures c={c} />
               </div>
               {/* Bouton direct "Renvoyer en signature" si convention pas encore signée */}
               {['brouillon', 'envoyee'].includes(c.status) && (
@@ -209,8 +273,12 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
                   width={208}
                   items={[
                     { label: 'Télécharger PDF', icon: <Download className="h-4 w-4 text-surface-400" />, href: `/api/pdf/convention/${c.id}`, target: '_blank' },
-                    { label: 'Certificat de signature', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, href: `/api/pdf/preuve-signature/convention/${c.id}`, hidden: !(CERTIFICAT_SIGNATURE_CONVENTION && (c as any).signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)) },
-                    { label: 'Lien de signature électronique', icon: <Link2 className="h-4 w-4 text-brand-600" />, onClick: () => handleGenerateSignatureLink(c.id) },
+                    { label: 'Certificat de signature', icon: <ShieldCheck className="h-4 w-4 text-brand-600" />, href: `/api/pdf/preuve-signature/convention/${c.id}`, hidden: !c.certificat_signature },
+                    { label: 'Exemplaire signé archivé', icon: <Archive className="h-4 w-4 text-brand-600" />, href: `/api/pdf/convention/${c.id}?exemplaire=signe`, hidden: !c.exemplaire_archive },
+                    // Le menu n'a pas d'infobulle par ligne : l'explication suit le lien
+                    { label: INFO_EXEMPLAIRE_ARCHIVE, info: true, hidden: !c.exemplaire_archive },
+                    // Une convention signée n'a plus de lien à préparer : sa signature s'annule d'abord (entrée « Annuler la signature » plus bas)
+                    { label: 'Lien de signature électronique', icon: <Link2 className="h-4 w-4 text-brand-600" />, onClick: () => handleGenerateSignatureLink(c.id), hidden: ['signee_client', 'signee_complete'].includes(c.status) },
                     { label: 'Marquer envoyée', icon: <Send className="h-4 w-4 text-brand-600" />, onClick: () => handleStatus(c.id, 'envoyee'), hidden: c.status !== 'brouillon' },
                     { label: 'Signée par le client', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatus(c.id, 'signee_client'), hidden: c.status !== 'envoyee' },
                     { label: 'Signature complète', icon: <Check className="h-4 w-4 text-success-600" />, onClick: () => handleStatus(c.id, 'signee_complete'), hidden: c.status !== 'signee_client' },

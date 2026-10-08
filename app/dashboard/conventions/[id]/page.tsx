@@ -19,6 +19,19 @@ import { citerProgramme, ecartFormation, estSigneeParLeClient } from '@/lib/conv
 
 export const dynamic = 'force-dynamic'
 
+/** Horodatage réel d'une signature : date et heure de Paris, quel que soit le fuseau du serveur. */
+function horodatageParis(d: string): string {
+  const heure = new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+  return `${formatDate(d, { month: 'short', timeZone: 'Europe/Paris' })} à ${heure}`
+}
+
+/**
+ * Date portée sur la convention : le jour seul. Il est enregistré en temps
+ * universel, avec l'heure du clic, et le PDF rendu par le serveur l'imprime
+ * ainsi ; lu à l'heure de Paris, un clic tardif le ferait glisser au lendemain.
+ */
+const jourPorte = (d: string) => formatDate(d, { timeZone: 'UTC' })
+
 export default async function ConventionDetailPage({ params }: { params: { id: string } }) {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
@@ -49,7 +62,8 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
     .order('date_debut', { ascending: false })
     .limit(300)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
-  const signatureUrl = c.signature_token ? `${appUrl}/convention/${c.signature_token}/signer` : null
+  // Une fois la convention signée, le bloc n'affiche plus le lien : son jeton reste sur le serveur
+  const signatureUrl = c.signature_token && !estSigneeParLeClient(c.status) ? `${appUrl}/convention/${c.signature_token}/signer` : null
 
   // Avenants (modifications de participants après envoi/signature) et écart de programme avec la session
   const [{ data: avenants }, ecartProgramme] = await Promise.all([
@@ -115,11 +129,14 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
         status={c.status}
         signatureUrl={signatureUrl}
         signatureClientDate={c.signature_client_date}
+        signatureClientSignedAt={c.signature_client_signed_at || null}
         signatureClientNom={c.signature_client_nom}
         signatureOfDate={c.signature_of_date}
         signatureOfNom={c.signature_of_nom}
         signatureTokenExpiresAt={c.signature_token_expires_at}
+        organismeNom={session.organization.name || null}
         certificatDisponible={CERTIFICAT_SIGNATURE_CONVENTION && !!c.signature_client_signature_data && ['signee_client', 'signee_complete'].includes(c.status)}
+        exemplaireArchive={!!c.signature_document_path}
       />
 
       {/* Historique (créée, envoyée, signée, annulée, AKTO…) */}
@@ -319,11 +336,15 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
       <div className="card p-5">
         <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider mb-3">Dates clés</div>
         <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
-          <div><span className="text-surface-500">Créée :</span> {formatDateTime(c.created_at)}</div>
+          {/* Heures de Paris, comme celle de la signature juste en dessous (le serveur, lui, est en temps universel) */}
+          <div><span className="text-surface-500">Créée :</span> {horodatageParis(c.created_at)}</div>
           {c.date_emission && <div><span className="text-surface-500">Émise :</span> {formatDate(c.date_emission)}</div>}
-          {c.sent_at && <div><span className="text-surface-500">Envoyée :</span> {formatDateTime(c.sent_at)}</div>}
-          {c.signature_client_date && <div><span className="text-surface-500">Signée client :</span> {formatDateTime(c.signature_client_date)}</div>}
-          {c.signature_of_date && <div><span className="text-surface-500">Signée OF :</span> {formatDateTime(c.signature_of_date)}</div>}
+          {c.sent_at && <div><span className="text-surface-500">Envoyée :</span> {horodatageParis(c.sent_at)}</div>}
+          {/* Seul l'horodatage enregistré à la signature électronique est un instant réel :
+              les dates de signature portées sur la convention n'ont de sens qu'au jour près */}
+          {c.signature_client_signed_at && <div><span className="text-surface-500">Signée électroniquement :</span> {horodatageParis(c.signature_client_signed_at)} (heure de Paris)</div>}
+          {c.signature_client_date && <div><span className="text-surface-500">Date portée sur la convention (client) :</span> {jourPorte(c.signature_client_date)}</div>}
+          {c.signature_of_date && <div><span className="text-surface-500">Date portée sur la convention (OF) :</span> {jourPorte(c.signature_of_date)}</div>}
         </div>
       </div>
     </div>

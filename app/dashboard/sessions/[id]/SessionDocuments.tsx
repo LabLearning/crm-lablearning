@@ -4,18 +4,22 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   FileSignature, Send, Download, Eye, Loader2, Check, Copy, Clock,
-  CheckCircle2, AlertCircle, Mail, FileText, XCircle, ShieldCheck,
+  CheckCircle2, AlertCircle, Mail, FileText, XCircle, ShieldCheck, Archive,
 } from '@/components/ui/icons'
 import { Button, Modal, useToast } from '@/components/ui'
 import { sendConventionForSignatureAction, sendContratToFormateurAction } from './actions'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 
 interface Convention {
   id: string; numero: string | null; status: string | null
   sent_at: string | null; signature_client_date: string | null; signature_client_nom: string | null
-  signature_of_date: string | null; signature_token: string | null
+  signature_of_date: string | null
+  /** Horodatage réel de la signature électronique du client (signature_client_date est la date portée sur la convention) */
+  signature_client_signed_at?: string | null
   /** Signée électroniquement par le client : certificat de signature disponible */
   certificat_signature?: boolean
+  /** Un exemplaire PDF figé à la signature est archivé */
+  exemplaire_archive?: boolean
 }
 interface Contrat {
   id: string; numero: string | null; status: string | null
@@ -48,8 +52,10 @@ interface Props {
   typeSession?: string | null
   participants?: { id: string; prenom: string | null; nom: string | null; email: string | null; client_id?: string | null }[]
   clientsApprenants?: { id: string; type: string | null; raison_sociale: string | null; nom_commercial: string | null }[]
-  conventionsSession?: { id: string; numero: string; client_id: string | null; sent_at: string | null; signature_client_date: string | null; certificat_signature?: boolean; participants_snapshot: { apprenant_id?: string }[] | null }[]
+  conventionsSession?: { id: string; numero: string; client_id: string | null; sent_at: string | null; signature_client_date: string | null; signature_client_signed_at?: string | null; certificat_signature?: boolean; exemplaire_archive?: boolean; participants_snapshot: { apprenant_id?: string }[] | null }[]
 }
+
+const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature : c'est son empreinte qui figure sur le certificat."
 
 function fmtDateHeure(d: string | null | undefined): string {
   if (!d) return ''
@@ -59,8 +65,40 @@ function fmtDateHeure(d: string | null | undefined): string {
   } catch { return '' }
 }
 
+/** Date affichée dans une pastille et, en infobulle, ce qu'elle est */
+interface DatePastille { texte: string; info?: string }
+
+/**
+ * Date d'une convention dans sa pastille : l'horodatage réel de la signature
+ * électronique (heure de Paris) quand il existe ; sinon la date portée sur la
+ * convention, au jour près. Son heure est bien celle du clic, mais son jour
+ * peut avoir été ramené à la veille de la session : cet instant n'a pas existé.
+ * Ce jour est enregistré en temps universel ; lu à l'heure de Paris, un clic
+ * tardif le ferait glisser au lendemain. Tant que rien n'est signé : l'envoi.
+ */
+function dateConvention(c: { sent_at: string | null; signature_client_date: string | null; signature_client_signed_at?: string | null }): DatePastille | null {
+  if (c.signature_client_signed_at) {
+    const heure = new Date(c.signature_client_signed_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+    return {
+      texte: `${formatDate(c.signature_client_signed_at, { day: '2-digit', month: 'short', timeZone: 'Europe/Paris' })} à ${heure}`,
+      info: 'Signature électronique : date et heure réelles (heure de Paris)',
+    }
+  }
+  if (c.signature_client_date) {
+    return {
+      texte: formatDate(c.signature_client_date, { day: '2-digit', month: 'short', timeZone: 'UTC' }),
+      info: 'Date portée sur la convention',
+    }
+  }
+  return c.sent_at ? { texte: fmtDateHeure(c.sent_at) } : null
+}
+
 /** Pastille d'état d'un document */
-function StatutBadge({ etat, date }: { etat: 'absent' | 'attente' | 'partiel' | 'signe'; date?: string | null }) {
+function StatutBadge({ etat, date, quand }: {
+  etat: 'absent' | 'attente' | 'partiel' | 'signe'; date?: string | null
+  /** Date déjà mise en forme : elle remplace `date` */
+  quand?: DatePastille | null
+}) {
   const map = {
     absent: { label: 'Non envoyé', cls: 'bg-surface-100 text-surface-500', Icon: Clock },
     attente: { label: 'En attente de signature', cls: 'bg-amber-50 text-amber-700', Icon: Clock },
@@ -68,9 +106,10 @@ function StatutBadge({ etat, date }: { etat: 'absent' | 'attente' | 'partiel' | 
     signe: { label: 'Signé', cls: 'bg-emerald-50 text-emerald-700', Icon: CheckCircle2 },
   }[etat]
   const { Icon } = map
+  const texte = quand ? quand.texte : fmtDateHeure(date)
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0', map.cls)}>
-      <Icon className="h-3 w-3" /> {map.label}{date ? ` · ${fmtDateHeure(date)}` : ''}
+    <span title={quand?.info} className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shrink-0', map.cls)}>
+      <Icon className="h-3 w-3" /> {map.label}{texte ? ` · ${texte}` : ''}
     </span>
   )
 }
@@ -139,7 +178,7 @@ export function SessionDocuments(props: Props) {
     : convention.status === 'signee_client' ? 'partiel'
     : convention.sent_at || convention.status === 'envoyee' ? 'attente'
     : 'absent'
-  const convDate = convention?.signature_client_date || convention?.sent_at
+  const convDate = convention ? dateConvention(convention) : null
 
   const contratEtat: 'absent' | 'attente' | 'partiel' | 'signe' =
     !contrat ? 'absent'
@@ -261,10 +300,12 @@ export function SessionDocuments(props: Props) {
 
   // ── Ligne document ──
   function DocRow({
-    icon, titre, sousTitre, etat, date, onPreview, onSend, sendLabel, downloadUrl, disabled, disabledReason, busyKey, onCancel, envois, onLink, certificatUrl,
+    icon, titre, sousTitre, etat, date, quand, onPreview, onSend, sendLabel, downloadUrl, disabled, disabledReason, busyKey, onCancel, envois, onLink, certificatUrl, exemplaireUrl,
   }: {
     icon: React.ReactNode; titre: string; sousTitre: string
     etat: 'absent' | 'attente' | 'partiel' | 'signe'; date?: string | null
+    /** Date déjà mise en forme pour la pastille : elle remplace `date` */
+    quand?: DatePastille | null
     onPreview: () => void; onSend: () => void; sendLabel: string
     downloadUrl: string | null; disabled?: boolean; disabledReason?: string; busyKey: 'conv' | 'contrat'
     onCancel?: () => void; envois: EnvoiDoc[]
@@ -272,6 +313,8 @@ export function SessionDocuments(props: Props) {
     onLink?: () => void
     /** Certificat de signature électronique du document signé */
     certificatUrl?: string | null
+    /** Exemplaire signé archivé : le fichier figé à la signature */
+    exemplaireUrl?: string | null
   }) {
     const ouvert = histo === busyKey
     return (
@@ -282,7 +325,7 @@ export function SessionDocuments(props: Props) {
           <div className="text-sm font-semibold text-surface-900">{titre}</div>
           <div className="text-xs text-surface-500">{sousTitre}</div>
         </div>
-        <StatutBadge etat={etat} date={date} />
+        <StatutBadge etat={etat} date={date} quand={quand} />
         <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto sm:shrink-0">
           <button
             onClick={() => setHisto(ouvert ? null : busyKey)}
@@ -320,6 +363,13 @@ export function SessionDocuments(props: Props) {
               title="Certificat de signature électronique (dossier de preuve)"
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50">
               <ShieldCheck className="h-3.5 w-3.5" /> Certificat
+            </a>
+          )}
+          {exemplaireUrl && (
+            <a href={exemplaireUrl}
+              title={INFO_EXEMPLAIRE_ARCHIVE}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-xs font-medium text-surface-700 hover:bg-surface-50">
+              <Archive className="h-3.5 w-3.5" /> Exemplaire signé archivé
             </a>
           )}
           {onCancel && etat === 'attente' && (
@@ -405,7 +455,7 @@ export function SessionDocuments(props: Props) {
                       <span className="text-xs px-1.5 py-0.5 rounded bg-surface-100 text-surface-500 ml-2">Convention</span>
                       <div className="text-xs text-surface-400 truncate">{(apps || []).map((a) => `${a.prenom || ''} ${a.nom || ''}`.trim()).join(', ')}</div>
                     </div>
-                    {c ? <StatutBadge etat={c.signature_client_date ? 'signe' : c.sent_at ? 'attente' : 'absent'} date={c.signature_client_date || c.sent_at} /> : <StatutBadge etat="absent" />}
+                    {c ? <StatutBadge etat={c.signature_client_date ? 'signe' : c.sent_at ? 'attente' : 'absent'} quand={dateConvention(c)} /> : <StatutBadge etat="absent" />}
                     {c ? (
                       <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noreferrer"
                         title={c.signature_client_date ? 'Télécharger la convention signée' : 'Télécharger la convention'}
@@ -432,6 +482,13 @@ export function SessionDocuments(props: Props) {
                         title="Certificat de signature électronique (dossier de preuve)"
                         className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                         <ShieldCheck className="h-3.5 w-3.5" /> Certificat
+                      </a>
+                    )}
+                    {c?.exemplaire_archive && (
+                      <a href={`/api/pdf/convention/${c.id}?exemplaire=signe`}
+                        title={INFO_EXEMPLAIRE_ARCHIVE}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                        <Archive className="h-3.5 w-3.5" /> Exemplaire signé archivé
                       </a>
                     )}
                     {!c?.signature_client_date && (
@@ -461,7 +518,7 @@ export function SessionDocuments(props: Props) {
                       <span className="text-xs px-1.5 py-0.5 rounded bg-surface-100 text-surface-500 ml-2">Contrat particulier</span>
                       <span className="text-xs text-surface-400 ml-2">{a.email || 'sans email'}</span>
                     </div>
-                    {c ? <StatutBadge etat={c.signature_client_date ? 'signe' : c.sent_at ? 'attente' : 'absent'} date={c.signature_client_date || c.sent_at} /> : <StatutBadge etat="absent" />}
+                    {c ? <StatutBadge etat={c.signature_client_date ? 'signe' : c.sent_at ? 'attente' : 'absent'} quand={dateConvention(c)} /> : <StatutBadge etat="absent" />}
                     {c && (
                       <a href={`/api/pdf/convention/${c.id}`} target="_blank" rel="noreferrer"
                         title={c.signature_client_date ? 'Télécharger le contrat signé' : 'Télécharger le contrat'}
@@ -474,6 +531,13 @@ export function SessionDocuments(props: Props) {
                         title="Certificat de signature électronique (dossier de preuve)"
                         className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
                         <ShieldCheck className="h-3.5 w-3.5" /> Certificat
+                      </a>
+                    )}
+                    {c?.exemplaire_archive && (
+                      <a href={`/api/pdf/convention/${c.id}?exemplaire=signe`}
+                        title={INFO_EXEMPLAIRE_ARCHIVE}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium rounded-xl border border-surface-200 bg-white px-3 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 text-surface-700 hover:border-surface-300 transition-colors shrink-0">
+                        <Archive className="h-3.5 w-3.5" /> Exemplaire signé archivé
                       </a>
                     )}
                     {!c?.signature_client_date && (
@@ -496,7 +560,7 @@ export function SessionDocuments(props: Props) {
           icon={<FileSignature className="h-4 w-4 text-brand-600" />}
           titre="Convention de formation"
           sousTitre={clientNom ? `Client : ${clientNom}${convention?.numero ? ` · ${convention.numero}` : ''}` : 'Aucun client rattaché'}
-          etat={convEtat} date={convDate}
+          etat={convEtat} quand={convDate}
           onPreview={() => openPreview('conv')}
           onSend={doSendConvention}
           onLink={doLinkConvention}
@@ -504,6 +568,7 @@ export function SessionDocuments(props: Props) {
           sendLabel="Envoyer en signature"
           downloadUrl={convention ? `/api/pdf/convention/${convention.id}` : null}
           certificatUrl={convention?.certificat_signature ? `/api/pdf/preuve-signature/convention/${convention.id}` : null}
+          exemplaireUrl={convention?.exemplaire_archive ? `/api/pdf/convention/${convention.id}?exemplaire=signe` : null}
           disabled={!hasClient} disabledReason="Aucun client entreprise rattaché à la session"
           busyKey="conv"
           envois={envoisConvention}

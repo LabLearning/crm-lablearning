@@ -1,27 +1,48 @@
 'use client'
 
 import { useState } from 'react'
-import { Send, CheckCircle2, AlertCircle, Copy, ExternalLink, PenTool, ShieldCheck } from '@/components/ui/icons'
+import { Send, CheckCircle2, AlertCircle, Copy, ExternalLink, PenTool, ShieldCheck, Archive } from '@/components/ui/icons'
 import { Button, useToast } from '@/components/ui'
 import { generateSignatureLinkAction } from '../signature-actions'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 
 interface Props {
   conventionId: string
   status: string
   signatureUrl: string | null
+  /** Date portée sur la convention côté client : seul le jour a un sens, pas l'heure. */
   signatureClientDate: string | null
+  /** Horodatage réel de la signature électronique du client ; absent si elle a été signée sur papier ou avant qu'il soit enregistré. */
+  signatureClientSignedAt: string | null
   signatureClientNom: string | null
+  /** Date portée sur la convention côté organisme. */
   signatureOfDate: string | null
   signatureOfNom: string | null
   signatureTokenExpiresAt: string | null
+  /** Nom de l'organisme de formation, pour le libellé de sa signature. */
+  organismeNom?: string | null
   /** Signée électroniquement par le client : le certificat de signature peut être délivré. */
   certificatDisponible?: boolean
+  /** Un exemplaire PDF figé à la signature est archivé : il peut être téléchargé. */
+  exemplaireArchive?: boolean
 }
 
+/** Horodatage réel d'une signature : date et heure de Paris, quel que soit le fuseau du serveur ou du poste. */
+function horodatageParis(d: string): string {
+  const heure = new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
+  return `${formatDate(d, { month: 'short', timeZone: 'Europe/Paris' })} à ${heure}`
+}
+
+/**
+ * Date portée sur la convention : le jour seul. Il est enregistré en temps
+ * universel, avec l'heure du clic, et le PDF rendu par le serveur l'imprime
+ * ainsi ; lu à l'heure de Paris, un clic tardif le ferait glisser au lendemain.
+ */
+const jourPorte = (d: string) => formatDate(d, { timeZone: 'UTC' })
+
 export function ConventionSignatureBlock({
-  conventionId, status, signatureUrl, signatureClientDate, signatureClientNom,
-  signatureOfDate, signatureOfNom, signatureTokenExpiresAt, certificatDisponible,
+  conventionId, status, signatureUrl, signatureClientDate, signatureClientSignedAt, signatureClientNom,
+  signatureOfDate, signatureOfNom, signatureTokenExpiresAt, organismeNom, certificatDisponible, exemplaireArchive,
 }: Props) {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -63,11 +84,22 @@ export function ConventionSignatureBlock({
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 uppercase tracking-wider">
             <CheckCircle2 className="h-3.5 w-3.5" /> Signatures
           </div>
-          {certificatDisponible && (
-            <a href={`/api/pdf/preuve-signature/convention/${conventionId}`}
-              className="btn-secondary text-xs inline-flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5" /> Certificat de signature
-            </a>
+          {(certificatDisponible || exemplaireArchive) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {certificatDisponible && (
+                <a href={`/api/pdf/preuve-signature/convention/${conventionId}`}
+                  className="btn-secondary text-xs inline-flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Certificat de signature
+                </a>
+              )}
+              {exemplaireArchive && (
+                <a href={`/api/pdf/convention/${conventionId}?exemplaire=signe`}
+                  title="Fichier figé à l'instant de la signature : c'est son empreinte qui figure sur le certificat."
+                  className="btn-secondary text-xs inline-flex items-center gap-1.5">
+                  <Archive className="h-3.5 w-3.5" /> Exemplaire signé archivé
+                </a>
+              )}
+            </div>
           )}
         </div>
         <div className="grid sm:grid-cols-2 gap-4 text-sm">
@@ -75,10 +107,14 @@ export function ConventionSignatureBlock({
             <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
             <div>
               <div className="font-medium text-surface-900">Client</div>
-              {signatureClientDate ? (
-                <div className="text-xs text-surface-600">
-                  Signé par <strong>{signatureClientNom}</strong><br />
-                  le {formatDateTime(signatureClientDate)}
+              {signatureClientSignedAt || signatureClientDate ? (
+                <div className="text-xs text-surface-600 space-y-0.5">
+                  {signatureClientNom && <div>Signé par <strong>{signatureClientNom}</strong></div>}
+                  {/* L'horodatage réel n'existe que pour une signature électronique : c'est celui du certificat */}
+                  {signatureClientSignedAt && (
+                    <div>Signée électroniquement le {horodatageParis(signatureClientSignedAt)} (heure de Paris)</div>
+                  )}
+                  {signatureClientDate && <div>Date portée sur la convention : {jourPorte(signatureClientDate)}</div>}
                 </div>
               ) : <div className="text-xs text-surface-500">En attente</div>}
             </div>
@@ -89,11 +125,11 @@ export function ConventionSignatureBlock({
               : <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
             }
             <div>
-              <div className="font-medium text-surface-900">Lab Learning (OF)</div>
+              <div className="font-medium text-surface-900">{organismeNom ? `${organismeNom} (OF)` : 'Organisme de formation'}</div>
               {signatureOfDate ? (
-                <div className="text-xs text-surface-600">
-                  Signé par <strong>{signatureOfNom}</strong><br />
-                  le {formatDateTime(signatureOfDate)}
+                <div className="text-xs text-surface-600 space-y-0.5">
+                  {signatureOfNom && <div>Signé par <strong>{signatureOfNom}</strong></div>}
+                  <div>Date portée sur la convention : {jourPorte(signatureOfDate)}</div>
                 </div>
               ) : <div className="text-xs text-amber-700">En attente — à contre-signer côté OF</div>}
             </div>

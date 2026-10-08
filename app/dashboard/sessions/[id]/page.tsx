@@ -147,10 +147,12 @@ export default async function SessionDetailPage({ params, searchParams }: { para
       .select('id, titre, type, status, formation_id')
       .eq('organization_id', session.organization.id)
       .order('created_at', { ascending: false }),
-    // Conventions liées à la session
+    // Conventions liées à la session. signature_client_date est la date portée
+    // sur la convention, signature_client_signed_at l'horodatage réel de la
+    // signature ; le jeton du lien n'est pas chargé, l'écran ne s'en sert pas.
     supabase
       .from('conventions')
-      .select('id, numero, type, status, montant_ttc, sent_at, signature_token, signature_client_date, signature_client_nom, signature_of_date, participants_snapshot, client_id')
+      .select('id, numero, type, status, montant_ttc, sent_at, signature_client_date, signature_client_signed_at, signature_document_path, signature_client_nom, signature_of_date, participants_snapshot, client_id')
       .eq('session_id', params.id)
       .order('created_at', { ascending: false }),
     // Évaluations (notes) des apprenants pour cette session
@@ -417,8 +419,10 @@ export default async function SessionDetailPage({ params, searchParams }: { para
         qcmReponses={(qcmReponses || []) as any[]}
         qcmBank={(qcmBank || []) as any[]}
         auditsSession={auditsSession}
-        conventions={((conventions || []) as any[]).map((c: any) => ({
+        conventions={((conventions || []) as any[]).map(({ signature_document_path, ...c }: any) => ({
           ...c, certificat_signature: CERTIFICAT_SIGNATURE_CONVENTION && (conventionsSigneesElec || []).some((x: any) => x.id === c.id),
+          // Exemplaire figé à la signature : seule son existence part au navigateur, pas son chemin
+          exemplaire_archive: !!signature_document_path,
         }))}
         contratFormateur={contratFormateur as any}
         formationsRef={(formationsRef || []) as any[]}
