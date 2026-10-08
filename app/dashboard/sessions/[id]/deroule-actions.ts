@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import { ETAPES_PAR_CLE, DPO_VERSION } from '@/lib/dpo'
+import { refusSignature } from '@/lib/signature-image'
 import type { ActionResult } from '@/lib/types'
 
 const STATUTS = ['a_faire', 'fait', 'non_applicable']
@@ -67,10 +68,12 @@ export async function validerEtapeDerouleAction(
 
 /** Le formateur signe son engagement sur le déroulé opérationnel. */
 export async function signerDpoAction(signatureData: string): Promise<ActionResult> {
+  // Un cadre validé sans tracé n'est pas une signature
+  const refus = refusSignature(signatureData)
+  if (refus) return { success: false, error: refus }
+
   const session = await getSession()
   const supabase = await createServiceRoleClient()
-
-  if (!signatureData || signatureData.length < 100) return { success: false, error: 'Signature manquante' }
 
   const { data: f } = await supabase
     .from('formateurs').select('id').eq('user_id', session.user.id).maybeSingle()

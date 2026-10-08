@@ -2,8 +2,7 @@
 
 import { headers } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { signatureVide } from '@/lib/signature-image'
-import { MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
+import { refusSignature } from '@/lib/signature-image'
 
 /**
  * Signature publique (par token) du certificat de réalisation par le candidat.
@@ -17,9 +16,9 @@ export async function signCertificatAction(
   /** Présent quand la page a montré au stagiaire son bilan de fin de formation : il le signe du même geste */
   bilan?: { note: string; avis: string },
 ): Promise<{ success: boolean; error?: string }> {
-  if (!signatureBase64?.startsWith('data:image/')) return { success: false, error: 'Signature invalide' }
-  // Un cadre validé sans tracé n'est pas une signature
-  if (signatureVide(signatureBase64)) return { success: false, error: MESSAGE_SIGNATURE_VIDE }
+  // Un cadre validé sans tracé, ou une image qui ne se lit pas, n'est pas une signature
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
   if (!nom?.trim()) return { success: false, error: 'Nom requis' }
 
   const supabase = await createServiceRoleClient()

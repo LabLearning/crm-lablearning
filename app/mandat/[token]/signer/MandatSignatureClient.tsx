@@ -5,6 +5,7 @@ import { CheckCircle2, Eraser, FileText, PenTool, ShieldCheck } from '@/componen
 import { Button } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { signMandatAction } from './actions'
+import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 
 /** Signature du mandat POEI par le gérant — même construction que la
  *  signature des certificats : résumé, lecture du PDF, cadre de signature. */
@@ -48,13 +49,21 @@ export function MandatSignatureClient({ mandat, token, gerantNom, nbCandidats }:
   async function submit() {
     setErr(null)
     if (!hasDrawn) { setErr('Merci de signer dans le cadre.'); return }
+    // Un simple appui dans le cadre ne trace rien : on vérifie qu'il y a bien un tracé
+    if (!cadreSigne(canvasRef.current)) { setErr(MESSAGE_SIGNATURE_VIDE); return }
     if (!nom.trim()) { setErr("Merci d'indiquer votre nom."); return }
     setSaving(true)
-    const data = canvasRef.current!.toDataURL('image/png')
-    const r = await signMandatAction(token, data, nom.trim())
-    if (r.success) setDone(true)
-    else setErr(r.error || 'Une erreur est survenue. Merci de réessayer.')
-    setSaving(false)
+    try {
+      const data = canvasRef.current!.toDataURL('image/png')
+      const r = await signMandatAction(token, data, nom.trim())
+      if (r.success) setDone(true)
+      else setErr(r.error || 'Une erreur est survenue. Merci de réessayer.')
+    } catch {
+      // Réseau coupé pendant l'envoi : on ne sait pas si la signature est arrivée
+      setErr('La connexion a été interrompue. Rechargez la page : si le document apparaît signé, votre signature est bien enregistrée.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (done) {

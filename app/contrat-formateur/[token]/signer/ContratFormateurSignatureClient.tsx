@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Pen, CheckCircle2, RotateCcw, FileText, Calendar, MapPin } from '@/components/ui/icons'
 import { signContratFormateurPublicAction } from '@/app/dashboard/sessions/confirm-actions'
+import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 
 interface ContratInfo {
   id: string
@@ -83,12 +84,20 @@ export function ContratFormateurSignatureClient({ contrat, token }: { contrat: C
   async function handleSubmit() {
     if (!signataireNom.trim()) { setError('Veuillez saisir votre nom'); return }
     if (!hasDrawn) { setError('Veuillez signer dans le cadre'); return }
+    // Un point ou un trait de quelques millimètres n'est pas une signature
+    if (!cadreSigne(canvasRef.current)) { setError(MESSAGE_SIGNATURE_VIDE); return }
     setError(null); setSubmitting(true)
-    const dataUrl = canvasRef.current!.toDataURL('image/png')
-    const r = await signContratFormateurPublicAction(token, { nom: signataireNom, signatureDataUrl: dataUrl }, { userAgent: navigator.userAgent })
-    if (r.success) setSigned(true)
-    else setError(r.error || 'Erreur')
-    setSubmitting(false)
+    try {
+      const dataUrl = canvasRef.current!.toDataURL('image/png')
+      const r = await signContratFormateurPublicAction(token, { nom: signataireNom, signatureDataUrl: dataUrl }, { userAgent: navigator.userAgent })
+      if (r.success) setSigned(true)
+      else setError(r.error || 'Erreur')
+    } catch {
+      // Réseau coupé pendant l'envoi : on ne sait pas si la signature est arrivée
+      setError('La connexion a été interrompue. Rechargez la page : si le document apparaît signé, votre signature est bien enregistrée.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (signed) {

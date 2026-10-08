@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getPortalContext } from '@/lib/portal-auth'
+import { refusSignature } from '@/lib/signature-image'
 
 /**
  * Signature du stagiaire sur SON attestation d'assiduité et de règlement
@@ -14,12 +15,14 @@ export async function signerMonAttestationAction(
   dossierId: string,
   signatureBase64: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Un cadre validé sans tracé n'est pas une signature : l'attestation ne se
+  // signe qu'une fois
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   const context = await getPortalContext(token)
   if (!context || context.type !== 'apprenant') {
     return { success: false, error: 'Accès non autorisé' }
-  }
-  if (!signatureBase64?.startsWith('data:image/')) {
-    return { success: false, error: 'Signature invalide' }
   }
 
   const supabase = await createServiceRoleClient()

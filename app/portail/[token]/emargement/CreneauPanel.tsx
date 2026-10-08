@@ -388,7 +388,11 @@ export function CreneauPanel({
           em={em}
           locked={locked}
           mode={mode}
-          onSign={() => setSigningFor(em)}
+          onSign={() => {
+            // Le cadre affiche l'erreur du panneau : il ne doit pas s'ouvrir sur celle d'une action précédente
+            setError(null)
+            setSigningFor(em)
+          }}
           onPresent={() => run(() => markPresentPapierAction(token, em.id))}
           onAbsent={() => {
             setAbsentMotif(em.motif_absence || '')
@@ -453,7 +457,11 @@ export function CreneauPanel({
         </div>
 
         <button
-          onClick={() => setValidateMode(true)}
+          onClick={() => {
+            // Même précaution que pour le cadre d'un stagiaire : pas d'erreur ancienne à l'ouverture
+            setError(null)
+            setValidateMode(true)
+          }}
           disabled={!allSettled || isPending}
           className="w-full flex items-center justify-center gap-2 min-h-[52px] px-4 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -474,6 +482,7 @@ export function CreneauPanel({
           }
           onCancel={() => setSigningFor(null)}
           validateLabel="Confirmer la signature"
+          error={error}
         />
       )}
 
@@ -500,6 +509,7 @@ export function CreneauPanel({
           }
           onCancel={() => setValidateMode(false)}
           validateLabel="Verrouiller la feuille"
+          error={error}
         />
       )}
 

@@ -7,6 +7,7 @@ import { getSession } from '@/lib/auth'
 import { randomBytes, createHash } from 'crypto'
 import type { ActionResult } from '@/lib/types'
 import { emailShell, ctaButton } from '@/lib/email'
+import { refusSignature } from '@/lib/signature-image'
 
 function newToken() {
   return createHash('sha256').update(randomBytes(32)).digest('hex')
@@ -340,7 +341,9 @@ export async function signContratFormateurPublicAction(
   meta: { ip?: string; userAgent?: string },
 ): Promise<ActionResult> {
   if (!data.nom?.trim()) return { success: false, error: 'Nom requis' }
-  if (!data.signatureDataUrl?.startsWith('data:image/')) return { success: false, error: 'Signature manquante' }
+  // Un cadre validé sans tracé, ou une image qui ne se lit pas, n'est pas une signature
+  const refus = refusSignature(data.signatureDataUrl)
+  if (refus) return { success: false, error: refus }
 
   const supabase = await createServiceRoleClient()
   const { data: contrat } = await supabase

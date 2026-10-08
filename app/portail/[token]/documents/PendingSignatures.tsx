@@ -73,6 +73,7 @@ export function PendingSignatures({ token, signatures }: { token: string | null;
           onSign={handleSign}
           onCancel={() => { if (!isPending) { setSigningFor(null); setError(null) } }}
           validateLabel="Signer le document"
+          error={error}
         />
       )}
     </div>

@@ -115,52 +115,6 @@ export async function togglePresenceAction(
   return { success: true }
 }
 
-export async function signEmargementAction(emargementId: string, signatureBase64: string): Promise<ActionResult> {
-  const session = await getSession()
-  const supabase = await createServiceRoleClient()
-
-  // Récupérer l'émargement pour avoir le contexte
-  const { data: emargement } = await supabase
-    .from('emargements')
-    .select('id, session_id, apprenant_id')
-    .eq('id', emargementId)
-    .single()
-
-  if (!emargement) return { success: false, error: 'Émargement introuvable' }
-
-  // Upload de la signature
-  let signatureUrl: string | null = null
-  if (signatureBase64.startsWith('data:image/')) {
-    const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '')
-    const buffer = Buffer.from(base64Data, 'base64')
-    const path = `${session.organization.id}/${emargement.session_id}/${emargement.apprenant_id}_${Date.now()}.png`
-
-    const { error: uploadErr } = await supabase.storage
-      .from('pointages')
-      .upload(path, buffer, { contentType: 'image/png', upsert: true })
-
-    if (!uploadErr) {
-      const { data: urlData } = supabase.storage.from('pointages').getPublicUrl(path)
-      signatureUrl = urlData?.publicUrl || null
-    }
-  }
-
-  // Mettre à jour l'émargement : présent + signature + heure
-  const { error } = await supabase
-    .from('emargements')
-    .update({
-      est_present: true,
-      signature_data: signatureUrl,
-      signed_at: new Date().toISOString(),
-    })
-    .eq('id', emargementId)
-
-  if (error) return { success: false, error: error.message }
-
-  revalidatePath(`/dashboard/sessions/${(emargement as any)?.session_id || ''}`)
-  return { success: true }
-}
-
 export async function createEmargementJourAction(sessionId: string, date: string, creneau: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()

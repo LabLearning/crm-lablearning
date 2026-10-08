@@ -2,16 +2,24 @@
  * Lecture, côté serveur, d'une image de signature (data:image/png;base64,…)
  * pour savoir si elle porte un tracé. Décodage PNG minimal avec zlib : les
  * cadres de signature produisent tous du PNG 8 bits, RGB ou RGBA, non
- * entrelacé. Tout autre format est rendu « inconnu » (null) et n'est jamais
- * refusé pour cette raison.
+ * entrelacé. Tout autre format est rendu « inconnu » (null) : une signature
+ * déjà enregistrée n'est jamais écartée pour cette raison (signatureVide),
+ * une signature nouvelle n'est pas acceptée (refusSignature).
  */
 import { inflateSync } from 'node:zlib'
-import { SEUIL_ENCRE, compterEncre } from '@/lib/signature-encre'
+import { MESSAGE_SIGNATURE_VIDE, compterEncre, seuilEncre } from '@/lib/signature-encre'
 
 const SIGNATURE_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
-/** Points d'encre d'une image de signature, ou null si elle ne se lit pas. */
-export function encreSignature(dataUrl: string | null | undefined): number | null {
+const PREFIXE_PNG = 'data:image/png;base64,'
+/** Taille maximale d'une signature nouvelle, en caractères : cinq fois la plus grosse des 2 430 images en base au 08/10/2026 (78 318). */
+const TAILLE_MAX_SIGNATURE = 400_000
+const MESSAGE_SIGNATURE_ILLISIBLE = 'Signature illisible, effacez-la et recommencez.'
+
+/** Points d'encre et dimensions d'une image de signature, ou null si elle ne se lit pas. */
+export function analyserSignature(
+  dataUrl: string | null | undefined,
+): { encre: number; largeur: number; hauteur: number } | null {
   const m = /^data:image\/png;base64,([\s\S]+)$/.exec(String(dataUrl || ''))
   if (!m) return null
   try {
@@ -35,8 +43,10 @@ export function encreSignature(dataUrl: string | null | undefined): number | nul
     // Une signature tient dans quelques centaines de milliers de points
     if (largeur * hauteur > 6_000_000) return null
 
-    const brut = inflateSync(Buffer.concat(idat))
     const ligne = largeur * canaux
+    // Décompression plafonnée à ce que les dimensions annoncent : un petit
+    // fichier ne peut pas se déployer en centaines de mégaoctets en mémoire
+    const brut = inflateSync(Buffer.concat(idat), { maxOutputLength: (ligne + 1) * hauteur })
     if (brut.length < (ligne + 1) * hauteur) return null
     const points = Buffer.alloc(ligne * hauteur)
     for (let y = 0; y < hauteur; y++) {
@@ -59,18 +69,40 @@ export function encreSignature(dataUrl: string | null | undefined): number | nul
         points[dst + x] = v & 0xff
       }
     }
-    return compterEncre(points, canaux as 3 | 4)
+    return { encre: compterEncre(points, canaux as 3 | 4), largeur, hauteur }
   } catch {
     return null
   }
 }
 
+/** Points d'encre d'une image de signature, ou null si elle ne se lit pas. */
+export function encreSignature(dataUrl: string | null | undefined): number | null {
+  return analyserSignature(dataUrl)?.encre ?? null
+}
+
 /**
  * Vrai seulement si l'image se lit et ne porte aucun tracé. Une image
  * illisible n'est pas dite vide : on ne refuse et on n'écarte que ce dont on
- * est sûr.
+ * est sûr. Sert à relire les signatures déjà enregistrées.
  */
 export function signatureVide(dataUrl: string | null | undefined): boolean {
-  const encre = encreSignature(dataUrl)
-  return encre != null && encre < SEUIL_ENCRE
+  const image = analyserSignature(dataUrl)
+  return image != null && image.encre < seuilEncre(image.largeur, image.hauteur)
+}
+
+/**
+ * Contrôle d'une signature NOUVELLE, à appeler avant tout enregistrement :
+ * renvoie le message à montrer au signataire, ou null si l'image est
+ * acceptable. À l'inverse de signatureVide, ce qui ne se lit pas est refusé :
+ * les cadres de signature n'envoient que du PNG, et le signataire, encore
+ * devant l'écran, peut recommencer.
+ */
+export function refusSignature(dataUrl: string | null | undefined): string | null {
+  if (!dataUrl) return MESSAGE_SIGNATURE_VIDE
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith(PREFIXE_PNG) || dataUrl.length > TAILLE_MAX_SIGNATURE) {
+    return MESSAGE_SIGNATURE_ILLISIBLE
+  }
+  const image = analyserSignature(dataUrl)
+  if (!image) return MESSAGE_SIGNATURE_ILLISIBLE
+  return image.encre < seuilEncre(image.largeur, image.hauteur) ? MESSAGE_SIGNATURE_VIDE : null
 }

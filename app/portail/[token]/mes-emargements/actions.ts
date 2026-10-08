@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getPortalContext } from '@/lib/portal-auth'
+import { refusSignature } from '@/lib/signature-image'
 
 /**
  * Signature de l'apprenant sur SON propre émargement, depuis son portail.
@@ -15,12 +16,13 @@ export async function signerMonEmargementAction(
   emargementId: string,
   signatureBase64: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Un cadre validé sans tracé n'est pas une signature
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   const context = await getPortalContext(token)
   if (!context || context.type !== 'apprenant') {
     return { success: false, error: 'Accès non autorisé' }
-  }
-  if (!signatureBase64?.startsWith('data:image/')) {
-    return { success: false, error: 'Signature invalide' }
   }
 
   const supabase = await createServiceRoleClient()
@@ -80,12 +82,14 @@ export async function signerMaJourneeAction(
   date: string,
   signatureBase64: string,
 ): Promise<{ success: boolean; error?: string; data?: { signes: number } }> {
+  // Un cadre validé sans tracé n'est pas une signature : la même image remplit
+  // tous les créneaux du jour
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   const context = await getPortalContext(token)
   if (!context || context.type !== 'apprenant') {
     return { success: false, error: 'Accès non autorisé' }
-  }
-  if (!signatureBase64?.startsWith('data:image/')) {
-    return { success: false, error: 'Signature invalide' }
   }
   if (String(date) > new Date().toISOString().slice(0, 10)) {
     return { success: false, error: 'Cette journée n\'a pas encore eu lieu' }

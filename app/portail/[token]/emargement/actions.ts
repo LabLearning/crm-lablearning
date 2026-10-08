@@ -3,6 +3,7 @@
 import { getPortalContext } from '@/lib/portal-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { refusSignature } from '@/lib/signature-image'
 
 type Creneau = 'matin' | 'apres_midi' | 'journee'
 
@@ -46,6 +47,11 @@ export async function signApprenantPresenceAction(
   emargementId: string,
   signatureBase64: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Un cadre validé sans tracé n'est pas une signature : une image enregistrée
+  // ici vaut « a signé, était présent »
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   const context = await getPortalContext(token)
   if (!context || context.type !== 'formateur') {
     return { success: false, error: 'Accès non autorisé' }
@@ -162,6 +168,10 @@ export async function validerFeuilleByFormateurAction(
   creneau: 'matin' | 'apres_midi' | 'journee',
   signatureBase64: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // La feuille se verrouille sur la signature du formateur : pas de cadre vide
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   const context = await getPortalContext(token)
   if (!context || context.type !== 'formateur') {
     return { success: false, error: 'Accès non autorisé' }
@@ -449,6 +459,11 @@ export async function attesterFeuillePapierAction(
   signatureBase64: string,
   scanStoragePath: string | null,
 ): Promise<{ success: boolean; error?: string }> {
+  // Seul le scan est facultatif : l'attestation, elle, tient à la signature
+  // du formateur, que l'écran demande toujours
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   const supabase = await createServiceRoleClient()
   const owned = await getOwnedSession(supabase, token, sessionId)
   if (!owned) return { success: false, error: 'Session non autorisée' }

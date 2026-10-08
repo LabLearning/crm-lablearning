@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { Check, RotateCcw, X, Loader2 } from '@/components/ui/icons'
+import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 
 interface SignaturePadProps {
   title: string
@@ -10,6 +11,8 @@ interface SignaturePadProps {
   onCancel: () => void
   isPending: boolean
   validateLabel?: string
+  /** Refus renvoyé par le serveur : affiché dans la fenêtre, qui reste ouverte */
+  error?: string | null
 }
 
 export function SignaturePad({
@@ -19,10 +22,19 @@ export function SignaturePad({
   onCancel,
   isPending,
   validateLabel = 'Valider la signature',
+  error,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasDrawn, setHasDrawn] = useState(false)
+  // Refus du cadre lui-même : validé sans tracé
+  const [erreur, setErreur] = useState<string | null>(null)
+  // Message que le signataire a écarté en reprenant son tracé ou en effaçant.
+  // Il est masqué mais garde sa place : la fenêtre est ancrée en bas de l'écran
+  // sur téléphone, retirer le bloc pendant un tracé déplacerait le cadre sous
+  // le doigt.
+  const [messageEcarte, setMessageEcarte] = useState<string | null>(null)
+  const message = erreur || error || null
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -69,6 +81,7 @@ export function SignaturePad({
     e.preventDefault()
     setIsDrawing(true)
     setHasDrawn(true)
+    setMessageEcarte(message)
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx) return
     const pos = getPos(e)
@@ -114,11 +127,19 @@ export function SignaturePad({
     ctx.lineWidth = 2.5
     ctx.restore()
     setHasDrawn(false)
+    setMessageEcarte(message)
   }
 
   function handleValidate() {
     const canvas = canvasRef.current
     if (!canvas || !hasDrawn) return
+    setMessageEcarte(null)
+    // Un simple appui dans le cadre ne trace rien : on vérifie qu'il y a bien un tracé
+    if (!cadreSigne(canvas)) {
+      setErreur(MESSAGE_SIGNATURE_VIDE)
+      return
+    }
+    setErreur(null)
     const base64 = canvas.toDataURL('image/png')
     onSign(base64)
   }
@@ -157,6 +178,17 @@ export function SignaturePad({
             onTouchEnd={endDraw}
           />
         </div>
+
+        {message && (
+          <div className="px-5 pb-3">
+            <div
+              role="alert"
+              className={`rounded-xl bg-danger-50 px-3.5 py-2.5 text-sm text-danger-700 ${message === messageEcarte ? 'invisible' : ''}`}
+            >
+              {message}
+            </div>
+          </div>
+        )}
 
         <div className="px-5 pb-5 flex gap-3">
           <button

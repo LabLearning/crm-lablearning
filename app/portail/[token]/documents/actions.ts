@@ -3,6 +3,7 @@
 import { getPortalContext } from '@/lib/portal-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { refusSignature } from '@/lib/signature-image'
 
 /**
  * Signature d'un document par un apprenant ou un formateur depuis son portail.
@@ -14,6 +15,10 @@ export async function signDocumentAction(
   signatureId: string,
   signatureBase64: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // Un cadre validé sans tracé n'est pas une signature
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
+
   // Deux accès possibles : token de portail (legacy) OU compte connecté
   // (espace formateur/apprenant — plus de dépendance au token).
   let email: string | null = null
@@ -35,10 +40,6 @@ export async function signDocumentAction(
 
   if (!email) {
     return { success: false, error: 'Aucune adresse associée à ce compte' }
-  }
-
-  if (!signatureBase64?.startsWith('data:image/')) {
-    return { success: false, error: 'Signature invalide' }
   }
 
   const supabase = await createServiceRoleClient()

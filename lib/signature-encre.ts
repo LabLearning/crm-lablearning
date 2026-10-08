@@ -12,6 +12,18 @@
 /** En dessous, ce n'est pas une signature : un point ou un trait de quelques millimètres. */
 export const SEUIL_ENCRE = 120
 
+/**
+ * Seuil d'encre pour une image de cette taille : un point d'encre pour mille
+ * points d'image, jamais moins que SEUIL_ENCRE. Le cadre du portail produit
+ * une image d'autant plus grande que l'écran est fin (taille affichée × ratio
+ * de pixels) : avec un seuil fixe, un trait de moins d'un millimètre y passait
+ * pour une signature. Rapport vérifié le 08/10/2026 sur les 2 428 signatures
+ * tracées de la base : la plus faible porte 3,6 fois son seuil.
+ */
+export function seuilEncre(largeur: number, hauteur: number): number {
+  return Math.max(SEUIL_ENCRE, Math.round((largeur * hauteur) / 1000))
+}
+
 export const MESSAGE_SIGNATURE_VIDE =
   'Votre signature n’apparaît pas dans le cadre. Tracez-la avec le doigt ou la souris, puis validez.'
 
@@ -36,7 +48,8 @@ export function cadreSigne(canvas: HTMLCanvasElement | null): boolean {
   try {
     const ctx = canvas.getContext('2d')
     if (!ctx) return true
-    return compterEncre(ctx.getImageData(0, 0, canvas.width, canvas.height).data) >= SEUIL_ENCRE
+    const encre = compterEncre(ctx.getImageData(0, 0, canvas.width, canvas.height).data)
+    return encre >= seuilEncre(canvas.width, canvas.height)
   } catch {
     // Lecture des points refusée par le navigateur : le serveur vérifiera
     return true

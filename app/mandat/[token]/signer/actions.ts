@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { refusSignature } from '@/lib/signature-image'
 
 /**
  * Signature publique (par token) du mandat POEI par le gérant.
@@ -13,7 +14,10 @@ export async function signMandatAction(
   signatureBase64: string,
   nom: string,
 ): Promise<{ success: boolean; error?: string }> {
-  if (!signatureBase64?.startsWith('data:image/')) return { success: false, error: 'Signature invalide' }
+  // Un cadre validé sans tracé, ou une image qui ne se lit pas, n'est pas une
+  // signature : un mandat validé ne se resigne pas
+  const refus = refusSignature(signatureBase64)
+  if (refus) return { success: false, error: refus }
   if (!nom?.trim()) return { success: false, error: 'Nom requis' }
 
   const supabase = await createServiceRoleClient()

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { refusSignature } from '@/lib/signature-image'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import { sendDocumentEmail } from '@/lib/email'
@@ -154,6 +155,9 @@ export async function requestSignatureAction(documentId: string, formData: FormD
 }
 
 export async function signDocumentAction(token: string, signatureData: string): Promise<ActionResult> {
+  // Un cadre validé sans tracé, ou une image illisible, n'est pas une signature
+  const refus = refusSignature(signatureData)
+  if (refus) return { success: false, error: refus }
   const supabase = await createServiceRoleClient()
 
   const { data: sig } = await supabase
