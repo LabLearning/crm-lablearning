@@ -190,9 +190,32 @@ export async function toggleFormationAction(id: string, isActive: boolean): Prom
   return { success: true }
 }
 
+/**
+ * Supprime une formation. Ses conventions partent avec elle (clé en cascade),
+ * et avec elles leurs avenants et leur journal de signature : une formation qui
+ * porte une convention signée (statut signé, ou signature électronique
+ * enregistrée) ne se supprime donc pas, elle se désactive. L'image de signature
+ * n'est pas chargée, les conventions sont seulement comptées.
+ */
 export async function deleteFormationAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+
+  const { count: signees, error: eSignees } = await supabase
+    .from('conventions')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', session.organization.id)
+    .eq('formation_id', id)
+    .or('status.in.(signee_client,signee_complete),signature_client_signature_data.not.is.null')
+  if (eSignees) return { success: false, error: 'Vérification des conventions de la formation impossible : réessayez dans un instant' }
+  if (signees) {
+    return {
+      success: false,
+      error: signees > 1
+        ? `Suppression impossible : ${signees} conventions signées sont rattachées à cette formation. Elles seraient supprimées avec elle, signatures et journal de signature compris. Désactivez-la si elle ne doit plus être proposée.`
+        : 'Suppression impossible : 1 convention signée est rattachée à cette formation. Elle serait supprimée avec elle, signature et journal de signature compris. Désactivez-la si elle ne doit plus être proposée.',
+    }
+  }
 
   const { error } = await supabase
     .from('formations')

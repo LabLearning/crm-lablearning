@@ -5,7 +5,48 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createConventionSchema } from '@/lib/validations/dossier'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
-import type { ActionResult } from '@/lib/types'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
+import type { ActionResult, Permission } from '@/lib/types'
+
+/**
+ * Changer le statut d'une convention ou la supprimer : mêmes droits que la
+ * page Conventions, selon les permissions de l'organisme. Sans ce contrôle,
+ * tout compte connecté (formateur, franchise, apporteur) pouvait appeler ces
+ * deux actions.
+ */
+function accesConventions(session: { user: { role: string }; permissions: Permission[] }): boolean {
+  return checkDashboardAccess('/dashboard/conventions', session.user.role as any, session.permissions).allowed
+}
+
+/**
+ * Une convention « porte une signature électronique » dès que l'image de la
+ * signature du client est enregistrée : c'est aussi la condition du certificat
+ * de signature. L'image n'est jamais chargée pour le savoir, seulement comptée.
+ * Renvoie null si la vérification n'a pas pu se faire.
+ */
+async function porteSignatureElectronique(supabase: any, conventionId: string, organizationId: string): Promise<boolean | null> {
+  const { count, error } = await supabase
+    .from('conventions')
+    .select('id', { count: 'exact', head: true })
+    .eq('id', conventionId)
+    .eq('organization_id', organizationId)
+    .not('signature_client_signature_data', 'is', null)
+  if (error) return null
+  return (count || 0) > 0
+}
+
+/**
+ * On ne revient sur une signature que par « Annuler la signature », seule voie
+ * qui en laisse la trace. Elle n'agit que sur un statut signé ; ailleurs (une
+ * convention annulée qui garde une image, par exemple) il n'y a rien à
+ * proposer : la convention est à vérifier.
+ */
+const annulationProposee = (status: unknown) => ['signee_client', 'signee_complete'].includes(String(status))
+const MENU_ANNULER = '« Annuler la signature », dans le menu de la convention (liste des conventions)'
+const STATUT_SANS_SIGNATURE = 'Son statut n’indique pas cette signature : la convention est à vérifier avant toute modification.'
+
+const VERIFICATION_IMPOSSIBLE = 'Vérification de la signature impossible : réessayez dans un instant'
+const CONVENTION_MODIFIEE = 'La convention vient d’être signée ou modifiée : rechargez la page'
 
 export async function createConventionAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
@@ -58,22 +99,65 @@ export async function createConventionAction(formData: FormData): Promise<Action
   return { success: true, data }
 }
 
+/**
+ * Change le statut d'une convention à la main : « Marquer envoyée », puis le
+ * marquage d'une convention signée sur papier (« Signée par le client »,
+ * « Signature complète »).
+ *
+ * Une convention qui porte une signature électronique ne passe plus par ici :
+ * la repasser en « envoyée » la donnerait pour non signée, signature en place
+ * et voie rouverte à une seconde ; la marquer « signée par le client »
+ * réécrirait la date portée. On ne revient sur une signature que par
+ * « Annuler la signature », qui en laisse la trace. Seule exception, la
+ * contre-signature de l'organisme (signée par le client → signature
+ * complète) : elle ajoute sa date sans toucher aux preuves du client.
+ */
 export async function updateConventionStatusAction(id: string, status: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!accesConventions(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+
+  const [{ data: conv }, signee] = await Promise.all([
+    supabase
+      .from('conventions')
+      .select('id, status')
+      .eq('id', id)
+      .eq('organization_id', session.organization.id)
+      .maybeSingle(),
+    porteSignatureElectronique(supabase, id, session.organization.id),
+  ])
+  if (!conv) return { success: false, error: 'Convention introuvable' }
+  if (signee === null) return { success: false, error: VERIFICATION_IMPOSSIBLE }
+
+  const contreSignature = conv.status === 'signee_client' && status === 'signee_complete'
+  if (signee && !contreSignature) {
+    return {
+      success: false,
+      error: `Cette convention porte une signature électronique : son statut ne se change plus à la main. ${annulationProposee(conv.status)
+        ? `Pour revenir sur la signature, utilisez ${MENU_ANNULER} : l’annulation est journalisée, l’exemplaire archivé et le journal de signature sont conservés.`
+        : STATUT_SANS_SIGNATURE}`,
+    }
+  }
 
   const updateData: Record<string, unknown> = { status }
   if (status === 'envoyee') updateData.sent_at = new Date().toISOString()
   if (status === 'signee_client') updateData.signature_client_date = new Date().toISOString()
   if (status === 'signee_complete') updateData.signature_of_date = new Date().toISOString()
 
-  const { error } = await supabase
+  const ecriture = supabase
     .from('conventions')
     .update(updateData)
     .eq('id', id)
     .eq('organization_id', session.organization.id)
+  // La garde est reposée sur l'écriture elle-même : une signature arrivée
+  // par le lien entre la vérification et l'écriture n'est pas écrasée
+  const { data: ecrites, error } = await (signee
+    ? ecriture.eq('status', 'signee_client')
+    : ecriture.is('signature_client_signature_data', null)
+  ).select('id')
 
   if (error) return { success: false, error: 'Erreur' }
+  if (!ecrites?.length) return { success: false, error: CONVENTION_MODIFIEE }
 
   await logAudit({ action: 'update_status', entity_type: 'convention', entity_id: id, details: { status } })
   revalidatePath('/dashboard/conventions')
@@ -111,17 +195,48 @@ export async function updateConventionDetailsAction(
   return { success: true }
 }
 
+/**
+ * Supprime une convention. La base supprime avec elle ses avenants et son
+ * journal de signature (clés en cascade) : une convention qui porte une
+ * signature électronique ne se supprime donc pas, il faut d'abord annuler la
+ * signature, ce qui en garde la trace.
+ */
 export async function deleteConventionAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!accesConventions(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
-  const { error } = await supabase
+  const [{ data: conv }, signee] = await Promise.all([
+    supabase
+      .from('conventions')
+      .select('id, status')
+      .eq('id', id)
+      .eq('organization_id', session.organization.id)
+      .maybeSingle(),
+    porteSignatureElectronique(supabase, id, session.organization.id),
+  ])
+  if (!conv) return { success: false, error: 'Convention introuvable' }
+  if (signee === null) return { success: false, error: VERIFICATION_IMPOSSIBLE }
+  if (signee) {
+    return {
+      success: false,
+      error: `Cette convention porte une signature électronique : elle ne se supprime pas. ${annulationProposee(conv.status)
+        ? `Annulez d’abord la signature par ${MENU_ANNULER} : l’annulation est tracée et l’exemplaire archivé conservé.`
+        : STATUT_SANS_SIGNATURE}`,
+    }
+  }
+
+  const { data: supprimees, error } = await supabase
     .from('conventions')
     .delete()
     .eq('id', id)
     .eq('organization_id', session.organization.id)
+    // Signée par le lien entre la vérification et la suppression : rien ne part
+    .is('signature_client_signature_data', null)
+    .select('id')
 
   if (error) return { success: false, error: 'Erreur' }
+  if (!supprimees?.length) return { success: false, error: CONVENTION_MODIFIEE }
 
   await logAudit({ action: 'delete', entity_type: 'convention', entity_id: id })
   revalidatePath('/dashboard/conventions')

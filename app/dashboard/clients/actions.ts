@@ -230,9 +230,32 @@ export async function updateClientNotesAction(id: string, notes: string): Promis
   return { success: true }
 }
 
+/**
+ * Supprime un client. Ses conventions partent avec lui (clé en cascade), et
+ * avec elles leurs avenants et leur journal de signature : un client qui porte
+ * une convention signée (statut signé, ou signature électronique enregistrée)
+ * ne se supprime donc pas. L'image de signature n'est pas chargée, les
+ * conventions sont seulement comptées.
+ */
 export async function deleteClientAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+
+  const { count: signees, error: eSignees } = await supabase
+    .from('conventions')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', session.organization.id)
+    .eq('client_id', id)
+    .or('status.in.(signee_client,signee_complete),signature_client_signature_data.not.is.null')
+  if (eSignees) return { success: false, error: 'Vérification des conventions du client impossible : réessayez dans un instant' }
+  if (signees) {
+    return {
+      success: false,
+      error: signees > 1
+        ? `Suppression impossible : ${signees} conventions signées sont rattachées à ce client. Elles seraient supprimées avec lui, signatures et journal de signature compris.`
+        : 'Suppression impossible : 1 convention signée est rattachée à ce client. Elle serait supprimée avec lui, signature et journal de signature compris.',
+    }
+  }
 
   const { error } = await supabase
     .from('clients')

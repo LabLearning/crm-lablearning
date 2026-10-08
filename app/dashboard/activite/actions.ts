@@ -38,6 +38,57 @@ function sansMasques(ligne: Record<string, unknown>): { ligne: Record<string, un
 
 const nomTable = (t: string) => TABLES_ACTIVITE[t]?.pluriel?.toLowerCase() || t.replace(/_/g, ' ')
 
+const STATUTS_CONVENTION_SIGNEE = ['signee_client', 'signee_complete']
+/** Colonnes du lien de signature : elles disent la demande, pas la signature. */
+const COLONNES_LIEN_SIGNATURE = ['signature_token', 'signature_token_expires_at']
+const MENU_ANNULER_SIGNATURE = '« Annuler la signature », dans le menu de la convention (liste des conventions)'
+
+/**
+ * La signature d'une convention ne se défait pas depuis le journal. Elle
+ * s'écrit en plusieurs temps (statut et signature, horodatage réel et
+ * consentement, exemplaire figé) : annuler une de ces écritures l'effacerait
+ * ou la rétablirait à moitié, sans événement d'annulation au journal de
+ * signature. Annuler une écriture plus ancienne qui porte le statut ou le
+ * lien ferait de même sur une convention signée depuis, et annuler sa
+ * création la supprimerait avec ses preuves.
+ *
+ * Renvoie le motif du refus, ou null quand l'écriture ne touche à aucune
+ * signature : les écritures de contenu (prix, programme, notes) restent
+ * annulables, comme celles du statut ou du lien d'une convention non signée.
+ */
+async function refusSignatureConvention(supabase: any, act: LigneJournal): Promise<string | null> {
+  // Recréer une convention supprimée ne retire rien
+  if (act.operation === 'delete' || !act.record_id) return null
+  const refus = `Cette écriture touche à la signature de la convention (statut signé, preuves ou lien) : l’annuler depuis le journal déferait ou rétablirait la signature à moitié, sans trace au journal de signature. Pour revenir sur une signature, utilisez ${MENU_ANNULER_SIGNATURE}.`
+
+  if (act.operation === 'update') {
+    const champs = act.champs || []
+    const colonnesSignature = champs.filter((c) => c.startsWith('signature_'))
+    const toucheStatut = champs.includes('status')
+    if (!toucheStatut && !colonnesSignature.length) return null
+    // L'écriture porte elle-même sur une signature : passage vers ou depuis un
+    // statut signé, ou colonne de preuve
+    const versOuDepuisSignee = toucheStatut
+      && [act.avant?.status, act.apres?.status].some((s) => STATUTS_CONVENTION_SIGNEE.includes(String(s)))
+    if (versOuDepuisSignee || colonnesSignature.some((c) => !COLONNES_LIEN_SIGNATURE.includes(c))) return refus
+  }
+
+  // Sinon tout dépend de la convention telle qu'elle est aujourd'hui. L'image
+  // n'est pas chargée : le statut, et un simple compte
+  const [{ data: conv, error: e1 }, { count, error: e2 }] = await Promise.all([
+    supabase.from('conventions').select('status').eq('id', act.record_id).maybeSingle(),
+    supabase.from('conventions').select('id', { count: 'exact', head: true })
+      .eq('id', act.record_id).not('signature_client_signature_data', 'is', null),
+  ])
+  if (e1 || e2) return 'Vérification de la signature de la convention impossible : réessayez dans un instant'
+  const signeeAujourdhui = (count || 0) > 0 || STATUTS_CONVENTION_SIGNEE.includes(String(conv?.status))
+  if (!signeeAujourdhui) return null
+
+  return act.operation === 'insert'
+    ? `Cette convention est signée : annuler sa création la supprimerait, avec sa signature et son journal de signature. Annulez d’abord la signature par ${MENU_ANNULER_SIGNATURE}.`
+    : refus
+}
+
 /**
  * Annule une activité du journal : remet la ligne dans l'état d'avant.
  *
@@ -67,6 +118,10 @@ export async function annulerActiviteAction(activiteId: string): Promise<ActionR
   if (!act.record_id) return { success: false, error: 'Ligne sans identifiant : annulation impossible' }
   if (!(act.table_name in TABLES_ACTIVITE) && !['facture_lignes', 'devis_lignes', 'session_formations'].includes(act.table_name)) {
     return { success: false, error: 'Cette table ne peut pas être annulée depuis le journal' }
+  }
+  if (act.table_name === 'conventions') {
+    const refus = await refusSignatureConvention(supabase, act)
+    if (refus) return { success: false, error: refus }
   }
 
   const avertissements: string[] = []

@@ -6,7 +6,8 @@
  * Source : backups/purge-sessions-2026-08-18.json (lignes complètes, ids
  * d'origine conservés — les FK retombent d'elles-mêmes). Les sessions sont
  * réinsérées d'abord, puis les satellites dans l'ordre des dépendances
- * (inscriptions avant émargements, qcm_sessions avant qcm_reponses…).
+ * (inscriptions avant émargements, qcm_sessions avant qcm_reponses, la
+ * convention avant ses avenants et son journal de signature…).
  * Idempotent : les lignes déjà présentes sont ignorées (conflit sur id).
  *
  * USAGE : node scripts/restaurer-purge-sessions.mjs backups/purge-sessions-2026-08-18.json
@@ -21,12 +22,16 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 const chemin = process.argv[2] || 'backups/purge-sessions-2026-08-18.json'
 const sauvegarde = JSON.parse(readFileSync(chemin, 'utf8'))
 
-// Ordre de réinsertion : parents avant enfants.
+// Ordre de réinsertion : parents avant enfants. Le dossier de formation passe
+// avant les incidents et les conventions qui le référencent (dossier_id) ;
+// la convention avant ses avenants et son journal de signature
+// (convention_id), puis avant les documents et les formations de lead.
 const ORDRE = [
   'session_formations', 'inscriptions', 'recueils_besoin', 'emargement_feuilles',
   'emargements', 'qcm_sessions', 'qcm_reponses', 'evaluations_satisfaction',
-  'evaluations_acquis', 'evaluations_apprenant', 'incidents', 'conventions',
-  'contrats_formateur', 'dossiers_formation', 'documents', 'certificat_signatures',
+  'evaluations_acquis', 'evaluations_apprenant', 'dossiers_formation', 'incidents',
+  'conventions', 'convention_avenants', 'convention_signature_evenements',
+  'contrats_formateur', 'documents', 'certificat_signatures',
   'taches_formateur', 'pointages_formateur', 'demandes_changement_participants',
   'lead_formations',
 ]
