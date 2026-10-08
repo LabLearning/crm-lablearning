@@ -2,17 +2,24 @@ import * as React from 'react'
 import { Document, Page, View, Text, Image } from '@react-pdf/renderer'
 import {
   PdfDocHeader, PdfDocFooter, PdfSectionTitle, shared,
-  BRAND_GREEN, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
+  BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
 
 /**
  * Certificat de signature électronique d'une convention : le dossier de
  * preuve de l'acte, sur le modèle des plateformes de signature. Il ne dit que
  * ce que le CRM a réellement enregistré : une preuve absente est écrite comme
- * telle, jamais reconstituée.
+ * telle, jamais reconstituée, et la date portée sur la convention n'y figure
+ * jamais à la place de l'horodatage réel.
  */
 
-export interface EvenementPreuve { at: string; libelle: string; detail?: string | null }
+export interface EvenementPreuve {
+  at: string
+  libelle: string
+  detail?: string | null
+  /** Modification du document postérieure à sa signature : mise en avant dans le journal */
+  alerte?: boolean
+}
 
 export interface PreuveSignatureConvention {
   emisLe: string
@@ -20,9 +27,16 @@ export interface PreuveSignatureConvention {
     intitule: string
     numero: string
     identifiant: string
+    /** Objet tel que signé ; objetActuel n'est renseigné que s'il a changé depuis */
     objet: string | null
+    objetActuel: string | null
+    /** Programme tel que signé ; formationActuelle n'est renseignée que s'il a changé depuis */
     formation: string | null
+    formationActuelle: string | null
+    /** Référence de la session */
     session: string | null
+    /** Dates de formation telles qu'elles sont écrites dans la convention */
+    datesFormation: string | null
     client: string | null
     clientSiret: string | null
     /** « Entreprise cliente », ou « Stagiaire » pour un contrat de particulier */
@@ -32,6 +46,12 @@ export interface PreuveSignatureConvention {
     organismeNda: string | null
     /** Nom du document dans les phrases : « la convention » ou « le contrat » */
     nomCourt: string
+    /** Le même, accordé : « de la convention » ou « du contrat » */
+    duDocument: string
+    /** Nombre de modifications du contenu enregistrées après la signature */
+    modifications: number
+    /** Début du journal des modifications, quand la signature lui est antérieure */
+    journalModificationsDepuis: string | null
     exemplaire:
       | { etat: 'fige'; sha256: string; figeLe: string | null; verifie: boolean | null; empreinteEnregistree: boolean; introuvable: boolean }
       /** anterieure : signature d'avant l'archivage ; echec : archivage raté, empreinte éventuellement notée à la signature */
@@ -40,12 +60,32 @@ export interface PreuveSignatureConvention {
   signataire: { nom: string; qualite: string; entreprise: string | null; emailLien: string; procede: string }
   signature: {
     horodatage: string | null
-    /** signature : enregistré à l'acte ; notification : journal créé au même instant ; copie : envoi automatique de l'exemplaire signé, juste après */
-    sourceHorodatage: 'signature' | 'notification' | 'copie' | null
+    /**
+     * signature : événement enregistré à l'acte ; notification : journal créé au même instant ;
+     * enregistre : horodatage conservé sur la convention, sans autre trace ;
+     * copie : envoi automatique de l'exemplaire signé, juste après
+     */
+    sourceHorodatage: 'signature' | 'notification' | 'enregistre' | 'copie' | null
+    /** La signature est passée par le parcours qui capte IP, consentement et exemplaire */
+    captation: boolean
     ip: string | null
+    /** Cette adresse IP a aussi été relevée lors de visites faites depuis un compte du CRM */
+    adresseVueAvecCompteCrm: boolean
     appareil: string | null
     userAgent: string | null
-    consentement: { etat: 'coche'; texte: string } | { etat: 'coche_non_conserve' } | { etat: 'absent' }
+    /** Compte du CRM connecté dans le navigateur qui a validé la signature */
+    compteCrm: string | null
+    consentement:
+      | { etat: 'coche'; texte: string }
+      | { etat: 'texte_non_enregistre' }
+      | { etat: 'sans_case' }
+      | { etat: 'non_enregistre' }
+    /** Ouverture du document complet (PDF) depuis la page de signature, avant de signer */
+    lecture:
+      | { etat: 'ouvert'; le: string }
+      | { etat: 'ouvert_equipe'; le: string; compte: string }
+      | { etat: 'non_ouvert' }
+      | { etat: 'non_enregistre' }
     image: string
     imageSha256: string
   }
@@ -53,7 +93,7 @@ export interface PreuveSignatureConvention {
   empreinteDossier: string
 }
 
-/** Date et heure de Paris, et la même en UTC, pour qu'aucune lecture ne soit ambiguë. */
+/** Date et heure de Paris, en toutes lettres. */
 export function horodatageLisible(iso: string): string {
   const d = new Date(iso)
   const paris = new Intl.DateTimeFormat('fr-FR', {
@@ -66,15 +106,55 @@ const utc = (iso: string) => new Date(iso).toISOString().replace('T', ' ').repla
 const courte = (iso: string) => new Intl.DateTimeFormat('fr-FR', {
   timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
 }).format(new Date(iso))
+const jour = (iso: string) => new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric',
+}).format(new Date(iso))
+
+/**
+ * Police des dates et des heures : la même partout dans le certificat, celle
+ * du journal des événements (Courier, police standard du PDF).
+ */
+const POLICE_DATES = 'Courier'
+const MOIS = 'janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre'
+const MOTIF_DATES = [
+  `\\d{1,2}(?:er)? (?:${MOIS}) \\d{4}(?: à \\d{2}:\\d{2}(?::\\d{2})?)?`,
+  '\\d{2}/\\d{2}/\\d{4}(?:,? \\d{2}:\\d{2}(?::\\d{2})?)?',
+  '\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} UTC',
+].join('|')
+
+/**
+ * Le texte, avec chaque date et chaque heure passée dans la police des dates.
+ * `taille` est le corps de cette police : un peu sous celui du texte voisin,
+ * le Courier étant plus large.
+ */
+function avecDates(texte: string | null | undefined, taille: number): React.ReactNode {
+  if (!texte) return texte
+  const motif = new RegExp(MOTIF_DATES, 'g')
+  const morceaux: React.ReactNode[] = []
+  let fin = 0
+  let m: RegExpExecArray | null
+  while ((m = motif.exec(texte)) !== null) {
+    if (m.index > fin) morceaux.push(texte.slice(fin, m.index))
+    morceaux.push(<Text key={m.index} style={{ fontFamily: POLICE_DATES, fontSize: taille, fontWeight: 400 }}>{m[0]}</Text>)
+    fin = m.index + m[0].length
+  }
+  if (!morceaux.length) return texte
+  if (fin < texte.length) morceaux.push(texte.slice(fin))
+  return morceaux
+}
 
 const Ligne = ({ label, children, mono }: { label: string; children: React.ReactNode; mono?: boolean }) => (
   <View style={{ flexDirection: 'row', marginBottom: 4.5 }} wrap={false}>
     <Text style={{ fontSize: 8.3, color: SURFACE_500, width: 128 }}>{label}</Text>
-    <Text style={{ fontSize: mono ? 7.6 : 8.5, color: SURFACE_900, flex: 1, fontFamily: mono ? 'Courier' : 'Satoshi', lineHeight: 1.35 }}>{children}</Text>
+    <Text style={{ fontSize: mono ? 7.6 : 8.5, color: SURFACE_900, flex: 1, fontFamily: mono ? POLICE_DATES : 'Satoshi', lineHeight: 1.35 }}>
+      {!mono && typeof children === 'string' ? avecDates(children, 7.9) : children}
+    </Text>
   </View>
 )
 const Note = ({ children }: { children: React.ReactNode }) => (
-  <Text style={{ fontSize: 7.4, color: SURFACE_500, lineHeight: 1.45, marginTop: 3 }}>{children}</Text>
+  <Text style={{ fontSize: 7.4, color: SURFACE_500, lineHeight: 1.45, marginTop: 3 }}>
+    {typeof children === 'string' ? avecDates(children, 6.9) : children}
+  </Text>
 )
 /** Une empreinte SHA-256 en deux lignes : en police à chasse fixe, elle ne se coupe pas d'elle-même. */
 const enDeux = (h: string) => `${h.slice(0, 32)}\n${h.slice(32)}`
@@ -85,19 +165,22 @@ const Carte = ({ children }: { children: React.ReactNode }) => (
 
 export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: PreuveSignatureConvention; org: any }) {
   const { document: doc, signataire, signature } = preuve
+  const auPlusTard = signature.sourceHorodatage === 'copie'
   return (
     <Document title={`Certificat de signature ${doc.numero}`} author={doc.organisme}>
       <Page size="A4" style={shared.page}>
         <PdfDocHeader
           docTitle="Certificat de signature électronique"
           numero={doc.numero}
-          date={`Émis le ${horodatageLisible(preuve.emisLe)}`}
+          date={avecDates(`Émis le ${horodatageLisible(preuve.emisLe)}`, 7.5)}
           org={org}
         />
 
         <Text style={{ fontSize: 8.8, color: SURFACE_700, lineHeight: 1.5, marginBottom: 16 }}>
-          {doc.organisme} certifie que le document décrit ci-dessous a été signé électroniquement par le signataire
-          indiqué, et rassemble dans ce certificat les éléments de preuve enregistrés lors de la signature.
+          {doc.organisme} atteste que son système de gestion (CRM) a enregistré la signature électronique du document
+          décrit ci-dessous, sous le nom indiqué et par le procédé décrit. Ce certificat rassemble les éléments
+          enregistrés lors de cette signature ; l’identité du signataire est celle qu’il a déclarée, elle n’a pas été
+          vérifiée par un tiers.
         </Text>
 
         <View style={shared.section}>
@@ -105,14 +188,24 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
           <Carte>
             <Ligne label="Document">{doc.intitule}</Ligne>
             <Ligne label="Référence">{doc.numero}</Ligne>
-            {doc.objet ? <Ligne label="Objet">{doc.objet}</Ligne> : null}
-            {doc.formation ? <Ligne label="Formation">{doc.formation}</Ligne> : null}
+            {doc.objet ? <Ligne label={doc.objetActuel ? 'Objet à la signature' : 'Objet'}>{doc.objet}</Ligne> : null}
+            {doc.objetActuel ? <Ligne label="Objet aujourd’hui">{doc.objetActuel}</Ligne> : null}
+            {doc.formation ? <Ligne label={doc.formationActuelle ? 'Formation à la signature' : 'Formation'}>{doc.formation}</Ligne> : null}
+            {doc.formationActuelle ? <Ligne label="Formation aujourd’hui">{doc.formationActuelle}</Ligne> : null}
             {doc.session ? <Ligne label="Session">{doc.session}</Ligne> : null}
+            {doc.datesFormation ? <Ligne label="Dates de formation" mono>{doc.datesFormation}</Ligne> : null}
             {doc.client ? <Ligne label={doc.clientLibelle}>{[doc.client, doc.clientSiret ? `SIRET ${doc.clientSiret}` : null].filter(Boolean).join(' · ')}</Ligne> : null}
             <Ligne label="Organisme de formation">
               {[doc.organisme, doc.organismeSiret ? `SIRET ${doc.organismeSiret}` : null, doc.organismeNda ? `NDA ${doc.organismeNda}` : null].filter(Boolean).join(' · ')}
             </Ligne>
             <Ligne label="Identifiant du document" mono>{doc.identifiant}</Ligne>
+            {doc.modifications > 0 ? (
+              <Note>
+                {doc.modifications === 1
+                  ? `Une modification ${doc.duDocument} ou de sa session a été enregistrée dans le CRM après la signature, sans nouvelle signature du client : elle est détaillée, avec sa date, dans le journal des événements.`
+                  : `${doc.modifications} modifications ${doc.duDocument} ou de sa session ont été enregistrées dans le CRM après la signature, sans nouvelle signature du client : elles sont détaillées, avec leur date, dans le journal des événements.`}
+              </Note>
+            ) : null}
           </Carte>
         </View>
 
@@ -120,7 +213,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
           <PdfSectionTitle icon="userCheck">Signataire</PdfSectionTitle>
           <Carte>
             <Ligne label="Nom déclaré">{signataire.nom}</Ligne>
-            <Ligne label="Qualité">{signataire.qualite}</Ligne>
+            <Ligne label="Qualité déclarée">{signataire.qualite}</Ligne>
             {signataire.entreprise ? <Ligne label="Pour le compte de">{signataire.entreprise}</Ligne> : null}
             <Ligne label="Lien de signature transmis à">{signataire.emailLien}</Ligne>
             <Ligne label="Procédé">{signataire.procede}</Ligne>
@@ -134,18 +227,35 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
               <Carte>
                 <Ligne label="Date et heure">
                   {signature.horodatage
-                    ? `${signature.sourceHorodatage === 'copie' ? 'Au plus tard le ' : ''}${horodatageLisible(signature.horodatage)}`
+                    ? `${auPlusTard ? 'Au plus tard le ' : ''}${horodatageLisible(signature.horodatage)}`
                     : 'Non enregistrées'}
                 </Ligne>
-                {signature.horodatage ? <Ligne label="Temps universel" mono>{utc(signature.horodatage)}</Ligne> : null}
+                {signature.horodatage ? <Ligne label="Temps universel" mono>{`${auPlusTard ? 'au plus tard ' : ''}${utc(signature.horodatage)}`}</Ligne> : null}
                 <Ligne label="Adresse IP">{signature.ip || 'Non enregistrée'}</Ligne>
                 <Ligne label="Appareil">{signature.appareil || 'Non enregistré'}</Ligne>
+                {signature.compteCrm ? (
+                  <Ligne label="Compte du CRM connecté">{`${signature.compteCrm} : la signature a été validée dans un navigateur où ce compte de l’organisme était connecté.`}</Ligne>
+                ) : null}
+                {signature.adresseVueAvecCompteCrm ? (
+                  <Ligne label="Réseau">Cette adresse IP a aussi été relevée lors de visites faites depuis un compte du CRM de l’organisme.</Ligne>
+                ) : null}
                 <Ligne label="Consentement">
                   {signature.consentement.etat === 'coche'
                     ? `Case cochée : « ${signature.consentement.texte} »`
-                    : signature.consentement.etat === 'coche_non_conserve'
-                      ? 'Case cochée (obligatoire pour signer depuis le 29 septembre 2026) ; texte non conservé'
-                      : 'Non recueilli par une case dédiée'}
+                    : signature.consentement.etat === 'texte_non_enregistre'
+                      ? 'Texte non enregistré (la case est obligatoire sur la page de signature par lien).'
+                      : signature.consentement.etat === 'non_enregistre'
+                        ? 'Non enregistré.'
+                        : 'Aucune case de consentement sur la page de signature à la date de cette signature.'}
+                </Ligne>
+                <Ligne label="Document complet (PDF)">
+                  {signature.lecture.etat === 'ouvert'
+                    ? `Ouvert depuis la page de signature le ${courte(signature.lecture.le)}, avant de signer.`
+                    : signature.lecture.etat === 'ouvert_equipe'
+                      ? `Ouvert le ${courte(signature.lecture.le)} depuis un compte du CRM (${signature.lecture.compte}) ; aucune ouverture enregistrée sur l’appareil du signataire.`
+                      : signature.lecture.etat === 'non_ouvert'
+                        ? 'Non ouvert depuis la page de signature avant de signer. Cette page en affiche le résumé : formation, dates, durée, nombre de stagiaires, lieu, montant.'
+                        : 'Ouverture non enregistrée à la date de cette signature.'}
                 </Ligne>
                 {signature.sourceHorodatage === 'notification' ? (
                   <Note>
@@ -153,15 +263,25 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                     par le serveur à l’instant même de la signature.
                   </Note>
                 ) : null}
-                {signature.sourceHorodatage === 'copie' ? (
+                {signature.sourceHorodatage === 'enregistre' ? (
+                  <Note>Horodatage enregistré par le serveur sur la convention au moment de la signature.</Note>
+                ) : null}
+                {auPlusTard ? (
                   <Note>
                     Seul horodatage conservé pour cette signature : l’envoi automatique de l’exemplaire signé, que le serveur
                     déclenche quelques secondes après la validation du signataire.
                   </Note>
                 ) : null}
                 {!signature.ip ? (
-                  <Note>L’adresse IP des signataires est enregistrée pour les signatures faites depuis le 29 septembre 2026.</Note>
+                  <Note>
+                    {signature.captation
+                      ? 'L’adresse IP n’a pas pu être relevée pour cette signature.'
+                      : 'À la date de cette signature, le CRM n’enregistrait pas encore l’adresse IP des signataires.'}
+                  </Note>
                 ) : null}
+                <Note>
+                  {`Les dates imprimées sur ${doc.nomCourt} (« Fait à …, le … » et la date placée sous « Signé électroniquement ») sont des mentions du document : elles peuvent différer de l’instant de la signature électronique, qui est l’horodatage ci-dessus.`}
+                </Note>
               </Carte>
             </View>
             <View style={{ flex: 1 }}>
@@ -174,12 +294,14 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                 </View>
               </View>
               <Text style={{ fontSize: 6.6, color: SURFACE_400, marginTop: 4 }}>Empreinte SHA-256 de l’image</Text>
-              <Text style={{ fontSize: 6.4, color: SURFACE_500, fontFamily: 'Courier' }}>{enDeux(signature.imageSha256)}</Text>
+              <Text style={{ fontSize: 6.4, color: SURFACE_500, fontFamily: POLICE_DATES }}>{enDeux(signature.imageSha256)}</Text>
             </View>
           </View>
           {signature.userAgent ? (
             <View style={{ marginTop: 5, width: '100%' }}>
-              <Text style={{ fontSize: 6.6, color: SURFACE_400, lineHeight: 1.4 }}>En-tête du navigateur : {signature.userAgent}</Text>
+              <Text style={{ fontSize: 6.6, color: SURFACE_400, lineHeight: 1.4 }}>
+                {signature.captation ? 'En-tête du navigateur' : 'Navigateur déclaré par la page de signature'} : {signature.userAgent}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -192,15 +314,20 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
               <Text style={{ fontSize: 7.4, fontWeight: 700, color: SURFACE_500, flex: 1 }}>Événement</Text>
             </View>
             {preuve.evenements.map((e, i) => (
-              <View key={i} wrap={false} style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 9, borderTopWidth: i ? 0.5 : 0, borderTopColor: SURFACE_200 }}>
-                <Text style={{ fontSize: 7.8, color: SURFACE_700, width: 104, fontFamily: 'Courier' }}>{courte(e.at)}</Text>
+              <View key={i} wrap={false} style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 9, borderTopWidth: i ? 0.5 : 0, borderTopColor: SURFACE_200, backgroundColor: e.alerte ? SURFACE_50 : undefined }}>
+                <Text style={{ fontSize: 7.8, color: SURFACE_700, width: 104, fontFamily: POLICE_DATES }}>{courte(e.at)}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 8.2, color: SURFACE_900 }}>{e.libelle}</Text>
-                  {e.detail ? <Text style={{ fontSize: 7.2, color: SURFACE_500, marginTop: 1.5 }}>{e.detail}</Text> : null}
+                  <Text style={{ fontSize: 8.2, color: SURFACE_900, fontWeight: e.alerte ? 700 : 400 }}>{avecDates(e.libelle, 7.6)}</Text>
+                  {e.detail ? <Text style={{ fontSize: 7.2, color: e.alerte ? SURFACE_700 : SURFACE_500, marginTop: 1.5, lineHeight: 1.35 }}>{avecDates(e.detail, 6.7)}</Text> : null}
                 </View>
               </View>
             ))}
           </View>
+          {doc.journalModificationsDepuis ? (
+            <Note>
+              {`Le CRM journalise les modifications des conventions et des sessions depuis le ${jour(doc.journalModificationsDepuis)}. Une modification antérieure à cette date, ou portant sur la fiche du programme de formation, n’apparaît pas dans ce journal.`}
+            </Note>
+          ) : null}
         </View>
 
         <View style={shared.section} wrap={false}>
@@ -209,7 +336,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
             {doc.exemplaire.etat === 'fige' ? (
               <>
                 <Ligne label="Exemplaire signé">
-                  {`Figé au moment de la signature${doc.exemplaire.figeLe ? `, le ${horodatageLisible(doc.exemplaire.figeLe)}` : ''}, et conservé par l’organisme.`}
+                  {`Figé au moment de la signature${doc.exemplaire.figeLe ? `, le ${horodatageLisible(doc.exemplaire.figeLe)}` : ''}, et conservé par l’organisme. Il se télécharge depuis le CRM (« Exemplaire signé archivé ») : l’empreinte ci-dessous est celle de ce fichier, et non celle d’un PDF régénéré.`}
                 </Ligne>
                 <Ligne label="Empreinte SHA-256" mono>{doc.exemplaire.sha256}</Ligne>
                 <Ligne label="Contrôle">
@@ -228,7 +355,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
               <>
                 <Ligne label="Exemplaire signé">
                   {doc.exemplaire.raison === 'anterieure'
-                    ? `Non figé : la signature est antérieure à l’archivage automatique des exemplaires signés (29 septembre 2026). Le PDF de ${doc.nomCourt} est reconstitué à partir des données enregistrées et intègre les avenants éventuels.`
+                    ? `Non figé : à la date de cette signature, le CRM n’archivait pas encore les exemplaires signés. Le PDF ${doc.duDocument} est régénéré à partir des données actuelles du CRM ; il peut différer du document présenté le jour de la signature.`
                     : 'Non conservé : l’archivage de l’exemplaire a échoué au moment de la signature.'}
                 </Ligne>
                 {doc.exemplaire.sha256Note ? <Ligne label="Empreinte notée à la signature" mono>{doc.exemplaire.sha256Note}</Ligne> : null}
@@ -236,8 +363,9 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
             )}
             <Ligne label="Empreinte des preuves" mono>{preuve.empreinteDossier}</Ligne>
             <Note>
-              L’empreinte des preuves est calculée sur l’ensemble des éléments de ce certificat (document, signataire,
-              signature, journal). Toute modification de l’un d’eux donnerait une empreinte différente.
+              Empreinte calculée par le CRM sur les données de ce certificat (document, signataire, signature, journal) au
+              moment de son émission. Elle sert à comparer deux tirages : elle change dès qu’un élément change, et ne
+              constitue pas un scellement par un tiers.
             </Note>
           </View>
         </View>
@@ -245,11 +373,16 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
         <View style={shared.section} wrap={false}>
           <PdfSectionTitle icon="scale">Valeur juridique</PdfSectionTitle>
           <Text style={{ fontSize: 7.8, color: SURFACE_700, lineHeight: 1.5 }}>
-            Signature électronique simple au sens de l’article 3 du règlement (UE) n° 910/2014 du 23 juillet 2014 (eIDAS).
-            Conformément à l’article 25 de ce règlement et aux articles 1366 et 1367 du Code civil, l’effet juridique et
-            la recevabilité de cette signature comme preuve en justice ne peuvent être refusés au seul motif qu’elle se
-            présente sous une forme électronique. Ce certificat est établi par {doc.organisme} à partir des données de
-            son système de gestion ; il n’est pas délivré par un prestataire de services de confiance qualifié.
+            Signature électronique au sens de l’article 3, point 10, du règlement (UE) n° 910/2014 du 23 juillet 2014
+            (eIDAS), de niveau simple : elle n’est ni avancée ni qualifiée. En application de l’article 25, paragraphe 1,
+            de ce règlement, son effet juridique et sa recevabilité comme preuve en justice ne peuvent être refusés au
+            seul motif qu’elle se présente sous une forme électronique ou qu’elle n’est pas qualifiée. Elle ne bénéficie
+            pas de la présomption de fiabilité prévue à l’article 1367 du Code civil, réservée à la signature
+            électronique qualifiée (décret n° 2017-1416 du 28 septembre 2017) : en cas de contestation, il revient à
+            celui qui s’en prévaut d’établir que le procédé identifie le signataire et garantit l’intégrité de l’acte
+            (articles 1366 et 1367 du Code civil). Ce document est établi par {doc.organisme}, partie à l’acte, à partir
+            des données de son système de gestion ; il n’est délivré par aucun prestataire de services de confiance et
+            n’est pas un certificat de signature électronique au sens de l’article 3, point 14, du règlement.
           </Text>
         </View>
 

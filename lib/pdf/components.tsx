@@ -256,7 +256,7 @@ export function PdfDocHeader({
   docTitle: string
   numero: string
   /** Optionnelle : les documents signés après coup n'affichent pas de date d'émission. */
-  date?: string
+  date?: React.ReactNode
   statut?: string
   /** Si fourni, utilise le logo de l'org (logo_url) et son nom ; sinon fallback Lab Learning */
   org?: { name?: string; logo_url?: string | null; numero_da?: string | null; is_qualiopi?: boolean }
