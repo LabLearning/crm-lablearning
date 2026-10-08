@@ -56,7 +56,10 @@ export async function compteCrmConnecte(supabase: any): Promise<string | null> {
   }
 }
 
-/** Ajoute un événement au journal de signature de la convention. */
+/**
+ * Ajoute un événement au journal de signature de la convention. Renvoie son
+ * identifiant (null si l'écriture n'a pas abouti), pour le compléter ensuite.
+ */
 export async function journaliserEvenementConvention(
   supabase: any,
   e: {
@@ -69,8 +72,8 @@ export async function journaliserEvenementConvention(
     /** Instant de l'acte, quand l'écriture arrive après coup (la signature, après le rendu de l'exemplaire) */
     survenuAt?: string
   },
-) {
-  const { error } = await supabase.from('convention_signature_evenements').insert({
+): Promise<string | null> {
+  const { data, error } = await supabase.from('convention_signature_evenements').insert({
     organization_id: e.organizationId,
     convention_id: e.conventionId,
     evenement: e.evenement,
@@ -78,8 +81,43 @@ export async function journaliserEvenementConvention(
     ip_address: e.ip || null,
     user_agent: e.userAgent || null,
     details: e.details || null,
-  })
+  }).select('id').maybeSingle()
   if (error && error.code !== '42P01' && error.code !== 'PGRST205') console.error('[preuve convention]', error.message)
+  return data?.id || null
+}
+
+/**
+ * Complète les détails d'un événement déjà écrit : l'événement de signature
+ * est inscrit dès l'acte, l'empreinte et le chemin de l'exemplaire le
+ * rejoignent une fois le PDF figé. Les détails sont réécrits en entier.
+ */
+export async function completerEvenementConvention(supabase: any, evenementId: string | null, details: Record<string, unknown>) {
+  if (!evenementId) return
+  const { error } = await supabase.from('convention_signature_evenements').update({ details }).eq('id', evenementId)
+  if (error) console.error('[preuve convention]', error.message)
+}
+
+/**
+ * Ce que le signataire a sous les yeux au moment de signer : objet, programme,
+ * durée, dates, lieu, effectif, montants. Noté dans l'événement de signature
+ * pour que le certificat décrive le document signé, même si la convention est
+ * corrigée ensuite dans le CRM.
+ */
+export function instantaneDocument(convention: any): Record<string, unknown> {
+  const c = convention || {}
+  return {
+    numero: c.numero ?? null,
+    objet: c.objet ?? null,
+    formation: c.formation?.intitule ?? null,
+    duree_heures: c.duree_heures ?? null,
+    dates_formation: c.dates_formation ?? null,
+    lieu: c.lieu ?? null,
+    nombre_stagiaires: c.nombre_stagiaires ?? null,
+    montant_ht: c.montant_ht ?? null,
+    taux_tva: c.taux_tva ?? null,
+    montant_ttc: c.montant_ttc ?? null,
+    session: c.session?.reference ?? null,
+  }
 }
 
 /**

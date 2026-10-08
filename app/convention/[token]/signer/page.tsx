@@ -12,7 +12,7 @@ export default async function ConventionSignaturePage({ params }: { params: { to
     .select(`
       id, numero, type, objet, nombre_stagiaires, duree_heures, lieu, dates_formation,
       montant_ht, taux_tva, montant_ttc, status,
-      signature_token_expires_at, signature_client_date, signature_client_nom,
+      signature_token_expires_at, signature_client_signed_at, signature_client_nom,
       organization:organizations(name, logo_url),
       client:clients(type, raison_sociale, adresse, code_postal, ville, siret),
       formation:formation_id(intitule)

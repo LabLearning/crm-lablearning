@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Pen, CheckCircle2, RotateCcw, FileText } from '@/components/ui/icons'
 import { signConventionPublicAction, signalerOuvertureConventionAction } from '@/app/dashboard/conventions/signature-actions'
 import { texteConsentement } from '@/lib/consentement-convention'
+import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
 
 interface ConventionInfo {
   id: string
@@ -18,7 +19,8 @@ interface ConventionInfo {
   taux_tva: number | null
   montant_ttc: number | null
   status: string
-  signature_client_date: string | null
+  /** Horodatage réel de la signature (jamais la date portée sur la convention) */
+  signature_client_signed_at: string | null
   signature_client_nom: string | null
   organization: { name: string; logo_url: string | null } | null
   client: { type?: string | null; raison_sociale: string | null; adresse: string | null; code_postal: string | null; ville: string | null; siret: string | null } | null
@@ -31,6 +33,20 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
   const [hasDrawn, setHasDrawn] = useState(false)
   const [signataireNom, setSignataireNom] = useState('')
   const [consentement, setConsentement] = useState(false)
+  // La case dit « j'ai pris connaissance de la convention » : elle ne se coche
+  // qu'après l'ouverture du document complet. Mémorisé pour l'onglet, car
+  // certains navigateurs rechargent la page au retour du PDF.
+  const [documentOuvert, setDocumentOuvert] = useState(false)
+  const cleLecture = `ll_convention_lue_${convention.id}`
+  const lienDocument = `/api/pdf/convention/${convention.id}?token=${encodeURIComponent(token)}`
+  useEffect(() => {
+    try { if (sessionStorage.getItem(cleLecture) === '1') setDocumentOuvert(true) } catch { /* stockage indisponible */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const noterLecture = () => {
+    setDocumentOuvert(true)
+    try { sessionStorage.setItem(cleLecture, '1') } catch { /* stockage indisponible */ }
+  }
   const particulier = convention.client?.type === 'particulier'
   const nomDocument = particulier ? 'le contrat' : 'la convention'
   const [submitting, setSubmitting] = useState(false)
@@ -97,6 +113,8 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
   async function handleSubmit() {
     if (!signataireNom.trim()) { setError('Veuillez saisir votre nom complet'); return }
     if (!hasDrawn) { setError('Veuillez signer dans le cadre'); return }
+    // Un point ou un trait de quelques millimètres n'est pas une signature
+    if (!cadreSigne(canvasRef.current)) { setError(MESSAGE_SIGNATURE_VIDE); return }
     if (!consentement) { setError(`Cochez la case indiquant que vous avez pris connaissance de ${nomDocument}.`); return }
     setError(null); setSubmitting(true)
     try {
@@ -125,8 +143,8 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           </p>
           <p className="text-xs text-surface-500">
             Signataire : <strong>{convention.signature_client_nom || signataireNom}</strong>
-            {convention.signature_client_date && (
-              <> — le {new Date(convention.signature_client_date).toLocaleDateString('fr-FR', { dateStyle: 'long' as any })}</>
+            {convention.signature_client_signed_at && (
+              <>, le {new Date(convention.signature_client_signed_at).toLocaleDateString('fr-FR', { dateStyle: 'long' as any, timeZone: 'Europe/Paris' })}</>
             )}
           </p>
         </div>
@@ -149,9 +167,10 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
         </div>
         <p className="text-sm text-surface-700">{convention.objet}</p>
         <a
-          href={`/api/pdf/convention/${convention.id}?token=${encodeURIComponent(token)}`}
+          href={lienDocument}
           target="_blank"
           rel="noreferrer"
+          onClick={noterLecture}
           className="btn-secondary mt-4 inline-flex items-center gap-2"
         >
           <FileText className="h-4 w-4" /> Lire {particulier ? 'le contrat complet' : 'la convention complète'} (PDF)
@@ -251,15 +270,26 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           )}
         </div>
 
-        <label className="flex items-start gap-3 rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={consentement}
-            onChange={(e) => setConsentement(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-300 accent-brand-600"
-          />
-          <span className="text-sm text-surface-700">{texteConsentement(particulier)}</span>
-        </label>
+        <div>
+          <label className={`flex items-start gap-3 rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 ${documentOuvert ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+            <input
+              type="checkbox"
+              checked={consentement}
+              disabled={!documentOuvert}
+              onChange={(e) => setConsentement(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-300 accent-brand-600"
+            />
+            <span className="text-sm text-surface-700">{texteConsentement(particulier)}</span>
+          </label>
+          {!documentOuvert && (
+            <p className="mt-2 text-xs text-surface-600">
+              Ouvrez d’abord {particulier ? 'le contrat complet' : 'la convention complète'} pour pouvoir cocher cette case :{' '}
+              <a href={lienDocument} target="_blank" rel="noreferrer" onClick={noterLecture} className="font-semibold text-brand-600 underline">
+                lire {nomDocument} (PDF)
+              </a>
+            </p>
+          )}
+        </div>
 
         {error && <div className="rounded-xl bg-danger-50 border border-danger-200 px-4 py-3 text-sm text-danger-700">{error}</div>}
 
