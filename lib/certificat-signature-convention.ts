@@ -421,8 +421,13 @@ export async function construirePreuveSignatureConvention(
     nbModifications++
     journal.push({
       at: iso(a.created_at)!, alerte: true,
-      libelle: 'Après la signature : avenant de correction retiré',
-      detail: nomUser(a.user_id) ? `par ${nomUser(a.user_id)}` : null,
+      libelle: `Après la signature : avenant n° ${a.details?.avenant ?? '?'} retiré comme correction d’erreur`,
+      detail: [
+        a.details?.montant_apres != null ? `montant : ${euros(a.details?.montant_avant)} → ${euros(a.details?.montant_apres)}`
+          : a.details?.nombre_apres != null ? `participants : ${a.details?.nombre_avant ?? '?'} → ${a.details?.nombre_apres}` : null,
+        'la convention n’en fait plus mention',
+        nomUser(a.user_id) ? `par ${nomUser(a.user_id)}` : null,
+      ].filter(Boolean).join(' · '),
     })
   }
   journal.sort((a, b) => a.at.localeCompare(b.at))

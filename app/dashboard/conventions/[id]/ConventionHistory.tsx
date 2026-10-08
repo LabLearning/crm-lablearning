@@ -13,7 +13,12 @@ const ACTION_META: Record<string, { label: (d: any) => string; Icon: any; cls: s
   update: { label: () => 'Convention modifiée', Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
   corriger_prix_convention: { label: (d) => (d?.avant != null ? `Prix corrigé de ${euros(d.avant)} à ${euros(d?.apres)}, sans avenant` : `Prix fixé à ${euros(d?.apres)}`), Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
   reprendre_formation_session: { label: (d) => `Programme repris de la session : ${d?.avant ? `« ${d.avant} »${d?.duree_avant != null ? ` (${d.duree_avant} h)` : ''} remplacé par ` : ''}« ${d?.apres || ''} »${d?.duree_apres != null ? ` (${d.duree_apres} h)` : ''}`, Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
-  retirer_avenant_correction: { label: (d) => `Avenant n°${d?.avenant ?? ''} retiré : prix corrigé de ${euros(d?.montant_avant)} à ${euros(d?.montant_apres)}`, Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600' },
+  retirer_avenant_correction: {
+    label: (d) => d?.nature === 'participants' || (d?.montant_apres == null && d?.nombre_apres != null)
+      ? `Avenant n°${d?.avenant ?? ''} retiré : liste des participants corrigée de ${d?.nombre_avant ?? '?'} à ${d?.nombre_apres ?? '?'}`
+      : `Avenant n°${d?.avenant ?? ''} retiré : prix corrigé de ${euros(d?.montant_avant)} à ${euros(d?.montant_apres)}`,
+    Icon: RefreshCw, cls: 'bg-surface-100 text-surface-600',
+  },
   akto_envoye: { label: () => 'Dossier envoyé à AKTO', Icon: Building2, cls: 'bg-amber-50 text-amber-700' },
   akto_accord_recu: { label: () => 'Accord de prise en charge AKTO reçu', Icon: CheckCircle2, cls: 'bg-emerald-50 text-emerald-600' },
   akto_refuse: { label: () => 'Dossier AKTO refusé', Icon: XCircle, cls: 'bg-danger-50 text-danger-600' },

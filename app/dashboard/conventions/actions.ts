@@ -365,14 +365,18 @@ export async function reprendrePrixSessionAction(conventionId: string): Promise<
 }
 
 /**
- * Retire un avenant de prix créé pour corriger une erreur de saisie : le prix
- * signé était faux, le client connaît le bon. La convention garde le prix
- * corrigé et n'en fait plus mention ; la correction reste tracée dans les
- * notes internes de la convention et au journal d'activité.
+ * Retire un avenant créé pour corriger une erreur : le prix signé était faux,
+ * ou la liste des participants ne correspondait pas aux stagiaires réellement
+ * formés, et le client connaît la bonne valeur. La convention garde la valeur
+ * corrigée et n'en fait plus mention.
  *
- * Seul le dernier avenant se retire, pour que la numérotation reste continue,
- * et seulement s'il porte sur le prix : un changement de participants ne se
- * corrige pas ainsi.
+ * C'est un geste du gestionnaire, avenant par avenant, jamais automatique. La
+ * correction reste tracée : notes internes de la convention, journal
+ * d'activité, et certificat de signature, qui continue de lister ce qui a
+ * changé après la signature. L'exemplaire signé archivé n'est pas touché.
+ *
+ * Seul le dernier avenant se retire, pour que la numérotation reste continue.
+ * Un avenant de durée ou de prise en charge ne se retire pas ainsi.
  */
 export async function retirerAvenantCorrectionAction(avenantId: string): Promise<ActionResult> {
   const session = await getSession()
@@ -380,10 +384,16 @@ export async function retirerAvenantCorrectionAction(avenantId: string): Promise
   const supabase = await createServiceRoleClient()
 
   const { data: avenant } = await supabase
-    .from('convention_avenants').select('id, convention_id, numero, motif, montant_avant, montant_apres, created_at')
+    .from('convention_avenants').select('id, convention_id, numero, motif, montant_avant, montant_apres, nombre_avant, nombre_apres, changements, created_at')
     .eq('id', avenantId).eq('organization_id', session.organization.id).maybeSingle()
   if (!avenant) return { success: false, error: 'Avenant introuvable' }
-  if (avenant.montant_apres == null) return { success: false, error: 'Seul un avenant de prix se retire comme correction d’erreur' }
+  const dePrix = avenant.montant_apres != null
+  // Avenant de participants : ni prix, ni autre changement (durée, prise en charge)
+  const deParticipants = !dePrix && avenant.nombre_avant != null && avenant.nombre_apres != null
+    && !(Array.isArray(avenant.changements) && avenant.changements.length)
+  if (!dePrix && !deParticipants) {
+    return { success: false, error: 'Seul un avenant de prix ou de participants se retire comme correction d’erreur' }
+  }
 
   const { data: suivants } = await supabase
     .from('convention_avenants').select('id').eq('convention_id', avenant.convention_id).gt('numero', avenant.numero).limit(1)
@@ -398,14 +408,21 @@ export async function retirerAvenantCorrectionAction(avenantId: string): Promise
   if (error) return { success: false, error: 'Erreur lors du retrait de l’avenant' }
 
   const euros = (n: unknown) => `${Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[\u202f\u00a0\u2009]/g, ' ')} €`
-  const note = `[${new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}] Prix corrigé de ${euros(avenant.montant_avant)} à ${euros(avenant.montant_apres)} : erreur de saisie connue du client. L’avenant n°${avenant.numero} a été retiré, la convention affiche le prix corrigé sans mention.`
+  const jour = new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })
+  const note = dePrix
+    ? `[${jour}] Prix corrigé de ${euros(avenant.montant_avant)} à ${euros(avenant.montant_apres)} : erreur de saisie connue du client. L’avenant n°${avenant.numero} est retiré, la convention n’en fait plus mention.`
+    : `[${jour}] Liste des participants corrigée de ${avenant.nombre_avant} à ${avenant.nombre_apres} stagiaire${Number(avenant.nombre_apres) > 1 ? 's' : ''} (${avenant.motif || 'modification'}) : erreur connue du client. L’avenant n°${avenant.numero} est retiré, la convention n’en fait plus mention.`
   await supabase.from('conventions')
     .update({ notes_internes: [conv.notes_internes, note].filter(Boolean).join('\n') })
     .eq('id', conv.id).eq('organization_id', session.organization.id)
 
   await logAudit({
     action: 'retirer_avenant_correction', entity_type: 'convention', entity_id: conv.id,
-    details: { numero: conv.numero, avenant: avenant.numero, motif: avenant.motif, montant_avant: avenant.montant_avant, montant_apres: avenant.montant_apres, avenant_cree_le: avenant.created_at },
+    details: {
+      numero: conv.numero, avenant: avenant.numero, nature: dePrix ? 'prix' : 'participants', motif: avenant.motif,
+      montant_avant: avenant.montant_avant, montant_apres: avenant.montant_apres,
+      nombre_avant: avenant.nombre_avant, nombre_apres: avenant.nombre_apres, avenant_cree_le: avenant.created_at,
+    },
   })
   revalidatePath('/dashboard/conventions')
   revalidatePath(`/dashboard/conventions/${conv.id}`)

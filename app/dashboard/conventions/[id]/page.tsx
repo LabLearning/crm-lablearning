@@ -160,9 +160,10 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
                   {a.motif && <div className="text-xs text-surface-500 truncate">{a.motif}</div>}
                   <div className="text-xs text-surface-400">{new Date(a.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
-                {/* Un prix mal saisi se corrige sans avenant : le dernier avenant de prix peut être retiré */}
-                {a.montant_apres != null && a.numero === Math.max(...(avenants || []).map((x: any) => x.numero)) && ['super_admin', 'gestionnaire'].includes(session.user.role) && (
-                  <RetirerAvenantBouton avenantId={a.id} numero={a.numero} />
+                {/* Un avenant né d'une erreur (prix mal saisi, liste des participants) se retire, le dernier d'abord */}
+                {(a.montant_apres != null || (a.nombre_avant != null && a.nombre_apres != null && !(Array.isArray(a.changements) && a.changements.length)))
+                  && a.numero === Math.max(...(avenants || []).map((x: any) => x.numero)) && ['super_admin', 'gestionnaire'].includes(session.user.role) && (
+                  <RetirerAvenantBouton avenantId={a.id} numero={a.numero} nature={a.montant_apres != null ? 'prix' : 'participants'} />
                 )}
                 <a href={`/api/pdf/avenant/${a.id}`} target="_blank" rel="noreferrer"
                   className="text-xs text-brand-600 hover:underline flex items-center gap-1 shrink-0">
