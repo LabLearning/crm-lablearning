@@ -746,12 +746,82 @@ export async function setCandidatNumeroEngagementAction(candidatId: string, nume
   return { success: true }
 }
 
+const MESSAGE_MIGRATION_AFFACTURAGE = 'Colonne absente : appliquer la migration 153_facture_sans_affacturage.sql'
+
+/**
+ * Règlement des factures d'un dossier POEI : au factor (mention de cession de
+ * créance et coordonnées du factor) ou directement à l'organisme (son RIB,
+ * aucune mention d'affacturage). Sans `candidatId`, toutes les factures du
+ * dossier suivent ; avec, celle de ce candidat seulement.
+ *
+ * Même règle que pour les factures de session : une créance déjà cédée ne
+ * change plus, le factor attend son paiement.
+ */
+export async function setAffacturageFacturesPoeiAction(
+  poeiId: string,
+  sansAffacturage: boolean,
+  candidatId?: string,
+): Promise<ActionResult & { data?: { modifiees: number; cedees: number } }> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  const supabase = await createServiceRoleClient()
+
+  const { data: poei } = await supabase.from('poei').select('id').eq('id', poeiId).eq('organization_id', orgId).maybeSingle()
+  if (!poei) return { success: false, error: 'Projet introuvable' }
+
+  const marqueur = candidatId ? `[POEI-FACT:${poeiId}:${candidatId}]` : `[POEI-FACT:${poeiId}:`
+  const { data: factures, error: lecture } = await supabase
+    .from('factures')
+    .select('id, numero, sans_affacturage, affacturage_status')
+    .eq('organization_id', orgId)
+    .ilike('notes_internes', `%${marqueur}%`)
+  if (lecture) {
+    console.error('[facture POEI affacturage]', lecture)
+    if ((lecture as any)?.code === '42703' || (lecture as any)?.code === 'PGRST204') {
+      return { success: false, error: MESSAGE_MIGRATION_AFFACTURAGE }
+    }
+    return { success: false, error: 'Lecture des factures impossible' }
+  }
+  if (!factures || factures.length === 0) {
+    return { success: false, error: candidatId ? 'Ce candidat n’a pas encore de facture' : 'Aucune facture sur ce dossier' }
+  }
+
+  const cedees = factures.filter((f: any) => f.affacturage_status)
+  if (candidatId && cedees.length) {
+    return { success: false, error: `La facture ${(cedees[0] as any).numero} a déjà été cédée au factor : elle ne peut plus en sortir.` }
+  }
+  const aModifier = factures.filter((f: any) => !f.affacturage_status && !!f.sans_affacturage !== sansAffacturage)
+  if (aModifier.length) {
+    const { error } = await supabase
+      .from('factures')
+      .update({ sans_affacturage: sansAffacturage, updated_at: new Date().toISOString() })
+      .eq('organization_id', orgId)
+      .in('id', aModifier.map((f: any) => f.id))
+    if (error) {
+      console.error('[facture POEI affacturage]', error)
+      return { success: false, error: 'Modification impossible' }
+    }
+    for (const f of aModifier) {
+      await logAudit({ action: 'update', entity_type: 'facture', entity_id: (f as any).id, details: { sans_affacturage: sansAffacturage, poei: poeiId } })
+    }
+  }
+
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  revalidatePath('/dashboard/factures')
+  return { success: true, data: { modifiees: aModifier.length, cedees: cedees.length } }
+}
+
 /**
  * Génère une FACTURE par candidat d'un projet POEI dont la session est terminée.
  * Idempotent (marqueur dans notes_internes). TVA 0 (financeur France Travail).
  */
 export async function generateFacturesPerCandidatPoeiAction(
   poeiId: string,
+  options?: {
+    /** Les factures créées sont réglées à l'organisme, sans cession au factor (voir migration 153). */
+    sansAffacturage?: boolean
+  },
 ): Promise<ActionResult & { data?: { created: number; updated: number; skipped: number; supprimees?: number; orphelinesEmises?: number } }> {
   const session = await getSession()
   if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
@@ -872,16 +942,24 @@ export async function generateFacturesPerCandidatPoeiAction(
       agence_ft_id: agenceFtId,
       subrogation: true,
       ...((c as any).numero_engagement ? { numero_engagement: (c as any).numero_engagement } : {}),
+      // Colonne posée seulement à la demande : une facture ordinaire ne dépend pas de la migration 153
+      ...(options?.sansAffacturage ? { sans_affacturage: true } : {}),
       conditions_paiement: 'à 60 jours à compter de la date de facture',
       notes_internes: `Facture POEI (candidat ${nom}). ${marker}`,
       created_by: session.user.id,
     }).select('id').single()
-    if (error || !fac) continue
+    if (error || !fac) {
+      if (error) console.error('[facture POEI]', error)
+      if (options?.sansAffacturage && ((error as any)?.code === '42703' || (error as any)?.code === 'PGRST204')) {
+        return { success: false, error: MESSAGE_MIGRATION_AFFACTURAGE }
+      }
+      continue
+    }
     await applyLigneEtTotaux(fac.id, nom, c)
     created++
   }
 
-  await logAudit({ action: 'generate_factures_poei', entity_type: 'poei', entity_id: poeiId, details: { created, updated, skipped } })
+  await logAudit({ action: 'generate_factures_poei', entity_type: 'poei', entity_id: poeiId, details: { created, updated, skipped, ...(options?.sansAffacturage ? { sans_affacturage: true } : {}) } })
   revalidatePath('/dashboard/factures')
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true, data: { created, updated, skipped, supprimees, orphelinesEmises } }

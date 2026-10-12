@@ -209,15 +209,22 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   }
 
   // Factures POEI existantes → map candidat_id → facture (section Facturation)
+  // « * » : la colonne sans_affacturage n'existe qu'à partir de la migration 153.
   const { data: facturesPoei } = await supabase
     .from('factures')
-    .select('id, numero, status, montant_ttc, montant_paye, notes_internes')
+    .select('*')
     .eq('organization_id', session.organization.id)
     .ilike('notes_internes', `%[POEI-FACT:${params.id}:%`)
-  const facturesByCandidat: Record<string, { id: string; numero: string | null; status: string; montant_ttc: number | null }> = {}
-  for (const f of facturesPoei || []) {
+  const facturesByCandidat: Record<string, {
+    id: string; numero: string | null; status: string; montant_ttc: number | null
+    sans_affacturage: boolean; affacturage_status: string | null
+  }> = {}
+  for (const f of (facturesPoei || []) as any[]) {
     const m = (f.notes_internes || '').match(new RegExp(`\\[POEI-FACT:${params.id}:([^\\]]+)\\]`))
-    if (m) facturesByCandidat[m[1]] = { id: f.id, numero: f.numero, status: f.status, montant_ttc: f.montant_ttc }
+    if (m) facturesByCandidat[m[1]] = {
+      id: f.id, numero: f.numero, status: f.status, montant_ttc: f.montant_ttc,
+      sans_affacturage: !!f.sans_affacturage, affacturage_status: f.affacturage_status ?? null,
+    }
   }
 
   // Agences France Travail (résilient : table absente avant migration 100)
@@ -622,6 +629,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             agences={(agencesFt || []) as any[]}
             signatures={sigMap}
             currentAgenceId={(p as any).agence_ft_id || null}
+            organisme={session.organization.name}
+            affacturage={{
+              // Même condition que le PDF : le factor n'est imprimé que s'il est actif et nommé
+              actif: !!(session.organization as any).affacturage_actif && !!(session.organization as any).affacturage_societe,
+              societe: (session.organization as any).affacturage_societe || null,
+              ribOrganisme: !!(session.organization as any).banque_iban,
+            }}
           />
         }
         mails={
