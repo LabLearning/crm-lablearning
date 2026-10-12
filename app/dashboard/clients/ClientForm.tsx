@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Save, Award, GraduationCap, UserCircle, CheckCircle2, UserPlus, Store } from '@/components/ui/icons'
-import { Button, Input, Select, CompanySearchInput, OpcoSelector } from '@/components/ui'
+import { Button, Input, Select, CompanySearchInput, OpcoSelector, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { createClientAction, updateClientAction } from './actions'
 import { createContactAction } from '../contacts/actions'
 import { CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
@@ -329,11 +329,13 @@ export function ClientForm({ client, onSuccess, onCancel, users = [], canAssign 
         <p className="text-[11px] text-surface-400 mt-1.5">Consentement requis (RGPD + Meta). Les rappels (convocation J-3, etc.) partiront aussi par WhatsApp si activé.</p>
       </div>
 
-      <Input id="adresse" name="adresse" label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
-      <div className="grid grid-cols-2 gap-4">
-        <Input id="code_postal" name="code_postal" label="Code postal" value={codePostal} onChange={(e) => setCodePostal(e.target.value)} />
-        <Input id="ville" name="ville" label="Ville" value={ville} onChange={(e) => setVille(e.target.value)} />
-      </div>
+      <AdresseGroupe>
+        <AdresseInput id="adresse" name="adresse" label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+        <div className="grid grid-cols-2 gap-4">
+          <CodePostalInput id="code_postal" name="code_postal" label="Code postal" value={codePostal} onChange={(e) => setCodePostal(e.target.value)} />
+          <VilleInput id="ville" name="ville" label="Ville" value={ville} onChange={(e) => setVille(e.target.value)} />
+        </div>
+      </AdresseGroupe>
 
       <Input id="site_web" name="site_web" label="Site web" defaultValue={client?.site_web || ''} placeholder="https://" error={fieldErrors.site_web?.[0]} />
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, Users, GraduationCap, CheckCircle2, ArrowRight, ArrowLeft, Plus, Trash2, Loader2, Search } from '@/components/ui/icons'
-import { useToast } from '@/components/ui'
+import { useToast, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import { creerDossierCompletAction } from './actions'
 
@@ -226,9 +226,11 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
                 <input value={nc.telephone} onChange={(e) => setNc({ ...nc, telephone: e.target.value })} placeholder="Téléphone" className="input-base" />
               </div>
               <div className="grid sm:grid-cols-[1fr,120px,1fr] gap-3">
-                <input value={nc.adresse} onChange={(e) => setNc({ ...nc, adresse: e.target.value })} placeholder="Adresse" className="input-base" />
-                <input value={nc.code_postal} onChange={(e) => setNc({ ...nc, code_postal: e.target.value })} placeholder="CP" className="input-base" />
-                <input value={nc.ville} onChange={(e) => setNc({ ...nc, ville: e.target.value })} placeholder="Ville" className="input-base" />
+                <AdresseGroupe>
+                  <AdresseInput value={nc.adresse} onChange={(e) => setNc({ ...nc, adresse: e.target.value })} placeholder="Adresse" />
+                  <CodePostalInput value={nc.code_postal} onChange={(e) => setNc({ ...nc, code_postal: e.target.value })} placeholder="CP" />
+                  <VilleInput value={nc.ville} onChange={(e) => setNc({ ...nc, ville: e.target.value })} placeholder="Ville" />
+                </AdresseGroupe>
               </div>
               <div className="pt-2 border-t border-surface-100">
                 <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2.5">Contact référent (recommandé)</div>
@@ -291,16 +293,18 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
                       <input type="date" onPaste={collerDateNative} value={a.date_naissance} onChange={(e) => majApprenant(i, { date_naissance: e.target.value })} className="input-base !py-2 mt-1" />
                     </label>
                     <label className="text-xs text-surface-500">Lieu de naissance
-                      <input value={a.lieu_naissance} onChange={(e) => majApprenant(i, { lieu_naissance: e.target.value })} className="input-base !py-2 mt-1" />
+                      <VilleInput autonome value={a.lieu_naissance} onChange={(e) => majApprenant(i, { lieu_naissance: e.target.value })} className="!py-2" conteneurClassName="mt-1" />
                     </label>
                     <label className="text-xs text-surface-500">N° de sécurité sociale
                       <input value={a.numero_securite_sociale} onChange={(e) => majApprenant(i, { numero_securite_sociale: e.target.value })} className="input-base !py-2 mt-1" />
                     </label>
                   </div>
                   <div className="grid sm:grid-cols-[2fr,100px,1fr] gap-2.5">
-                    <input value={a.adresse} onChange={(e) => majApprenant(i, { adresse: e.target.value })} placeholder="Adresse" className="input-base !py-2" />
-                    <input value={a.code_postal} onChange={(e) => majApprenant(i, { code_postal: e.target.value })} placeholder="CP" className="input-base !py-2" />
-                    <input value={a.ville} onChange={(e) => majApprenant(i, { ville: e.target.value })} placeholder="Ville" className="input-base !py-2" />
+                    <AdresseGroupe>
+                      <AdresseInput value={a.adresse} onChange={(e) => majApprenant(i, { adresse: e.target.value })} placeholder="Adresse" className="!py-2" />
+                      <CodePostalInput value={a.code_postal} onChange={(e) => majApprenant(i, { code_postal: e.target.value })} placeholder="CP" className="!py-2" />
+                      <VilleInput value={a.ville} onChange={(e) => majApprenant(i, { ville: e.target.value })} placeholder="Ville" className="!py-2" />
+                    </AdresseGroupe>
                   </div>
                   <div className="space-y-2">
                     <label className="inline-flex items-center gap-2 text-sm text-surface-700">

@@ -6,7 +6,7 @@ import {
   UserCog, Plus, Pencil, Trash2, Save, Clock, CheckCircle2, XCircle,
   AlertCircle, Calendar, Download,
 } from '@/components/ui/icons'
-import { Button, Modal, Input, useToast, RowMenu, SearchSelect } from '@/components/ui'
+import { Button, Modal, Input, useToast, RowMenu, SearchSelect, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { addPoeiInterventionAction, updatePoeiInterventionAction, removePoeiInterventionAction } from '../actions'
 import { cn, formatDate } from '@/lib/utils'
 import { PoeiSection } from './PoeiSection'
@@ -121,14 +121,16 @@ function InterventionForm({
         <Input id="horaires" name="horaires" label="Horaires" placeholder="9h00 - 17h00"
           defaultValue={intervention?.horaires || ''} />
       </div>
-      <Input id="adresse" name="adresse" label="Adresse" placeholder="399 Rue Georges Seguy"
-        defaultValue={intervention?.adresse || ''} />
-      <div className="grid grid-cols-3 gap-3">
-        <Input id="code_postal" name="code_postal" label="Code postal" defaultValue={intervention?.code_postal || ''} />
-        <div className="col-span-2">
-          <Input id="ville" name="ville" label="Ville" defaultValue={intervention?.ville || ''} />
+      <AdresseGroupe>
+        <AdresseInput id="adresse" name="adresse" label="Adresse" placeholder="399 Rue Georges Seguy"
+          defaultValue={intervention?.adresse || ''} />
+        <div className="grid grid-cols-3 gap-3">
+          <CodePostalInput id="code_postal" name="code_postal" label="Code postal" defaultValue={intervention?.code_postal || ''} />
+          <div className="col-span-2">
+            <VilleInput id="ville" name="ville" label="Ville" defaultValue={intervention?.ville || ''} />
+          </div>
         </div>
-      </div>
+      </AdresseGroupe>
 
       <textarea id="notes" name="notes" rows={2} className="input-base resize-none w-full"
         placeholder="Notes (contenu couvert, contraintes…)" defaultValue={intervention?.notes || ''} />

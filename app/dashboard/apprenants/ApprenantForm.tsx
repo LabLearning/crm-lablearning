@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Save, Accessibility } from '@/components/ui/icons'
-import { Button, Input, Select, SearchSelectField, useToast } from '@/components/ui'
+import { Button, Input, Select, SearchSelectField, useToast, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { createApprenantAction, updateApprenantAction } from './actions'
 import type { Apprenant } from '@/lib/types/formation'
 import type { Client } from '@/lib/types/crm'
@@ -78,15 +78,17 @@ export function ApprenantForm({
 
       {/* État civil — repris du participant, exigé dans les dossiers de financement */}
       <div className="grid grid-cols-2 gap-3">
-        <Input id="lieu_naissance" name="lieu_naissance" label="Lieu de naissance" defaultValue={(apprenant as any)?.lieu_naissance || ''} />
+        <VilleInput autonome id="lieu_naissance" name="lieu_naissance" label="Lieu de naissance" defaultValue={(apprenant as any)?.lieu_naissance || ''} />
         <Input id="numero_securite_sociale" name="numero_securite_sociale" label="N° de sécurité sociale" defaultValue={(apprenant as any)?.numero_securite_sociale || ''} />
       </div>
-      <Input id="adresse" name="adresse" label="Adresse" defaultValue={(apprenant as any)?.adresse || ''} />
-      <div className="grid grid-cols-3 gap-3">
-        <Input id="code_postal" name="code_postal" label="Code postal" defaultValue={(apprenant as any)?.code_postal || ''} />
-        <Input id="ville" name="ville" label="Ville" defaultValue={(apprenant as any)?.ville || ''} />
-        <Input id="type_contrat" name="type_contrat" label="Type de contrat" defaultValue={(apprenant as any)?.type_contrat || ''} placeholder="CDI, CDD, Alternance…" />
-      </div>
+      <AdresseGroupe>
+        <AdresseInput id="adresse" name="adresse" label="Adresse" defaultValue={(apprenant as any)?.adresse || ''} />
+        <div className="grid grid-cols-3 gap-3">
+          <CodePostalInput id="code_postal" name="code_postal" label="Code postal" defaultValue={(apprenant as any)?.code_postal || ''} />
+          <VilleInput id="ville" name="ville" label="Ville" defaultValue={(apprenant as any)?.ville || ''} />
+          <Input id="type_contrat" name="type_contrat" label="Type de contrat" defaultValue={(apprenant as any)?.type_contrat || ''} placeholder="CDI, CDD, Alternance…" />
+        </div>
+      </AdresseGroupe>
       <Input id="entreprise" name="entreprise" label="Entreprise (si différente)" defaultValue={apprenant?.entreprise || ''} />
 
       {/* Handicap section (Qualiopi C6, Indicateur 26) */}

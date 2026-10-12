@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Save, Building2, ShieldCheck, UserCircle, Landmark, Stamp, Upload, ExternalLink, X, BookOpen, FileText } from '@/components/ui/icons'
-import { Button, Input, useToast } from '@/components/ui'
+import { Button, Input, useToast, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { updateOrganizationAction } from './actions'
 import type { Organization } from '@/lib/types'
 
@@ -217,9 +217,11 @@ export function SettingsForm({ organization, canEdit }: SettingsFormProps) {
           <Input id="telephone_contact" name="telephone_contact" label="Téléphone" defaultValue={organization.telephone_contact || organization.phone || ''} disabled={!canEdit} />
         </div>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input id="address" name="address" label="Adresse" defaultValue={organization.address || ''} disabled={!canEdit} />
-          <Input id="postal_code" name="postal_code" label="Code postal" defaultValue={organization.postal_code || ''} disabled={!canEdit} />
-          <Input id="city" name="city" label="Ville" defaultValue={organization.city || ''} disabled={!canEdit} />
+          <AdresseGroupe>
+            <AdresseInput id="address" name="address" label="Adresse" defaultValue={organization.address || ''} disabled={!canEdit} />
+            <CodePostalInput id="postal_code" name="postal_code" label="Code postal" defaultValue={organization.postal_code || ''} disabled={!canEdit} />
+            <VilleInput id="city" name="city" label="Ville" defaultValue={organization.city || ''} disabled={!canEdit} />
+          </AdresseGroupe>
         </div>
       </section>
 

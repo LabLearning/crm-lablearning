@@ -6,7 +6,7 @@ import {
   Plus, Search, Send, Check, Trash2,
   FileSignature, Building2, Euro, Clock, PenTool, Download, Link2, Copy, ShieldCheck, Archive,
 } from '@/components/ui/icons'
-import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Modal, Input, Select, SearchSelectField, useToast, RowMenu, AdresseInput } from '@/components/ui'
 import { createConventionAction, updateConventionStatusAction, deleteConventionAction } from './actions'
 import { annulerConventionSigneeAction } from './signature-actions'
 import { CONVENTION_STATUS_LABELS, CONVENTION_STATUS_COLORS, CONVENTION_TYPE_LABELS } from '@/lib/types/dossier'
@@ -324,7 +324,8 @@ export function ConventionsList({ conventions, clients, formations, sessions = [
           <div className="grid grid-cols-3 gap-3">
             <Input id="nombre_stagiaires" name="nombre_stagiaires" type="number" label="Nb stagiaires" defaultValue="1" />
             <Input id="duree_heures" name="duree_heures" type="number" label="Durée (h)" />
-            <Input id="lieu" name="lieu" label="Lieu" />
+            {/* Texte libre (« Dans les locaux du client ») : une adresse tapée est proposée, rien n'est imposé */}
+            <AdresseInput discret id="lieu" name="lieu" label="Lieu" />
           </div>
           <Input id="dates_formation" name="dates_formation" label="Dates de formation" placeholder="Du 15/03 au 17/03/2024" />
           <div className="grid grid-cols-2 gap-3">

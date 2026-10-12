@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Users, UserPlus, Trash2, Loader2, Mail, Phone, Pencil, ClipboardPaste } from '@/components/ui/icons'
-import { Button, Input, Select, useToast } from '@/components/ui'
+import { Button, Input, Select, useToast, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { ImportParticipantsModal } from '@/components/participants/ImportParticipantsModal'
 import { getLeadParticipantsAction, addLeadParticipantAction, updateLeadParticipantAction, deleteLeadParticipantAction, bulkCreateLeadParticipantsAction } from './actions'
 
@@ -63,17 +63,19 @@ function ParticipantForm({ participant, busy, onSubmit, onCancel }: {
         </div>
         <div>
           <label className="block text-2xs text-surface-400 mb-0.5">Lieu de naissance</label>
-          <Input name="lieu_naissance" placeholder="Ville de naissance" defaultValue={p?.lieu_naissance || ''} />
+          <VilleInput autonome name="lieu_naissance" placeholder="Ville de naissance" defaultValue={p?.lieu_naissance || ''} />
         </div>
       </div>
       <Input name="numero_securite_sociale" placeholder="N° de sécurité sociale" defaultValue={p?.numero_securite_sociale || ''} />
-      <Input name="adresse" placeholder="Adresse" defaultValue={p?.adresse || ''} />
-      <div className="grid grid-cols-3 gap-2">
-        <Input name="code_postal" placeholder="Code postal" defaultValue={p?.code_postal || ''} />
-        <div className="col-span-2">
-          <Input name="ville" placeholder="Ville" defaultValue={p?.ville || ''} />
+      <AdresseGroupe>
+        <AdresseInput name="adresse" placeholder="Adresse" defaultValue={p?.adresse || ''} />
+        <div className="grid grid-cols-3 gap-2">
+          <CodePostalInput name="code_postal" placeholder="Code postal" defaultValue={p?.code_postal || ''} />
+          <div className="col-span-2">
+            <VilleInput name="ville" placeholder="Ville" defaultValue={p?.ville || ''} />
+          </div>
         </div>
-      </div>
+      </AdresseGroupe>
       <div className="grid grid-cols-2 gap-2">
         <Select name="type_contrat" options={CONTRAT_OPTIONS} defaultValue={p?.type_contrat || ''} />
         <Select name="niveau_diplome" options={NIVEAU_OPTIONS} defaultValue={p?.niveau_diplome || ''} />

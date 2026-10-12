@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Save, Building2, Users, X, Plus, CalendarDays, Clock, Search } from '@/components/ui/icons'
-import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect, useToast } from '@/components/ui'
+import { Button, Input, Select, FormateurDispoBadge, CalendarPicker, SearchSelect, useToast, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { createSessionAction, updateSessionAction, getApprenantsForClientAction } from './actions'
 import { SESSION_STATUS_LABELS } from '@/lib/types/formation'
 import { companyLabel } from '@/lib/utils'
@@ -548,11 +548,13 @@ export function SessionForm({ session, formations, formateurs, clients = [], app
         <>
           <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Lieu</div>
           <Input id="lieu" name="lieu" label="Nom du lieu / Salle" placeholder={typeSession === 'intra' ? 'Locaux du client' : 'Centre Lab Learning'} value={lieu} onChange={e => setLieu(e.target.value)} />
-          <Input id="adresse" name="adresse" label="Adresse" value={adresse} onChange={e => setAdresse(e.target.value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input id="code_postal" name="code_postal" label="Code postal" value={codePostal} onChange={e => setCodePostal(e.target.value)} />
-            <Input id="ville" name="ville" label="Ville" value={ville} onChange={e => setVille(e.target.value)} />
-          </div>
+          <AdresseGroupe>
+            <AdresseInput id="adresse" name="adresse" label="Adresse" value={adresse} onChange={e => setAdresse(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <CodePostalInput id="code_postal" name="code_postal" label="Code postal" value={codePostal} onChange={e => setCodePostal(e.target.value)} />
+              <VilleInput id="ville" name="ville" label="Ville" value={ville} onChange={e => setVille(e.target.value)} />
+            </div>
+          </AdresseGroupe>
         </>
       )}
 

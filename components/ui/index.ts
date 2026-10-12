@@ -1,6 +1,7 @@
 export { Button } from './Button'
 export { Input } from './Input'
 export { CompanySearchInput } from './CompanySearchInput'
+export { AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from './AdresseFields'
 export { OpcoSelector } from './OpcoSelector'
 export { FormateurDispoBadge } from './FormateurDispoBadge'
 export { CalendarPicker } from './CalendarPicker'

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Save, AlertCircle, Award, GraduationCap, Store } from '@/components/ui/icons'
-import { Button, Input, Select, CompanySearchInput, OpcoSelector, SearchSelect } from '@/components/ui'
+import { Button, Input, Select, CompanySearchInput, OpcoSelector, SearchSelect, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { createLeadAction, updateLeadAction } from './actions'
 import { LEAD_SOURCE_LABELS, CLIENT_TYPE_LABELS, FINANCEUR_LABELS } from '@/lib/types/crm'
 import type { Lead, ClientType } from '@/lib/types/crm'
@@ -344,11 +344,13 @@ export function LeadForm({ lead, users, formations = [], franchises = [], isAppo
 
           {/* ── Adresse ── */}
           <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Adresse</div>
-          <Input id="adresse" name="adresse" label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
-          <div className="grid grid-cols-2 gap-4">
-            <Input id="code_postal" name="code_postal" label="Code postal" value={codePostal} onChange={(e) => setCodePostal(e.target.value)} />
-            <Input id="ville" name="ville" label="Ville" value={ville} onChange={(e) => setVille(e.target.value)} />
-          </div>
+          <AdresseGroupe>
+            <AdresseInput id="adresse" name="adresse" label="Adresse" value={adresse} onChange={(e) => setAdresse(e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <CodePostalInput id="code_postal" name="code_postal" label="Code postal" value={codePostal} onChange={(e) => setCodePostal(e.target.value)} />
+              <VilleInput id="ville" name="ville" label="Ville" value={ville} onChange={(e) => setVille(e.target.value)} />
+            </div>
+          </AdresseGroupe>
           <Input id="site_web" name="site_web" label="Site web" defaultValue={lead?.site_web || ''} placeholder="https://" />
         </>
       ) : null}

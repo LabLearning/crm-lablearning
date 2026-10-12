@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, X, Loader2 } from '@/components/ui/icons'
 import { addApprenantBySessionFormateurAction } from './actions'
+import { AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui/AdresseFields'
 
 const CONTRAT_OPTIONS = [
   '', 'Dirigeant', 'CDI', 'CDD', 'Intérim', 'Alternance', 'Stage', "Demandeur d'emploi", 'Autre',
@@ -66,7 +67,23 @@ export function AddApprenantButton({ token, sessionId }: { token: string; sessio
                   <input type="date" name="date_naissance" className="input-base text-sm" />
                 </div>
               </div>
-              <Field label="Adresse" name="adresse" />
+              {/* Mêmes champs que Field(), avec l'aide à la saisie : l'adresse choisie remplit le code postal et la ville */}
+              <AdresseGroupe>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="apprenant-adresse" className="text-xs text-surface-500">Adresse</label>
+                  <AdresseInput id="apprenant-adresse" name="adresse" className="text-sm" />
+                </div>
+                <div className="grid grid-cols-[110px_1fr] gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="apprenant-code-postal" className="text-xs text-surface-500">Code postal</label>
+                    <CodePostalInput id="apprenant-code-postal" name="code_postal" className="text-sm" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="apprenant-ville" className="text-xs text-surface-500">Ville</label>
+                    <VilleInput id="apprenant-ville" name="ville" className="text-sm" />
+                  </div>
+                </div>
+              </AdresseGroupe>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-surface-500">Type de contrat</label>

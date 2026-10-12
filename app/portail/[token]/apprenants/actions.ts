@@ -165,6 +165,8 @@ export async function addApprenantBySessionFormateurAction(
         sexe: str('sexe'),
         date_naissance: str('date_naissance'),
         adresse: str('adresse'),
+        code_postal: str('code_postal'),
+        ville: str('ville'),
         type_contrat: str('type_contrat'),
         numero_securite_sociale: str('numero_securite_sociale'),
       })

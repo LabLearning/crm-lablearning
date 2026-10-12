@@ -6,10 +6,13 @@ import { Button, Modal, useToast } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import type { ExtractedParticipant } from '@/lib/ai'
 import { extractParticipantsFromTextAction } from '@/app/dashboard/leads/actions'
+import { communesDuCodePostal, estCodePostal, nettoyerCodePostal } from '@/lib/adresse'
 
 export interface ImportRow extends ExtractedParticipant {
   _selected: boolean
   _duplicate: boolean
+  /** Ville posée par la grille d'après le code postal : elle suit ce code s'il est corrigé */
+  _villeAuto?: string
 }
 
 const CONTRAT_VALUES = ['Dirigeant', 'CDI', 'CDD', 'Intérim', 'Alternance', 'Stage', "Demandeur d'emploi", 'Autre']
@@ -113,6 +116,28 @@ export function ImportParticipantsModal({
 
   function updateField(index: number, key: FieldKey, value: string) {
     setRows((current) => current!.map((r, i) => (i === index ? { ...r, [key]: value } : r)))
+    // Code postal complété à la main : la ville suit quand le code n'a qu'une
+    // commune, si la case est vide ou si c'est la grille qui l'avait remplie
+    // (un code corrigé ne garde pas la ville du code d'avant). Une ville tapée
+    // ou extraite n'est jamais écrasée. Pas de liste de suggestions dans cette
+    // grille : elle défile sur elle-même et la couperait.
+    if (key === 'code_postal' && estCodePostal(value)) {
+      const code = nettoyerCodePostal(value)
+      communesDuCodePostal(code)
+        .then((communes) => {
+          setRows((current) => current && current.map((r, i) => {
+            if (i !== index || nettoyerCodePostal(r.code_postal as string) !== code) return r
+            const ville = String(r.ville || '').trim()
+            const poseeParLaGrille = !!r._villeAuto && ville === r._villeAuto
+            if (communes.length === 1) {
+              return !ville || poseeParLaGrille ? { ...r, ville: communes[0].nom, _villeAuto: communes[0].nom } : r
+            }
+            // Plusieurs communes ou aucune : la ville de l'ancien code ne vaut plus
+            return poseeParLaGrille ? { ...r, ville: '', _villeAuto: undefined } : r
+          }))
+        })
+        .catch(() => {})
+    }
   }
 
   function toggleRow(index: number) {
@@ -127,7 +152,7 @@ export function ImportParticipantsModal({
       return
     }
     setSaving(true)
-    const payload = selected.map(({ _selected, _duplicate, ...p }) => p)
+    const payload = selected.map(({ _selected, _duplicate, _villeAuto, ...p }) => p)
     const res = await onConfirm(payload)
     setSaving(false)
     if (res.success) { reset(); onClose() }

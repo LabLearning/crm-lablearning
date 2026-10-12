@@ -8,6 +8,7 @@ import {
 } from '@/lib/inscription-formateur'
 import { preparerDepotCvAction, soumettreInscriptionFormateurAction } from './actions'
 import { Check, CheckCircle2, FileText, Loader2, Upload, X, AlertCircle } from '@/components/ui/icons'
+import { AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui/AdresseFields'
 
 const VIDE: InscriptionFormateur = {
   civilite: '', prenom: '', nom: '', email: '', telephone: '',
@@ -152,17 +153,20 @@ export function InscriptionFormateurForm({ token, jetonPage, orgNom, orgLogo }: 
               <input className="input-base" type="tel" required autoComplete="tel" value={f.telephone} onChange={(e) => maj('telephone', e.target.value)} />
             </Champ>
           </div>
-          <Champ label="Adresse">
-            <input className="input-base" autoComplete="street-address" value={f.adresse} onChange={(e) => maj('adresse', e.target.value)} />
-          </Champ>
-          <div className="grid grid-cols-[120px_1fr] gap-3">
-            <Champ label="Code postal">
-              <input className="input-base" inputMode="numeric" autoComplete="postal-code" value={f.code_postal} onChange={(e) => maj('code_postal', e.target.value)} />
+          {/* Le formateur saisit sa propre adresse : le remplissage automatique du navigateur reste proposé */}
+          <AdresseGroupe>
+            <Champ label="Adresse">
+              <AdresseInput autoComplete="street-address" value={f.adresse} onChange={(e) => maj('adresse', e.target.value)} />
             </Champ>
-            <Champ label="Ville">
-              <input className="input-base" autoComplete="address-level2" value={f.ville} onChange={(e) => maj('ville', e.target.value)} />
-            </Champ>
-          </div>
+            <div className="grid grid-cols-[120px_1fr] gap-3">
+              <Champ label="Code postal">
+                <CodePostalInput autoComplete="postal-code" value={f.code_postal} onChange={(e) => maj('code_postal', e.target.value)} />
+              </Champ>
+              <Champ label="Ville">
+                <VilleInput autoComplete="address-level2" value={f.ville} onChange={(e) => maj('ville', e.target.value)} />
+              </Champ>
+            </div>
+          </AdresseGroupe>
         </Bloc>
 
         <Bloc titre="Votre statut" aide="Pour établir votre contrat et vos factures.">

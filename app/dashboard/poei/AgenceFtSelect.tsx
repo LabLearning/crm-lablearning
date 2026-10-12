@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Plus, Landmark } from '@/components/ui/icons'
-import { Select, Input, Button, Modal, useToast } from '@/components/ui'
+import { Select, Input, Button, Modal, useToast, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { createAgenceFtAction } from './actions'
 
 export interface AgenceFt { id: string; nom: string; ville?: string | null }
@@ -74,11 +74,13 @@ export function AgenceFtSelect({ name = 'agence_ft_id', id = 'agence_ft_id', lab
         description="Le destinataire des factures POEI : direction régionale ou agence, avec l'adresse et le SIRET tels qu'ils doivent figurer sur la facture.">
         <div className="space-y-3">
           <Input id="agence_nom" label="Nom" placeholder="FRANCE TRAVAIL DR NOUVELLE-AQUITAINE" required value={champs.nom} onChange={maj('nom')} />
-          <Input id="agence_adresse" label="Adresse" placeholder="Rue, bâtiment, service" value={champs.adresse} onChange={maj('adresse')} />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Input id="agence_cp" label="Code postal" value={champs.code_postal} onChange={maj('code_postal')} />
-            <div className="sm:col-span-2"><Input id="agence_ville" label="Ville" value={champs.ville} onChange={maj('ville')} /></div>
-          </div>
+          <AdresseGroupe>
+            <AdresseInput id="agence_adresse" label="Adresse" placeholder="Rue, bâtiment, service" value={champs.adresse} onChange={maj('adresse')} />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <CodePostalInput id="agence_cp" label="Code postal" value={champs.code_postal} onChange={maj('code_postal')} />
+              <div className="sm:col-span-2"><VilleInput id="agence_ville" label="Ville" value={champs.ville} onChange={maj('ville')} /></div>
+            </div>
+          </AdresseGroupe>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input id="agence_siret" label="SIRET" placeholder="14 chiffres" value={champs.siret} onChange={maj('siret')} />
             <Input id="agence_tva" label="TVA intracommunautaire" placeholder="FR…" value={champs.tva_intra} onChange={maj('tva_intra')} />

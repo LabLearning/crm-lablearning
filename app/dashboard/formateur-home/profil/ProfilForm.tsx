@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { Save, Camera, FileText, Plus, X, Loader2 } from '@/components/ui/icons'
 import { updateProfilFormateurAction } from './actions'
 import { cn } from '@/lib/utils'
+import { AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 
 interface Diplome {
   intitule: string
@@ -160,18 +161,21 @@ export function ProfilForm({ formateur }: ProfilFormProps) {
       <div className="card p-6">
         <div className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-4">Coordonnées</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-3">
-            <label className="text-sm font-medium text-surface-700 mb-1.5 block">Adresse</label>
-            <input name="adresse" defaultValue={formateur.adresse || ''} className="input-base" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-surface-700 mb-1.5 block">Code postal</label>
-            <input name="code_postal" defaultValue={formateur.code_postal || ''} className="input-base" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-surface-700 mb-1.5 block">Ville</label>
-            <input name="ville" defaultValue={formateur.ville || ''} className="input-base" />
-          </div>
+          {/* Le formateur saisit sa propre adresse : le remplissage automatique du navigateur reste proposé */}
+          <AdresseGroupe>
+            <div className="sm:col-span-3">
+              <label htmlFor="profil-adresse" className="text-sm font-medium text-surface-700 mb-1.5 block">Adresse</label>
+              <AdresseInput id="profil-adresse" name="adresse" autoComplete="street-address" defaultValue={formateur.adresse || ''} />
+            </div>
+            <div>
+              <label htmlFor="profil-code-postal" className="text-sm font-medium text-surface-700 mb-1.5 block">Code postal</label>
+              <CodePostalInput id="profil-code-postal" name="code_postal" autoComplete="postal-code" defaultValue={formateur.code_postal || ''} />
+            </div>
+            <div>
+              <label htmlFor="profil-ville" className="text-sm font-medium text-surface-700 mb-1.5 block">Ville</label>
+              <VilleInput id="profil-ville" name="ville" autoComplete="address-level2" defaultValue={formateur.ville || ''} />
+            </div>
+          </AdresseGroupe>
           <div>
             <label className="text-sm font-medium text-surface-700 mb-1.5 block">SIRET</label>
             <input name="siret" defaultValue={formateur.siret || ''} className="input-base" placeholder="14 chiffres" />

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Settings2, Trash2, X, Loader2, Save } from '@/components/ui/icons'
 import { updateFranchiseAction, deleteFranchiseAction } from '../actions'
+import { AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 
 interface Franchise {
   id: string
@@ -110,11 +111,23 @@ export function FranchiseSettingsClient({ franchise }: { franchise: Franchise })
                 {F('Téléphone', 'contact_telephone')}
               </div>
               {F('Email', 'contact_email', 'email')}
-              {F('Adresse', 'adresse')}
-              <div className="grid grid-cols-2 gap-3">
-                {F('Code postal', 'code_postal')}
-                {F('Ville', 'ville')}
-              </div>
+              {/* Mêmes champs que F(), avec l'aide à la saisie des adresses */}
+              <AdresseGroupe>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="franchise-adresse" className="text-xs text-surface-500">Adresse</label>
+                  <AdresseInput id="franchise-adresse" name="adresse" defaultValue={franchise.adresse ?? ''} className="text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="franchise-code-postal" className="text-xs text-surface-500">Code postal</label>
+                    <CodePostalInput id="franchise-code-postal" name="code_postal" defaultValue={franchise.code_postal ?? ''} className="text-sm" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="franchise-ville" className="text-xs text-surface-500">Ville</label>
+                    <VilleInput id="franchise-ville" name="ville" defaultValue={franchise.ville ?? ''} className="text-sm" />
+                  </div>
+                </div>
+              </AdresseGroupe>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-surface-500">Notes</label>
                 <textarea name="notes" defaultValue={franchise.notes ?? ''} rows={2} className="input-base text-sm resize-none" />

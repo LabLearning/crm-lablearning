@@ -6,6 +6,7 @@ import { ArrowRight, ArrowLeft, CheckCircle2, Loader2, Send, FileCheck2, X } fro
 import { CV_TAILLE_MAX, CV_TYPES, STATUTS_FORMATEUR, type InscriptionFormateur } from '@/lib/inscription-formateur'
 import { DISPONIBILITES, DOMAINES_CANDIDATURE, EXPERIENCES, POSTES_CANDIDATURE, ZONES } from './candidature'
 import { postulerFormateurAction, preparerCvCandidatureAction } from './actions'
+import { AdresseGroupe, CodePostalInput, VilleInput } from '@/components/ui/AdresseFields'
 
 const ETAPES = ['Vous', 'Votre métier', 'Votre candidature']
 
@@ -207,14 +208,17 @@ export function CandidatureForm({ jetonPage, posteInitial }: { jetonPage: string
               <label htmlFor="c-tel" className={etiquette}>Téléphone</label>
               <input id="c-tel" type="tel" inputMode="tel" autoComplete="tel" className={champ} value={f.telephone} onChange={(e) => maj('telephone', e.target.value)} />
             </div>
-            <div>
-              <label htmlFor="c-ville" className={etiquette}>Ville</label>
-              <input id="c-ville" autoComplete="address-level2" className={champ} value={f.ville} onChange={(e) => maj('ville', e.target.value)} />
-            </div>
-            <div>
-              <label htmlFor="c-cp" className={etiquette}>Code postal <span className="font-normal text-[#A8A29E]">(facultatif)</span></label>
-              <input id="c-cp" inputMode="numeric" autoComplete="postal-code" maxLength={5} className={champ} value={f.code_postal} onChange={(e) => maj('code_postal', e.target.value.replace(/\D/g, ''))} />
-            </div>
+            {/* La ville propose les communes et remplit le code postal quand il est unique ; le code postal remplit la ville */}
+            <AdresseGroupe>
+              <div>
+                <label htmlFor="c-ville" className={etiquette}>Ville</label>
+                <VilleInput id="c-ville" sansStyle autoComplete="address-level2" className={champ} value={f.ville} onChange={(e) => maj('ville', e.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="c-cp" className={etiquette}>Code postal <span className="font-normal text-[#A8A29E]">(facultatif)</span></label>
+                <CodePostalInput id="c-cp" sansStyle autoComplete="postal-code" maxLength={5} className={champ} value={f.code_postal} onChange={(e) => maj('code_postal', e.target.value.replace(/\D/g, ''))} />
+              </div>
+            </AdresseGroupe>
           </div>
         )}
 

@@ -40,6 +40,7 @@
 7. Pas de `title` prop sur les icones Lucide (erreur build)
 8. Pas de `Pick<Type>` dans les casts — utiliser `as any[]`
 9. Chaque push sur `main` declenche un deploy Vercel automatique
+10. Adresse, code postal, ville : toujours les champs de `components/ui/AdresseFields` (`AdresseGroupe`, `AdresseInput`, `CodePostalInput`, `VilleInput`), jamais un `Input` nu. Ils s'emploient comme `Input` et se remplissent l'un l'autre (Base Adresse Nationale via `/api/public/adresse` et `/api/public/communes`, voir `lib/adresse.ts`)
 
 ## Architecture fichiers
 ```

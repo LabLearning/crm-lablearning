@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, Search, Save, Pencil, Trash2, CheckCircle2, Users, Briefcase, FileText, Upload, Loader2 } from '@/components/ui/icons'
-import { Button, Badge, Input, Select, SearchSelectField, Modal, useToast, RowMenu } from '@/components/ui'
+import { Button, Badge, Input, Select, SearchSelectField, Modal, useToast, RowMenu, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
 import {
   createCandidatVivierAction, updateCandidatVivierAction, updateCandidatVivierStatutAction,
@@ -420,17 +420,19 @@ function CandidatForm({ candidat, clients, poeis, previsions, onDone }: { candid
       <div className="grid grid-cols-3 gap-3">
         <Select id="sexe" name="sexe" label="Sexe" options={[{ value: '', label: '—' }, { value: 'H', label: 'Homme' }, { value: 'F', label: 'Femme' }]} defaultValue={candidat?.sexe || ''} />
         <Input id="date_naissance" name="date_naissance" type="date" label="Date de naissance" copiable defaultValue={candidat?.date_naissance || ''} />
-        <Input id="lieu_naissance" name="lieu_naissance" label="Lieu de naissance" defaultValue={candidat?.lieu_naissance || ''} />
+        <VilleInput autonome id="lieu_naissance" name="lieu_naissance" label="Lieu de naissance" defaultValue={candidat?.lieu_naissance || ''} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Input id="numero_securite_sociale" name="numero_securite_sociale" label="N° de sécurité sociale" defaultValue={candidat?.numero_securite_sociale || ''} />
         <Input id="type_contrat" name="type_contrat" label="Type de contrat visé" placeholder="CDI, CDD, Alternance…" defaultValue={candidat?.type_contrat || ''} />
       </div>
-      <Input id="adresse" name="adresse" label="Adresse" defaultValue={candidat?.adresse || ''} />
-      <div className="grid grid-cols-2 gap-3">
-        <Input id="code_postal" name="code_postal" label="Code postal" defaultValue={candidat?.code_postal || ''} />
-        <Input id="ville" name="ville" label="Ville" defaultValue={candidat?.ville || ''} />
-      </div>
+      <AdresseGroupe>
+        <AdresseInput id="adresse" name="adresse" label="Adresse" defaultValue={candidat?.adresse || ''} />
+        <div className="grid grid-cols-2 gap-3">
+          <CodePostalInput id="code_postal" name="code_postal" label="Code postal" defaultValue={candidat?.code_postal || ''} />
+          <VilleInput id="ville" name="ville" label="Ville" defaultValue={candidat?.ville || ''} />
+        </div>
+      </AdresseGroupe>
 
       {/* Sourcing */}
       <div className="pt-2 border-t border-surface-100 grid grid-cols-2 gap-3">
