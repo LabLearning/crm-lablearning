@@ -40,7 +40,7 @@ export interface CandidatDoc {
  * Ici on PRODUIT et on TÉLÉCHARGE. L'état de chacun se lit dans Pilotage.
  */
 export function PoeiDocuments({
-  poeiId, candidats, devisPrevisionnel, formationTerminee, formationId,
+  poeiId, candidats, devisPrevisionnel, formationTerminee, formationId, choixReglement = false,
 }: {
   poeiId: string
   /** Formation du parcours : son programme se télécharge avec le planning de la POEI */
@@ -48,6 +48,11 @@ export function PoeiDocuments({
   candidats: CandidatDoc[]
   devisPrevisionnel?: { id: string; numero: string | null } | null
   formationTerminee: boolean
+  /**
+   * L'organisme cède ses créances à un factor : la première génération des
+   * factures passe par l'onglet Facturation, où se choisit leur règlement.
+   */
+  choixReglement?: boolean
 }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -147,10 +152,14 @@ export function PoeiDocuments({
       cle: 'factures',
       icone: ReceiptEuro,
       titre: 'Factures',
-      sous: formationTerminee ? 'Une par candidat, adressée à France Travail' : 'Disponibles une fois la formation terminée',
+      sous: !formationTerminee
+        ? 'Disponibles une fois la formation terminée'
+        : choixReglement && nbFactures === 0
+          ? 'À générer depuis l’onglet Facturation, où se choisit leur règlement'
+          : 'Une par candidat, adressée à France Travail',
       compte: `${nbFactures}/${nb}`,
       complet: nb > 0 && nbFactures === nb,
-      action: formationTerminee && nb > 0
+      action: formationTerminee && nb > 0 && (nbFactures > 0 || !choixReglement)
         ? { label: nbFactures > 0 ? 'Mettre à jour les factures' : 'Générer les factures', onClick: () => lancer('factures', () => generateFacturesPerCandidatPoeiAction(poeiId), 'Factures à jour') }
         : undefined,
       zip: nbFactures > 0 ? `/api/pdf/poei-factures/${poeiId}` : null,

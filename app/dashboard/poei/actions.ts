@@ -6,6 +6,7 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 import { ligneFactureCandidat, montantTotalPoei, periodeCandidat, MESSAGE_MIGRATION_PERIODE, type LigneFactureCandidat } from '@/lib/poei-candidat'
+import { facturesReglables, reglementDossier } from '@/lib/poei-reglement'
 
 function canManage(role: string) {
   return ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'].includes(role)
@@ -755,7 +756,9 @@ const MESSAGE_MIGRATION_AFFACTURAGE = 'Colonne absente : appliquer la migration 
  * dossier suivent ; avec, celle de ce candidat seulement.
  *
  * Même règle que pour les factures de session : une créance déjà cédée ne
- * change plus, le factor attend son paiement.
+ * change plus, le factor attend son paiement. La bascule du dossier entier
+ * laisse aussi de côté les factures soldées ou annulées : elles ont été
+ * réglées, ou ne le seront jamais, sous le règlement qu'elles portent.
  */
 export async function setAffacturageFacturesPoeiAction(
   poeiId: string,
@@ -773,7 +776,7 @@ export async function setAffacturageFacturesPoeiAction(
   const marqueur = candidatId ? `[POEI-FACT:${poeiId}:${candidatId}]` : `[POEI-FACT:${poeiId}:`
   const { data: factures, error: lecture } = await supabase
     .from('factures')
-    .select('id, numero, sans_affacturage, affacturage_status')
+    .select('id, numero, status, sans_affacturage, affacturage_status')
     .eq('organization_id', orgId)
     .ilike('notes_internes', `%${marqueur}%`)
   if (lecture) {
@@ -791,7 +794,9 @@ export async function setAffacturageFacturesPoeiAction(
   if (candidatId && cedees.length) {
     return { success: false, error: `La facture ${(cedees[0] as any).numero} a déjà été cédée au factor : elle ne peut plus en sortir.` }
   }
-  const aModifier = factures.filter((f: any) => !f.affacturage_status && !!f.sans_affacturage !== sansAffacturage)
+  // Une seule facture : geste explicite, seule la cession l'empêche (comme sur une session)
+  const concernees = candidatId ? factures.filter((f: any) => !f.affacturage_status) : facturesReglables(factures as any[])
+  const aModifier = concernees.filter((f: any) => !!f.sans_affacturage !== sansAffacturage)
   if (aModifier.length) {
     const { error } = await supabase
       .from('factures')
@@ -819,7 +824,12 @@ export async function setAffacturageFacturesPoeiAction(
 export async function generateFacturesPerCandidatPoeiAction(
   poeiId: string,
   options?: {
-    /** Les factures créées sont réglées à l'organisme, sans cession au factor (voir migration 153). */
+    /**
+     * Règlement choisi pour la PREMIÈRE génération : vrai, les factures sont
+     * réglées à l'organisme, sans cession au factor (migration 153). Dès que le
+     * dossier a des factures, c'est leur règlement qui fait foi et cette option
+     * n'est plus lue (voir lib/poei-reglement).
+     */
     sansAffacturage?: boolean
   },
 ): Promise<ActionResult & { data?: { created: number; updated: number; skipped: number; supprimees?: number; orphelinesEmises?: number } }> {
@@ -901,15 +911,37 @@ export async function generateFacturesPerCandidatPoeiAction(
   // Tant qu'elle est en brouillon on la supprime ; émise, on la laisse (elle a
   // une existence légale) et on le signale à l'appelant.
   let supprimees = 0, orphelinesEmises = 0
+  // « * » : la colonne sans_affacturage n'existe qu'à partir de la migration 153
+  const { data: existantes } = await supabase.from('factures')
+    .select('*')
+    .eq('organization_id', orgId)
+    .ilike('notes_internes', `%[POEI-FACT:${poeiId}:%`)
+  const candidatDe = (f: any) => String(f.notes_internes || '').match(/\[POEI-FACT:[0-9a-f-]+:([0-9a-f-]+)\]/i)?.[1] || null
+
+  // Règlement des factures à créer. Tant que le dossier a des factures, il
+  // fait foi, quel que soit le bouton d'où part la génération : toutes en
+  // direct, la nouvelle l'est aussi ; sinon elle va au factor. Sans facture
+  // encore, c'est le choix fait à l'écran, et il doit avoir été fait dès lors
+  // que l'organisme cède ses créances : on ne choisit pas un compte bancaire
+  // par défaut. Lu avant le ménage ci-dessous, pour qu'un brouillon supprimé
+  // compte encore.
+  let direct = false
+  {
+    const dejaFactures = new Set((existantes || []).map(candidatDe).filter(Boolean))
+    const aCreer = candidats.filter((c: any) => !dejaFactures.has(c.id)).length
+    const duDossier = reglementDossier((existantes || []) as any[])
+    if (duDossier !== 'aucun') direct = duDossier === 'direct'
+    else if (options?.sansAffacturage !== undefined) direct = options.sansAffacturage
+    else if (aCreer > 0 && (session.organization as any).affacturage_actif && (session.organization as any).affacturage_societe) {
+      return { success: false, error: 'Choisissez d’abord le règlement des factures dans l’onglet Facturation : au factor, ou à l’organisme en direct.' }
+    }
+  }
+
   {
     const vivants = new Set((candidats || []).map((c: any) => c.id))
-    const { data: existantes } = await supabase.from('factures')
-      .select('id, status, notes_internes')
-      .eq('organization_id', orgId)
-      .ilike('notes_internes', `%[POEI-FACT:${poeiId}:%`)
     for (const f of existantes || []) {
-      const m = String((f as any).notes_internes).match(/\[POEI-FACT:[0-9a-f-]+:([0-9a-f-]+)\]/i)
-      if (!m || vivants.has(m[1])) continue
+      const candidat = candidatDe(f)
+      if (!candidat || vivants.has(candidat)) continue
       if ((f as any).status === 'brouillon') {
         await supabase.from('facture_lignes').delete().eq('facture_id', (f as any).id)
         await supabase.from('factures').delete().eq('id', (f as any).id)
@@ -943,14 +975,14 @@ export async function generateFacturesPerCandidatPoeiAction(
       subrogation: true,
       ...((c as any).numero_engagement ? { numero_engagement: (c as any).numero_engagement } : {}),
       // Colonne posée seulement à la demande : une facture ordinaire ne dépend pas de la migration 153
-      ...(options?.sansAffacturage ? { sans_affacturage: true } : {}),
+      ...(direct ? { sans_affacturage: true } : {}),
       conditions_paiement: 'à 60 jours à compter de la date de facture',
       notes_internes: `Facture POEI (candidat ${nom}). ${marker}`,
       created_by: session.user.id,
     }).select('id').single()
     if (error || !fac) {
       if (error) console.error('[facture POEI]', error)
-      if (options?.sansAffacturage && ((error as any)?.code === '42703' || (error as any)?.code === 'PGRST204')) {
+      if (direct && ((error as any)?.code === '42703' || (error as any)?.code === 'PGRST204')) {
         return { success: false, error: MESSAGE_MIGRATION_AFFACTURAGE }
       }
       continue
@@ -959,7 +991,7 @@ export async function generateFacturesPerCandidatPoeiAction(
     created++
   }
 
-  await logAudit({ action: 'generate_factures_poei', entity_type: 'poei', entity_id: poeiId, details: { created, updated, skipped, ...(options?.sansAffacturage ? { sans_affacturage: true } : {}) } })
+  await logAudit({ action: 'generate_factures_poei', entity_type: 'poei', entity_id: poeiId, details: { created, updated, skipped, ...(created && direct ? { sans_affacturage: true } : {}) } })
   revalidatePath('/dashboard/factures')
   revalidatePath(`/dashboard/poei/${poeiId}`)
   return { success: true, data: { created, updated, skipped, supprimees, orphelinesEmises } }

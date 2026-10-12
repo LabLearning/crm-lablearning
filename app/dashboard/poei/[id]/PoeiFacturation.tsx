@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ReceiptEuro, FileText, Clock, Download, Landmark, Loader2 } from '@/components/ui/icons'
 import { PoeiSection } from './PoeiSection'
@@ -8,6 +8,7 @@ import { Button, useToast, Modal, Input } from '@/components/ui'
 import { generateFacturesPerCandidatPoeiAction, setAffacturageFacturesPoeiAction, setCandidatNumeroEngagementAction, setPoeiAgenceFtAction } from '../actions'
 import { AgenceFtSelect } from '../AgenceFtSelect'
 import { ligneFactureCandidat, heuresPrevues } from '@/lib/poei-candidat'
+import { reglementDossier } from '@/lib/poei-reglement'
 import { cn } from '@/lib/utils'
 
 interface Candidat {
@@ -118,26 +119,30 @@ export function PoeiFacturation({
   const router = useRouter()
   const [gen, setGen] = useState(false)
   const [agenceId, setAgenceId] = useState<string>(currentAgenceId || '')
-  // Règlement choisi avant qu'une facture existe : il vaut pour la génération
-  const [directAvantGeneration, setDirectAvantGeneration] = useState(false)
+  // Règlement choisi pour la première génération. Rien n'est coché d'avance :
+  // tant qu'aucune facture n'existe, le choix ne vit que dans cet écran, et
+  // un choix perdu (changement d'onglet) ne doit pas retomber sur un compte.
+  const [choixPremiere, setChoixPremiere] = useState<boolean | null>(null)
   // 'tout' pendant la bascule du dossier, l'identifiant du candidat pour une seule facture
   const [bascule, setBascule] = useState<string | null>(null)
+  // Tant que la page n'est pas relue, ce qui est affiché date d'avant le geste
+  const [relecture, relire] = useTransition()
+  const occupe = !!bascule || gen || relecture
 
-  // Règlement des factures du dossier : au factor ou à l'organisme. Une
-  // créance déjà cédée ne change plus et ne compte pas dans le choix affiché.
+  // Règlement des factures du dossier : au factor ou à l'organisme. Il se lit
+  // sur les factures (lib/poei-reglement) : cédées, soldées ou annulées, elles
+  // ne changent plus et ne comptent pas dans le choix affiché.
   const toutesFactures = Object.values(facturesByCandidat)
-  const modifiables = toutesFactures.filter((f) => !f.affacturage_status)
-  const nbCedees = toutesFactures.length - modifiables.length
-  const nbDirectes = modifiables.filter((f) => f.sans_affacturage).length
-  const reglement: 'factor' | 'direct' | 'mixte' = modifiables.length === 0
-    ? (directAvantGeneration ? 'direct' : 'factor')
-    : nbDirectes === modifiables.length ? 'direct' : nbDirectes === 0 ? 'factor' : 'mixte'
+  const duDossier = reglementDossier(toutesFactures)
+  const nbCedees = toutesFactures.filter((f) => f.affacturage_status).length
+  const reglement = duDossier !== 'aucun' ? duDossier : choixPremiere === null ? 'aucun' : choixPremiere ? 'direct' : 'factor'
+  const resteAFacturer = candidats.some((c) => !facturesByCandidat[c.id])
 
   async function choisirReglement(direct: boolean) {
-    if (bascule) return
+    if (occupe) return
     // Aucune facture encore : le choix est retenu pour la génération
-    if (modifiables.length === 0) { setDirectAvantGeneration(direct); return }
-    if ((direct ? 'direct' : 'factor') === reglement) return
+    if (duDossier === 'aucun') { setChoixPremiere(direct); return }
+    if ((direct ? 'direct' : 'factor') === duDossier) return
     setBascule('tout')
     const r = await setAffacturageFacturesPoeiAction(poeiId, direct)
     setBascule(null)
@@ -146,24 +151,32 @@ export function PoeiFacturation({
     toast('success', direct
       ? `${n} facture${n > 1 ? 's' : ''} réglée${n > 1 ? 's' : ''} à ${organisme}, sans affacturage`
       : `${n} facture${n > 1 ? 's' : ''} remise${n > 1 ? 's' : ''} à l’affacturage`)
-    setDirectAvantGeneration(direct)
-    router.refresh()
+    relire(() => router.refresh())
   }
 
   async function basculerFacture(candidatId: string, direct: boolean) {
-    if (bascule) return
+    if (occupe) return
     setBascule(candidatId)
     const r = await setAffacturageFacturesPoeiAction(poeiId, direct, candidatId)
     setBascule(null)
     if (!r.success) { toast('error', r.error || 'Erreur'); return }
     toast('success', direct ? `Facture réglée à ${organisme}, sans affacturage` : 'Facture remise à l’affacturage')
-    router.refresh()
+    relire(() => router.refresh())
   }
 
   async function generate() {
+    if (occupe) return
+    // Première génération d'un organisme qui cède ses créances : le règlement se choisit, il ne se devine pas
+    if (affacturage?.actif && duDossier === 'aucun' && choixPremiere === null && resteAFacturer) {
+      toast('error', 'Choisissez d’abord le règlement des factures : au factor, ou en direct')
+      return
+    }
     setGen(true)
-    // Les factures créées suivent le règlement du dossier ; celles qui existent gardent le leur
-    const r = await generateFacturesPerCandidatPoeiAction(poeiId, { sansAffacturage: reglement === 'direct' })
+    // Dès qu'il a des factures, le dossier porte lui-même son règlement : le serveur le relit
+    const r = await generateFacturesPerCandidatPoeiAction(
+      poeiId,
+      duDossier === 'aucun' && choixPremiere !== null ? { sansAffacturage: choixPremiere } : undefined,
+    )
     setGen(false)
     if (r.success) {
       const { created, updated, skipped, supprimees, orphelinesEmises } = (r.data || {}) as
@@ -177,7 +190,7 @@ export function PoeiFacturation({
         toast('error', `${orphelinesEmises} facture(s) émise(s) concernent un candidat retiré du dossier, à annuler manuellement`)
       }
       toast('success', parts.length ? `Factures : ${parts.join(', ')}` : 'Aucune facture modifiée')
-      router.refresh()
+      relire(() => router.refresh())
     } else toast('error', r.error || 'Erreur')
   }
 
@@ -201,7 +214,7 @@ export function PoeiFacturation({
               <Download className="h-4 w-4" /> Toutes les factures (ZIP)
             </a>
           )}
-          <Button onClick={generate} isLoading={gen} size="sm" icon={<ReceiptEuro className="h-4 w-4" />}>
+          <Button onClick={generate} isLoading={gen} disabled={!!bascule || relecture} size="sm" icon={<ReceiptEuro className="h-4 w-4" />}>
             {nbFactures > 0 ? 'Mettre à jour les factures' : 'Générer les factures'}
           </Button>
         </>
@@ -229,9 +242,11 @@ export function PoeiFacturation({
       </div>
 
       {/* À qui France Travail règle : le factor (cession de créance) ou
-          l'organisme en direct. Sans affacturage actif, tout est déjà direct. */}
-      {affacturage?.actif && (
-        <fieldset className="space-y-2" aria-busy={bascule === 'tout'}>
+          l'organisme en direct. Sans affacturage actif, tout est déjà direct.
+          Le bloc n'apparaît que s'il y a quelque chose à régler : des factures
+          dont le règlement peut changer, ou des factures à générer. */}
+      {affacturage?.actif && (duDossier !== 'aucun' || (sessionTerminee && resteAFacturer)) && (
+        <fieldset className="space-y-2" aria-busy={occupe}>
           <legend className="text-sm font-medium text-surface-700 mb-1.5 flex items-center gap-2">
             Règlement des factures
             {bascule === 'tout' && <Loader2 className="h-3.5 w-3.5 animate-spin text-surface-400" aria-hidden="true" />}
@@ -240,7 +255,7 @@ export function PoeiFacturation({
             <ChoixReglement
               nom={`reglement-${poeiId}`}
               coche={reglement === 'factor'}
-              occupe={!!bascule}
+              occupe={occupe}
               titre={`À ${affacturage.societe}, par affacturage`}
               detail="La facture porte la cession de créance et les coordonnées bancaires du factor."
               onChoisir={() => choisirReglement(false)}
@@ -248,7 +263,7 @@ export function PoeiFacturation({
             <ChoixReglement
               nom={`reglement-${poeiId}`}
               coche={reglement === 'direct'}
-              occupe={!!bascule}
+              occupe={occupe}
               titre={`À ${organisme}, en direct`}
               detail="La facture porte le RIB de l’organisme, sans aucune mention d’affacturage."
               onChoisir={() => choisirReglement(true)}
@@ -257,17 +272,22 @@ export function PoeiFacturation({
           {reglement === 'mixte' && (
             <p className="text-xs text-surface-500">
               Les factures de ce dossier n’ont pas toutes le même règlement. Choisissez-en un pour les aligner, ou réglez-les une à une ci-dessous.
+              {resteAFacturer && ` Tant qu’elles diffèrent, une facture créée va à ${affacturage.societe}.`}
             </p>
           )}
-          {modifiables.length === 0 && nbCedees === 0 && (
-            <p className="text-xs text-surface-500">Ce choix s’appliquera aux factures à la génération. Il reste modifiable ensuite.</p>
+          {duDossier === 'aucun' && resteAFacturer && (
+            <p className={cn('text-xs', choixPremiere === null ? 'text-warning-700' : 'text-surface-500')}>
+              {choixPremiere === null
+                ? 'À choisir avant de générer les factures.'
+                : 'Ce règlement sera porté par les factures à leur génération. Il se change ensuite ici.'}
+            </p>
           )}
           {nbCedees > 0 && (
             <p className="text-xs text-surface-500">
               {nbCedees} facture{nbCedees > 1 ? 's' : ''} déjà cédée{nbCedees > 1 ? 's' : ''} au factor : {nbCedees > 1 ? 'elles ne changent' : 'elle ne change'} pas.
             </p>
           )}
-          {reglement !== 'factor' && !affacturage.ribOrganisme && (
+          {(reglement === 'direct' || reglement === 'mixte') && !affacturage.ribOrganisme && (
             <p className="text-xs text-warning-700 bg-warning-50 border border-warning-100 rounded-xl px-3 py-2">
               Le RIB de l’organisme n’est pas renseigné dans les paramètres : la facture sortirait sans coordonnées bancaires.
             </p>
@@ -312,7 +332,7 @@ export function PoeiFacturation({
                             </span>
                           )}
                           <button type="button" onClick={() => basculerFacture(c.id, !fac.sans_affacturage)}
-                            disabled={!!bascule} aria-busy={bascule === c.id}
+                            disabled={occupe} aria-busy={bascule === c.id}
                             className="inline-flex items-center gap-1 min-h-[40px] sm:min-h-0 text-brand-600 hover:text-brand-700 font-medium hover:underline disabled:opacity-50">
                             {bascule === c.id && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
                             {fac.sans_affacturage ? 'Remettre à l’affacturage' : 'Passer sans affacturage'}

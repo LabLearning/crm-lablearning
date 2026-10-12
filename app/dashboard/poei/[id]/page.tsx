@@ -537,6 +537,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
               devisPrevisionnel={devisByCandidat['previsionnel'] || null}
               formationTerminee={formationTerminee}
               formationId={(p as any).formation_id || null}
+              choixReglement={!!(session.organization as any).affacturage_actif && !!(session.organization as any).affacturage_societe}
             />
           </>
         }
