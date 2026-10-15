@@ -158,7 +158,7 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
   // Bilans finals remplis et pas encore signés par le stagiaire (équipe interne seulement)
   const bilansASigner = candidats
     .filter((c) => c.apprenant_id && c.bilanFt)
-    .filter((c) => { const g = gridOf(c.apprenant_id!, null); return !!g && !g.appreciations?.[SIGNATURE_BILAN.signeLe] })
+    .filter((c) => { const g = gridOf(c.apprenant_id!, null); return !!g && (!g.appreciations?.[SIGNATURE_BILAN.signeLe] || !!g.signature_vide) })
     .map((c) => c.apprenant_id!)
 
   if (candidats.length === 0) {
@@ -281,17 +281,20 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
                           </button>
                         )}
                         {/* Signature du bilan de fin de formation par le stagiaire (équipe interne seulement) */}
-                        {fin && c.bilanFt && (fin.appreciations?.[SIGNATURE_BILAN.signeLe] ? (
+                        {fin && c.bilanFt && (fin.appreciations?.[SIGNATURE_BILAN.signeLe] && !fin.signature_vide ? (
                           <span title={`Bilan signé par le stagiaire le ${formatDate(fin.appreciations[SIGNATURE_BILAN.signeLe])}`}
                             className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-success-50 text-success-700">
                             <PenLine className="h-3.5 w-3.5" /> Signé
                           </span>
                         ) : (
                           <button onClick={() => demanderSignatureBilan(aid)} disabled={envoiSig}
-                            title="Envoyer au stagiaire son bilan de fin de formation à relire et signer"
-                            className="inline-flex items-center gap-1 px-2 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium whitespace-nowrap bg-surface-100 text-surface-600 hover:bg-surface-200 transition-colors disabled:opacity-60">
+                            title={fin.signature_vide
+                              ? 'La signature enregistrée est vide (cadre validé sans tracé) : le stagiaire doit signer de nouveau. Son bilan et son certificat seront rouverts à l’envoi.'
+                              : 'Envoyer au stagiaire son bilan de fin de formation à relire et signer'}
+                            className={`inline-flex items-center gap-1 px-2 py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium whitespace-nowrap transition-colors disabled:opacity-60 ${fin.signature_vide ? 'bg-warning-50 text-warning-700 hover:bg-amber-100' : 'bg-surface-100 text-surface-600 hover:bg-surface-200'}`}>
                             <Send className="h-3.5 w-3.5" />
-                            {fin.appreciations?.[SIGNATURE_BILAN.envoyeLe] || bilansDemandes.includes(aid) ? 'Relancer' : 'Faire signer'}
+                            {fin.signature_vide ? 'Signature vide : refaire signer'
+                              : fin.appreciations?.[SIGNATURE_BILAN.envoyeLe] || bilansDemandes.includes(aid) ? 'Relancer' : 'Faire signer'}
                           </button>
                         ))}
                         {fin && (

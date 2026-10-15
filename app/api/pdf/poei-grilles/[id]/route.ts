@@ -7,6 +7,7 @@ import { requireApiUser } from '@/lib/api-auth'
 import { GrillePoeiPDF } from '@/lib/pdf/grille-poei-pdf'
 import { GRILLE_SECTIONS, APPRECIATIONS } from '@/lib/poei-grille'
 import { bilanFtImprime, construireBilanFt, signatureBilan } from '@/lib/poei-bilan-ft'
+import { signatureVide } from '@/lib/signature-image'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,6 +81,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Aucun bilan à télécharger' }, { status: 404 })
   }
 
+  // Une signature validée sans tracé (cadre blanc, avant le contrôle du 08/10/2026) n'est pas une
+  // signature : la case reste vierge, sans le nom saisi, jusqu'à ce que la personne signe de nouveau.
+  const tracee = (data: unknown) => typeof data === 'string' && !!data && !signatureVide(data)
+
   const meta = APPRECIATIONS.map((a) => ({ key: a.key, label: a.label }))
   const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
   const render = (g: any) => renderToBuffer(
@@ -91,9 +96,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       signatures: {
         beneficiaire: (() => {
           const x = sigBenefPar.get(String(g.apprenant_id))
-          return x ? { data: x.signature_data, nom: x.signataire_nom, date: x.date_signature || x.signed_at } : null
+          return x && tracee(x.signature_data) ? { data: x.signature_data, nom: x.signataire_nom, date: x.date_signature || x.signed_at } : null
         })(),
-        employeur: sigEmployeur ? {
+        employeur: sigEmployeur && tracee(sigEmployeur.signature_data) ? {
           data: sigEmployeur.signature_data,
           nom: sigEmployeur.signataire_nom,
           date: sigEmployeur.date_signature || sigEmployeur.signed_at,
@@ -125,7 +130,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         heuresPrevues: heuresCertifiees.get(String(g.apprenant_id))?.dureeTotale ?? null,
         grille: g, aujourdhui,
       })) : null,
-      signatureBilan: g.semaine == null ? signatureBilan(g.appreciations) : null,
+      signatureBilan: (() => {
+        const s = g.semaine == null ? signatureBilan(g.appreciations) : null
+        return s && tracee(s.data) ? s : null
+      })(),
     }) as any,
   )
 

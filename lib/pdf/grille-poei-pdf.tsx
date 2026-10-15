@@ -50,45 +50,60 @@ interface Props {
 
 // ── Bilan de fin de formation France Travail : le tableau du formulaire ──
 const BORD = { borderBottomWidth: 0.5, borderBottomColor: SURFACE_400 } as const
-const celluleLibelle = {
-  width: '46%', paddingVertical: 2.5, paddingHorizontal: 6, backgroundColor: SURFACE_50,
+/**
+ * Densité du formulaire. Il doit tenir sur une page avec ses signatures : plus
+ * les textes libres sont longs (motif de sortie, avis), plus il se resserre.
+ * Au-delà, le bloc des avis et des signatures passe entier à la page suivante.
+ */
+interface DensiteFt { police: number; longue: number; interligne: number; haut: number; marge: number }
+function densiteFt(b: BilanFt): DensiteFt {
+  const libre = [b.intitule, b.niveau, b.motifSortie, b.avisStagiaire, b.avisCentre].reduce((n, t) => n + (t || '').length, 0)
+  if (libre > 900) return { police: 7, longue: 6.5, interligne: 1.25, haut: 11.5, marge: 1.4 }
+  if (libre > 450) return { police: 7.5, longue: 7, interligne: 1.3, haut: 12.5, marge: 1.6 }
+  return { police: 8, longue: 7, interligne: 1.4, haut: 14, marge: 2 }
+}
+const DENSITE_NORMALE: DensiteFt = { police: 8, longue: 7, interligne: 1.4, haut: 14, marge: 2 }
+
+const celluleLibelle = (d: DensiteFt) => ({
+  width: '46%', paddingVertical: d.marge, paddingHorizontal: 6, backgroundColor: SURFACE_50,
   borderRightWidth: 0.5, borderRightColor: SURFACE_400, justifyContent: 'center',
-} as const
-const celluleValeur = { flex: 1, paddingVertical: 2.5, paddingHorizontal: 6, justifyContent: 'center', minHeight: 16 } as const
+} as const)
+const celluleValeur = (d: DensiteFt) => ({ flex: 1, paddingVertical: d.marge, paddingHorizontal: 6, justifyContent: 'center', minHeight: d.haut } as const)
 
-function LigneFt({ libelle, valeur, gras = false, haut = 16 }: { libelle: string; valeur?: string; gras?: boolean; haut?: number }) {
+function LigneFt({ libelle, valeur, gras = false, haut, d = DENSITE_NORMALE }: { libelle: string; valeur?: string; gras?: boolean; haut?: number; d?: DensiteFt }) {
+  const texte = (valeur || '').replace(/\r/g, '').replace(/\n{2,}/g, '\n')
   return (
     <View style={{ flexDirection: 'row', ...BORD }} wrap={false}>
-      <View style={celluleLibelle}>
-        <Text style={{ fontSize: 8, color: SURFACE_900, ...(gras ? { fontFamily: 'Satoshi', fontWeight: 700 } : {}) }}>{libelle}</Text>
+      <View style={celluleLibelle(d)}>
+        <Text style={{ fontSize: d.police, color: SURFACE_900, ...(gras ? { fontFamily: 'Satoshi', fontWeight: 700 } : {}) }}>{libelle}</Text>
       </View>
-      <View style={{ ...celluleValeur, minHeight: haut }}>
-        {/* Un texte long (motif de sortie détaillé) passe en plus petit pour garder le tableau lisible */}
-        <Text style={{ fontSize: (valeur || '').length > 400 ? 7 : 8, color: SURFACE_900, lineHeight: 1.4 }}>{(valeur || '').replace(/\r/g, '').replace(/\n{2,}/g, '\n')}</Text>
+      <View style={{ ...celluleValeur(d), minHeight: haut ?? d.haut }}>
+        {/* Un texte long (motif de sortie détaillé, avis) passe en plus petit pour garder le tableau lisible */}
+        <Text style={{ fontSize: texte.length > 200 ? d.longue : d.police, color: SURFACE_900, lineHeight: d.interligne }}>{texte}</Text>
       </View>
     </View>
   )
 }
 
-function LigneDoubleFt({ libelle, prevue, reelle, entete = false }: { libelle: string; prevue?: string; reelle?: string; entete?: boolean }) {
-  const valeur = { fontSize: 8, color: SURFACE_900, textAlign: 'center', ...(entete ? { fontFamily: 'Satoshi', fontWeight: 700 } : {}) } as const
+function LigneDoubleFt({ libelle, prevue, reelle, entete = false, d = DENSITE_NORMALE }: { libelle: string; prevue?: string; reelle?: string; entete?: boolean; d?: DensiteFt }) {
+  const valeur = { fontSize: d.police, color: SURFACE_900, textAlign: 'center', ...(entete ? { fontFamily: 'Satoshi', fontWeight: 700 } : {}) } as const
   return (
     <View style={{ flexDirection: 'row', ...BORD }} wrap={false}>
-      <View style={celluleLibelle}><Text style={{ fontSize: 8, color: SURFACE_900 }}>{libelle}</Text></View>
-      <View style={{ ...celluleValeur, borderRightWidth: 0.5, borderRightColor: SURFACE_400 }}><Text style={valeur}>{prevue || ''}</Text></View>
-      <View style={celluleValeur}><Text style={valeur}>{reelle || ''}</Text></View>
+      <View style={celluleLibelle(d)}><Text style={{ fontSize: d.police, color: SURFACE_900 }}>{libelle}</Text></View>
+      <View style={{ ...celluleValeur(d), borderRightWidth: 0.5, borderRightColor: SURFACE_400 }}><Text style={valeur}>{prevue || ''}</Text></View>
+      <View style={celluleValeur(d)}><Text style={valeur}>{reelle || ''}</Text></View>
     </View>
   )
 }
 
-function RubriqueFt({ titre, droite }: { titre: string; droite?: string }) {
+function RubriqueFt({ titre, droite, d = DENSITE_NORMALE }: { titre: string; droite?: string; d?: DensiteFt }) {
   return (
     <View style={{ flexDirection: 'row', ...BORD, backgroundColor: BRAND_ULTRA_LIGHT }} wrap={false}>
-      <View style={{ ...celluleLibelle, backgroundColor: BRAND_ULTRA_LIGHT, paddingVertical: 4 }}>
-        <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{titre}</Text>
+      <View style={{ ...celluleLibelle(d), backgroundColor: BRAND_ULTRA_LIGHT, paddingVertical: d.marge + 1 }}>
+        <Text style={{ fontSize: d.police + 0.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>{titre}</Text>
       </View>
-      <View style={{ ...celluleValeur, paddingVertical: 4 }}>
-        <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textAlign: 'center' }}>{droite || ''}</Text>
+      <View style={{ ...celluleValeur(d), paddingVertical: d.marge + 1 }}>
+        <Text style={{ fontSize: d.police + 0.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textAlign: 'center' }}>{droite || ''}</Text>
       </View>
     </View>
   )
@@ -96,35 +111,53 @@ function RubriqueFt({ titre, droite }: { titre: string; droite?: string }) {
 
 /** Mêmes rubriques, dans le même ordre, que le formulaire France Travail. */
 function TableauBilanFt({ b }: { b: BilanFt }) {
+  const d = densiteFt(b)
   return (
     <View style={{ borderWidth: 0.5, borderColor: SURFACE_400, borderBottomWidth: 0 }}>
-      <LigneFt gras libelle="Nom de l'organisme de formation" valeur={b.organisme} />
-      <LigneFt gras libelle="Référent de l'organisme de formation" valeur={b.referent} />
-      <LigneFt gras libelle="Intitulé de l'action de formation" valeur={b.intitule} />
-      <LigneFt gras libelle="Nom du demandeur d'emploi" valeur={b.nom} />
-      <LigneFt gras libelle="Prénom du demandeur d'emploi" valeur={b.prenom} />
-      <LigneFt gras libelle="N° identifiant Pôle emploi" valeur={b.identifiant} />
-      <LigneDoubleFt entete libelle="" prevue="Prévue" reelle="Réelle" />
-      <LigneDoubleFt libelle="Date de début de l'action de formation" prevue={b.debutPrevue} reelle={b.debutReelle} />
-      <LigneDoubleFt libelle="Date de fin de l'action de formation" prevue={b.finPrevue} reelle={b.finReelle} />
-      <LigneDoubleFt libelle="Nombre d'heures de formation" prevue={b.heuresPrevues} reelle={b.heuresReelles} />
-      <LigneFt libelle="Métier visé par l'action de formation" valeur={b.metier} />
-      <LigneFt libelle="Niveau de qualification atteint en fin de formation" valeur={b.niveau} />
-      <LigneFt libelle="Formation certifiante" valeur={b.certifiante} />
-      <RubriqueFt titre="Suivi du stagiaire pendant la formation" droite="Réponse" />
-      <LigneFt libelle="A achevé la formation" valeur={b.acheve} />
-      <LigneFt libelle="Si sortie anticipée : motif" valeur={b.motifSortie} />
-      <LigneFt libelle="Date du dernier jour de formation" valeur={b.dernierJour} />
-      <RubriqueFt titre="Suivi du stagiaire après la formation" droite="Réponse" />
-      <LigneFt libelle="Reprise d'emploi en cours de formation" valeur={b.repriseCours} />
-      <LigneFt libelle="Reprise d'emploi sur contrat durable (CDD de + 6 mois ou CDI)" valeur={b.repriseCoursDurable} />
-      <LigneFt libelle="Date de la reprise d'activité" valeur={b.repriseCoursDate} />
-      <LigneFt libelle="Reprise d'emploi dès la fin de formation" valeur={b.repriseFin} />
-      <LigneFt libelle="Reprise d'emploi sur contrat durable (CDD de + 6 mois ou CDI)" valeur={b.repriseFinDurable} />
-      <LigneFt libelle="Date de la reprise d'activité" valeur={b.repriseFinDate} />
-      <LigneFt libelle="Reprise d'emploi à une date prévisionnelle" valeur={b.reprisePrevue} />
-      <LigneFt gras libelle="Avis du stagiaire sur la formation" valeur={b.avisStagiaire} haut={32} />
-      <LigneFt gras libelle="Avis du centre de formation" valeur={b.avisCentre} haut={32} />
+      <LigneFt d={d} gras libelle="Nom de l'organisme de formation" valeur={b.organisme} />
+      <LigneFt d={d} gras libelle="Référent de l'organisme de formation" valeur={b.referent} />
+      <LigneFt d={d} gras libelle="Intitulé de l'action de formation" valeur={b.intitule} />
+      <LigneFt d={d} gras libelle="Nom du demandeur d'emploi" valeur={b.nom} />
+      <LigneFt d={d} gras libelle="Prénom du demandeur d'emploi" valeur={b.prenom} />
+      <LigneFt d={d} gras libelle="N° identifiant Pôle emploi" valeur={b.identifiant} />
+      <LigneDoubleFt d={d} entete libelle="" prevue="Prévue" reelle="Réelle" />
+      <LigneDoubleFt d={d} libelle="Date de début de l'action de formation" prevue={b.debutPrevue} reelle={b.debutReelle} />
+      <LigneDoubleFt d={d} libelle="Date de fin de l'action de formation" prevue={b.finPrevue} reelle={b.finReelle} />
+      <LigneDoubleFt d={d} libelle="Nombre d'heures de formation" prevue={b.heuresPrevues} reelle={b.heuresReelles} />
+      <LigneFt d={d} libelle="Métier visé par l'action de formation" valeur={b.metier} />
+      <LigneFt d={d} libelle="Niveau de qualification atteint en fin de formation" valeur={b.niveau} />
+      <LigneFt d={d} libelle="Formation certifiante" valeur={b.certifiante} />
+      <RubriqueFt d={d} titre="Suivi du stagiaire pendant la formation" droite="Réponse" />
+      <LigneFt d={d} libelle="A achevé la formation" valeur={b.acheve} />
+      <LigneFt d={d} libelle="Si sortie anticipée : motif" valeur={b.motifSortie} />
+      <LigneFt d={d} libelle="Date du dernier jour de formation" valeur={b.dernierJour} />
+      <RubriqueFt d={d} titre="Suivi du stagiaire après la formation" droite="Réponse" />
+      <LigneFt d={d} libelle="Reprise d'emploi en cours de formation" valeur={b.repriseCours} />
+      <LigneFt d={d} libelle="Reprise d'emploi sur contrat durable (CDD de + 6 mois ou CDI)" valeur={b.repriseCoursDurable} />
+      <LigneFt d={d} libelle="Date de la reprise d'activité" valeur={b.repriseCoursDate} />
+      <LigneFt d={d} libelle="Reprise d'emploi dès la fin de formation" valeur={b.repriseFin} />
+      <LigneFt d={d} libelle="Reprise d'emploi sur contrat durable (CDD de + 6 mois ou CDI)" valeur={b.repriseFinDurable} />
+      <LigneFt d={d} libelle="Date de la reprise d'activité" valeur={b.repriseFinDate} />
+      <LigneFt d={d} libelle="Reprise d'emploi à une date prévisionnelle" valeur={b.reprisePrevue} />
+    </View>
+  )
+}
+
+/**
+ * Fin du formulaire : les deux avis puis les signatures, d'un seul tenant.
+ * Quand le formulaire ne tient pas sur une page (avis ou motif de sortie
+ * longs), ce bloc passe entier à la page suivante : les signatures restent
+ * sous les avis, jamais seules sur une page.
+ */
+function FinBilanFt({ b, children }: { b: BilanFt; children: React.ReactNode }) {
+  const d = densiteFt(b)
+  return (
+    <View wrap={false}>
+      <View style={{ borderLeftWidth: 0.5, borderRightWidth: 0.5, borderColor: SURFACE_400 }}>
+        <LigneFt d={d} gras libelle="Avis du stagiaire sur la formation" valeur={b.avisStagiaire} haut={d.haut * 2} />
+        <LigneFt d={d} gras libelle="Avis du centre de formation" valeur={b.avisCentre} haut={d.haut * 2} />
+      </View>
+      {children}
     </View>
   )
 }
@@ -333,31 +366,33 @@ export function GrillePoeiPDF(p: Props) {
             numero={p.poei?.numero || ''} date={dateAff} org={p.org}
           />
           <TableauBilanFt b={p.bilanFt} />
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }} wrap={false}>
-            <View style={{ width: 90 }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Date</Text>
-              <Text style={{ fontSize: 8.5, color: SURFACE_900, marginTop: 3 }}>{dateAff}</Text>
+          <FinBilanFt b={p.bilanFt}>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <View style={{ width: 90 }}>
+                <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Date</Text>
+                <Text style={{ fontSize: 8.5, color: SURFACE_900, marginTop: 3 }}>{dateAff}</Text>
+              </View>
+              <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 68 }}>
+                <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature et cachet du centre de formation</Text>
+                {p.org?.tampon_signature_url ? (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <PdfImage src={p.org.tampon_signature_url} style={{ width: 106, height: 46, objectFit: 'contain', marginTop: 3 }} />
+                ) : null}
+              </View>
+              <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 68 }}>
+                <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature du stagiaire</Text>
+                {p.signatureBilan?.data ? (
+                  <>
+                    {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                    <PdfImage src={p.signatureBilan.data} style={{ width: 116, height: 38, objectFit: 'contain', marginTop: 3 }} />
+                    <Text style={{ fontSize: 5.5, color: SURFACE_500, marginTop: 1 }}>
+                      {p.signatureBilan.nom || ''}
+                    </Text>
+                  </>
+                ) : null}
+              </View>
             </View>
-            <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 74 }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature et cachet du centre de formation</Text>
-              {p.org?.tampon_signature_url ? (
-                // eslint-disable-next-line jsx-a11y/alt-text
-                <PdfImage src={p.org.tampon_signature_url} style={{ width: 110, height: 50, objectFit: 'contain', marginTop: 3 }} />
-              ) : null}
-            </View>
-            <View style={{ flex: 1, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, padding: 6, height: 74 }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Signature du stagiaire</Text>
-              {p.signatureBilan?.data ? (
-                <>
-                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                  <PdfImage src={p.signatureBilan.data} style={{ width: 120, height: 42, objectFit: 'contain', marginTop: 3 }} />
-                  <Text style={{ fontSize: 5.5, color: SURFACE_500, marginTop: 1 }}>
-                    {p.signatureBilan.nom || ''}
-                  </Text>
-                </>
-              ) : null}
-            </View>
-          </View>
+          </FinBilanFt>
           <PdfDocFooter numero={p.poei?.numero || ''} org={p.org} />
         </Page>
       ) : null}

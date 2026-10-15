@@ -113,6 +113,41 @@ export async function signerCertificatSiBesoin(supabase: any, orgId: string, poe
 }
 
 /**
+ * Rouvre un bilan signé sans tracé, comme un certificat (voir plus bas) : il
+ * redevient « à signer », avec le même lien, valable 60 jours de plus. Renvoie
+ * les appréciations rouvertes, ou null s'il n'y avait rien à rouvrir.
+ *
+ * Ne touche jamais une signature qui porte un tracé, ni une image illisible.
+ * L'avis donné par le stagiaire reste, il le retrouve en signant de nouveau ;
+ * l'acte d'origine (date, nom saisi, adresse IP) reste dans le journal.
+ */
+export async function rouvrirBilanSiVide(
+  supabase: any,
+  grille: { id: string; organization_id: string; poei_id: string; apprenant_id: string; appreciations: Record<string, any> | null },
+  userId?: string | null,
+): Promise<Record<string, any> | null> {
+  const a = grille.appreciations || {}
+  const valideeLe = a[SIGNATURE_BILAN.signeLe]
+  if (!valideeLe || !signatureVide(a[SIGNATURE_BILAN.data])) return null
+  const rouvertes: Record<string, any> = { ...a, [SIGNATURE_BILAN.expire]: new Date(Date.now() + 60 * 86400000).toISOString() }
+  for (const k of [SIGNATURE_BILAN.data, SIGNATURE_BILAN.nom, SIGNATURE_BILAN.signeLe, SIGNATURE_BILAN.ip, SIGNATURE_BILAN.agent]) delete rouvertes[k]
+  const { data, error } = await supabase.from('poei_grilles').update({ appreciations: rouvertes })
+    .eq('id', grille.id).eq(`appreciations->>${SIGNATURE_BILAN.signeLe}`, valideeLe).select('id')
+  if (error || !data?.length) { if (error) console.error('[bilan, signature vide]', error); return null }
+  const { error: eJournal } = await supabase.from('audit_logs').insert({
+    organization_id: grille.organization_id, user_id: userId || null,
+    action: 'signature_vide_rouverte', entity_type: 'poei_grille', entity_id: grille.id,
+    details: {
+      poei_id: grille.poei_id, apprenant_id: grille.apprenant_id, document: 'bilan de fin de formation',
+      motif: 'image de signature sans tracé', validee_le: valideeLe,
+      nom_saisi: a[SIGNATURE_BILAN.nom] || null, ip: a[SIGNATURE_BILAN.ip] || null,
+    },
+  })
+  if (eJournal) console.error('[bilan, signature vide, journal]', eJournal)
+  return rouvertes
+}
+
+/**
  * Rouvre une signature de certificat enregistrée sans tracé : jusqu'au
  * 07/10/2026, un simple appui dans le cadre suffisait à valider la page, et
  * l'image enregistrée était blanche. Le certificat redevient « à signer »,

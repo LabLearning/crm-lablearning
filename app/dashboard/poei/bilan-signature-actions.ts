@@ -7,6 +7,10 @@ import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 import { SIGNATURE_BILAN } from '@/lib/poei-bilan-ft'
+import { signatureVide } from '@/lib/signature-image'
+
+/** Bilan validé sans tracé (cadre blanc, avant le contrôle du 08/10/2026) : il est à signer de nouveau. */
+const signatureBilanVide = (a: Record<string, any>) => !!a[SIGNATURE_BILAN.signeLe] && signatureVide(a[SIGNATURE_BILAN.data])
 
 const APP = () => process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 const VALIDITE_JOURS = 60
@@ -31,7 +35,7 @@ export async function demanderSignatureBilanAction(
   const orgId = session.organization.id
 
   const [{ data: grille }, { data: appr }, { data: poei }, { data: org }] = await Promise.all([
-    supabase.from('poei_grilles').select('id, appreciations')
+    supabase.from('poei_grilles').select('id, organization_id, poei_id, apprenant_id, appreciations')
       .eq('organization_id', orgId).eq('poei_id', poeiId).eq('apprenant_id', apprenantId).is('semaine', null).maybeSingle(),
     supabase.from('apprenants').select('id, prenom, nom, email').eq('id', apprenantId).eq('organization_id', orgId).maybeSingle(),
     supabase.from('poei').select('id, numero, formation:formation_id(intitule), client:client_id(raison_sociale, nom_commercial)')
@@ -40,7 +44,7 @@ export async function demanderSignatureBilanAction(
   ])
   if (!poei || !appr) return { success: false, error: 'Candidat introuvable' }
   if (!grille) return { success: false, error: "Le bilan final n'est pas encore rempli" }
-  const a: Record<string, any> = (grille as any).appreciations || {}
+  let a: Record<string, any> = (grille as any).appreciations || {}
 
   // Lien d'aperçu : la page du stagiaire, pour l'équipe, sans rien enregistrer
   if (opts?.apercuPage) {
@@ -53,7 +57,23 @@ export async function demanderSignatureBilanAction(
     return { success: true, data: { url: `${APP()}/bilan/${jetonApercu}/signer` } }
   }
 
-  if (a[SIGNATURE_BILAN.signeLe]) return { success: false, error: 'Ce bilan est déjà signé' }
+  const vide = signatureBilanVide(a)
+  if (a[SIGNATURE_BILAN.signeLe] && !vide) return { success: false, error: 'Ce bilan est déjà signé' }
+
+  // Signature vide : le bilan est rouvert au moment où la demande part (jamais à l'aperçu), et le
+  // certificat signé du même cadre blanc avec lui. La nouvelle signature couvrira les deux.
+  const rouvrirSiVide = async (): Promise<string | null> => {
+    if (!vide) return null
+    const { rouvrirBilanSiVide, rouvrirCertificatSiVide } = await import('@/lib/poei-signature-documents')
+    const rouvertes = await rouvrirBilanSiVide(supabase, grille as any, session.user.id)
+    if (!rouvertes) return 'Le bilan n’a pas pu être rouvert : rechargez la page et recommencez'
+    a = rouvertes
+    const { data: certificat } = await supabase.from('certificat_signatures')
+      .select('id, organization_id, poei_id, apprenant_id, role, signed_at, signature_data, signataire_nom, ip_address')
+      .eq('organization_id', orgId).eq('poei_id', poeiId).eq('apprenant_id', apprenantId).maybeSingle()
+    if (certificat && (certificat.role || 'candidat') === 'candidat') await rouvrirCertificatSiVide(supabase, certificat, session.user.id)
+    return null
+  }
 
   // Un seul lien par bilan, prolongé à chaque demande
   const jeton: string = a[SIGNATURE_BILAN.jeton] || randomBytes(32).toString('hex')
@@ -71,6 +91,8 @@ export async function demanderSignatureBilanAction(
   }
 
   if (opts?.lienSeul) {
+    const echec = await rouvrirSiVide()
+    if (echec) return { success: false, error: echec }
     if (!(await enregistrerJeton(false))) return { success: false, error: 'Erreur lors de la préparation du lien' }
     await logAudit({ action: 'lien_signature_bilan', entity_type: 'poei', entity_id: poeiId, details: { apprenant: apprenantId } })
     return { success: true, data: { url } }
@@ -98,6 +120,8 @@ export async function demanderSignatureBilanAction(
     return { success: true, data: { email: appr.email, html: buildDocumentEmailHtml(emailParams), subject: emailParams.subject } }
   }
 
+  const echec = await rouvrirSiVide()
+  if (echec) return { success: false, error: echec }
   if (!(await enregistrerJeton(true))) return { success: false, error: 'Erreur lors de la préparation du lien' }
   try {
     const { sendDocumentEmail } = await import('@/lib/email')
@@ -131,7 +155,8 @@ export async function demanderSignaturesBilansAction(
   const supabase = await createServiceRoleClient()
   const { data: grilles } = await supabase.from('poei_grilles').select('apprenant_id, appreciations')
     .eq('organization_id', session.organization.id).eq('poei_id', poeiId).is('semaine', null)
-  const aSigner = ((grilles || []) as any[]).filter((g) => g.apprenant_id && !g.appreciations?.[SIGNATURE_BILAN.signeLe])
+  const aSigner = ((grilles || []) as any[]).filter((g) => g.apprenant_id
+    && (!g.appreciations?.[SIGNATURE_BILAN.signeLe] || signatureBilanVide(g.appreciations)))
   if (!aSigner.length) return { success: false, error: 'Aucun bilan final à faire signer' }
 
   let envoyes = 0, sansEmail = 0, echecs = 0
