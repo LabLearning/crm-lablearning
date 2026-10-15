@@ -33,7 +33,8 @@ export function AttestationSortiePDF({ apprenant, formation, org, dateDebut, dat
   const numero = `ATS-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
   const prevues = Number(dureeHeures || formation?.duree_heures || 0)
   const realisees = heuresEffectuees != null ? Number(heuresEffectuees) : null
-  const assiduite = realisees != null && prevues > 0 ? Math.round((realisees / prevues) * 100) : null
+  // Au-delà des heures prévues, un pourcentage ne dirait plus rien (même règle que le rapport d'abandon)
+  const assiduite = realisees != null && prevues > 0 && realisees <= prevues ? Math.round((realisees / prevues) * 100) : null
 
   return (
     <Document>

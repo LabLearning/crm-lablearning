@@ -11,6 +11,7 @@ import type { PoeiCandidat } from '@/lib/types/poei'
 import { cn } from '@/lib/utils'
 import { heuresDepuisInterventions } from '@/lib/poei-candidat'
 import { dateEmbauche } from '@/lib/poei-bilan-ft'
+import { PoeiRapportAbandon, type IncidentDuCandidat } from './PoeiRapportAbandon'
 
 /** Calendrier du projet, pour situer la période d'un candidat. */
 export interface ProjetPoeiPeriode {
@@ -37,6 +38,14 @@ interface Props {
   clientNom?: string | null
   clientId?: string | null
   devisByCandidat?: Record<string, { id: string; numero: string | null }>
+  /** Incidents du dossier, proposés en pièces jointes du rapport d'abandon */
+  incidents?: IncidentDuCandidat[]
+  /** L'agence France Travail du dossier est choisie (destinataire des rapports) */
+  agenceRenseignee?: boolean
+  /** Stagiaires (apprenant_id) dont le bilan de fin de formation est signé : il imprime le motif d'abandon en direct */
+  bilansSignes?: string[]
+  /** Le compte peut corriger un incident dans l'onglet Incidents */
+  peutCorrigerIncidents?: boolean
 }
 
 const contratOptions = [{ value: '', label: '—' }, ...Object.entries(TYPE_CONTRAT_LABELS).map(([v, l]) => ({ value: v, label: l as string }))]
@@ -68,7 +77,7 @@ function fmtDateTime(d: string | null): string {
   try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
-export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {}, sessionTerminee = false }: Props) {
+export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {}, sessionTerminee = false, incidents = [], agenceRenseignee = true, bilansSignes = [], peutCorrigerIncidents = true }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -183,6 +192,8 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [editCand, setEditCand] = useState<PoeiCandidat | null>(null)
   const [abandonCand, setAbandonCand] = useState<PoeiCandidat | null>(null)
+  // Candidat sorti dont on prépare le rapport pour France Travail
+  const [rapportCand, setRapportCand] = useState<PoeiCandidat | null>(null)
   // Aperçu email avant envoi
   const [previewTargets, setPreviewTargets] = useState<PoeiCandidat[] | null>(null)
   const [subject, setSubject] = useState('')
@@ -367,6 +378,10 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                       label: 'Attestation de sortie',
                       icon: <FileDown className="h-4 w-4" />,
                       onClick: () => window.open(`/api/pdf/attestation-sortie/${c.apprenant_id}?poei=${poeiId}&candidat=${c.id}`, '_blank'),
+                    }, {
+                      label: 'Rapport d’abandon (France Travail)',
+                      icon: <FileDown className="h-4 w-4" />,
+                      onClick: () => setRapportCand(c),
                     }] : []),
                     { label: 'Retirer du projet', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleRemove(c.id), danger: true },
                   ]}
@@ -682,22 +697,30 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
 
       {/* Édition */}
       {/* Déclaration d'abandon : date + heures réelles → facture au prorata */}
+      {/* Un abandon déjà déclaré se corrige ici : le formulaire repart de ce qui est enregistré, motif compris */}
       <Modal isOpen={!!abandonCand} onClose={() => setAbandonCand(null)}
-        title={`Déclarer l'abandon, ${abandonCand ? nom(abandonCand) : ''}`}
+        title={`${abandonCand?.statut === 'abandonne' ? 'Corriger l’abandon' : 'Déclarer l’abandon'}, ${abandonCand ? nom(abandonCand) : ''}`}
         description="Les heures réellement effectuées servent à la facturation au prorata (modèle France Travail)."
         size="md">
         {abandonCand && (
-          <form onSubmit={handleAbandon} className="space-y-4">
+          <form key={abandonCand.id} onSubmit={handleAbandon} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-3">
               <Input id="date_abandon" name="date_abandon" type="date" label="Date de l'abandon *"
-                defaultValue={new Date().toISOString().slice(0, 10)} required />
+                defaultValue={(abandonCand as any).statut === 'abandonne' && (abandonCand as any).date_abandon
+                  ? String((abandonCand as any).date_abandon).slice(0, 10)
+                  : new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })} required />
               <Input id="heures_effectuees" name="heures_effectuees" type="number" step="0.5" min="0"
-                label="Heures réellement effectuées *" placeholder="ex. 120" required />
+                label="Heures réellement effectuées *" placeholder="ex. 120" required
+                defaultValue={(abandonCand as any).statut === 'abandonne' && (abandonCand as any).heures_effectuees != null ? String((abandonCand as any).heures_effectuees) : undefined} />
             </div>
             <div>
               <label className="block text-sm font-medium text-surface-800 mb-1.5">Motif</label>
-              <textarea name="motif_abandon" rows={3} className="input-base resize-none"
+              <textarea name="motif_abandon" rows={3} className="input-base resize-y"
+                defaultValue={(abandonCand as any).statut === 'abandonne' ? (abandonCand as any).motif_abandon || '' : ''}
                 placeholder="Ce que le candidat ou l'employeur a indiqué, alimente l'analyse des causes d'abandon (PROC-12)" />
+              <p className="text-xs text-surface-500 mt-1.5">
+                Repris sur l&apos;attestation de sortie, le bilan de fin de formation et le rapport d&apos;abandon transmis à France Travail : pas de détail médical.
+              </p>
             </div>
             <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-800">
               La facture du candidat sera recalculée : heures effectuées × taux horaire du projet.
@@ -711,6 +734,22 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
           </form>
         )}
       </Modal>
+
+      <PoeiRapportAbandon
+        abandon={rapportCand ? {
+          id: rapportCand.id,
+          nom: nom(rapportCand),
+          apprenantId: rapportCand.apprenant_id || null,
+          dateAbandon: (rapportCand as any).date_abandon || null,
+          heuresEffectuees: (rapportCand as any).heures_effectuees != null ? Number((rapportCand as any).heures_effectuees) : null,
+          motif: (rapportCand as any).motif_abandon || null,
+          bilanSigne: !!rapportCand.apprenant_id && bilansSignes.includes(rapportCand.apprenant_id),
+        } : null}
+        incidents={incidents}
+        agenceRenseignee={agenceRenseignee}
+        peutCorrigerIncidents={peutCorrigerIncidents}
+        onFermer={() => setRapportCand(null)}
+      />
 
       <Modal isOpen={!!editCand} onClose={() => setEditCand(null)} title="Modifier le candidat" size="md">
         {editCand && (

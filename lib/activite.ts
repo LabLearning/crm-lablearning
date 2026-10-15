@@ -75,6 +75,7 @@ const CHAMPS: Record<string, string> = {
   opco_compte_chiffre: 'mot de passe OPCO', duree_heures: 'durée (h)', lieu: 'lieu', intitule: 'intitulé',
   date_naissance: 'date de naissance', statut_paiement: 'statut de paiement', taux_commission: 'taux de commission',
   date_partenariat: 'date de partenariat', numero_dossier_opco: 'dossier OPCO', montant_finance_opco: 'montant financé',
+  date_incident: "date de l'incident", gravite: 'gravité', mesures_prises: 'mesures prises', apprenant_id: 'apprenant',
 }
 export function libelleChamp(c: string): string {
   return CHAMPS[c] || c.replace(/_/g, ' ')
@@ -227,6 +228,7 @@ const ENTITES_LIBELLE: Record<string, string> = {
   certificat_signature: 'le certificat de réalisation', recueil_besoin: 'le recueil des besoins', poei_grille: "la grille d'évaluation POEI",
   pointage: 'le pointage', organization: "l'organisme", crm_tache: 'la tâche', lead_formation: 'la formation du lead',
   demande_changement: 'la demande de changement', dpo: 'la charte de protection des données', facture_formateur: 'la facture formateur',
+  incident: "l'incident",
 }
 
 const lib = (libelles: Libelles | undefined, id: unknown) => (typeof id === 'string' && libelles?.[id]) || null
@@ -263,6 +265,11 @@ export function phraseEvenement(action: string, entityType: string, entityId: st
       if (d.financement_opco) p('financement OPCO renseigné')
       if (d.numero_engagement) p(`numéro d’engagement ${d.numero_engagement}`)
       if (d.version) p(`version ${d.version}`)
+      // Seulement pour une trace « avant / après » : une liste de champs envoyés n'en dit pas ce qui a changé
+      if (Array.isArray(d.champs) && d.champs.length && d.avant && d.apres) {
+        p(`champs : ${(d.champs as unknown[]).filter((c): c is string => typeof c === 'string').map(libelleChamp).join(', ')}`)
+        if (entityType === 'incident') p(poei ? `parcours ${poei}` : null)
+      }
       if (d.compte_opco && typeof d.compte_opco === 'object') {
         const c = d.compte_opco as Record<string, unknown>
         p(c.opco_compte_status ? `compte OPCO : ${String(c.opco_compte_status).replace(/_/g, ' ')}` : null)
@@ -332,6 +339,8 @@ export function phraseEvenement(action: string, entityType: string, entityId: st
     case 'rekey_opco_secret': return { verbe: 'a rechiffré le mot de passe OPCO', objet: cible ? `du client ${cible}` : null, precisions }
     case 'annulation_activite': return { verbe: 'a annulé une activité du journal', objet: objetDefaut, precisions: [d.operation ? OPERATIONS_ACTIVITE[d.operation as OperationActivite]?.libelle.toLowerCase() || '' : '', Array.isArray(d.champs) && d.champs.length ? `champs : ${(d.champs as string[]).map(libelleChamp).join(', ')}` : ''].filter(Boolean) }
     case 'envoi_positionnement': return { verbe: 'a envoyé le questionnaire de positionnement', objet: cible ? `du parcours ${cible}` : null, precisions: [d.envoyes != null ? nb(d.envoyes, 'candidat') : ''].filter(Boolean) }
+    case 'motif_abandon_poei': return { verbe: 'a réécrit le motif d’abandon', objet: cible ? `de ${cible}` : null, precisions: [poei ? `parcours ${poei}` : ''].filter(Boolean) }
+    case 'generer_rapport_france_travail': return { verbe: entityType === 'incident' ? 'a téléchargé le rapport d’incident' : 'a téléchargé le rapport d’abandon', objet: d.reference ? String(d.reference) : cible, precisions: ['pour France Travail', poei ? `parcours ${poei}` : '', Number(d.incidents_joints) > 0 ? nb(d.incidents_joints, 'incident joint', 'incidents joints') : ''].filter(Boolean) }
     case 'login': return { verbe: 's’est connecté', objet: null, precisions }
     case 'export': return { verbe: 'a exporté', objet: objetDefaut, precisions }
     default: {

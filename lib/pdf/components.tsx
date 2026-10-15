@@ -381,6 +381,12 @@ const ICONS: Record<string, (c: string) => React.ReactNode> = {
     <Rect x={3} y={4} width={18} height={18} rx={2} stroke={c} strokeWidth={2} fill="none" />
     <Path d="M3 10h18" stroke={c} strokeWidth={2} fill="none" />
   </>),
+  // Signalement (rapports d'incident)
+  alert: (c) => (<>
+    <Path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" stroke={c} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1={12} y1={9} x2={12} y2={13} stroke={c} strokeWidth={2} strokeLinecap="round" />
+    <Line x1={12} y1={17} x2={12.01} y2={17} stroke={c} strokeWidth={2} strokeLinecap="round" />
+  </>),
 }
 
 // Choisit une icône selon les mots-clés du libellé de section

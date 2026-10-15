@@ -1658,6 +1658,50 @@ export async function declarerAbandonCandidatAction(
 }
 
 /**
+ * Réécrit le motif d'un abandon déjà déclaré, sans toucher à la date, aux
+ * heures ni à la facture : c'est le texte repris par le rapport d'abandon,
+ * l'attestation de sortie et le bilan de fin de formation (motif de sortie
+ * anticipée) transmis à France Travail, relu avant l'envoi.
+ */
+export async function enregistrerMotifAbandonAction(candidatId: string, motif: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  // Même règle que le rapport qu'il alimente : le rôle et l'accès au module
+  const { checkDashboardAccess } = await import('@/lib/dashboard-guard')
+  if (!checkDashboardAccess('/dashboard/poei', session.user.role as any, session.permissions).allowed) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const orgId = session.organization.id
+  const supabase = await createServiceRoleClient()
+
+  const { data: cand } = await supabase.from('poei_candidats')
+    .select('id, poei_id, statut, date_abandon, inscription_id')
+    .eq('id', candidatId).eq('organization_id', orgId).maybeSingle()
+  if (!cand) return { success: false, error: 'Candidat introuvable' }
+  // Un candidat réintégré garde sa date d'abandon : seul le statut fait foi
+  if (cand.statut !== 'abandonne') {
+    return { success: false, error: 'Aucun abandon n’est déclaré pour ce candidat' }
+  }
+
+  const texte = String(motif || '').trim() || null
+  const { error } = await supabase.from('poei_candidats').update({ motif_abandon: texte })
+    .eq('id', candidatId).eq('organization_id', orgId)
+  if (error) {
+    console.error('[motif abandon]', error)
+    return { success: false, error: 'Enregistrement impossible' }
+  }
+  // L'inscription liée porte le même motif (voir declarerAbandonCandidatAction)
+  if (cand.inscription_id) {
+    await supabase.from('inscriptions').update({ motif_annulation: texte || 'Abandon en cours de POEI' })
+      .eq('id', cand.inscription_id).eq('organization_id', orgId)
+  }
+
+  await logAudit({ action: 'motif_abandon_poei', entity_type: 'poei_candidat', entity_id: candidatId, details: { poei_id: cand.poei_id } })
+  revalidatePath(`/dashboard/poei/${cand.poei_id}`)
+  return { success: true }
+}
+
+/**
  * Heures effectuées d'un candidat, saisies par l'équipe : c'est ce chiffre qui
  * part sur le certificat de réalisation (un candidat peut faire ses heures sans
  * suivre les jours de la feuille d'émargement) ET sur sa facture France

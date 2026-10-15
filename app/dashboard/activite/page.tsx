@@ -67,6 +67,7 @@ const TABLE_PAR_COLONNE: Record<string, string> = {
 const TABLE_PAR_ENTITE: Record<string, string> = {
   candidat_vivier: 'candidats_vivier', certificat_signature: 'certificat_signatures', recueil_besoin: 'recueils_besoin',
   crm_tache: 'crm_taches', pointage: 'pointages_formateur', lead_formation: 'lead_formations', organization: 'organizations',
+  incident: 'incidents',
 }
 
 /** Nom lisible d'une ligne, quelle que soit la table. */

@@ -21,6 +21,7 @@ import { PoeiDocuments } from './PoeiDocuments'
 import { PoeiMandat } from './PoeiMandat'
 import { PoeiMails } from './PoeiMails'
 import { PoeiIncidents } from '@/components/poei/PoeiIncidents'
+import { ROLES_INCIDENTS_POEI } from '@/lib/rapport-france-travail'
 import { PoeiPlanning } from './PoeiPlanning'
 import { PoeiEmargement, type LigneEmargementCandidat, type SessionEmargement } from './PoeiEmargement'
 import type { CandidatMail } from './PoeiMails'
@@ -508,7 +509,8 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             poeiId={p.id}
             incidents={incidentsPoei as any[]}
             candidats={candidatsIncident}
-            peutTraiter
+            peutTraiter={ROLES_INCIDENTS_POEI.includes(session.user.role)}
+            agenceRenseignee={!!(p as any).agence_ft_id}
           />
         }
         documents={
@@ -565,6 +567,10 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus}
             clientNom={companyLabel(p.client) || null} clientId={p.client_id}
             devisByCandidat={devisByCandidat} sessionTerminee={formationTerminee}
+            incidents={incidentsPoei as any[]}
+            agenceRenseignee={!!(p as any).agence_ft_id}
+            bilansSignes={grilles.filter((g: any) => g.semaine == null && g.appreciations?.[SIGNATURE_BILAN.signeLe] && !g.signature_vide).map((g: any) => String(g.apprenant_id))}
+            peutCorrigerIncidents={ROLES_INCIDENTS_POEI.includes(session.user.role)}
           />
         }
         positionnement={
