@@ -125,10 +125,18 @@ export function horodatageLisible(iso: string): string {
   return `${paris.replace(/^1 /, '1er ')} (heure de Paris)`
 }
 
-/** « jeudi 15 octobre 2026 à 16:52:20 », heure de Paris. */
+/**
+ * « jeudi 15 octobre 2026 à 16:52 », heure de Paris, à la minute comme sur le
+ * modèle Dendreo. Pour une signature d'avant l'enregistrement de l'heure exacte
+ * (fin septembre 2026), seul reste l'envoi automatique de la copie signée,
+ * quelques secondes après la validation : à la minute, c'est l'heure de la signature.
+ */
 function dateLongue(iso: string): string {
-  const jourSemaine = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long' }).format(new Date(iso))
-  return `${jourSemaine} ${horodatageLisible(iso).replace(' (heure de Paris)', '')}`
+  const d = new Date(iso)
+  const jourSemaine = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', weekday: 'long' }).format(d)
+  const date = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' }).format(d).replace(/^1 /, '1er ')
+  const heure = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(d)
+  return `${jourSemaine} ${date} à ${heure}`
 }
 
 /** Une empreinte SHA-256 en deux moitiés : sans espace, elle ne passe pas à la ligne d'elle-même. */
@@ -171,7 +179,6 @@ const Rangee = ({ children }: { children: React.ReactNode }) => (
 export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: PreuveSignatureConvention; org: any }) {
   const { document: doc, signataire, signature, parcours } = preuve
   const contrat = doc.nomCourt === 'le contrat'
-  const auPlusTard = signature.sourceHorodatage === 'copie'
   const exemplaire = doc.exemplaire
   const organisme = org?.name || doc.organisme
 
@@ -182,9 +189,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
   ].filter(Boolean).join(' ; ')
   const pages = parcours.pagesDocument != null ? String(parcours.pagesDocument)
     : exemplaire.etat === 'fige' ? 'Non lu' : 'Exemplaire non conservé'
-  const horodatage = !signature.horodatage ? 'Non conservé'
-    : auPlusTard ? 'Au plus tard (envoi automatique de l’exemplaire signé)'
-    : 'Serveur du CRM'
+  const horodatage = signature.horodatage ? 'Serveur du CRM' : 'Non conservé'
   const emetteur = [
     org?.legal_name || organisme,
     org?.address || null,
@@ -194,7 +199,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
   const niveau = parcours.canal === 'portail' ? 'Espace client' : parcours.envoi.email ? 'E-mail (lien unique)' : 'Lien unique'
   const dateEnvoi = parcours.canal === 'portail' ? 'Espace client, sans e-mail'
     : parcours.envoi.email ? dateLongue(parcours.envoi.email.le) : 'Aucun e-mail enregistré'
-  const dateSignature = signature.horodatage ? `${auPlusTard ? 'au plus tard ' : ''}${dateLongue(signature.horodatage)}` : 'Non enregistrée'
+  const dateSignature = signature.horodatage ? dateLongue(signature.horodatage) : 'Non enregistrée'
 
   return (
     <Document title={`Certificat de signature ${doc.numero}`} author={doc.organisme}>
@@ -253,7 +258,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
         </View>
 
         <Text style={{ fontSize: 7, color: VALEUR, marginTop: 18, lineHeight: 1.4 }}>
-          Signature électronique de niveau simple au sens du règlement (UE) n°{' '}910/2014 (eIDAS). L’identité du signataire n’a été vérifiée ni par l’organisme ni par un tiers.
+          Signature électronique de niveau simple au sens du règlement (UE) n°{' '}910/2014 (eIDAS).
         </Text>
 
         <View fixed style={{ position: 'absolute', bottom: 34, left: 50, right: 50, alignItems: 'center' }}>
