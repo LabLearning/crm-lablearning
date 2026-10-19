@@ -63,6 +63,8 @@ export default async function DashboardPage() {
   }
 
   const supabase = await createServiceRoleClient()
+  // La une du mois (chiffre d'affaires mois par mois) est réservée à l'admin : rien n'est lu pour les autres
+  const voitChiffreAffaires = ROLES_OBJECTIF.includes(user.role)
   const today = new Date().toISOString().split('T')[0]
   const inThreeMonths = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
   const headCount = (table: string) => supabase.from(table).select('*', { count: 'exact', head: true }).eq('organization_id', organization.id)
@@ -84,7 +86,7 @@ export default async function DashboardPage() {
       headCount('formations'), headCount('clients'), headCount('leads'),
       headCount('sessions'), headCount('devis'), headCount('factures'), headCount('users'),
     ]),
-    chargerObjectifsMois(supabase, organization.id).catch(() => []),
+    voitChiffreAffaires ? chargerObjectifsMois(supabase, organization.id).catch(() => []) : Promise.resolve([]),
   ])
 
   const allSessions = upcomingSessions || []
@@ -206,7 +208,7 @@ export default async function DashboardPage() {
       <OnboardingGuide flags={onboardingFlags} firstName={user.first_name} />
 
       {/* Objectif du mois : établissements calés pour le mois suivant, les autres mois de l'année sur le sélecteur */}
-      {objectifsMois.length > 0 && <ObjectifMoisUne mois={objectifsMois} calendrier={calendrierObjectif()} peutModifier={ROLES_OBJECTIF.includes(user.role)} />}
+      {voitChiffreAffaires && objectifsMois.length > 0 && <ObjectifMoisUne mois={objectifsMois} calendrier={calendrierObjectif()} peutModifier />}
 
       {/* ── Agenda : sessions OPCO d'un côté, parcours POEI de l'autre, chacun en cours / à venir / terminées ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">

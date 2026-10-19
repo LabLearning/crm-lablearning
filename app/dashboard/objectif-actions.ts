@@ -5,7 +5,7 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
-import { ROLES_OBJECTIF, ROLES_SANS_OBJECTIF, calendrierObjectif, chargerObjectifsDesMois, type ObjectifMois } from '@/lib/objectif-mois'
+import { ROLES_OBJECTIF, calendrierObjectif, chargerObjectifsDesMois, type ObjectifMois } from '@/lib/objectif-mois'
 
 /**
  * Charge des mois du sélecteur (« 2026-03 ») à la demande : seuls le mois en
@@ -14,7 +14,8 @@ import { ROLES_OBJECTIF, ROLES_SANS_OBJECTIF, calendrierObjectif, chargerObjecti
  */
 export async function chargerObjectifsMoisAction(mois: string[]): Promise<ActionResult<ObjectifMois[]>> {
   const session = await getSession()
-  if (ROLES_SANS_OBJECTIF.includes(session.user.role)) return { success: false, error: 'Non autorisé' }
+  // Le chiffre d'affaires mois par mois est réservé à l'admin, écran comme données
+  if (!ROLES_OBJECTIF.includes(session.user.role)) return { success: false, error: 'Non autorisé' }
   const proposes = calendrierObjectif().map((m) => m.cle)
   const cles = Array.isArray(mois) ? [...new Set(mois)] : []
   if (!cles.length || cles.some((c) => !proposes.includes(c))) return { success: false, error: 'Mois invalide' }

@@ -32,11 +32,14 @@ export const OBJECTIF_PAR_DEFAUT = 25
 /** Objectif de chiffre d'affaires HT calé par mois, faute de saisie. */
 export const OBJECTIF_CA_PAR_DEFAUT = 60000
 
-/** Rôles qui fixent l'objectif. Déclaré ici et pas dans objectif-actions.ts :
-    un fichier 'use server' n'exporte que des fonctions async. */
-export const ROLES_OBJECTIF: string[] = ['super_admin', 'gestionnaire', 'directeur_commercial']
-/** Rôles qui ont leur propre espace et ne voient pas les chiffres de l'organisme. */
-export const ROLES_SANS_OBJECTIF: string[] = ['commercial', 'apporteur_affaires', 'formateur', 'apprenant', 'franchise']
+/**
+ * Rôles qui voient la une du mois (chiffre d'affaires, établissements, mois
+ * par mois) et en fixent les objectifs : l'admin seul. Le chiffre d'affaires
+ * de l'organisme lui est réservé (demande du 19/10/2026) ; le gestionnaire
+ * garde l'agenda du tableau de bord. Déclaré ici et pas dans
+ * objectif-actions.ts : un fichier 'use server' n'exporte que des fonctions async.
+ */
+export const ROLES_OBJECTIF: string[] = ['super_admin']
 
 /** Un mois du sélecteur. */
 export interface MoisCalendrier {
