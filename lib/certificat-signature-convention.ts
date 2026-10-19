@@ -360,19 +360,33 @@ export async function construirePreuveSignatureConvention(
   }
   // Ce qui a changé dans le document après sa signature
   let nbModifications = 0
+  // Les mêmes modifications, champ par champ : le certificat d'une page les
+  // regroupe par élément (montant, programme…), de la valeur signée à l'actuelle
+  const changements: Array<{ at: string; cle: string; libelle: string; avant: string; apres: string; avenant: string | null; note: string | null }> = []
+  const valeurNue = (k: string, v: unknown): string => {
+    if (v == null || v === '') return 'vide'
+    if (k === 'nombre_stagiaires') return String(v)
+    if (k === 'participants_snapshot') return Array.isArray(v) ? `${v.length} participant${v.length > 1 ? 's' : ''}` : 'liste modifiée'
+    return valeur(k, v)
+  }
   for (const a of avenantsApres) {
     const lignes: string[] = []
     for (const ch of (Array.isArray(a.changements) ? a.changements : []) as any[]) {
       if (ch?.libelle) lignes.push(`${ch.libelle} : ${court(ch.avant ?? 'vide')} → ${court(ch.apres ?? 'vide')}`)
+      if (ch?.libelle) changements.push({ at: a.at, cle: `avenant:${ch.libelle}`, libelle: ch.libelle, avant: court(ch.avant ?? 'vide'), apres: court(ch.apres ?? 'vide'), avenant: String(a.numero), note: null })
     }
     if (a.montant_avant != null && a.montant_apres != null && Number(a.montant_avant) !== Number(a.montant_apres)) {
       lignes.push(`montant : ${euros(a.montant_avant)} → ${euros(a.montant_apres)}`)
+      changements.push({ at: a.at, cle: 'montant', libelle: 'Montant', avant: euros(a.montant_avant), apres: euros(a.montant_apres), avenant: String(a.numero), note: null })
     }
     if (a.nombre_avant != null && a.nombre_apres != null && a.nombre_avant !== a.nombre_apres) {
       lignes.push(`participants : ${a.nombre_avant} → ${a.nombre_apres}`)
+      changements.push({ at: a.at, cle: 'nombre_stagiaires', libelle: 'Nombre de stagiaires', avant: String(a.nombre_avant), apres: String(a.nombre_apres), avenant: String(a.numero), note: null })
     } else if (!lignes.length && a.nombre_avant != null) {
       // Un participant remplacé par un autre : l'effectif ne bouge pas
       lignes.push(`liste des participants modifiée (${a.nombre_apres ?? a.nombre_avant} participant${Number(a.nombre_apres ?? a.nombre_avant) > 1 ? 's' : ''})`)
+      const n = Number(a.nombre_apres ?? a.nombre_avant)
+      changements.push({ at: a.at, cle: 'participants_snapshot', libelle: 'Liste des participants', avant: '', apres: `modifiée (${n} participant${n > 1 ? 's' : ''})`, avenant: String(a.numero), note: null })
     }
     nbModifications++
     journal.push({
@@ -395,6 +409,16 @@ export async function construirePreuveSignatureConvention(
         ? `${CHAMPS_CONTENU[k]} : « ${reprise.avant} » → « ${reprise.apres} »`
         : `${memeMontant && k === 'montant_ht' ? 'Montant' : CHAMPS_CONTENU[k]} : ${valeur(k, a.avant?.[k])} → ${valeur(k, a.apres?.[k])}`)
     if (!lignes.length) continue
+    for (const k of champs.filter((x: string) => !(memeMontant && x === 'montant_ttc'))) {
+      const programme = k === 'formation_id' && reprise?.avant && reprise?.apres
+      changements.push({
+        at: a.at, cle: memeMontant && k === 'montant_ht' ? 'montant' : k,
+        libelle: memeMontant && k === 'montant_ht' ? 'Montant' : CHAMPS_CONTENU[k],
+        avant: programme ? `« ${reprise.avant} »` : valeurNue(k, a.avant?.[k]),
+        apres: programme ? `« ${reprise.apres} »` : valeurNue(k, a.apres?.[k]),
+        avenant: null, note: null,
+      })
+    }
     nbModifications++
     journal.push({
       at: a.at, alerte: true,
@@ -407,6 +431,14 @@ export async function construirePreuveSignatureConvention(
     const at = iso(a.created_at)!
     const champs = ((a.champs || []) as string[]).filter((k) => CHAMPS_SESSION[k])
     if (at <= horodatage! || !champs.length) continue
+    for (const k of champs) {
+      changements.push({
+        at, cle: `session:${k}`, libelle: `${CHAMPS_SESSION[k]} de la session`,
+        avant: k === 'horaires_jours' ? '' : k === 'date_debut' || k === 'date_fin' ? jourFr(a.avant?.[k]) : valeurNue(k, a.avant?.[k]),
+        apres: k === 'horaires_jours' ? 'modifiés' : k === 'date_debut' || k === 'date_fin' ? jourFr(a.apres?.[k]) : valeurNue(k, a.apres?.[k]),
+        avenant: null, note: null,
+      })
+    }
     const lignes = champs.map((k) => k === 'horaires_jours' ? 'Horaires modifiés'
       : k === 'date_debut' || k === 'date_fin' ? `${CHAMPS_SESSION[k]} : ${jourFr(a.avant?.[k])} → ${jourFr(a.apres?.[k])}`
       : `${CHAMPS_SESSION[k]} : ${valeur(k, a.avant?.[k])} → ${valeur(k, a.apres?.[k])}`)
@@ -418,6 +450,15 @@ export async function construirePreuveSignatureConvention(
     })
   }
   for (const a of (audits || []).filter((x: any) => x.action === 'retirer_avenant_correction' && horodatage && iso(x.created_at)! > horodatage)) {
+    const montant = a.details?.montant_apres != null
+    if (montant || a.details?.nombre_apres != null) {
+      changements.push({
+        at: iso(a.created_at)!, cle: montant ? 'montant' : 'nombre_stagiaires', libelle: montant ? 'Montant' : 'Nombre de stagiaires',
+        avant: montant ? euros(a.details?.montant_avant) : String(a.details?.nombre_avant ?? '?'),
+        apres: montant ? euros(a.details?.montant_apres) : String(a.details?.nombre_apres),
+        avenant: String(a.details?.avenant ?? '?'), note: 'avenant retiré comme correction d’erreur',
+      })
+    }
     nbModifications++
     journal.push({
       at: iso(a.created_at)!, alerte: true,
@@ -443,6 +484,100 @@ export async function construirePreuveSignatureConvention(
   const emailLien = adresses.length ? adresses.join(', ')
     : envoisCrm.length ? 'Envoi demandé depuis le CRM ; destinataire non journalisé'
     : 'Lien préparé dans le CRM ; aucun envoi par e-mail enregistré'
+
+  // ── Résumé à lignes fixes du certificat d'une page ──
+  // Tout se lit dans le cycle de la signature en cours : après la dernière
+  // annulation, avant la signature. Une trace absente reste dite absente.
+  const avantSignature = (t: string | null) => !!t && (!horodatage || t <= horodatage)
+  const dansCycle = (t: string | null) => !!apres(t) && avantSignature(t)
+  const instant = (m: any) => iso(m.sent_at || m.created_at)
+  const derniere = <T,>(l: T[]) => (l.length ? l[l.length - 1] : null)
+
+  // Envoi du lien : dernier e-mail parti, échec postérieur, lien remis à la main après le dernier e-mail
+  const emailsCycle = demandes.filter((m: any) => dansCycle(instant(m)))
+  const parti: any = derniere(emailsCycle.filter((m: any) => m.status === 'sent'))
+  const echoue: any = derniere(emailsCycle.filter((m: any) => m.status !== 'sent'))
+  const prep: any = derniere((audits || []).filter((a: any) => a.action === 'generate_signature_link' && dansCycle(iso(a.created_at))))
+  const tParti = parti ? instant(parti) : null
+  const tEchec = echoue ? instant(echoue) : null
+  const tPrep = prep ? iso(prep.created_at) : null
+  const envoi: PreuveSignatureConvention['parcours']['envoi'] = {
+    email: tParti ? { le: tParti, pdfJoint: /signature requise/i.test(parti.subject || '') } : null,
+    echec: tEchec && (!tParti || tEchec > tParti) ? { le: tEchec, statut: String(echoue.status || 'inconnu') } : null,
+    // Une préparation à moins d'une minute de l'e-mail fait partie de l'envoi
+    preparation: tPrep && (!tParti || new Date(tPrep).getTime() > new Date(tParti).getTime() + 60_000) ? { le: tPrep, par: nomUser(prep.user_id) } : null,
+    demandeSansEmail: !tParti && !tEchec && (audits || []).some((a: any) => /^send_/.test(a.action) && dansCycle(iso(a.created_at))),
+  }
+  const adressesCycle = Array.from(new Set(emailsCycle.filter((m: any) => m.status === 'sent').map((m: any) => String(m.to_email || '').toLowerCase()).filter(Boolean))) as string[]
+  const pdfJoint: any = derniere(emailsCycle.filter((m: any) => m.status === 'sent' && /signature requise/i.test(m.subject || '')))
+
+  // Ouvertures de la page et du PDF : celles d'un navigateur connecté au CRM à part
+  const ouvertures = evenements.filter((e) => e.evenement === 'lien_ouvert' && dansCycle(e.survenu_at))
+  const ouvSignataire: any = derniere(ouvertures.filter((e) => !e.details?.compte_crm))
+  const ouvCrm: any = derniere(ouvertures.filter((e) => e.details?.compte_crm))
+  const consultCrm: any = derniere(evenements.filter((e) => e.evenement === 'document_consulte' && dansCycle(e.survenu_at) && e.details?.compte_crm))
+
+  // Copie de l'exemplaire signé : au client, ou à l'organisme seulement. Avant
+  // le 14/08/2026 (fa03484), elle partait sans laisser de trace.
+  const domainesOrganisme = new Set([orgRaw?.email, orgRaw?.email_contact].filter(Boolean)
+    .map((x: any) => String(x).toLowerCase().split('@')[1]).filter(Boolean))
+  const chezOrganisme = (adresse: unknown) => domainesOrganisme.has(String(adresse || '').toLowerCase().split('@')[1] || '')
+  const copiesParties = copiesCycle.filter((m: any) => m.status === 'sent')
+  const copieClient: any = copiesParties.find((m: any) => !chezOrganisme(m.to_email)) || null
+  const DEBUT_JOURNAL_COPIES = '2026-08-14T07:58:00.000Z'
+  const copie: PreuveSignatureConvention['parcours']['copie'] =
+    copieClient ? { etat: 'client', le: instant(copieClient) }
+    : copiesParties.length ? { etat: 'organisme', le: instant(copiesParties[0]) }
+    : copiesCycle.length ? { etat: 'echec', le: instant(copiesCycle[0]) }
+    : horodatage && horodatage < DEBUT_JOURNAL_COPIES ? { etat: 'non_journalise', le: null }
+    : { etat: 'aucune', le: null }
+
+  // Signatures antérieures : annulées par l'organisme, ou remplacées sans annulation journalisée
+  const anterieures = evenementsJournal.filter((e) => /annulée ensuite|remplacée depuis/.test(e.libelle))
+  const annulations = evenementsJournal.filter((e) => e.libelle === 'Signature annulée par l’organisme')
+
+  const parcours: PreuveSignatureConvention['parcours'] = {
+    creeLe: iso(c.created_at)!,
+    envoi,
+    adresses: adressesCycle,
+    pdfJointLe: pdfJoint ? instant(pdfJoint) : null,
+    ouvertureSignataire: ouvSignataire ? ouvSignataire.survenu_at : null,
+    ouvertureCrm: ouvCrm ? { le: ouvCrm.survenu_at, compte: String(ouvCrm.details.compte_crm) } : null,
+    consultationCrm: consultCrm ? { le: consultCrm.survenu_at, compte: String(consultCrm.details.compte_crm) } : null,
+    archiveLe: exemplaire.etat === 'fige' ? exemplaire.figeLe : null,
+    copie,
+    anterieures: {
+      annulees: anterieures.filter((e) => /annulée ensuite/.test(e.libelle)).length,
+      remplacees: anterieures.filter((e) => /remplacée depuis/.test(e.libelle)).length,
+      depuisCrm: anterieures.filter((e) => /compte du CRM/.test(e.detail || '')).length,
+      derniereAnnulation: annulations.length ? annulations[annulations.length - 1].at : null,
+    },
+    canal: canal === 'portail' ? 'portail' : 'lien',
+  }
+
+  // Éléments modifiés après la signature, du plus lourd de conséquences au plus léger
+  const GRAVITE: Record<string, number> = {
+    montant: 1, montant_ht: 1, montant_ttc: 1, taux_tva: 1, formation_id: 2, duree_heures: 3,
+    dates_formation: 4, 'session:date_debut': 4, 'session:date_fin': 4, 'session:horaires_jours': 4,
+    nombre_stagiaires: 5, participants_snapshot: 5,
+    lieu: 6, 'session:lieu': 6, 'session:adresse': 6, 'session:ville': 6, 'session:code_postal': 6,
+    financeur_type: 7, financeur_nom: 7, client_id: 7, session_id: 7, type: 7, objet: 9,
+  }
+  const parElement = new Map<string, PreuveSignatureConvention['apresSignature'][number] & { gravite: number }>()
+  for (const ch of [...changements].sort((x, y) => x.at.localeCompare(y.at))) {
+    const deja = parElement.get(ch.cle)
+    if (!deja) {
+      parElement.set(ch.cle, { libelle: ch.libelle, avant: ch.avant, apres: ch.apres, fois: 1, dernier: ch.at, avenant: ch.avenant, note: ch.note, gravite: GRAVITE[ch.cle] ?? (ch.cle.startsWith('avenant:') ? 5 : 8) })
+    } else {
+      deja.apres = ch.apres; deja.fois++; deja.dernier = ch.at
+      deja.avenant = ch.avenant || deja.avenant; deja.note = ch.note || deja.note
+    }
+  }
+  // Le nombre de stagiaires dit déjà ce que dit la liste
+  if (parElement.has('nombre_stagiaires')) parElement.delete('participants_snapshot')
+  const apresSignature = [...parElement.values()]
+    .sort((x, y) => x.gravite - y.gravite || x.dernier.localeCompare(y.dernier))
+    .map(({ gravite: _g, ...e }) => e)
 
   const consentementTexte = p.signature_consentement || evtSignature?.details?.consentement || null
   const debutJournal = iso(journalDebutRes.error ? null : (journalDebutRes.data || [])[0]?.created_at)
@@ -498,12 +633,16 @@ export async function construirePreuveSignatureConvention(
       imageSha256: sha256(c.signature_client_signature_data),
     },
     evenements: evenementsJournal,
+    parcours,
+    apresSignature,
     empreinteDossier: '',
   }
   // Empreinte des preuves : les seules données enregistrées, sans la date
   // d'émission, sans l'image (représentée par son empreinte) ni le résultat de
-  // la relecture de l'archive, pour qu'un nouveau tirage la retrouve
-  const { emisLe, ...stable } = preuve
+  // la relecture de l'archive, pour qu'un nouveau tirage la retrouve. Le
+  // parcours et les modifications sont tirés du journal : hors empreinte, elle
+  // reste comparable à celle des certificats déjà émis.
+  const { emisLe, parcours: _parcours, apresSignature: _apres, ...stable } = preuve
   const docStable = { ...stable.document, exemplaire: { ...stable.document.exemplaire, verifie: undefined, introuvable: undefined } }
   preuve.empreinteDossier = sha256(JSON.stringify({ ...stable, document: docStable, signature: { ...stable.signature, image: undefined } }))
 
