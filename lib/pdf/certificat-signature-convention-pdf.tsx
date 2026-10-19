@@ -182,11 +182,13 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
   const exemplaire = doc.exemplaire
   const organisme = org?.name || doc.organisme
 
-  const etat = [
-    'Signée',
-    preuve.apresSignature.length ? 'modifiée depuis la signature' : null,
-    exemplaire.etat === 'fige' && (exemplaire.introuvable || exemplaire.verifie === false) ? 'exemplaire archivé à vérifier' : null,
-  ].filter(Boolean).join(' ; ')
+  // Le certificat décrit la signature et l'exemplaire signé archivé : une
+  // modification ultérieure de la convention (stagiaires remplacés, prix
+  // corrigé) n'y change rien (décision de Brahim du 19/10/2026). Seule une
+  // anomalie de l'archive elle-même se signale.
+  const etat = exemplaire.etat === 'fige' && (exemplaire.introuvable || exemplaire.verifie === false)
+    ? 'Signée ; exemplaire archivé à vérifier'
+    : 'Signée'
   const pages = parcours.pagesDocument != null ? String(parcours.pagesDocument)
     : exemplaire.etat === 'fige' ? 'Non lu' : 'Exemplaire non conservé'
   const horodatage = signature.horodatage ? 'Serveur du CRM' : 'Non conservé'
@@ -233,7 +235,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
             <Case label="Empreinte du document signé (SHA-256)" mono={exemplaire.etat === 'fige'}>
               {exemplaire.etat === 'fige' ? enDeuxLignes(exemplaire.sha256) : 'Exemplaire signé non conservé à la signature'}
             </Case>
-            <Case label="Empreinte du dossier de preuve (SHA-256)" mono style={{ flex: 2 }}>{enDeuxLignes(preuve.empreinteDossier)}</Case>
+            <View style={{ flex: 2 }} />
           </Rangee>
         </View>
 
