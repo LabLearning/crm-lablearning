@@ -5,11 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Heure de Paris par défaut : le serveur (UTC) et le navigateur écrivent alors
+// la même date et la même heure (sinon décalage d'une à deux heures sur les
+// pages rendues côté serveur, et erreur d'hydratation React). Un appelant peut
+// toujours passer son propre timeZone (ex. 'UTC' pour un jour porté).
 export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('fr-FR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Europe/Paris',
     ...options,
   }).format(new Date(date))
 }
@@ -21,6 +26,7 @@ export function formatDateTime(date: string | Date) {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Europe/Paris',
   }).format(new Date(date))
 }
 
