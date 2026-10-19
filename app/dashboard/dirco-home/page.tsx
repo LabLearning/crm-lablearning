@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import {
@@ -22,6 +23,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default async function DircoHomePage() {
   const session = await getSession()
+  // Chiffre d'affaires des commerciaux : le directeur commercial et l'admin (lib/acces-reserves)
+  if (!['super_admin', 'directeur_commercial'].includes(session.user.role)) redirect('/dashboard')
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 

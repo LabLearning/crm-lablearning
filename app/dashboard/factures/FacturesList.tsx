@@ -23,6 +23,8 @@ interface FacturesListProps {
   factures: Facture[]
   clients: Pick<Client, 'id' | 'raison_sociale' | 'nom' | 'prenom' | 'type'>[]
   affactureurs?: { id: string; raison_sociale: string; taux_commission_default: number; taux_retenue_default: number }[]
+  /** Totaux de chiffre d'affaires et d'encaissement : l'admin seul (lib/acces-reserves) */
+  voitChiffreAffaires?: boolean
 }
 
 /** Marqueur d'affacturage (cédée, avancée, soldée, impayée) ou « sans affacturage ». */
@@ -54,7 +56,7 @@ function AffacturageTag({ f }: { f: Facture }) {
   return null
 }
 
-export function FacturesList({ factures, clients, affactureurs = [] }: FacturesListProps) {
+export function FacturesList({ factures, clients, affactureurs = [], voitChiffreAffaires = false }: FacturesListProps) {
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -184,8 +186,11 @@ export function FacturesList({ factures, clients, affactureurs = [] }: FacturesL
       {/* Stats : deux colonnes sur mobile, montants arrondis à l'euro et insécables */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'CA Facturé', value: stats.ca_total, icon: Euro, color: 'text-surface-800', bg: 'bg-surface-50' },
-          { label: 'Encaissé', value: stats.encaisse, icon: CreditCard, color: 'text-success-600', bg: 'bg-success-50' },
+          // Le chiffre d'affaires de l'organisme est à l'admin seul ; « en attente » et « en retard » servent aux relances
+          ...(voitChiffreAffaires ? [
+            { label: 'CA Facturé', value: stats.ca_total, icon: Euro, color: 'text-surface-800', bg: 'bg-surface-50' },
+            { label: 'Encaissé', value: stats.encaisse, icon: CreditCard, color: 'text-success-600', bg: 'bg-success-50' },
+          ] : []),
           { label: 'En attente', value: stats.en_attente, icon: Clock, color: 'text-brand-600', bg: 'bg-brand-50' },
           { label: 'En retard', value: stats.en_retard, icon: AlertTriangle, color: 'text-danger-600', bg: 'bg-danger-50' },
         ].map((s) => (

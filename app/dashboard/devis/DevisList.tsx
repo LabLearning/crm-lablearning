@@ -20,9 +20,11 @@ interface DevisListProps {
   devisList: Devis[]
   clients: Pick<Client, 'id' | 'raison_sociale' | 'type' | 'nom' | 'prenom'>[]
   formations: Pick<Formation, 'id' | 'intitule' | 'reference' | 'tarif_inter_ht'>[]
+  /** Totaux des devis de l'organisme : l'admin seul (lib/acces-reserves) */
+  voitChiffreAffaires?: boolean
 }
 
-export function DevisList({ devisList, clients, formations }: DevisListProps) {
+export function DevisList({ devisList, clients, formations, voitChiffreAffaires = false }: DevisListProps) {
   const { toast } = useToast()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -119,8 +121,9 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
         <Button onClick={() => setCreateOpen(true)} icon={<Plus className="h-4 w-4" />} className="w-full sm:w-auto">Nouveau devis</Button>
       </div>
 
-      {/* Stats : sur mobile, une carte à trois lignes (libellé à gauche, montant à droite) pour que le montant ne casse jamais */}
-      <div className="card sm:bg-transparent sm:border-0 sm:shadow-none sm:rounded-none sm:grid sm:grid-cols-3 sm:gap-3 mb-5">
+      {/* Stats : sur mobile, une carte à trois lignes (libellé à gauche, montant à droite) pour que le montant ne casse jamais.
+          Ce sont des totaux de l'organisme : l'admin seul (lib/acces-reserves). */}
+      {voitChiffreAffaires && <div className="card sm:bg-transparent sm:border-0 sm:shadow-none sm:rounded-none sm:grid sm:grid-cols-3 sm:gap-3 mb-5">
         {[
           { label: 'Brouillons', value: totals.brouillon, color: 'text-surface-600' },
           { label: 'Envoyés', value: totals.envoye, color: 'text-brand-600' },
@@ -131,7 +134,7 @@ export function DevisList({ devisList, clients, formations }: DevisListProps) {
             <div className={`text-base sm:text-lg font-heading font-bold tabular-nums whitespace-nowrap ${s.color}`}><EuroTile value={s.value} /></div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">

@@ -128,6 +128,8 @@ export const MODULES_RECHERCHE: Record<string, CRMModule> = {
 }
 
 export function outilAutorise(nom: string, role: string, permissions: Permission[]): boolean {
+  // Encaissé, encours et débiteurs de l'organisme : le chiffre d'affaires est à l'admin seul (lib/acces-reserves)
+  if ((nom === 'indicateurs' || nom === 'analyse_financiere') && role !== 'super_admin') return false
   if (nom === 'rechercher') return Object.values(MODULES_RECHERCHE).some((m) => peutLire(m, role, permissions))
   const module = MODULES_OUTILS[nom]
   return module ? peutLire(module, role, permissions) : false

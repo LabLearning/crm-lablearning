@@ -9,9 +9,11 @@ import type { Paiement, PaiementStatus } from '@/lib/types/facture'
 
 interface PaiementsListProps {
   paiements: Paiement[]
+  /** Total encaissé de l'organisme : l'admin seul (lib/acces-reserves) */
+  voitChiffreAffaires?: boolean
 }
 
-export function PaiementsList({ paiements }: PaiementsListProps) {
+export function PaiementsList({ paiements, voitChiffreAffaires = false }: PaiementsListProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -36,11 +38,14 @@ export function PaiementsList({ paiements }: PaiementsListProps) {
         <p className="text-surface-500 mt-1 text-sm">{paiements.length} paiement{paiements.length > 1 ? 's' : ''} enregistré{paiements.length > 1 ? 's' : ''}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-5">
-        <div className="card p-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-success-50/60 flex items-center justify-center"><Euro className="h-4 w-4 text-success-600" /></div>
-          <div><div className="text-xs text-surface-500">Total encaissé</div><div className="text-lg font-heading font-bold text-success-600">{totalEncaisse.toLocaleString('fr-FR')} €</div></div>
-        </div>
+      <div className={`grid ${voitChiffreAffaires ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'} gap-3 mb-5`}>
+        {/* Le total encaissé de l'organisme est à l'admin seul (lib/acces-reserves) */}
+        {voitChiffreAffaires && (
+          <div className="card p-4 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-success-50/60 flex items-center justify-center"><Euro className="h-4 w-4 text-success-600" /></div>
+            <div><div className="text-xs text-surface-500">Total encaissé</div><div className="text-lg font-heading font-bold text-success-600">{totalEncaisse.toLocaleString('fr-FR')} €</div></div>
+          </div>
+        )}
         <div className="card p-4 flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-warning-50/60 flex items-center justify-center"><CreditCard className="h-4 w-4 text-warning-600" /></div>
           <div><div className="text-xs text-surface-500">En attente</div><div className="text-lg font-heading font-bold text-warning-600">{totalAttente.toLocaleString('fr-FR')} €</div></div>

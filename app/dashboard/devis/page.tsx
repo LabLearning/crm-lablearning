@@ -1,4 +1,5 @@
 import { getSession } from '@/lib/auth'
+import { peutVoirChiffreAffaires } from '@/lib/acces-reserves'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { DevisList } from './DevisList'
 import type { Devis } from '@/lib/types/dossier'
@@ -39,6 +40,7 @@ export default async function DevisPage() {
         devisList={(devisList || []) as Devis[]}
         clients={(clients || []) as any[]}
         formations={(formations || []) as any[]}
+        voitChiffreAffaires={peutVoirChiffreAffaires(session.user.role)}
       />
     </div>
   )

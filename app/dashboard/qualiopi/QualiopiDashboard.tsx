@@ -20,6 +20,8 @@ interface QualiopiDashboardProps {
   indicateurs: QualiopiIndicateur[]
   initialized: boolean
   crmEvidence?: Record<number, CrmEvidence[]>
+  /** La note porte le chiffre d'affaires facturé : l'admin seul */
+  voitNoteTracabilite?: boolean
 }
 
 const niveauOptions = Object.entries(CONFORMITE_LABELS).map(([v, l]) => ({ value: v, label: l }))
@@ -38,7 +40,7 @@ const niveauIcons: Record<ConformiteNiveau, React.ReactNode> = {
   non_evalue: <HelpCircle className="h-4 w-4 text-surface-300" />,
 }
 
-export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: QualiopiDashboardProps) {
+export function QualiopiDashboard({ indicateurs, initialized, crmEvidence, voitNoteTracabilite = false }: QualiopiDashboardProps) {
   const { toast } = useToast()
   const [expandedCritere, setExpandedCritere] = useState<number | null>(1)
   const [editIndicateur, setEditIndicateur] = useState<QualiopiIndicateur | null>(null)
@@ -124,10 +126,12 @@ export function QualiopiDashboard({ indicateurs, initialized, crmEvidence }: Qua
         </div>
         {/* Le document qui explique le changement de système à l'auditeur.
             Ses chiffres sont recalculés à chaque édition. */}
-        <a href="/api/pdf/note-tracabilite" target="_blank" rel="noreferrer"
-          className="btn-secondary inline-flex items-center justify-center gap-2 text-sm shrink-0 w-full sm:w-auto">
-          <Download className="h-4 w-4" /> Note de traçabilité de la migration
-        </a>
+        {voitNoteTracabilite && (
+          <a href="/api/pdf/note-tracabilite" target="_blank" rel="noreferrer"
+            className="btn-secondary inline-flex items-center justify-center gap-2 text-sm shrink-0 w-full sm:w-auto">
+            <Download className="h-4 w-4" /> Note de traçabilité de la migration
+          </a>
+        )}
       </div>
 
       {/* Global progress */}

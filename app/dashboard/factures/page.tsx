@@ -1,4 +1,5 @@
 import { getSession } from '@/lib/auth'
+import { peutVoirChiffreAffaires } from '@/lib/acces-reserves'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { FacturesList } from './FacturesList'
 import type { Facture } from '@/lib/types/facture'
@@ -38,6 +39,7 @@ export default async function FacturesPage() {
         factures={(factures || []) as Facture[]}
         clients={clients || []}
         affactureurs={affactureurs || []}
+        voitChiffreAffaires={peutVoirChiffreAffaires(session.user.role)}
       />
     </div>
   )

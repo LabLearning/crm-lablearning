@@ -17,6 +17,8 @@ const BPF_2025 = 284495.23
 export async function GET() {
   const auth = await requireApiUser()
   if ('error' in auth) return auth.error
+  // Elle porte le chiffre d'affaires facturé et le montant du bilan pédagogique : l'admin seul
+  if (auth.user.role !== 'super_admin') return NextResponse.json({ error: 'Réservé à l’admin' }, { status: 403 })
 
   const supabase = await createServiceRoleClient()
   const orgId = auth.user.organizationId

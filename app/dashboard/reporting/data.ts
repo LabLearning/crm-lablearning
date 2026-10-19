@@ -48,6 +48,12 @@ function moisLabel(ym: string): string {
 
 export async function getDashboardData(): Promise<DashboardData> {
   const session = await getSession()
+  // Chiffre d'affaires de l'organisme : l'admin seul, y compris par appel direct de l'action
+  const { peutVoirChiffreAffaires } = await import('@/lib/acces-reserves')
+  if (!peutVoirChiffreAffaires(session.user.role)) {
+    const { redirect } = await import('next/navigation')
+    redirect('/dashboard')
+  }
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
   const now = new Date()

@@ -1,9 +1,13 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { peutVoirChiffreAffaires } from '@/lib/acces-reserves'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { ManagerClient, type ManagerStats } from './ManagerClient'
 
 export default async function ManagerPage() {
   const session = await getSession()
+  // Chiffre d'affaires de l'organisme : l'admin seul (lib/acces-reserves)
+  if (!peutVoirChiffreAffaires(session.user.role)) redirect('/dashboard')
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 

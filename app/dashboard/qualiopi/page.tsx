@@ -343,6 +343,7 @@ export default async function QualiopiPage() {
         indicateurs={(indicateurs || []) as QualiopiIndicateur[]}
         initialized={(indicateurs || []).length > 0}
         crmEvidence={crmEvidence}
+        voitNoteTracabilite={session.user.role === 'super_admin'}
       />
     </div>
   )
