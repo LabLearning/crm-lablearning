@@ -15,7 +15,7 @@ import {
   SESSION_STATUS_LABELS, SESSION_STATUS_COLORS,
   MODALITE_LABELS, MODALITE_COLORS,
 } from '@/lib/types/formation'
-import { formatDate, companyLabel } from '@/lib/utils'
+import { formatDate, companyLabel, villeLisible } from '@/lib/utils'
 import type { Session, SessionStatus, Formation, Formateur } from '@/lib/types/formation'
 
 // Statuts absents du référentiel typé mais présents en base (colonne kanban, badges)
@@ -101,6 +101,33 @@ function TypePill({ s }: { s: Session }) {
   )
 }
 
+// Ville du lieu de formation : celle de la session ; sinon celle qu'on lit dans
+// son adresse ou son lieu écrits d'une traite (« 258 RUE PARADIS 13006
+// MARSEILLE ») ; sinon celle du client, signalée comme telle (son adresse
+// n'est pas forcément le lieu de formation).
+interface VilleSession { nom: string; duClient: boolean; aDistance: boolean }
+
+const villeDansTexte = (t: string | null | undefined) => /(?:^|[\s,])\d{5}\s+([^,;\n]+)/.exec(t || '')?.[1]?.trim() || ''
+
+function villeDeSession(s: any, villesClients: Map<string, string>): VilleSession | null {
+  if (s.modalite === 'distanciel') return { nom: 'À distance', duClient: false, aDistance: true }
+  const propre = (s.ville || '').trim() || villeDansTexte(s.adresse) || villeDansTexte(s.lieu)
+  if (propre) return { nom: villeLisible(propre), duClient: false, aDistance: false }
+  const duClient = s.client_id ? (villesClients.get(s.client_id) || '').trim() : ''
+  if (duClient) return { nom: villeLisible(duClient), duClient: true, aDistance: false }
+  return null
+}
+
+function VilleTag({ v, petit = false }: { v: VilleSession; petit?: boolean }) {
+  const Icone = v.aDistance ? Video : MapPin
+  return (
+    <span className="inline-flex items-center gap-1 min-w-0" title={v.duClient ? "Ville du client : le lieu de la session n'est pas renseigné" : undefined}>
+      <Icone className={`${petit ? 'h-3 w-3' : 'h-3.5 w-3.5'} text-surface-400 shrink-0`} />
+      <span className={`truncate ${v.duClient ? 'italic' : ''}`}>{v.nom}</span>
+    </span>
+  )
+}
+
 type SessionView = 'liste' | 'kanban'
 
 // Switch Liste / Kanban : visible dans la barre sur écran large, dans le panneau replié sur mobile.
@@ -162,12 +189,16 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
+  const villesClients = useMemo(() => new Map(clients.map((c) => [c.id, c.ville || ''])), [clients])
+  const villes = useMemo(() => new Map(sessions.map((x) => [x.id, villeDeSession(x, villesClients)])), [sessions, villesClients])
+
   const filtered = useMemo(() => {
     return deFamille.filter((s) => {
       const title = s.intitule || s.formation?.intitule || ''
       const matchSearch = title.toLowerCase().includes(search.toLowerCase()) ||
         (s.reference || '').toLowerCase().includes(search.toLowerCase()) ||
         (s.lieu || '').toLowerCase().includes(search.toLowerCase()) ||
+        (villes.get(s.id)?.nom || '').toLowerCase().includes(search.toLowerCase()) ||
         ((s as any).client?.raison_sociale || '').toLowerCase().includes(search.toLowerCase()) ||
         (s.formateur ? `${s.formateur.prenom} ${s.formateur.nom}` : '').toLowerCase().includes(search.toLowerCase())
       const matchStatus = statusFilter === 'all' || s.status === statusFilter
@@ -176,7 +207,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
       const matchFormation = formationFilter === 'all' || (s as any).formation_id === formationFilter
       return matchSearch && matchStatus && matchType && matchFormateur && matchFormation
     })
-  }, [deFamille, search, statusFilter, typeFilter, formateurFilter, formationFilter])
+  }, [deFamille, villes, search, statusFilter, typeFilter, formateurFilter, formationFilter])
 
   // Liste : groupée par jour de début (les plus récentes/futures en premier — même ordre que le fetch)
   const grouped = useMemo(() => {
@@ -289,7 +320,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
           <div className="flex gap-2 flex-1">
             <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 md:py-2 border border-surface-200/60 flex-1 md:max-w-md min-h-[44px] md:min-h-0">
               <Search className="h-4 w-4 text-surface-400 shrink-0" />
-              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher (formation, client, formateur, lieu...)" className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher (formation, client, formateur, ville...)" className="bg-transparent text-sm text-surface-700 placeholder:text-surface-400 focus:outline-none flex-1 min-w-0" />
             </div>
             <button type="button" onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}
               className={`md:hidden inline-flex items-center gap-1.5 px-3 rounded-xl border text-[13px] font-medium shrink-0 min-h-[44px] transition-colors ${filtersOpen || nbFiltresActifs > 0 ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-surface-200/80 bg-white text-surface-700'}`}>
@@ -386,6 +417,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                           {timeRange(s) && (
                             <span className="inline-flex items-center gap-1 font-mono"><Clock className="h-3.5 w-3.5 text-surface-400 shrink-0" />{timeRange(s)}</span>
                           )}
+                          {villes.get(s.id) && <VilleTag v={villes.get(s.id)!} />}
                           <span className="inline-flex items-center gap-1 min-w-0">
                             <UserIcon className="h-3.5 w-3.5 text-surface-400 shrink-0" />
                             {s.formateur
@@ -413,14 +445,17 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                     <span title={dotTitle(s)} className={`h-2.5 w-2.5 rounded-full shrink-0 ${dotFor(s)}`} />
                     {/* Horaire */}
                     <span className="text-xs font-mono text-surface-500 w-24 shrink-0">{timeRange(s)}</span>
-                    {/* Titre */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-surface-900 truncate">
+                    {/* Titre, et la ville juste à côté (le titre se coupe avant elle) */}
+                    <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                      <div className="min-w-0 text-sm font-medium text-surface-900 truncate">
                         {getSessionTitle(s)}
                         {s.date_fin !== s.date_debut && (
                           <span className="text-surface-400 font-normal text-xs"> · jusqu&apos;au {formatDate(s.date_fin, { day: 'numeric', month: 'short' })}</span>
                         )}
                       </div>
+                      {villes.get(s.id) && (
+                        <span className="flex shrink-0 max-w-[50%] text-xs text-surface-500"><VilleTag v={villes.get(s.id)!} /></span>
+                      )}
                     </div>
                     {/* Type + POEI + statut */}
                     <TypePill s={s} />
@@ -493,6 +528,7 @@ export function SessionsList({ sessions, formations, formateurs, clients = [], a
                         {formatDate(s.date_debut, { day: 'numeric', month: 'short' })}{s.date_fin !== s.date_debut ? ` → ${formatDate(s.date_fin, { day: 'numeric', month: 'short' })}` : ''}
                         {timeRange(s) && <span className="font-mono">· {timeRange(s)}</span>}
                       </div>
+                      {villes.get(s.id) && <div className="flex min-w-0"><VilleTag v={villes.get(s.id)!} petit /></div>}
                       {s.formateur && <div className="flex items-center gap-1 truncate"><UserIcon className="h-3 w-3 shrink-0" />{s.formateur.prenom} {s.formateur.nom}</div>}
                       {(s as any).client?.raison_sociale && <div className="flex items-center gap-1 truncate text-sky-700"><Building2 className="h-3 w-3 shrink-0" />{companyLabel((s as any).client)}</div>}
                     </div>

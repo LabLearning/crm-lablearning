@@ -105,7 +105,18 @@ export function titreFormation(intitule: string | null | undefined): string {
   }).join(' ')
 }
 
-/** « ARRAS » → « Arras », « SAINT-DENIS » → « Saint-Denis ». */
+// Articles et prépositions qui restent en minuscules dans un nom de commune,
+// sauf en tête : « Villeneuve-sur-Lot », « Saint-Martin-d'Hères », « Les Lilas »
+const PARTICULES_COMMUNE = new Set(['de', 'des', 'du', 'la', 'le', 'les', 'lès', 'lez', 'sur', 'sous', 'en', 'et', 'au', 'aux', 'à', 'd', 'l'])
+
+/** « ARRAS » → « Arras », « SAINT-DENIS » → « Saint-Denis », « VILLENEUVE-SUR-LOT » → « Villeneuve-sur-Lot ». */
 export function villeLisible(v: string): string {
-  return String(v).trim().toLowerCase().replace(/(^|[\s-])\p{L}/gu, (c) => c.toUpperCase())
+  const morceaux = String(v).trim().toLowerCase().split(/([\s'’-]+)/)
+  let enTete = true
+  return morceaux.map((m, i) => {
+    if (!m || /^[\s'’-]+$/.test(m)) return m
+    const particule = !enTete && PARTICULES_COMMUNE.has(m) && !/['’]/.test(morceaux[i - 1] || '')
+    enTete = false
+    return particule ? m : m.charAt(0).toUpperCase() + m.slice(1)
+  }).join('')
 }
