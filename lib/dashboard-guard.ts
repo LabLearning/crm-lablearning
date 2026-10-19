@@ -1,6 +1,7 @@
 import type { Permission, UserRole } from '@/lib/types'
 import type { CRMModule } from '@/lib/types'
 import { hasPermission } from '@/lib/permissions'
+import { rolesDeLaRoute } from '@/lib/acces-reserves'
 
 /**
  * Contrôle d'accès des pages /dashboard/**.
@@ -86,7 +87,13 @@ export function checkDashboardAccess(
   role: UserRole,
   permissions: Permission[],
 ): GuardResult {
-  // super_admin et gestionnaire ont accès à tout l'administratif
+  // Espaces réservés (Système, rentabilité, affacturage, trésorerie) : le rôle décide avant le module
+  const reserveeA = rolesDeLaRoute(pathname)
+  if (reserveeA && !reserveeA.includes(role)) {
+    return { allowed: false, redirectTo: PORTAL_ROLES[role] || (role === 'directeur_commercial' ? '/dashboard/dirco-home' : role === 'commercial' ? '/dashboard/commercial' : '/dashboard') }
+  }
+
+  // super_admin et gestionnaire ont accès au reste de l'administratif
   if (role === 'super_admin' || role === 'gestionnaire') return { allowed: true }
 
   // Les rôles à portail dédié sont renvoyés chez eux

@@ -6,6 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { inviteUserSchema, updateUserSchema } from '@/lib/validations/auth'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { peutAdministrer } from '@/lib/acces-reserves'
 import { sendInvitationEmail } from '@/lib/email'
 import { isPlaceholderEmail } from '@/lib/utils'
 import type { ActionResult } from '@/lib/types'
@@ -13,7 +14,7 @@ import type { ActionResult } from '@/lib/types'
 export async function inviteUserAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
 
-  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+  if (!peutAdministrer(session.user.role)) {
     return { success: false, error: 'Accès non autorisé' }
   }
 
@@ -235,7 +236,7 @@ export async function updateUserRoleAction(userId: string, role: string): Promis
 export async function toggleUserStatusAction(userId: string, newStatus: 'active' | 'suspended'): Promise<ActionResult> {
   const session = await getSession()
 
-  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+  if (!peutAdministrer(session.user.role)) {
     return { success: false, error: 'Accès non autorisé' }
   }
 
@@ -321,7 +322,7 @@ export async function stopImpersonationAction(): Promise<ActionResult> {
  */
 export async function sendTestInvitationAction(role: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+  if (!peutAdministrer(session.user.role)) {
     return { success: false, error: 'Acces non autorise' }
   }
 
@@ -347,7 +348,7 @@ export async function sendTestInvitationAction(role: string): Promise<ActionResu
 export async function resendInvitationAction(invitationId: string): Promise<ActionResult> {
   const session = await getSession()
 
-  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+  if (!peutAdministrer(session.user.role)) {
     return { success: false, error: 'Acces non autorise' }
   }
 
@@ -414,7 +415,7 @@ export async function resendInvitationAction(invitationId: string): Promise<Acti
 export async function cancelInvitationAction(invitationId: string): Promise<ActionResult> {
   const session = await getSession()
 
-  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+  if (!peutAdministrer(session.user.role)) {
     return { success: false, error: 'Acces non autorise' }
   }
 
@@ -468,7 +469,7 @@ export async function cancelInvitationAction(invitationId: string): Promise<Acti
  */
 export async function resendAccessAction(userId: string): Promise<ActionResult & { data?: { email: string } }> {
   const session = await getSession()
-  if (!['super_admin', 'gestionnaire'].includes(session.user.role)) {
+  if (!peutAdministrer(session.user.role)) {
     return { success: false, error: 'Accès non autorisé' }
   }
   const supabase = await createServiceRoleClient()

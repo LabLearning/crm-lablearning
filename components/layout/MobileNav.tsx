@@ -63,7 +63,8 @@ export function MobileNav({ isOpen, onClose, permissions, orgName, userRole }: M
     return pathname.startsWith(href.split('?')[0])
   }
 
-  const isVisible = (item: { module?: CRMModule; hideForRoles?: string[] }) => {
+  const isVisible = (item: { module?: CRMModule; hideForRoles?: string[]; onlyRoles?: string[] }) => {
+    if (item.onlyRoles && !item.onlyRoles.includes(userRole)) return false
     if (item.hideForRoles?.includes(userRole)) return false
     return !item.module || hasAnyPermission(permissions, item.module)
   }

@@ -1,9 +1,13 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { peutAdministrer } from '@/lib/acces-reserves'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { PortalManagement } from './PortalManagement'
 
 export default async function PortalsPage() {
   const session = await getSession()
+  // Partie Système : l'admin seul (lib/acces-reserves), même en arrivant d'une autre page du tableau de bord
+  if (!peutAdministrer(session.user.role)) redirect('/dashboard')
   const supabase = await createServiceRoleClient()
 
   const [

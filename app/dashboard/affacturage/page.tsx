@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { peutVoirFinancesReservees } from '@/lib/acces-reserves'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import AffacturageClient from './AffacturageClient'
 
@@ -7,6 +9,8 @@ export const metadata = { title: 'Affacturage — CRM Lab Learning' }
 
 export default async function AffacturagePage() {
   const session = await getSession()
+  // Réservé à l'admin et au comptable (lib/acces-reserves)
+  if (!peutVoirFinancesReservees(session.user.role)) redirect('/dashboard')
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 

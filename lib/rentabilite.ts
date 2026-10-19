@@ -13,7 +13,8 @@ import { calculerCommissionSession, commissionTypeLabel } from '@/lib/commission
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
 
-export const ROLES_MARGE = ['super_admin', 'gestionnaire', 'comptable'] as const
+// Réservée à l'admin et au comptable, comme l'affacturage et la trésorerie (lib/acces-reserves)
+export const ROLES_MARGE = ['super_admin', 'comptable'] as const
 
 export function peutVoirMarge(role: string | null | undefined): boolean {
   return !!role && (ROLES_MARGE as readonly string[]).includes(role)

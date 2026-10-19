@@ -1,9 +1,13 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { peutAdministrer } from '@/lib/acces-reserves'
 import { isSuperAdmin } from '@/lib/permissions'
 import { SettingsForm } from './SettingsForm'
 
 export default async function SettingsPage() {
   const { user, organization } = await getSession()
+  // Partie Système : l'admin seul (lib/acces-reserves), même en arrivant d'une autre page du tableau de bord
+  if (!peutAdministrer(user.role)) redirect('/dashboard')
   const canEdit = isSuperAdmin(user.role)
 
   return (

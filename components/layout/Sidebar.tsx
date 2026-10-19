@@ -79,7 +79,8 @@ export function Sidebar({ permissions, orgName, userRole, collapsed, onToggle }:
       const [c, q] = it.href.split('?')
       return c === chemin && q && new URLSearchParams(q).toString() === recherche.toString()
     }))
-  const isVisible = (item: { module?: CRMModule; hideForRoles?: string[] }) => {
+  const isVisible = (item: { module?: CRMModule; hideForRoles?: string[]; onlyRoles?: string[] }) => {
+    if (item.onlyRoles && !item.onlyRoles.includes(userRole)) return false
     if (item.hideForRoles?.includes(userRole)) return false
     return !item.module || hasAnyPermission(permissions, item.module)
   }

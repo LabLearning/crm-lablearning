@@ -1,4 +1,5 @@
 import type { NavSection } from '@/lib/types'
+import { ROLES_FINANCES_RESERVEES, ROLES_SYSTEME } from '@/lib/acces-reserves'
 
 export const navigation: NavSection[] = [
   // ── GÉNÉRAL ──────────────────────────────────────────────
@@ -34,8 +35,8 @@ export const navigation: NavSection[] = [
       { label: 'Franchises', href: '/dashboard/franchises', icon: 'Store', module: 'apporteurs' },
       { label: 'Formateurs', href: '/dashboard/formateurs', icon: 'Presentation', module: 'formateurs' },
       { label: 'Vivier de secours', href: '/dashboard/formateurs/vivier', icon: 'LifeBuoy', module: 'formateurs' },
-      { label: 'Commerciaux', href: '/dashboard/users?role=commercial', icon: 'Briefcase', module: 'users' },
-      { label: 'Gestionnaires', href: '/dashboard/users?role=gestionnaire', icon: 'UserCog', module: 'users' },
+      { label: 'Commerciaux', href: '/dashboard/users?role=commercial', icon: 'Briefcase', module: 'users', onlyRoles: ROLES_SYSTEME },
+      { label: 'Gestionnaires', href: '/dashboard/users?role=gestionnaire', icon: 'UserCog', module: 'users', onlyRoles: ROLES_SYSTEME },
     ],
   },
   // ── OUTILS ────────────────────────────────────────────────
@@ -85,10 +86,10 @@ export const navigation: NavSection[] = [
       { label: 'Factures', href: '/dashboard/factures', icon: 'ReceiptEuro', module: 'factures' },
       { label: 'Paiements', href: '/dashboard/paiements', icon: 'CreditCard', module: 'paiements' },
       { label: 'Factures formateurs', href: '/dashboard/factures-formateurs', icon: 'ReceiptText', module: 'factures' },
-      { label: 'Affacturage', href: '/dashboard/affacturage', icon: 'Banknote', module: 'factures' },
-      { label: 'Rentabilité', href: '/dashboard/rentabilite', icon: 'PieChart', module: 'factures', hideForRoles: ['commercial', 'directeur_commercial', 'formateur', 'apprenant', 'apporteur_affaires', 'franchise'] },
+      { label: 'Affacturage', href: '/dashboard/affacturage', icon: 'Banknote', module: 'factures', onlyRoles: ROLES_FINANCES_RESERVEES },
+      { label: 'Rentabilité', href: '/dashboard/rentabilite', icon: 'PieChart', module: 'factures', onlyRoles: ROLES_FINANCES_RESERVEES },
       // Soldes et mouvements bancaires : direction et comptabilité seulement (lib/tresorerie.ts, ROLES_TRESORERIE)
-      { label: 'Trésorerie', href: '/dashboard/tresorerie', icon: 'Wallet', module: 'factures', hideForRoles: ['gestionnaire', 'commercial', 'directeur_commercial', 'formateur', 'apprenant', 'apporteur_affaires', 'franchise'] },
+      { label: 'Trésorerie', href: '/dashboard/tresorerie', icon: 'Wallet', module: 'factures', onlyRoles: ROLES_FINANCES_RESERVEES },
     ],
   },
   // ── QUALITÉ ──────────────────────────────────────────────
@@ -110,9 +111,9 @@ export const navigation: NavSection[] = [
   {
     title: 'Système',
     items: [
-      { label: 'Utilisateurs', href: '/dashboard/users', icon: 'Shield', module: 'users' },
-      { label: "Journal d'activité", href: '/dashboard/activite', icon: 'History', module: 'users' },
-      { label: 'Paramètres', href: '/dashboard/settings', icon: 'Settings', module: 'settings' },
+      { label: 'Utilisateurs', href: '/dashboard/users', icon: 'Shield', module: 'users', onlyRoles: ROLES_SYSTEME },
+      { label: "Journal d'activité", href: '/dashboard/activite', icon: 'History', module: 'users', onlyRoles: ROLES_SYSTEME },
+      { label: 'Paramètres', href: '/dashboard/settings', icon: 'Settings', module: 'settings', onlyRoles: ROLES_SYSTEME },
     ],
   },
 ]

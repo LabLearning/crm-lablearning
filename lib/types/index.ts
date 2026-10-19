@@ -115,6 +115,8 @@ export interface NavItem {
   module?: CRMModule
   children?: NavItem[]
   hideForRoles?: string[]
+  /** Si renseigné, seuls ces rôles voient l'entrée (espaces réservés, lib/acces-reserves) */
+  onlyRoles?: string[]
   accent?: 'sky'  // identité visuelle distincte (ex. POEI en bleu ciel)
 }
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
+import { peutVoirFinancesReservees } from '@/lib/acces-reserves'
 import { logAudit } from '@/lib/audit'
 
 type Result<T = unknown> = { success: true; data?: T } | { success: false; error: string }
@@ -15,6 +16,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 
 export async function createAffactureurAction(formData: FormData): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const raison_sociale = (formData.get('raison_sociale') as string || '').trim()
@@ -45,6 +47,7 @@ export async function createAffactureurAction(formData: FormData): Promise<Resul
 
 export async function updateAffactureurAction(id: string, formData: FormData): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const updates: Record<string, unknown> = {}
@@ -80,6 +83,7 @@ export async function updateAffactureurAction(id: string, formData: FormData): P
 
 export async function deleteAffactureurAction(id: string): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   // Check no active cession uses it
@@ -115,6 +119,7 @@ export async function deleteAffactureurAction(id: string): Promise<Result> {
  */
 export async function cederFactureAction(factureId: string, formData: FormData): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const affactureur_id = formData.get('affactureur_id') as string
@@ -223,6 +228,7 @@ export async function marquerAvanceRecueAction(
   dateAvance: string,
 ): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const { data: cession } = await supabase
@@ -260,6 +266,7 @@ export async function marquerAvanceRecueAction(
 /** Soldée : l'OPCO a payé le factor. */
 export async function marquerSoldeeAction(cessionId: string, dateSolde?: string): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const { data: cession } = await supabase
@@ -293,6 +300,7 @@ export async function marquerSoldeeAction(cessionId: string, dateSolde?: string)
 
 export async function marquerImpayeeAction(cessionId: string): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const { data: cession } = await supabase
@@ -321,6 +329,7 @@ export async function marquerImpayeeAction(cessionId: string): Promise<Result> {
 /** Annule une cession (avant que le factor n'avance). */
 export async function annulerCessionAction(cessionId: string): Promise<Result> {
   const session = await getSession()
+  if (!peutVoirFinancesReservees(session.user.role)) return { success: false, error: 'Réservé à l’admin et au comptable' }
   const supabase = await createServiceRoleClient()
 
   const { data: cession } = await supabase

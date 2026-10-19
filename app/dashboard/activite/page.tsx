@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { estAdminTaches, filtrerTachesVisibles } from '@/lib/taches-visibilite'
+import { ROLES_SYSTEME } from '@/lib/acces-reserves'
 import { History } from '@/components/ui/icons'
 import { TABLES_ACTIVITE, entitesPourTable, tableDepuisEntite, type Activite, type Libelles } from '@/lib/activite'
 import { ActiviteClient, type Utilisateur, type Evenement } from './ActiviteClient'
@@ -9,7 +10,8 @@ import { ActiviteClient, type Utilisateur, type Evenement } from './ActiviteClie
 export const dynamic = 'force-dynamic'
 
 const PAR_PAGE = 60
-const ROLES_JOURNAL = ['super_admin', 'gestionnaire']
+// Partie Système : l'admin seul (lib/acces-reserves)
+const ROLES_JOURNAL = ROLES_SYSTEME
 /** Codes « la table n'existe pas » : cache PostgREST, undefined_table */
 const TABLE_ABSENTE = ['PGRST205', '42P01']
 const FUSEAU = 'Europe/Paris'

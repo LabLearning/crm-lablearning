@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
+import { peutAdministrer } from '@/lib/acces-reserves'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { isAdmin as checkAdmin, isSuperAdmin as checkSuperAdmin } from '@/lib/permissions'
 import { UsersList } from './UsersList'
@@ -6,6 +8,8 @@ import type { User } from '@/lib/types'
 
 export default async function UsersPage({ searchParams }: { searchParams?: { role?: string } }) {
   const session = await getSession()
+  // Partie Système : l'admin seul (lib/acces-reserves), même en arrivant d'une autre page du tableau de bord
+  if (!peutAdministrer(session.user.role)) redirect('/dashboard')
   // Filtre par type, alimenté par les entrées « Commerciaux » / « Gestionnaires »
   // de la barre latérale (/dashboard/users?role=…)
   const roleFiltre = searchParams?.role || null
