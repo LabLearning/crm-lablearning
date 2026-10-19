@@ -10,6 +10,7 @@ import { NotificationsBell } from './NotificationsBell'
 import { GlobalSearch } from './GlobalSearch'
 import { effacerConversationsStarkk } from '@/components/assistant/AssistantWidget'
 import { ROLE_LABELS } from '@/lib/types'
+import { peutAdministrer } from '@/lib/acces-reserves'
 import type { User } from '@/lib/types'
 
 // Error boundary pour isoler les crashes de la NotificationsBell
@@ -110,13 +111,16 @@ export function Header({ user, onMobileMenuToggle }: HeaderProps) {
               </div>
 
               <div className="py-1">
-                <button
-                  onClick={() => { router.push('/dashboard/settings'); setMenuOpen(false) }}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2.5 min-h-[40px] text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"
-                >
-                  <Settings className="h-4 w-4" />
-                  Paramètres
-                </button>
+                {/* Les paramètres de l'organisme sont à l'admin seul (lib/acces-reserves) */}
+                {peutAdministrer(user.role) && (
+                  <button
+                    onClick={() => { router.push('/dashboard/settings'); setMenuOpen(false) }}
+                    className="flex items-center gap-2.5 w-full px-3.5 py-2.5 min-h-[40px] text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Paramètres
+                  </button>
+                )}
                 <button
                   onClick={() => { router.push('/dashboard/profile'); setMenuOpen(false) }}
                   className="flex items-center gap-2.5 w-full px-3.5 py-2.5 min-h-[40px] text-sm text-surface-600 hover:bg-surface-50 hover:text-surface-800 transition-colors"

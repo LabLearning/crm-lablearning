@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { peutAdministrer } from '@/lib/acces-reserves'
 import { sendPortalAccessEmail } from '@/lib/email'
 import type { ActionResult } from '@/lib/types'
 
@@ -46,6 +47,8 @@ export async function generatePortalTokenAction(
   sendEmail = true
 ): Promise<ActionResult> {
   const session = await getSession()
+  // Partie Système : l'admin seul (lib/acces-reserves)
+  if (!peutAdministrer(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   // Check if token already exists
@@ -117,6 +120,8 @@ export async function generatePortalTokenAction(
 
 export async function resendPortalEmailAction(tokenId: string): Promise<ActionResult> {
   const session = await getSession()
+  // Partie Système : l'admin seul (lib/acces-reserves)
+  if (!peutAdministrer(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: tokenData } = await supabase
@@ -156,6 +161,8 @@ export async function resendPortalEmailAction(tokenId: string): Promise<ActionRe
 
 export async function revokePortalTokenAction(tokenId: string): Promise<ActionResult> {
   const session = await getSession()
+  // Partie Système : l'admin seul (lib/acces-reserves)
+  if (!peutAdministrer(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { error } = await supabase
@@ -174,6 +181,7 @@ export async function revokePortalTokenAction(tokenId: string): Promise<ActionRe
 
 export async function getPortalTokensAction(type: PortalType) {
   const session = await getSession()
+  if (!peutAdministrer(session.user.role)) return []
   const supabase = await createServiceRoleClient()
 
   const { data } = await supabase
