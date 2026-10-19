@@ -90,33 +90,22 @@ export interface PreuveSignatureConvention {
     imageSha256: string
   }
   evenements: EvenementPreuve[]
-  /** Parcours en lignes fixes, dans le cycle de la signature en cours (tiré des traces, hors empreinte) */
+  /** Envoi, copie et jeton, dans le cycle de la signature en cours (tirés des traces, hors empreinte) */
   parcours: {
-    creeLe: string
     envoi: {
       /** Dernier e-mail de demande parti avant la signature */
       email: { le: string; pdfJoint: boolean } | null
       /** E-mail de demande resté non parti, postérieur au dernier envoi */
       echec: { le: string; statut: string } | null
-      /** Lien préparé dans le CRM après le dernier e-mail (remis à la main) */
-      preparation: { le: string; par: string | null } | null
-      /** Envoi demandé depuis le CRM sans e-mail enregistré */
-      demandeSansEmail: boolean
     }
     /** Adresses des e-mails de demande partis dans le cycle */
     adresses: string[]
-    /** Dernier e-mail « signature requise » (document joint en PDF) */
-    pdfJointLe: string | null
-    /** Dernière ouverture de la page hors compte du CRM */
-    ouvertureSignataire: string | null
-    /** Dernière ouverture de la page dans un navigateur connecté au CRM */
-    ouvertureCrm: { le: string; compte: string } | null
-    /** Dernière consultation du PDF dans un navigateur connecté au CRM */
-    consultationCrm: { le: string; compte: string } | null
     archiveLe: string | null
-    copie: { etat: 'client' | 'organisme' | 'echec' | 'non_journalise' | 'aucune'; le: string | null }
-    anterieures: { annulees: number; remplacees: number; depuisCrm: number; derniereAnnulation: string | null }
+    /** Copie de l'exemplaire signé envoyée au client */
+    copie: { etat: 'client' | 'echec' | 'non_journalise' | 'aucune'; le: string | null }
     canal: 'portail' | 'lien'
+    /** Empreinte SHA-256 du jeton de signature (le jeton lui-même reste valable : jamais imprimé) */
+    jeton: string | null
   }
   /** Éléments modifiés après la signature, du signé à l'actuel, les plus lourds d'abord */
   apresSignature: Array<{ libelle: string; avant: string; apres: string; fois: number; dernier: string; avenant: string | null; note: string | null }>
@@ -175,16 +164,16 @@ function avecDates(texte: string | null | undefined, taille: number): React.Reac
   return morceaux
 }
 
-// ── Mise en page d'une seule page, identique pour tous les certificats ──
+// ── Mise en page identique pour tous les certificats ──
 // Mêmes blocs, mêmes lignes, dans le même ordre : seule la valeur change, et
-// une preuve absente s'écrit comme telle. Les blocs ont une hauteur fixe et
-// chaque valeur un nombre de lignes plafonné, calculé ici avec les chasses de
-// la police : rien ne bouge d'un certificat à l'autre, rien ne passe en page 2,
-// et une valeur coupée l'est toujours par « … », jamais en silence.
+// une preuve absente s'écrit comme telle. Les blocs ont une hauteur minimale
+// commune : le certificat tient sur une page dans les cas connus, et une
+// valeur très longue agrandit son bloc (voire passe en page 2) au lieu d'être
+// coupée. Rien n'est jamais tronqué en silence.
 
-const TAILLE_LABEL = 7
-const TAILLE_VALEUR = 7.5
-const INTERLIGNE = 1.25
+const TAILLE_LABEL = 7.3
+const TAILLE_VALEUR = 7.9
+const INTERLIGNE = 1.28
 const NBSP = ' '
 
 // Largeurs intérieures des blocs (page de 505 pt, deux colonnes partagées 1,2 / 1
@@ -295,53 +284,33 @@ function adressesEnLignes(texte: string, lignes: number, largeur: number, taille
 }
 
 const POLICE_DATES_GRAS = 'Courier-Bold'
-const majuscule = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+/** Une empreinte SHA-256 en deux moitiés : sans espace, elle ne passe pas à la ligne d'elle-même. */
+const enDeuxLignes = (h: string) => `${h.slice(0, 32)}\n${h.slice(32)}`
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 /** Dates écrites à l'anglaise (« 2026-07-23 ») remises au format du certificat. */
 const datesFr = (t: string) => t.replace(/(\d{4})-(\d{2})-(\d{2})/g, '$3/$2/$1')
 
-/** Une ligne « libellé : valeur », plafonnée à `lignes` lignes ; `fort` signale un point d'attention. */
-const Ligne = ({ label, children, mono, lignes = 1, largeur = 78, fort, interieur = INTERIEUR_LARGE }: {
-  label: string; children: React.ReactNode; mono?: boolean; lignes?: number; largeur?: number; fort?: boolean; interieur?: number
-}) => {
-  const taille = mono ? 6.9 : TAILLE_VALEUR
-  const valeur = typeof children === 'string' ? ajuster(children, lignes, interieur - largeur, taille, mono, fort && !mono) : children
-  return (
-    <View style={{ flexDirection: 'row', marginBottom: 2.8 }} wrap={false}>
-      <Text style={{ fontSize: TAILLE_LABEL, color: SURFACE_500, width: largeur, lineHeight: INTERLIGNE }}>{label}</Text>
-      <Text style={{
-        maxLines: lignes, fontSize: taille, color: SURFACE_900, flex: 1, lineHeight: INTERLIGNE,
-        fontFamily: mono ? (fort ? POLICE_DATES_GRAS : POLICE_DATES) : 'Satoshi', fontWeight: !mono && fort ? 700 : 400,
-      }}>
-        {!mono && typeof valeur === 'string' ? avecDates(valeur, TAILLE_DATES_LIGNE) : valeur}
-      </Text>
-    </View>
-  )
-}
+/** Une ligne « libellé : valeur » ; la valeur passe à la ligne autant qu'il le faut, sans jamais être coupée. */
+const Ligne = ({ label, children, mono, largeur = 78, fort }: {
+  label: string; children: React.ReactNode; mono?: boolean; largeur?: number; fort?: boolean; interieur?: number
+}) => (
+  <View style={{ flexDirection: 'row', marginBottom: 2.8 }} wrap={false}>
+    <Text style={{ fontSize: TAILLE_LABEL, color: SURFACE_500, width: largeur, lineHeight: INTERLIGNE }}>{label}</Text>
+    <Text style={{
+      fontSize: mono ? 6.9 : TAILLE_VALEUR, color: SURFACE_900, flex: 1, lineHeight: INTERLIGNE,
+      fontFamily: mono ? (fort ? POLICE_DATES_GRAS : POLICE_DATES) : 'Satoshi', fontWeight: !mono && fort ? 700 : 400,
+    }}>
+      {!mono && typeof children === 'string' ? avecDates(children, TAILLE_DATES_LIGNE) : children}
+    </Text>
+  </View>
+)
 
 const Bloc = ({ titre, hauteur, children, style }: { titre: string; hauteur: number; children: React.ReactNode; style?: any }) => (
-  <View style={{ height: hauteur, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, paddingHorizontal: 10, paddingTop: 6, overflow: 'hidden', ...style }}>
+  <View wrap={false} style={{ minHeight: hauteur, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, paddingHorizontal: 10, paddingTop: 6, paddingBottom: 5, ...style }}>
     <Text style={{ fontSize: 8.2, fontWeight: 700, color: SURFACE_900, marginBottom: 4 }}>{titre}</Text>
     {children}
   </View>
 )
-
-/** Une modification après signature sur une ligne : la valeur d'avant s'abrège la première, celle d'après en dernier. */
-function ligneModification(e: PreuveSignatureConvention['apresSignature'][number], largeur: number, taille: number): string {
-  const quoi = `${e.libelle}${e.avenant ? ` (avenant n°${NBSP}${e.avenant}${e.note ? `, ${e.note}` : ''})` : ''}`
-  const fois = e.fois > 1 ? ` (${e.fois} modifications)` : ''
-  // Deux fiches du catalogue peuvent porter le même intitulé (21 h et 14 h) : le dire, plutôt qu'une flèche entre deux textes identiques
-  if (e.avant === e.apres && /^Programme/.test(e.libelle)) return ajuster(`${quoi} : autre fiche du même intitulé, ${e.apres}${fois}`, 1, largeur, taille)
-  const avec = (avant: string) => (e.avant === '' ? `${quoi} ${e.apres}${fois}` : `${quoi} : ${avant} → ${e.apres}${fois}`)
-  const utile = largeur * 0.97
-  if (e.avant === '' || largeurTexte(avec(e.avant), taille) <= utile) return ajuster(avec(e.avant), 1, largeur, taille)
-  const reste = utile - largeurTexte(avec(''), taille)
-  const avant = reste > 30 ? ajuster(e.avant, 1, reste / 0.97, taille) : '…'
-  return ajuster(avec(avant), 1, largeur, taille)
-}
-
-/** Au plus trois éléments modifiés détaillés ; au-delà, la liste des éléments et deux détails. */
-const DETAILS_MAX = 3
 
 export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: PreuveSignatureConvention; org: any }) {
   const { document: doc, signataire, signature, parcours } = preuve
@@ -350,9 +319,7 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
   const auPlusTard = signature.sourceHorodatage === 'copie'
   const exemplaire = doc.exemplaire
   const elements = preuve.apresSignature
-  const pasEncore = 'Non enregistrée : pas encore relevée par le CRM'
-  // Le compte connecté n'est noté dans l'événement de signature que depuis le 08/10/2026 à 17:09 (heure de Paris)
-  const compteVerifiable = !(parcours.canal === 'portail' && signature.horodatage && signature.horodatage < '2026-10-08T15:09:00.000Z')
+  const pasEncore = 'Non relevée à cette date'
 
   const provenance =
     signature.sourceHorodatage === 'signature' ? 'enregistré par le serveur à l’instant de la signature'
@@ -361,214 +328,128 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
     : signature.sourceHorodatage === 'copie' ? 'au plus tard : seule trace, l’envoi automatique de l’exemplaire signé, quelques secondes après la validation'
     : 'aucune trace d’horodatage conservée'
 
-  // ── Valeurs du parcours ──
   const envoi = parcours.envoi
-  const envoiLien = majuscule([
-    envoi.email ? `${courte(envoi.email.le)}, par e-mail${envoi.email.pdfJoint ? ' (PDF joint)' : ''}` : null,
-    envoi.echec ? `e-mail non parti (${envoi.echec.statut}) le ${courte(envoi.echec.le)}` : null,
-    envoi.preparation ? `lien préparé${envoi.preparation.par ? ` par ${envoi.preparation.par}` : ' dans le CRM'} le ${courte(envoi.preparation.le)}` : null,
-  ].filter(Boolean).join(' ; ') || (parcours.canal === 'portail' ? 'espace client du client, sans e-mail'
-    : envoi.demandeSansEmail ? 'demandé depuis le CRM, e-mail non enregistré' : 'aucun envoi par e-mail enregistré'))
-  // La date avant le nom du compte : une coupure ne peut emporter que la fin du nom
-  const derniereOuverture = parcours.ouvertureSignataire
-    ? `${courte(parcours.ouvertureSignataire)}${parcours.ouvertureCrm ? ` ; aussi le ${courte(parcours.ouvertureCrm.le)} avec un compte de l’organisme (${parcours.ouvertureCrm.compte})` : ''}`
-    : parcours.ouvertureCrm ? `${courte(parcours.ouvertureCrm.le)}, seulement avec un compte de l’organisme (${parcours.ouvertureCrm.compte})`
-    : signature.captation ? 'Non enregistrée' : pasEncore
-  const ouvertureCrmSeule = !parcours.ouvertureSignataire && !!parcours.ouvertureCrm
+  const lienEnvoye = parcours.canal === 'portail' ? 'Signature depuis l’espace client, sans e-mail'
+    : envoi.email ? `${courte(envoi.email.le)}, par e-mail${envoi.email.pdfJoint ? ' (PDF joint)' : ''}${envoi.echec ? ` ; e-mail suivant non parti (${envoi.echec.statut})` : ''}`
+    : envoi.echec ? `E-mail non parti (${envoi.echec.statut}), le ${courte(envoi.echec.le)}`
+    : 'Aucun e-mail enregistré'
   const copie =
-    parcours.copie.etat === 'client' ? `${courte(parcours.copie.le!)}, au client`
-    : parcours.copie.etat === 'organisme' ? `À l’organisme seulement, le ${courte(parcours.copie.le!)}`
+    parcours.copie.etat === 'client' ? courte(parcours.copie.le!)
     : parcours.copie.etat === 'echec' ? `Envoi en échec, le ${courte(parcours.copie.le!)}`
     : parcours.copie.etat === 'non_journalise' ? 'Envoi non journalisé à cette date'
-    : 'Aucun envoi enregistré'
-  const a = parcours.anterieures
-  const anterieures = a.annulees + a.remplacees === 0 ? 'Aucune enregistrée' : majuscule([
-    a.annulees ? `${a.annulees} annulée${a.annulees > 1 ? 's' : ''} par l’organisme${a.derniereAnnulation ? ` (dernière le ${courte(a.derniereAnnulation)})` : ''}` : null,
-    a.remplacees ? `${a.remplacees} remplacée${a.remplacees > 1 ? 's' : ''} sans annulation enregistrée` : null,
-    a.depuisCrm ? `dont ${a.depuisCrm} depuis un compte de l’organisme` : null,
-  ].filter(Boolean).join(' ; '))
-
-  // ── Valeurs des circonstances ──
-  const consultationCrm = parcours.consultationCrm
-  const pdfComplet =
-    signature.lecture.etat === 'ouvert'
-      ? `Ouvert depuis la page de signature le ${courte(signature.lecture.le)}, avant de signer${consultationCrm ? ` ; aussi avec un compte de l’organisme (${consultationCrm.compte})` : ''}`
-    : signature.lecture.etat === 'ouvert_equipe'
-      ? `Ouvert seulement avec un compte de l’organisme (${signature.lecture.compte}), le ${courte(signature.lecture.le)}`
-    : signature.lecture.etat === 'non_ouvert'
-      ? `Non ouvert depuis la page de signature (résumé affiché)${parcours.pdfJointLe ? ` ; joint en PDF à l’e-mail du ${courte(parcours.pdfJointLe)}` : ''}`
-    : parcours.pdfJointLe ? `Joint en PDF à l’e-mail du ${courte(parcours.pdfJointLe)} ; ouverture non enregistrée à cette date`
-    : 'Ouverture non enregistrée : pas encore relevée par le CRM'
-  const compte =
-    signature.compteCrm === 'compte interne' ? 'Un compte de l’organisme (nom non retrouvé) était connecté dans ce navigateur'
-    : signature.compteCrm ? `${signature.compteCrm} (compte de l’organisme) était connecté dans ce navigateur`
-    : !compteVerifiable ? 'Non vérifiable à cette date (signature depuis l’espace client)'
-    : 'Aucun compte de l’organisme relevé'
-
-  // ── Après la signature ──
-  const largeurDetail = INTERIEUR_PLEIN - 98
-  const detaillees = elements.length > DETAILS_MAX ? elements.slice(0, 2) : elements
-  const restants = elements.length - detaillees.length
+    : 'Aucun envoi au client enregistré'
+  const archivage = parcours.archiveLe ? courte(parcours.archiveLe)
+    : exemplaire.etat === 'fige' ? 'Figé, date non relevée'
+    : exemplaire.raison === 'anterieure' ? 'Non archivé : antérieur à l’archivage automatique'
+    : 'Échec de l’archivage'
+  // Les champs de la session se regroupent : « session (date de fin, horaires, ville) »
+  const elementsLus: string[] = []
+  const champsSession = elements.filter((e) => / de la session$/.test(e.libelle)).map((e) => e.libelle.replace(/ de la session$/, '').toLowerCase())
+  for (const e of elements) {
+    if (/ de la session$/.test(e.libelle)) {
+      if (!elementsLus.some((x) => x.startsWith('session ('))) elementsLus.push(`session (${champsSession.join(', ')})`)
+    } else elementsLus.push(e.libelle.charAt(0).toLowerCase() + e.libelle.slice(1))
+  }
+  // Le constat d'abord : une coupure ne peut emporter que la fin de la liste
+  const modifications = elements.length === 0
+    ? `Aucune modification ${doc.duDocument} ou de sa session enregistrée après la signature${doc.journalModificationsDepuis ? ` (suivi depuis le ${jour(doc.journalModificationsDepuis)})` : ''}`
+    : `Le document actuel diffère de l’exemplaire signé : ${pluriel(doc.modifications, 'modification')} après la signature, sans nouvelle signature du client (${elementsLus.join(', ')}).`
 
   return (
     <Document title={`Certificat de signature ${doc.numero}`} author={doc.organisme}>
       <Page size="A4" style={{ fontFamily: 'Satoshi', fontSize: 8, color: SURFACE_900, paddingTop: 30, paddingBottom: 46, paddingHorizontal: 45 }}>
 
-        {/* En-tête compact */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: 8, borderBottomWidth: 0.7, borderBottomColor: SURFACE_200, marginBottom: 7 }}>
+        {/* En-tête */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingBottom: 9, borderBottomWidth: 0.7, borderBottomColor: SURFACE_200, marginBottom: 9 }}>
           {org?.logo_url
-            ? <Image src={org.logo_url} style={{ height: 28, width: 80, objectFit: 'contain', objectPosition: 'left' }} />
+            ? <Image src={org.logo_url} style={{ height: 30, width: 84, objectFit: 'contain', objectPosition: 'left' }} />
             : <Text style={{ fontSize: 14, fontWeight: 700, color: BRAND_GREEN }}>{doc.organisme}</Text>}
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={{ fontFamily: 'Montserrat', fontWeight: 700, fontSize: 15, color: SURFACE_900, letterSpacing: -0.3 }}>Certificat de signature électronique</Text>
-            <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 2.5 }}>
-              {Type} {doc.numero} · émis le <Text style={{ fontFamily: POLICE_DATES, fontSize: 6.9 }}>{courte(preuve.emisLe)}</Text> (heure de Paris)
+            <Text style={{ fontSize: 7.6, color: SURFACE_500, marginTop: 2.5 }}>
+              {Type} {doc.numero} · émis le <Text style={{ fontFamily: POLICE_DATES, fontSize: 7 }}>{courte(preuve.emisLe)}</Text> (heure de Paris)
             </Text>
           </View>
         </View>
 
-        <Text style={{ fontSize: 7.7, color: SURFACE_700, lineHeight: 1.4, marginBottom: 6 }}>
+        <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.45, marginBottom: 8 }}>
           {doc.organisme} atteste que son système de gestion (CRM) a enregistré la signature électronique {doc.duDocument} décrit{contrat ? '' : 'e'} ci-dessous,
           sous le nom déclaré par le signataire, {auPlusTard ? 'au plus tard ' : ''}à la date et à l’heure indiquées. Ni l’organisme ni un tiers n’ont vérifié l’identité du signataire.
         </Text>
 
         {/* L'instant de la signature */}
-        <View style={{ height: 58, backgroundColor: BRAND_ULTRA_LIGHT, borderRadius: 6, paddingVertical: 7, paddingHorizontal: 11, marginBottom: 6 }}>
-          <Text style={{ fontSize: 7.3, color: BRAND_GREEN, fontWeight: 700 }}>
+        <View style={{ backgroundColor: BRAND_ULTRA_LIGHT, borderRadius: 6, paddingVertical: 9, paddingHorizontal: 12, marginBottom: 8 }}>
+          <Text style={{ fontSize: 7.6, color: BRAND_GREEN, fontWeight: 700 }}>
             {signature.horodatage ? (auPlusTard ? 'Signature électronique enregistrée au plus tard le' : 'Signature électronique enregistrée le') : 'Date et heure de la signature électronique'}
           </Text>
-          <Text style={{ fontFamily: POLICE_DATES_GRAS, fontSize: 12.5, color: SURFACE_900, marginTop: 2.5 }}>
+          <Text style={{ fontFamily: POLICE_DATES_GRAS, fontSize: 13, color: SURFACE_900, marginTop: 3 }}>
             {signature.horodatage ? horodatageLisible(signature.horodatage) : 'Non enregistrées'}
           </Text>
-          <Text style={{ maxLines: 1, fontSize: 6.8, color: SURFACE_700, marginTop: 2.5 }}>
-            {signature.horodatage ? <Text style={{ fontFamily: POLICE_DATES, fontSize: 6.5 }}>{utc(signature.horodatage)}</Text> : null}
+          <Text style={{ fontSize: 7, color: SURFACE_700, marginTop: 3 }}>
+            {signature.horodatage ? <Text style={{ fontFamily: POLICE_DATES, fontSize: 6.6 }}>{utc(signature.horodatage)}</Text> : null}
             {signature.horodatage ? ' · ' : ''}{provenance}
-          </Text>
-          <Text style={{ maxLines: 1, fontSize: 6.6, color: SURFACE_500, marginTop: 1.5 }}>
-            Les dates portées sur {doc.nomCourt} (« Fait à …, le … » et la date sous « Signé électroniquement ») ne datent pas la signature : seul cet horodatage la date.
           </Text>
         </View>
 
         {/* Document et signataire */}
         <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-          <Bloc titre={`${Type} signé${contrat ? '' : 'e'}`} hauteur={170} style={{ flex: PART_LARGE }}>
+          <Bloc titre={`${Type} signé${contrat ? '' : 'e'}`} hauteur={176} style={{ flex: PART_LARGE }}>
             <Ligne label="Document">{doc.intitule}</Ligne>
             <Ligne label="Référence">{doc.numero}</Ligne>
-            <Ligne label={doc.clientLibelle} lignes={2}>{[doc.client || 'Non renseigné', doc.clientSiret ? `SIRET${NBSP}${doc.clientSiret}` : null].filter(Boolean).join(' · ')}</Ligne>
-            {doc.formationActuelle ? (
-              <Ligne label="Formation signée" lignes={3}>
-                <>
-                  {ajuster(doc.formation || 'Non renseignée', 2, INTERIEUR_LARGE - 78, TAILLE_VALEUR)}
-                  {'\n'}
-                  <Text style={{ fontSize: 6.8, color: SURFACE_500 }}>remplacée depuis la signature (voir plus bas)</Text>
-                </>
-              </Ligne>
-            ) : (
-              <Ligne label="Formation" lignes={3}>{doc.formation || 'Non renseignée'}</Ligne>
-            )}
-            <Ligne label="Dates de formation" mono lignes={2}>{doc.datesFormation ? datesFr(doc.datesFormation) : 'Non précisées'}</Ligne>
+            <Ligne label={doc.clientLibelle}>{[doc.client || 'Non renseigné', doc.clientSiret ? `SIRET${NBSP}${doc.clientSiret}` : null].filter(Boolean).join(' · ')}</Ligne>
+            <Ligne label="Formation">{doc.formation || 'Non renseignée'}</Ligne>
+            <Ligne label="Dates de formation" mono>{doc.datesFormation ? datesFr(doc.datesFormation) : 'Non précisées'}</Ligne>
             <Ligne label="Session">{doc.session || 'Aucune'}</Ligne>
-            <Ligne label="Organisme" lignes={2}>{[doc.organisme, doc.organismeSiret ? `SIRET${NBSP}${doc.organismeSiret}` : null, doc.organismeNda ? `NDA${NBSP}${doc.organismeNda}` : null].filter(Boolean).join(' · ')}</Ligne>
+            <Ligne label="Organisme">{[doc.organisme, doc.organismeSiret ? `SIRET${NBSP}${doc.organismeSiret}` : null, doc.organismeNda ? `NDA${NBSP}${doc.organismeNda}` : null].filter(Boolean).join(' · ')}</Ligne>
             <Ligne label="Identifiant" mono>{doc.identifiant}</Ligne>
           </Bloc>
-          <Bloc titre="Signataire" hauteur={170} style={{ flex: 1 }}>
-            <Ligne label="Nom déclaré" largeur={64} lignes={2} interieur={INTERIEUR_ETROIT}>{signataire.nom}</Ligne>
-            <Ligne label="Qualité déclarée" largeur={64} lignes={2} interieur={INTERIEUR_ETROIT}>
+          <Bloc titre="Signataire" hauteur={176} style={{ flex: 1 }}>
+            <Ligne label="Nom déclaré" largeur={64} interieur={INTERIEUR_ETROIT}>{signataire.nom}</Ligne>
+            <Ligne label="Qualité déclarée" largeur={64} interieur={INTERIEUR_ETROIT}>
               {contrat ? 'Stagiaire, partie au contrat'
                 : signature.consentement.etat === 'coche' ? 'Représentant de l’entreprise cliente (case cochée)'
-                : 'Non déclarée : pas de case à cette date'}
+                : 'Non déclarée (pas de case à cette date)'}
             </Ligne>
-            <Ligne label="Lien envoyé à" largeur={64} lignes={2} interieur={INTERIEUR_ETROIT}>
-              {parcours.canal === 'portail' ? 'Signature depuis l’espace client'
-                : parcours.adresses.length ? <>{adressesEnLignes(parcours.adresses.join(', '), 2, INTERIEUR_ETROIT - 64, TAILLE_VALEUR)}</>
-                : 'Aucun e-mail enregistré'}
-            </Ligne>
-            <Ligne label="Procédé" largeur={64} lignes={2} interieur={INTERIEUR_ETROIT}>
+            <Ligne label="Procédé" largeur={64} interieur={INTERIEUR_ETROIT}>
               {parcours.canal === 'portail' ? 'Espace client, puis signature tracée à l’écran' : 'Lien unique propre au document, puis signature tracée à l’écran'}
             </Ligne>
-            <View style={{ marginTop: 2, height: 46, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE_50 }}>
-              <Image src={signature.image} style={{ maxHeight: 40, maxWidth: 150, objectFit: 'contain' }} />
+            <View style={{ marginTop: 3, height: 56, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: SURFACE_50 }}>
+              <Image src={signature.image} style={{ maxHeight: 48, maxWidth: 160, objectFit: 'contain' }} />
             </View>
           </Bloc>
         </View>
 
-        {/* Circonstances et parcours */}
+        {/* Signature et envoi */}
         <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>
-          <Bloc titre="Circonstances de la signature" hauteur={202} style={{ flex: PART_LARGE }}>
+          <Bloc titre="Signature électronique" hauteur={150} style={{ flex: PART_LARGE }}>
+            <Ligne label="Date et heure" mono fort>
+              {signature.horodatage ? `${courte(signature.horodatage)} (heure de Paris)${auPlusTard ? ', au plus tard' : ''}` : 'Non enregistrées'}
+            </Ligne>
             <Ligne label="Adresse IP">{signature.ip || (signature.captation ? 'Non enregistrée' : pasEncore)}</Ligne>
-            <Ligne label="Appareil" lignes={2}>{signature.appareil ? `${signature.appareil}${signature.captation ? '' : ' (déclaré par la page)'}` : signature.captation ? 'Non enregistré' : 'Non enregistré : pas encore relevé par le CRM'}</Ligne>
-            <Ligne label="Consentement" lignes={3}>
+            <Ligne label="Appareil">{signature.appareil ? `${signature.appareil}${signature.captation ? '' : ' (déclaré par la page)'}` : signature.captation ? 'Non enregistré' : 'Non relevé à cette date'}</Ligne>
+            <Ligne label="Consentement">
               {signature.consentement.etat === 'coche' ? `Case cochée : « ${signature.consentement.texte} »`
                 : signature.consentement.etat === 'texte_non_enregistre' ? 'Case obligatoire, texte non enregistré'
                 : signature.consentement.etat === 'non_enregistre' ? 'Non enregistré'
                 : 'Pas de case de consentement à cette date'}
             </Ligne>
-            <Ligne label="PDF complet" lignes={4} fort={signature.lecture.etat === 'ouvert_equipe'}>{pdfComplet}</Ligne>
-            <Ligne label="Compte connecté" lignes={2} fort={!!signature.compteCrm}>{compte}</Ligne>
-            <Ligne label="Recoupement IP" lignes={2} fort={!!signature.ip && signature.adresseVueAvecCompteCrm}>
-              {!signature.ip ? 'Sans objet : adresse IP non enregistrée'
-                : signature.adresseVueAvecCompteCrm ? 'Oui : adresse déjà relevée avec un compte de l’organisme connecté'
-                : 'Non relevée avec un compte de l’organisme connecté'}
-            </Ligne>
+            <Ligne label="Jeton de signature" mono>{parcours.jeton ? <>{enDeuxLignes(parcours.jeton)}</> : 'Non conservé'}</Ligne>
           </Bloc>
-          <Bloc titre="Parcours" hauteur={202} style={{ flex: 1 }}>
-            <Ligne label="Création" largeur={78} interieur={INTERIEUR_ETROIT} mono>{courte(parcours.creeLe)}</Ligne>
-            <Ligne label="Envoi du lien" largeur={78} interieur={INTERIEUR_ETROIT} lignes={4} fort={!!envoi.preparation}>{envoiLien}</Ligne>
-            <Ligne label="Dernière ouverture" largeur={78} interieur={INTERIEUR_ETROIT} lignes={4} fort={ouvertureCrmSeule}>{derniereOuverture}</Ligne>
-            <Ligne label="Signature" largeur={78} interieur={INTERIEUR_ETROIT} lignes={2} mono fort>
-              {signature.horodatage ? `${courte(signature.horodatage)}${auPlusTard ? ' (au plus tard)' : ''}` : 'Non enregistrée'}
+          <Bloc titre="Envoi et archivage" hauteur={150} style={{ flex: 1 }}>
+            <Ligne label="Lien envoyé le" largeur={74} interieur={INTERIEUR_ETROIT}>{lienEnvoye}</Ligne>
+            <Ligne label="Destinataire" largeur={74} interieur={INTERIEUR_ETROIT}>
+              {parcours.canal === 'portail' ? 'Espace client du client'
+                : parcours.adresses.length ? <>{adressesEnLignes(parcours.adresses.join(', '), 12, INTERIEUR_ETROIT - 74, TAILLE_VALEUR)}</>
+                : 'Aucun e-mail enregistré'}
             </Ligne>
-            <Ligne label="Archivage" largeur={78} interieur={INTERIEUR_ETROIT} lignes={2} mono={!!parcours.archiveLe}>
-              {parcours.archiveLe ? courte(parcours.archiveLe)
-                : exemplaire.etat === 'fige' ? 'Exemplaire figé, date non relevée'
-                : exemplaire.raison === 'anterieure' ? 'Aucun : antérieur à l’archivage automatique'
-                : 'Échec de l’archivage'}
-            </Ligne>
-            <Ligne label="Envoi de la copie" largeur={78} interieur={INTERIEUR_ETROIT} lignes={2}>{copie}</Ligne>
-            <Ligne label="Signatures antérieures" largeur={78} interieur={INTERIEUR_ETROIT} lignes={2} fort={a.annulees + a.remplacees > 0}>{anterieures}</Ligne>
+            <Ligne label="Archivage" largeur={74} interieur={INTERIEUR_ETROIT} mono={!!parcours.archiveLe}>{archivage}</Ligne>
+            <Ligne label="Copie au client" largeur={74} interieur={INTERIEUR_ETROIT} mono={parcours.copie.etat === 'client'}>{copie}</Ligne>
           </Bloc>
         </View>
 
-        {/* Après la signature */}
-        <Bloc titre="Après la signature" hauteur={100} style={{ marginBottom: 6 }}>
-          {doc.journalModificationsDepuis ? (
-            <Text style={{ maxLines: 2, fontSize: 6.6, color: SURFACE_500, lineHeight: 1.3, marginBottom: 2.5 }}>
-              {avecDates(`Hors avenants, le CRM ne journalise les modifications que depuis le ${jour(doc.journalModificationsDepuis)} : une modification antérieure n’est pas listée, et la formation et les dates ci-dessus peuvent en tenir compte.`, 6.2)}
-            </Text>
-          ) : null}
-          {elements.length === 0 ? (
-            <Text style={{ fontSize: TAILLE_VALEUR, color: SURFACE_900 }}>
-              Aucune modification {doc.duDocument} ou de sa session enregistrée après la signature.
-            </Text>
-          ) : (
-            <>
-              <Text style={{ fontSize: TAILLE_VALEUR, color: SURFACE_900, fontWeight: 700, marginBottom: 2 }}>
-                {`${pluriel(doc.modifications, 'modification')} enregistrée${doc.modifications > 1 ? 's' : ''} après la signature, sans nouvelle signature du client :`}
-              </Text>
-              {restants > 0 ? (
-                <Text style={{ maxLines: 2, fontSize: 7.1, color: SURFACE_900, lineHeight: 1.3, marginBottom: 2 }}>
-                  {ajuster(`Éléments modifiés : ${elements.map((e) => e.libelle.charAt(0).toLowerCase() + e.libelle.slice(1)).join(', ')}.`, 2, INTERIEUR_PLEIN, 7.1)}
-                </Text>
-              ) : null}
-              {detaillees.map((e, i) => (
-                <View key={i} style={{ flexDirection: 'row', marginBottom: 1.5 }} wrap={false}>
-                  <Text style={{ fontFamily: POLICE_DATES, fontSize: 6.6, color: SURFACE_700, width: 98 }}>{courte(e.dernier)}</Text>
-                  <Text style={{ maxLines: 1, fontSize: 7.1, color: SURFACE_900, flex: 1 }}>{avecDates(ligneModification(e, largeurDetail, 7.1), 6.6)}</Text>
-                </View>
-              ))}
-              {restants > 0 ? (
-                <Text style={{ fontSize: 6.7, color: SURFACE_500 }}>
-                  {`et ${pluriel(restants, 'autre élément')}, détaillé${restants > 1 ? 's' : ''} dans le journal de l’organisme, communiqué sur demande.`}
-                </Text>
-              ) : null}
-            </>
-          )}
-        </Bloc>
-
         {/* Intégrité */}
-        <Bloc titre="Intégrité" hauteur={86} style={{ marginBottom: 6, backgroundColor: BRAND_ULTRA_LIGHT, borderColor: BRAND_ULTRA_LIGHT }}>
-          <Ligne label="Exemplaire signé" largeur={110} interieur={INTERIEUR_PLEIN} lignes={2}
-            fort={exemplaire.etat === 'fige' && (exemplaire.introuvable || exemplaire.verifie === false)}>
+        <Bloc titre="Intégrité" hauteur={132} style={{ marginBottom: 8, backgroundColor: BRAND_ULTRA_LIGHT, borderColor: BRAND_ULTRA_LIGHT }}>
+          <Ligne label="Exemplaire signé" largeur={118} interieur={INTERIEUR_PLEIN}>
             {exemplaire.etat === 'fige'
               ? `Figé à la signature et conservé par l’organisme, qui le produit sur demande. ${
                   exemplaire.introuvable ? 'Attention : introuvable dans l’archive à l’émission de ce certificat.'
@@ -577,21 +458,23 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
                   : exemplaire.verifie === false ? 'Attention : il ne correspond plus à l’empreinte enregistrée.'
                   : 'Non relu à l’émission de ce certificat.'}`
               : exemplaire.raison === 'anterieure'
-                ? `Non figé : aucun exemplaire conservé à la signature ; le PDF ${doc.duDocument} est régénéré avec les données actuelles et peut différer du document signé, programme compris.`
+                ? `Non figé : aucun exemplaire conservé à la signature ; le PDF ${doc.duDocument} est régénéré avec les données actuelles et peut différer du document signé.`
                 : 'Non conservé : l’archivage a échoué à la signature ; un PDF régénéré peut différer du document signé.'}
           </Ligne>
-          <Ligne label="Empreinte de l’exemplaire" largeur={110} interieur={INTERIEUR_PLEIN} mono>
+          <Ligne label="Empreinte de l’exemplaire" largeur={118} interieur={INTERIEUR_PLEIN} mono>
             {exemplaire.etat === 'fige' ? exemplaire.sha256 : exemplaire.sha256Note ? `${exemplaire.sha256Note} (notée à la signature)` : 'Aucune'}
           </Ligne>
-          <Ligne label="Empreinte du tracé" largeur={110} interieur={INTERIEUR_PLEIN} mono>{signature.imageSha256}</Ligne>
-          <Ligne label="Empreinte des preuves" largeur={110} interieur={INTERIEUR_PLEIN} mono>{preuve.empreinteDossier}</Ligne>
-          <Text style={{ fontSize: 6.4, color: SURFACE_500 }}>
-            Empreintes SHA-256 du CRM ; celle des preuves porte sur les données enregistrées, journal complet compris. Aucun scellement par un tiers.
+          <Ligne label="Modifications" largeur={118} interieur={INTERIEUR_PLEIN}>{modifications}</Ligne>
+          <Ligne label="Empreinte du tracé" largeur={118} interieur={INTERIEUR_PLEIN} mono>{signature.imageSha256}</Ligne>
+          <Ligne label="Empreinte des preuves" largeur={118} interieur={INTERIEUR_PLEIN} mono>{preuve.empreinteDossier}</Ligne>
+          <Text style={{ fontSize: 6.6, color: SURFACE_500, lineHeight: 1.3 }}>
+            Empreintes SHA-256 calculées par le CRM ; le jeton de signature est l’empreinte du lien unique, qui n’est jamais imprimé ; celle des preuves porte sur
+            l’ensemble des données enregistrées pour cette signature. Aucun scellement par un tiers.
           </Text>
         </Bloc>
 
         {/* Valeur juridique */}
-        <Text style={{ fontSize: 6.4, color: SURFACE_500, lineHeight: 1.4 }}>
+        <Text style={{ fontSize: 6.5, color: SURFACE_500, lineHeight: 1.4 }}>
           Signature électronique de niveau simple (règlement (UE) n°{NBSP}910/2014, eIDAS, article 3, point 10) : son effet juridique et sa recevabilité comme preuve en justice
           ne peuvent être refusés au seul motif qu’elle est électronique ou non qualifiée (article 25, paragraphe 1), mais elle ne bénéficie pas de la présomption de fiabilité
           de l’article 1367 du Code civil, réservée à la signature qualifiée (décret n°{NBSP}2017-1416 du 28 septembre 2017). Établi par {doc.organisme}, partie à l’acte, à partir de son CRM,

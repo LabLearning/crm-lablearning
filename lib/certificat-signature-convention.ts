@@ -84,7 +84,7 @@ export async function construirePreuveSignatureConvention(
 
   const [preuves, { data: orgRaw }, { data: notifs }, { data: mails }, { data: audits }, evenementsRes, activitesRes, avenantsRes, equipeRes, journalDebutRes, activitesSessionRes] = await Promise.all([
     supabase.from('conventions')
-      .select('signature_client_signed_at, signature_document_path, signature_document_sha256, signature_consentement')
+      .select('signature_client_signed_at, signature_document_path, signature_document_sha256, signature_consentement, signature_token')
       .eq('id', c.id).maybeSingle(),
     supabase.from('organizations').select('*').eq('id', orgId).single(),
     supabase.from('notifications').select('created_at')
@@ -485,7 +485,7 @@ export async function construirePreuveSignatureConvention(
     : envoisCrm.length ? 'Envoi demandé depuis le CRM ; destinataire non journalisé'
     : 'Lien préparé dans le CRM ; aucun envoi par e-mail enregistré'
 
-  // ── Résumé à lignes fixes du certificat d'une page ──
+  // ── Ce que le certificat d'une page imprime de l'envoi et de la copie ──
   // Tout se lit dans le cycle de la signature en cours : après la dernière
   // annulation, avant la signature. Une trace absente reste dite absente.
   const avantSignature = (t: string | null) => !!t && (!horodatage || t <= horodatage)
@@ -493,66 +493,40 @@ export async function construirePreuveSignatureConvention(
   const instant = (m: any) => iso(m.sent_at || m.created_at)
   const derniere = <T,>(l: T[]) => (l.length ? l[l.length - 1] : null)
 
-  // Envoi du lien : dernier e-mail parti, échec postérieur, lien remis à la main après le dernier e-mail
+  // Envoi du lien : dernier e-mail parti, ou e-mail resté non parti après lui
   const emailsCycle = demandes.filter((m: any) => dansCycle(instant(m)))
   const parti: any = derniere(emailsCycle.filter((m: any) => m.status === 'sent'))
   const echoue: any = derniere(emailsCycle.filter((m: any) => m.status !== 'sent'))
-  const prep: any = derniere((audits || []).filter((a: any) => a.action === 'generate_signature_link' && dansCycle(iso(a.created_at))))
   const tParti = parti ? instant(parti) : null
   const tEchec = echoue ? instant(echoue) : null
-  const tPrep = prep ? iso(prep.created_at) : null
   const envoi: PreuveSignatureConvention['parcours']['envoi'] = {
     email: tParti ? { le: tParti, pdfJoint: /signature requise/i.test(parti.subject || '') } : null,
     echec: tEchec && (!tParti || tEchec > tParti) ? { le: tEchec, statut: String(echoue.status || 'inconnu') } : null,
-    // Une préparation à moins d'une minute de l'e-mail fait partie de l'envoi
-    preparation: tPrep && (!tParti || new Date(tPrep).getTime() > new Date(tParti).getTime() + 60_000) ? { le: tPrep, par: nomUser(prep.user_id) } : null,
-    demandeSansEmail: !tParti && !tEchec && (audits || []).some((a: any) => /^send_/.test(a.action) && dansCycle(iso(a.created_at))),
   }
   const adressesCycle = Array.from(new Set(emailsCycle.filter((m: any) => m.status === 'sent').map((m: any) => String(m.to_email || '').toLowerCase()).filter(Boolean))) as string[]
-  const pdfJoint: any = derniere(emailsCycle.filter((m: any) => m.status === 'sent' && /signature requise/i.test(m.subject || '')))
 
-  // Ouvertures de la page et du PDF : celles d'un navigateur connecté au CRM à part
-  const ouvertures = evenements.filter((e) => e.evenement === 'lien_ouvert' && dansCycle(e.survenu_at))
-  const ouvSignataire: any = derniere(ouvertures.filter((e) => !e.details?.compte_crm))
-  const ouvCrm: any = derniere(ouvertures.filter((e) => e.details?.compte_crm))
-  const consultCrm: any = derniere(evenements.filter((e) => e.evenement === 'document_consulte' && dansCycle(e.survenu_at) && e.details?.compte_crm))
-
-  // Copie de l'exemplaire signé : au client, ou à l'organisme seulement. Avant
-  // le 14/08/2026 (fa03484), elle partait sans laisser de trace.
+  // Copie de l'exemplaire signé au client (l'adresse de l'organisme ne compte
+  // pas). Avant le 14/08/2026 (fa03484), la copie partait sans laisser de trace.
   const domainesOrganisme = new Set([orgRaw?.email, orgRaw?.email_contact].filter(Boolean)
     .map((x: any) => String(x).toLowerCase().split('@')[1]).filter(Boolean))
   const chezOrganisme = (adresse: unknown) => domainesOrganisme.has(String(adresse || '').toLowerCase().split('@')[1] || '')
-  const copiesParties = copiesCycle.filter((m: any) => m.status === 'sent')
-  const copieClient: any = copiesParties.find((m: any) => !chezOrganisme(m.to_email)) || null
+  const copiesClient = copiesCycle.filter((m: any) => !chezOrganisme(m.to_email))
+  const copieClient: any = copiesClient.find((m: any) => m.status === 'sent') || null
   const DEBUT_JOURNAL_COPIES = '2026-08-14T07:58:00.000Z'
   const copie: PreuveSignatureConvention['parcours']['copie'] =
     copieClient ? { etat: 'client', le: instant(copieClient) }
-    : copiesParties.length ? { etat: 'organisme', le: instant(copiesParties[0]) }
-    : copiesCycle.length ? { etat: 'echec', le: instant(copiesCycle[0]) }
-    : horodatage && horodatage < DEBUT_JOURNAL_COPIES ? { etat: 'non_journalise', le: null }
+    : copiesClient.length ? { etat: 'echec', le: instant(copiesClient[0]) }
+    : horodatage && horodatage < DEBUT_JOURNAL_COPIES && !copiesCycle.length ? { etat: 'non_journalise', le: null }
     : { etat: 'aucune', le: null }
 
-  // Signatures antérieures : annulées par l'organisme, ou remplacées sans annulation journalisée
-  const anterieures = evenementsJournal.filter((e) => /annulée ensuite|remplacée depuis/.test(e.libelle))
-  const annulations = evenementsJournal.filter((e) => e.libelle === 'Signature annulée par l’organisme')
-
   const parcours: PreuveSignatureConvention['parcours'] = {
-    creeLe: iso(c.created_at)!,
     envoi,
     adresses: adressesCycle,
-    pdfJointLe: pdfJoint ? instant(pdfJoint) : null,
-    ouvertureSignataire: ouvSignataire ? ouvSignataire.survenu_at : null,
-    ouvertureCrm: ouvCrm ? { le: ouvCrm.survenu_at, compte: String(ouvCrm.details.compte_crm) } : null,
-    consultationCrm: consultCrm ? { le: consultCrm.survenu_at, compte: String(consultCrm.details.compte_crm) } : null,
     archiveLe: exemplaire.etat === 'fige' ? exemplaire.figeLe : null,
     copie,
-    anterieures: {
-      annulees: anterieures.filter((e) => /annulée ensuite/.test(e.libelle)).length,
-      remplacees: anterieures.filter((e) => /remplacée depuis/.test(e.libelle)).length,
-      depuisCrm: anterieures.filter((e) => /compte du CRM/.test(e.detail || '')).length,
-      derniereAnnulation: annulations.length ? annulations[annulations.length - 1].at : null,
-    },
     canal: canal === 'portail' ? 'portail' : 'lien',
+    // Le jeton reste valable après la signature : seule son empreinte s'imprime
+    jeton: p.signature_token ? sha256(String(p.signature_token)) : null,
   }
 
   // Éléments modifiés après la signature, du plus lourd de conséquences au plus léger
