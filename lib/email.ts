@@ -1,4 +1,3 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 interface SendEmailParams {
   organizationId: string
@@ -45,7 +44,8 @@ function renderTemplate(template: string, variables: Record<string, string>): st
 }
 
 export async function sendTemplateEmail(params: SendEmailParams): Promise<{ success: boolean; error?: string; emailLogId?: string }> {
-  const supabase = await createServerSupabaseClient()
+  const { createServiceRoleClient } = await import('@/lib/supabase/server')
+  const supabase = await createServiceRoleClient()
 
   // Fetch template
   const { data: template } = await supabase

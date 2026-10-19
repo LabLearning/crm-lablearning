@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
 
 interface AuditLogEntry {
   action: string
@@ -7,14 +7,18 @@ interface AuditLogEntry {
   details?: Record<string, unknown>
 }
 
-/** Écrit une ligne d'audit ; renvoie true si elle est bien enregistrée. */
+/**
+ * Écrit une ligne d'audit ; renvoie true si elle est bien enregistrée.
+ * La session (cookies) ne sert qu'à savoir qui agit : la lecture du compte et
+ * l'écriture du journal passent par la clé de service, comme toutes les
+ * données (règle 2 du projet).
+ */
 export async function logAudit(entry: AuditLogEntry): Promise<boolean> {
   try {
-    const supabase = await createServerSupabaseClient()
-
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await (await createServerSupabaseClient()).auth.getUser()
     if (!user) return false
 
+    const supabase = await createServiceRoleClient()
     const { data: profile } = await supabase
       .from('users')
       .select('organization_id')
