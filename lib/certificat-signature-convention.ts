@@ -185,9 +185,19 @@ export async function construirePreuveSignatureConvention(
     raison: captation ? 'echec' : 'anterieure',
     sha256Note: evtSignature?.details?.document_sha256 || null,
   }
+  // Pages de l'exemplaire archivé (hors empreinte : lu sur le fichier à chaque tirage)
+  let pagesExemplaire: number | null = null
+  const compterPages = async (octets: Buffer) => {
+    try {
+      const { PDFDocument } = await import('pdf-lib')
+      pagesExemplaire = (await PDFDocument.load(octets, { ignoreEncryption: true })).getPageCount()
+    } catch { pagesExemplaire = null }
+  }
   if (p.signature_document_path && p.signature_document_sha256) {
     const { data: fichier, error } = await supabase.storage.from('documents').download(p.signature_document_path)
-    const verifie = fichier ? sha256(Buffer.from(await fichier.arrayBuffer())) === p.signature_document_sha256 : null
+    const octets = fichier ? Buffer.from(await fichier.arrayBuffer()) : null
+    if (octets) await compterPages(octets)
+    const verifie = octets ? sha256(octets) === p.signature_document_sha256 : null
     const ms = msFichier(String(p.signature_document_path))
     exemplaire = {
       etat: 'fige', sha256: p.signature_document_sha256, figeLe: ms ? new Date(ms).toISOString() : null,
@@ -205,8 +215,10 @@ export async function construirePreuveSignatureConvention(
     if (dernier) {
       const { data: fichier } = await supabase.storage.from('documents').download(`${dossier}/${dernier.nom}`)
       if (fichier) {
+        const octets = Buffer.from(await fichier.arrayBuffer())
+        await compterPages(octets)
         exemplaire = {
-          etat: 'fige', sha256: sha256(Buffer.from(await fichier.arrayBuffer())),
+          etat: 'fige', sha256: sha256(octets),
           figeLe: new Date(dernier.ms).toISOString(), verifie: null, empreinteEnregistree: false, introuvable: false,
         }
       }
@@ -527,6 +539,7 @@ export async function construirePreuveSignatureConvention(
     canal: canal === 'portail' ? 'portail' : 'lien',
     // Le jeton reste valable après la signature : seule son empreinte s'imprime
     jeton: p.signature_token ? sha256(String(p.signature_token)) : null,
+    pagesDocument: pagesExemplaire,
   }
 
   // Éléments modifiés après la signature, du plus lourd de conséquences au plus léger
