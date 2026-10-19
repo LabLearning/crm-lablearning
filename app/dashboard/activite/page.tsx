@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { estAdminTaches, filtrerTachesVisibles } from '@/lib/taches-visibilite'
 import { History } from '@/components/ui/icons'
 import { TABLES_ACTIVITE, entitesPourTable, tableDepuisEntite, type Activite, type Libelles } from '@/lib/activite'
 import { ActiviteClient, type Utilisateur, type Evenement } from './ActiviteClient'
@@ -169,6 +170,13 @@ export default async function ActivitePage({ searchParams }: { searchParams?: Pa
       .eq('organization_id', orgId)
       // Les questions posées à Starkk sur le site public ont leur propre lecture : elles noieraient le journal
       .neq('entity_type', 'chat_site')
+    // Les tâches d'admin à admin restent hors de vue des autres membres de l'équipe, journal compris
+    if (!estAdminTaches(session.user.role)) {
+      const { data: taches } = await supabase.from('crm_taches').select('id, created_by, assignee_id').eq('organization_id', orgId)
+      const visibles = new Set((await filtrerTachesVisibles(supabase, orgId, { id: session.user.id, role: session.user.role }, (taches || []) as any[])).map((t: any) => t.id))
+      const cachees = ((taches || []) as any[]).map((t) => t.id).filter((id: string) => !visibles.has(id))
+      if (cachees.length) q = q.or(`entity_type.neq.crm_tache,entity_id.not.in.(${cachees.join(',')})`)
+    }
     if (f.acteur === 'systeme') q = q.is('user_id', null)
     else if (f.acteur) q = q.eq('user_id', f.acteur)
     if (f.table) q = q.in('entity_type', entitesPourTable(f.table))

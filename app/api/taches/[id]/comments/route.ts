@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { tacheAccessible } from '@/lib/taches-visibilite'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,13 +9,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  // Vérifier que la tâche appartient à l'org
-  const { data: tache } = await supabase
-    .from('crm_taches')
-    .select('id')
-    .eq('id', params.id)
-    .eq('organization_id', session.organization.id)
-    .single()
+  // La tâche est de l'organisme, et visible pour ce compte (lib/taches-visibilite)
+  const tache = await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, params.id)
 
   if (!tache) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 

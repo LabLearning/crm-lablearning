@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { AgendaClient } from './AgendaClient'
+import { filtrerTachesVisibles } from '@/lib/taches-visibilite'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export default async function AgendaPage() {
     supabase
       .from('crm_taches')
       .select(
-        `id, titre, status, priorite, due_date, assignee_id, entity_type, entity_label,
+        `id, titre, status, priorite, due_date, assignee_id, created_by, entity_type, entity_label,
          assignee:users!crm_taches_assignee_id_fkey(id, first_name, last_name, email)`,
       )
       .eq('organization_id', orgId)
@@ -110,7 +111,7 @@ export default async function AgendaPage() {
           isPoei: !!(s.formation?.is_poei) || poeiSessionIds.has(s.id),
           poeiId: poeiParSession.get(s.id) || null,
         }))]}
-        taches={(tachesRes.data || []).map((t: any) => ({
+        taches={(await filtrerTachesVisibles(supabase, orgId, { id: session.user.id, role: session.user.role }, (tachesRes.data || []) as any[])).map((t: any) => ({
           id: t.id,
           titre: t.titre,
           status: t.status,

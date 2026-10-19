@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import TachesBoard from './TachesBoard'
+import { filtrerTachesVisibles } from '@/lib/taches-visibilite'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Tâches — CRM Lab Learning' }
@@ -38,9 +39,12 @@ export default async function TachesPage() {
       .order('first_name'),
   ])
 
+  // Les tâches d'admin à admin ne sont montrées qu'aux admins (lib/taches-visibilite)
+  const taches = await filtrerTachesVisibles(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, (tachesRes.data || []) as any[])
+
   return (
     <TachesBoard
-      taches={(tachesRes.data || []) as any[]}
+      taches={taches}
       users={(usersRes.data || []) as any[]}
       currentUserId={session.user.id}
     />

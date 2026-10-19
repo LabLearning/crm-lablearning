@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { tacheAccessible } from '@/lib/taches-visibilite'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import { createNotification } from '@/lib/email'
@@ -157,6 +158,8 @@ export async function createTacheAction(formData: FormData): Promise<ActionResul
 export async function updateTacheAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+  // Une tâche cachée à ce compte (d'admin à admin) n'existe pas pour lui
+  if (!(await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, id))) return { success: false, error: 'Tâche introuvable' }
 
   const updates: Record<string, unknown> = {}
 
@@ -240,6 +243,8 @@ export async function moveTacheAction(
 ): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+  // Une tâche cachée à ce compte (d'admin à admin) n'existe pas pour lui
+  if (!(await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, id))) return { success: false, error: 'Tâche introuvable' }
 
   // Récupérer l'ancienne position/colonne
   const { data: current } = await supabase
@@ -320,6 +325,8 @@ export async function moveTacheAction(
 export async function deleteTacheAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+  // Une tâche cachée à ce compte (d'admin à admin) n'existe pas pour lui
+  if (!(await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, id))) return { success: false, error: 'Tâche introuvable' }
 
   const { error } = await supabase
     .from('crm_taches')
@@ -337,6 +344,8 @@ export async function deleteTacheAction(id: string): Promise<ActionResult> {
 export async function assignTacheToMeAction(id: string): Promise<ActionResult> {
   const session = await getSession()
   const supabase = await createServiceRoleClient()
+  // Une tâche cachée à ce compte (d'admin à admin) n'existe pas pour lui
+  if (!(await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, id))) return { success: false, error: 'Tâche introuvable' }
 
   const { error } = await supabase
     .from('crm_taches')
@@ -356,14 +365,8 @@ export async function addCommentAction(tacheId: string, contenu: string): Promis
   const trimmed = contenu.trim()
   if (!trimmed) return { success: false, error: 'Commentaire vide' }
 
-  // Vérifier que la tâche est de l'org
-  const { data: tache } = await supabase
-    .from('crm_taches')
-    .select('id, titre, assignee_id, created_by')
-    .eq('id', tacheId)
-    .eq('organization_id', session.organization.id)
-    .single()
-
+  // La tâche est de l'organisme, et visible pour ce compte (lib/taches-visibilite)
+  const tache = await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, tacheId)
   if (!tache) return { success: false, error: 'Tâche introuvable' }
 
   const { error } = await supabase.from('crm_taches_commentaires').insert({
@@ -416,8 +419,7 @@ export async function addTacheMemoAction(tacheId: string, audioBase64: string, d
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  const { data: tache } = await supabase
-    .from('crm_taches').select('id').eq('id', tacheId).eq('organization_id', session.organization.id).single()
+  const tache = await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, tacheId)
   if (!tache) return { success: false, error: 'Tâche introuvable' }
 
   const b64 = (audioBase64 || '').replace(/^data:[^;]+;base64,/, '')
@@ -448,8 +450,9 @@ export async function deleteTacheMemoAction(memoId: string): Promise<ActionResul
   const supabase = await createServiceRoleClient()
 
   const { data: memo } = await supabase
-    .from('crm_taches_memos').select('id, audio_path').eq('id', memoId).eq('organization_id', session.organization.id).maybeSingle()
+    .from('crm_taches_memos').select('id, audio_path, tache_id').eq('id', memoId).eq('organization_id', session.organization.id).maybeSingle()
   if (!memo) return { success: false, error: 'Mémo introuvable' }
+  if (!(await tacheAccessible(supabase, session.organization.id, { id: session.user.id, role: session.user.role }, memo.tache_id))) return { success: false, error: 'Mémo introuvable' }
 
   await supabase.from('crm_taches_memos').delete().eq('id', memoId)
   if (memo.audio_path) await supabase.storage.from('documents').remove([memo.audio_path])
