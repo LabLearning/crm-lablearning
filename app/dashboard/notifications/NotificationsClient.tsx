@@ -55,25 +55,35 @@ export default function NotificationsClient({ initial, userId }: { initial: Noti
   const [filterType, setFilterType] = useState<string>('all')
   const [query, setQuery] = useState('')
 
-  // Realtime
+  // Realtime : le socket s'authentifie d'abord avec la session (comme la cloche),
+  // sinon l'abonnement part en anonyme et ne reçoit rien
   useEffect(() => {
     const supabase = createClient()
-    const channel = supabase
-      .channel(`notifs-page:${userId}`)
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => setNotifs((prev) => [payload.new as Notification, ...prev]),
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => setNotifs((prev) => prev.map((n) => n.id === (payload.new as Notification).id ? payload.new as Notification : n)),
-      )
-      .on('postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
-        (payload) => setNotifs((prev) => prev.filter((n) => n.id !== (payload.old as Notification).id)),
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let annule = false
+    ;(async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) supabase.realtime.setAuth(session.access_token)
+      } catch { /* ignore */ }
+      if (annule) return
+      channel = supabase
+        .channel(`notifs-page:${userId}`)
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload) => setNotifs((prev) => prev.some((n) => n.id === (payload.new as Notification).id) ? prev : [payload.new as Notification, ...prev]),
+        )
+        .on('postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload) => setNotifs((prev) => prev.map((n) => n.id === (payload.new as Notification).id ? payload.new as Notification : n)),
+        )
+        .on('postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
+          (payload) => setNotifs((prev) => prev.filter((n) => n.id !== (payload.old as Notification).id)),
+        )
+        .subscribe()
+    })()
+    return () => { annule = true; if (channel) supabase.removeChannel(channel) }
   }, [userId])
 
   const filtered = useMemo(() => {
@@ -94,26 +104,34 @@ export default function NotificationsClient({ initial, userId }: { initial: Noti
   const unreadCount = notifs.filter((n) => !n.is_read).length
   const availableTypes = Array.from(new Set(notifs.map((n) => n.type)))
 
+  // L'écran suit chaque écriture réussie sans attendre l'événement temps réel
+  // (qui peut manquer : DELETE n'est pas filtré par utilisateur côté Realtime)
   async function markAsRead(id: string) {
     const supabase = createClient()
-    await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', id)
+    const read_at = new Date().toISOString()
+    const { error } = await supabase.from('notifications').update({ is_read: true, read_at }).eq('id', id)
+    if (!error) setNotifs((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true, read_at } : n))
   }
 
   async function markAllRead() {
     const supabase = createClient()
     const ids = notifs.filter((n) => !n.is_read).map((n) => n.id)
     if (ids.length === 0) return
-    await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).in('id', ids)
+    const read_at = new Date().toISOString()
+    const { error } = await supabase.from('notifications').update({ is_read: true, read_at }).in('id', ids)
+    if (!error) setNotifs((prev) => prev.map((n) => ids.includes(n.id) ? { ...n, is_read: true, read_at } : n))
   }
 
   async function deleteNotif(id: string) {
     const supabase = createClient()
-    await supabase.from('notifications').delete().eq('id', id)
+    const { error } = await supabase.from('notifications').delete().eq('id', id)
+    if (!error) setNotifs((prev) => prev.filter((n) => n.id !== id))
   }
 
   async function deleteRead() {
     const supabase = createClient()
-    await supabase.from('notifications').delete().eq('user_id', userId).eq('is_read', true)
+    const { error } = await supabase.from('notifications').delete().eq('user_id', userId).eq('is_read', true)
+    if (!error) setNotifs((prev) => prev.filter((n) => !n.is_read))
   }
 
   return (
