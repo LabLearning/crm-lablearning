@@ -491,6 +491,8 @@ export async function convertLeadToClientAction(
       .insert({
         organization_id: orgId,
         ...champsClient,
+        // Sans financeur indiqué par le lead, une entreprise est financée par son OPCO
+        financeur_type: (champsClient.financeur_type as string) || ((champsClient as any).type === 'particulier' ? null : 'opco'),
         opco_compte_status: lead.opco_compte_status || 'aucun',
         assigned_to: lead.assigned_to || session.user.id,
         created_by: session.user.id,
@@ -823,7 +825,7 @@ async function resolveLeadClient(supabase: any, orgId: string, lead: any, userId
     forme_juridique: lead.forme_juridique || null, tva_intra: lead.tva_intra || null,
     adresse: lead.adresse || null, code_postal: lead.code_postal || null, ville: lead.ville || null,
     telephone: lead.contact_telephone || null, email: lead.contact_email || null,
-    financeur_type: lead.financeur_type || null, opco_id: lead.opco_id || null,
+    financeur_type: lead.financeur_type || ((lead.type || 'entreprise') === 'particulier' ? null : 'opco'), opco_id: lead.opco_id || null,
     numero_opco: lead.numero_opco || null, franchise_id: lead.franchise_id || null,
     apporteur_id: lead.apporteur_id || null,
     assigned_to: lead.assigned_to || userId, created_by: userId,

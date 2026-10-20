@@ -357,7 +357,9 @@ export function ClientForm({ client, onSuccess, onCancel, users = [], canAssign 
 
       <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider pt-2">Financement</div>
 
-      <Select id="financeur_type" name="financeur_type" label="Type de financeur" options={financeurOptions} defaultValue={client?.financeur_type || ''} />
+      {/* Un nouveau client d'entreprise est financé par son OPCO dans la grande majorité des cas : coché d'office */}
+      <Select key={client ? 'fiche' : clientType} id="financeur_type" name="financeur_type" label="Type de financeur" options={financeurOptions}
+        defaultValue={client ? (client.financeur_type || '') : clientType === 'entreprise' ? 'opco' : ''} />
 
       {clientType === 'entreprise' && (
         <>
