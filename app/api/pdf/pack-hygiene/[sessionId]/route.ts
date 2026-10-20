@@ -53,9 +53,24 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
 
   const { data: sess } = await supabase
     .from('sessions')
-    .select('id, reference, date_debut, date_fin, formation_id, client_id, horaires_jours, formation:formation_id(intitule, duree_heures), client:client_id(*), formateur:formateur_id(prenom, nom)')
+    .select('id, reference, date_debut, date_fin, formation_id, client_id, formateur_id, horaires_jours, formation:formation_id(intitule, duree_heures), client:client_id(*), formateur:formateur_id(prenom, nom)')
     .eq('id', params.sessionId).eq('organization_id', orgId).maybeSingle()
   if (!sess) return NextResponse.json({ error: 'Session introuvable' }, { status: 404 })
+
+  // Un formateur ne tire que le pack de ses propres sessions (depuis son
+  // espace) ; les autres comptes doivent avoir accès aux sessions du tableau
+  // de bord (le pack porte les noms de l'établissement et des stagiaires).
+  if (auth.user.role === 'formateur') {
+    const { data: moi } = await supabase.from('formateurs').select('id').eq('user_id', auth.user.id).maybeSingle()
+    if (!moi || (sess as any).formateur_id !== moi.id) return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+  } else {
+    const { data: permissions } = await supabase.from('permissions').select('*')
+      .eq('organization_id', orgId).eq('role', auth.user.role)
+    const { checkDashboardAccess } = await import('@/lib/dashboard-guard')
+    if (!checkDashboardAccess('/dashboard/sessions', auth.user.role as any, (permissions || []) as any).allowed) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+    }
+  }
   const client: any = (sess as any).client
   if (!client) return NextResponse.json({ error: 'Aucun établissement rattaché à la session' }, { status: 400 })
   const formation: any = (sess as any).formation

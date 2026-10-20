@@ -3,7 +3,8 @@ import { Badge, PoeiBadge } from '@/components/ui'
 import { SESSION_STATUS_LABELS, SESSION_STATUS_COLORS } from '@/lib/types/formation'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { Calendar, MapPin, Video, Users, Clock, BookOpen, ClipboardList, CheckCircle2, Building2 } from '@/components/ui/icons'
+import { Calendar, MapPin, Video, Users, Clock, BookOpen, ClipboardList, CheckCircle2, Building2, ShieldCheck, Download } from '@/components/ui/icons'
+import { estFormationHygiene } from '@/lib/formation-hygiene'
 import type { SessionStatus } from '@/lib/types/formation'
 
 /**
@@ -18,7 +19,7 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
     .from('sessions')
     .select(`
       *,
-      formation:formation_id(intitule, duree_heures, modalite, is_poei),
+      formation:formation_id(intitule, duree_heures, modalite, is_poei, categorie),
       client:client_id(raison_sociale, nom_commercial, ville)
     `)
     .eq('formateur_id', formateurId)
@@ -142,6 +143,26 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
                           {s._rapport === 'brouillon' ? 'Compte rendu : brouillon à transmettre' : s.status === 'terminee' ? 'Compte rendu à faire' : 'Compte rendu de formation'}
                         </Link>
                       )
+                    )}
+                    {/* Session d'hygiène : le PMS personnalisé et le classeur à apporter dans l'établissement
+                        (espace connecté seulement : la route reconnaît le formateur par sa session) */}
+                    {basePath === '/mon-espace' && s.client && estFormationHygiene(s.formation || { intitule: s.intitule }) && (
+                      <>
+                        <a
+                          href={`/api/pdf/pack-hygiene/${s.id}?doc=pms`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 transition-colors"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" /> PMS de l&apos;établissement
+                        </a>
+                        <a
+                          href={`/api/pdf/pack-hygiene/${s.id}?doc=classeur`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-100 text-surface-600 text-xs font-medium hover:bg-surface-200 transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" /> Classeur hygiène complet
+                        </a>
+                      </>
                     )}
                   </div>
                 </div>
