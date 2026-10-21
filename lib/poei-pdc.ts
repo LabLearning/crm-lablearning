@@ -625,7 +625,8 @@ export async function donneesPlanDeveloppement(supabase: any, organizationId: st
       fin: jjmmaaaa(fin),
       hebdo: hebdo && hebdo >= 1 && hebdo <= 48 ? `${hebdo} heures` : '',
       total: total ? (Number.isInteger(total) ? `${total} heures` : heuresLisibles(total)) : '',
-      embauche: jjmmaaaa(candidat.date_embauche_prevue),
+      // Celle du candidat, sinon celle réglée dans les paramètres de la POEI
+      embauche: jjmmaaaa(candidat.date_embauche_prevue || poei?.date_embauche_prevue),
       stagiaireCiv: civiliteStagiaire(app), stagiaire: nomPrenom(app),
       tuteurCiv: parties.tuteurCiv, tuteur: parties.tuteur, fonction: parties.fonction,
       rows: lignes.map((l) => ({

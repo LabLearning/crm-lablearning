@@ -48,6 +48,12 @@ export function PoeiEditor({ poei, clients, formations, nbCandidats = 0, finance
           <Input id="date_debut" name="date_debut" type="date" label="Début" defaultValue={d(poei.date_debut)} />
           <Input id="date_fin" name="date_fin" type="date" label="Fin" defaultValue={d(poei.date_fin)} />
           <Input id="duree_heures" name="duree_heures" type="number" label="Durée (h), 400 au plus" defaultValue={poei.duree_heures != null ? String(poei.duree_heures) : ''} />
+          {/* Une date pour tout le projet : un candidat qui a la sienne la garde */}
+          <Input
+            id="date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue"
+            defaultValue={d(poei.date_embauche_prevue ?? null)}
+            hint="Pour chaque candidat sans date propre ; reprise sur le plan de développement des compétences"
+          />
         </div>
       </div>
 

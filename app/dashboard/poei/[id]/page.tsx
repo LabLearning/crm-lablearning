@@ -562,7 +562,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         candidats={
           <PoeiCandidats
             poeiId={p.id}
-            projet={{ date_debut: p.date_debut, date_fin: p.date_fin, duree_heures: p.duree_heures }}
+            projet={{ date_debut: p.date_debut, date_fin: p.date_fin, duree_heures: p.duree_heures, date_embauche_prevue: (p as any).date_embauche_prevue ?? null }}
             interventions={((interventions || []) as any[]).map((iv) => ({ date_debut: iv.date_debut, nb_heures: iv.nb_heures, libelle: iv.libelle }))}
             candidats={candidats} apprenants={apprenants || []} emailStatus={emailStatus}
             clientNom={companyLabel(p.client) || null} clientId={p.client_id}

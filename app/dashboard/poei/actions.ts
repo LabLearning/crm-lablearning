@@ -233,25 +233,36 @@ export async function updatePoeiAction(id: string, formData: FormData): Promise<
   const { data: poei } = await supabase
     .from('poei').select('session_id').eq('id', id).eq('organization_id', session.organization.id).single()
 
-  const { error } = await supabase
-    .from('poei')
-    .update({
-      client_id: str(formData, 'client_id'),
-      formation_id: str(formData, 'formation_id'),
-      duree_heures: dureeHeures,
-      date_debut, date_fin,
-      montant_horaire: montantHoraire,
-      // montant_total est recalculé juste après (taux × heures × nb candidats)
-      numero_dossier_ft: str(formData, "numero_dossier_ft"),
-      agence_ft_id: str(formData, 'agence_ft_id'),
-      date_depot_ft: str(formData, "date_depot_ft"),
-      date_accord_ft: str(formData, "date_accord_ft"),
-      date_mise_en_paiement: str(formData, "date_mise_en_paiement"),
-      date_paiement: str(formData, "date_paiement"),
-      montant_paye: num(formData, "montant_paye"),
-      notes: str(formData, "notes"),
-    })
+  const champs: Record<string, unknown> = {
+    client_id: str(formData, 'client_id'),
+    formation_id: str(formData, 'formation_id'),
+    duree_heures: dureeHeures,
+    date_debut, date_fin,
+    montant_horaire: montantHoraire,
+    // montant_total est recalculé juste après (taux × heures × nb candidats)
+    numero_dossier_ft: str(formData, "numero_dossier_ft"),
+    agence_ft_id: str(formData, 'agence_ft_id'),
+    date_depot_ft: str(formData, "date_depot_ft"),
+    date_accord_ft: str(formData, "date_accord_ft"),
+    date_mise_en_paiement: str(formData, "date_mise_en_paiement"),
+    date_paiement: str(formData, "date_paiement"),
+    montant_paye: num(formData, "montant_paye"),
+    notes: str(formData, "notes"),
+  }
+  // Embauche prévue du projet : absente du formulaire, elle n'est pas touchée
+  if (formData.has('date_embauche_prevue')) champs.date_embauche_prevue = str(formData, 'date_embauche_prevue')
+  let { error } = await supabase
+    .from('poei').update(champs)
     .eq('id', id).eq('organization_id', session.organization.id)
+  // Migration 165 pas encore appliquée : le reste du projet s'enregistre quand même
+  let sansDateEmbauche = false
+  if (error && 'date_embauche_prevue' in champs && ['42703', 'PGRST204'].includes(String((error as any).code))) {
+    delete champs.date_embauche_prevue
+    ;({ error } = await supabase
+      .from('poei').update(champs)
+      .eq('id', id).eq('organization_id', session.organization.id))
+    sansDateEmbauche = true
+  }
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
 
   // Total = taux × heures × nb candidats (recalculé)
@@ -265,6 +276,9 @@ export async function updatePoeiAction(id: string, formData: FormData): Promise<
   await logAudit({ action: 'update', entity_type: 'poei', entity_id: id })
   revalidatePath(`/dashboard/poei/${id}`)
   revalidatePath('/dashboard/poei')
+  if (sansDateEmbauche) {
+    return { success: false, error: 'Projet enregistré, sauf la date d’embauche prévue : appliquez d’abord la migration 165 dans Supabase.' }
+  }
   return { success: true }
 }
 
@@ -383,7 +397,8 @@ export async function updateCandidatStatutAction(candidatId: string, poeiId: str
   if (statut === 'embauche') {
     const [{ data: c }, { data: p }] = await Promise.all([
       supabase.from('poei_candidats').select('date_embauche_prevue, date_fin').eq('id', candidatId).eq('organization_id', session.organization.id).maybeSingle(),
-      supabase.from('poei').select('date_fin').eq('id', poeiId).eq('organization_id', session.organization.id).maybeSingle(),
+      // « * » : la date d'embauche du projet (migration 165) y est quand elle existe
+      supabase.from('poei').select('*').eq('id', poeiId).eq('organization_id', session.organization.id).maybeSingle(),
     ])
     if (c && !c.date_embauche_prevue) {
       const { dateEmbauche } = await import('@/lib/poei-bilan-ft')

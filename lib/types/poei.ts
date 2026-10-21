@@ -17,6 +17,8 @@ export interface Poei {
   duree_heures: number | null
   date_debut: string | null
   date_fin: string | null
+  /** Embauche prévue pour les candidats sans date propre (migration 165) */
+  date_embauche_prevue?: string | null
   montant_horaire: number | null
   montant_total: number | null
   numero_dossier_ft: string | null

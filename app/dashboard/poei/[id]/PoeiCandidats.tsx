@@ -18,6 +18,8 @@ export interface ProjetPoeiPeriode {
   date_debut: string | null
   date_fin: string | null
   duree_heures: number | null
+  /** Embauche prévue du projet, pour les candidats sans date propre */
+  date_embauche_prevue?: string | null
 }
 
 /** Périodes du planning, pour déduire les heures d'une entrée décalée. */
@@ -681,7 +683,8 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Select id="type_contrat" name="type_contrat" label="Type de contrat" options={contratOptions} />
-              <Input id="date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue" />
+              <Input id="date_embauche_prevue" name="date_embauche_prevue" type="date" label="Embauche prévue"
+                hint={projet.date_embauche_prevue ? `Vide : le ${frDate(projet.date_embauche_prevue)}, date du projet` : undefined} />
             </div>
             <Input id="numero_convention" name="numero_convention" label="N° de convention" placeholder="Ex. CONV-2026-001 ou n° France Travail" />
           </div>
@@ -770,7 +773,8 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Select id="e_type_contrat" name="type_contrat" label="Type de contrat" options={contratOptions} defaultValue={editCand.type_contrat || ''} />
-                <Input id="e_date_embauche_prevue" name="date_embauche_prevue" type="date" label={editCand.statut === 'embauche' ? "Date d'embauche" : 'Embauche prévue'} defaultValue={editCand.date_embauche_prevue || ''} />
+                <Input id="e_date_embauche_prevue" name="date_embauche_prevue" type="date" label={editCand.statut === 'embauche' ? "Date d'embauche" : 'Embauche prévue'} defaultValue={editCand.date_embauche_prevue || ''}
+                  hint={projet.date_embauche_prevue ? `Vide : le ${frDate(projet.date_embauche_prevue)}, date du projet` : undefined} />
               </div>
               <Input id="e_numero_convention" name="numero_convention" label="N° de convention" defaultValue={(editCand as any).numero_convention || ''} />
               {/* Entretien de recrutement/positionnement, trace d'individualisation (ind. 4/10) */}

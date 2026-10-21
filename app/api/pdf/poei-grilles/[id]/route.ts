@@ -26,7 +26,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const { data: poei } = await supabase
     .from('poei')
-    .select('id, numero, poste_vise, date_debut, date_fin, duree_heures, numero_engagement, numero_dossier_ft, client_id, client:client_id(raison_sociale, nom_commercial), formation:formation_id(intitule, duree_heures, est_certifiante)')
+    // « * » : la date d'embauche du projet (migration 165) y est quand elle existe
+    .select('*, client:client_id(raison_sociale, nom_commercial), formation:formation_id(intitule, duree_heures, est_certifiante)')
     .eq('id', params.id).eq('organization_id', orgId).single()
   if (!poei) return NextResponse.json({ error: 'Projet POEI introuvable' }, { status: 404 })
 

@@ -104,11 +104,12 @@ const lendemain = (d?: string | null): string | null => {
 }
 
 /**
- * Date d'embauche d'un candidat : celle de sa fiche, sinon le lendemain de la
- * fin de sa POEI (l'embauche suit la formation).
+ * Date d'embauche d'un candidat : celle de sa fiche, sinon celle du projet
+ * (paramètres de la POEI), sinon le lendemain de la fin de sa POEI (l'embauche
+ * suit la formation).
  */
 export function dateEmbauche(candidat: any, poei: any): string | null {
-  return candidat?.date_embauche_prevue || lendemain(candidat?.date_fin || poei?.date_fin) || null
+  return candidat?.date_embauche_prevue || poei?.date_embauche_prevue || lendemain(candidat?.date_fin || poei?.date_fin) || null
 }
 
 /** Un CDI est un contrat durable ; pour un CDD la durée n'est pas connue du CRM. */
@@ -177,7 +178,7 @@ export function construireBilanFt(src: {
     repriseFinDurable: saisie('repriseFinDurable') || (embauche ? contratDurable(c?.type_contrat) : ''),
     repriseFinDate: dateFr(saisie('repriseFinDate') || (embauche ? dateEmbauche(c, poei) : '')),
     // Tant que l'embauche n'est pas constatée, la date de la fiche candidat est prévisionnelle
-    reprisePrevue: dateFr(saisie('reprisePrevue') || (abandon || embauche || nonRetenu ? '' : c?.date_embauche_prevue)),
+    reprisePrevue: dateFr(saisie('reprisePrevue') || (abandon || embauche || nonRetenu ? '' : c?.date_embauche_prevue || poei?.date_embauche_prevue)),
     // Seule l'appréciation s'imprime. Le commentaire libre du stagiaire reste dans le CRM : le bilan part chez
     // l'employeur et chez France Travail, et un stagiaire y écrit parfois ce qu'il ne dirait pas devant eux.
     avisStagiaire: saisie('noteStagiaire') ? `Appréciation : ${saisie('noteStagiaire').toLowerCase()}` : '',

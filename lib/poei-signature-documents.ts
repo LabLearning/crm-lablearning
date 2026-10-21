@@ -35,7 +35,8 @@ export async function bilanPourSignature(supabase: any, orgId: string, poeiId: s
   const [{ data: org }, { data: poei }, { data: candidat }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', orgId).single(),
     supabase.from('poei')
-      .select('id, numero, poste_vise, date_debut, date_fin, duree_heures, formation:formation_id(intitule, duree_heures, est_certifiante)')
+      // « * » : la date d'embauche du projet (migration 165) y est quand elle existe
+      .select('*, formation:formation_id(intitule, duree_heures, est_certifiante)')
       .eq('id', poeiId).eq('organization_id', orgId).single(),
     supabase.from('poei_candidats')
       .select('apprenant_id, statut, date_abandon, motif_abandon, identifiant_ft, poste_vise, type_contrat, date_debut, date_fin, date_embauche_prevue')
