@@ -93,7 +93,7 @@ export function PoeiDocuments({
       sous: 'Un par candidat, exigé par France Travail',
       compte: `${nb}/${nb}`,
       complet: nb > 0,
-      zip: null,
+      zip: nb > 0 ? `/api/pdf/poei-pdc/${poeiId}` : null,
       lien: (c: CandidatDoc) => ({ href: `/api/pdf/pdc/${c.id}`, texte: 'Télécharger' }),
     },
     {
