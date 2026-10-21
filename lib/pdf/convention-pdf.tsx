@@ -292,16 +292,30 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     : ''
   const introText = `Établie entre l'organisme de formation et le bénéficiaire désignés ci-dessous.${qualiopiPhrase}`
 
-  // « Fait à … » avant les signatures. Une convention signée ne porte plus aucune date, ni ici ni
-  // sous les signatures (demande de Brahim du 21/10/2026) : la date et l'heure réelles de la
-  // signature électronique sont sur le certificat de signature joint en dernière page, et une
-  // date ramenée à la veille de la formation n'est plus imprimée. Tant que rien n'est signé, la
-  // ligne garde la date d'émission (jamais la date de session).
+  // Date de signature imprimée (demande de Brahim du 21/10/2026) : le jour réel de la signature
+  // électronique du client, à l'heure de Paris, le même que sur le certificat joint en dernière
+  // page. Jamais la date portée (signature_client_date, signature_of_date), ramenée à la veille
+  // de la formation quand la signature est tardive. Sans horodatage réel (signée sur papier, ou
+  // avant qu'il soit enregistré), aucune date de signature n'est imprimée. Tant que rien n'est
+  // signé, « Fait à » garde la date d'émission (jamais la date de session).
   const signee = signeeParLeClient || !!convention.signature_client_nom || !!convention.signature_of_date
+  const signeeLeReel = convention.signature_client_signed_at ? new Date(convention.signature_client_signed_at) : null
+  const jourSignature = signeeLeReel
+    ? {
+        court: new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: 'numeric' }).format(signeeLeReel),
+        long: new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' }).format(signeeLeReel).replace(/^1 /, '1er '),
+      }
+    : null
+  // Le tampon de l'organisme est posé dans la même écriture que la signature du client : même
+  // instant, même jour. Une contre-signature posée à part n'a pas d'heure réelle enregistrée.
+  const ofSigneeAvecClient = !!convention.signature_of_date && !!convention.signature_client_date
+    && Date.parse(String(convention.signature_of_date)) === Date.parse(String(convention.signature_client_date))
   const dateFait = convention.date_emission || convention.created_at || new Date().toISOString()
-  const faitMention = signee
-    ? `Fait à ${ville}, en deux exemplaires originaux.`
-    : `Fait à ${ville}, le ${fmtLongDate(dateFait)}, en deux exemplaires originaux.`
+  const faitMention = !signee
+    ? `Fait à ${ville}, le ${fmtLongDate(dateFait)}, en deux exemplaires originaux.`
+    : jourSignature
+      ? `Fait à ${ville}, le ${jourSignature.long}, en deux exemplaires originaux.`
+      : `Fait à ${ville}, en deux exemplaires originaux.`
 
   return (
     <Document title={`${((convention as any).type === 'particulier' || (convention as any).client?.type === 'particulier') ? 'Contrat' : 'Convention'} ${convention.numero || ''}`} author={ofName}>
@@ -535,7 +549,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </View>
         )}
 
-        {/* Signatures (cartes partagées), sans date : l'horodatage réel est sur le certificat */}
+        {/* Signatures (cartes partagées) : jour réel de la signature, jamais la date portée */}
         <PdfSignatureCards
           faitMention={faitMention}
           items={[
@@ -545,6 +559,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               mention: 'Lu et approuvé, bon pour accord',
               signed: !!convention.signature_client_nom,
               signedBy: convention.signature_client_nom,
+              signedDate: jourSignature?.court || null,
               signature: convention.signature_client_signature_data || null,
             },
             {
@@ -553,6 +568,7 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               mention: 'Représentant légal',
               signed: !!convention.signature_of_date,
               signedBy: ofName,
+              signedDate: ofSigneeAvecClient ? jourSignature?.court || null : null,
               stamp: org?.tampon_signature_url || null,
             },
           ]}

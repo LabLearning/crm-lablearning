@@ -123,11 +123,10 @@ export async function GET(
   // Convention signée électroniquement, téléchargée depuis le CRM : son
   // certificat de signature suit, en dernière page, comme dans Dendreo. Mêmes
   // droits et même journal que le certificat seul (il porte l'adresse IP et la
-  // signature du client). Elle ne porte plus de date de signature : en cas de
-  // panne passagère du certificat, on fait réessayer plutôt que de remettre une
-  // convention signée sans date ni certificat. Sans les droits, pour une
-  // convention modifiée depuis sa signature sans le dire, ou une archive
-  // altérée, la convention part seule.
+  // signature du client). En cas de panne passagère du certificat, on fait
+  // réessayer : une convention signée en ligne ne part pas sans lui par
+  // accident. Sans les droits, pour une convention modifiée depuis sa
+  // signature sans le dire, ou une archive altérée, la convention part seule.
   let fichier: Uint8Array = new Uint8Array(buffer)
   let etatCertificat = 'sans_objet'
   if (roleCompte) {

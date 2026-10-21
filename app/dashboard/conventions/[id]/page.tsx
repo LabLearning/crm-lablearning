@@ -334,9 +334,8 @@ export default async function ConventionDetailPage({ params }: { params: { id: s
           <div><span className="text-surface-500">Créée :</span> {horodatageParis(c.created_at)}</div>
           {c.date_emission && <div><span className="text-surface-500">Émise :</span> {formatDate(c.date_emission)}</div>}
           {c.sent_at && <div><span className="text-surface-500">Envoyée :</span> {horodatageParis(c.sent_at)}</div>}
-          {/* Seul l'horodatage enregistré à la signature électronique est un instant réel. La
-              convention signée ne porte plus de date de signature (21/10/2026) : il n'y a plus
-              de « date portée » à montrer */}
+          {/* Seul l'horodatage enregistré à la signature électronique est un instant réel : c'est
+              lui que la convention imprime depuis le 21/10/2026. La date portée ne se montre plus */}
           {c.signature_client_signed_at && <div><span className="text-surface-500">Signée électroniquement :</span> {horodatageParis(c.signature_client_signed_at)} (heure de Paris)</div>}
         </div>
       </div>

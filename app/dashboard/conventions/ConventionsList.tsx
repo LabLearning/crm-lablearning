@@ -63,8 +63,8 @@ function horodatageParis(d: string): string {
 const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature, tel quel : c'est son empreinte qui figure sur le certificat. Figé avant le 21/10/2026, il porte encore la date de signature imprimée à l'époque (la veille de la formation pour une signature tardive)."
 
 /**
- * Signature du client : l'horodatage réel quand elle est électronique. La
- * convention signée ne porte plus de date de signature (21/10/2026) : sans
+ * Signature du client : l'horodatage réel quand elle est électronique, celui
+ * qu'imprime la convention depuis le 21/10/2026 ; jamais la date portée. Sans
  * horodatage réel (signée sur papier, ou ancienne), « signée » seulement.
  */
 function signatureClient(c: ConventionListe): string | null {

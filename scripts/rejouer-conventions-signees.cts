@@ -2,7 +2,8 @@
 // télécharge : la convention, puis son certificat de signature en dernière page. Sans passer par la
 // route : aucune ligne d'audit, aucun envoi. À lancer après toute retouche du gabarit de convention
 // (lib/pdf/convention-pdf.tsx) ou du certificat joint (lib/convention-certificat-joint.ts).
-// Contrôles : aucune erreur de rendu ; aucune date sous les signatures ni dans « Fait à » ; quand le
+// Contrôles : aucune erreur de rendu ; « Fait à …, le <jour réel> » et « Le <jour réel> » sous les
+// signatures, jamais la date portée quand elle diffère (sans horodatage réel : aucune date) ; quand le
 // certificat est joint, il est la dernière page, porte le numéro de la convention et annonce le même
 // nombre de pages que la convention ; sinon, la raison est attendue (convention modifiée depuis la
 // signature sans le dire, archive altérée) ; une convention non signée garde « Fait à …, le <date> ».
@@ -50,7 +51,7 @@ const RAISONS_ATTENDUES = new Set(['modifiee', 'archive_alteree'])
   try {
     const signees: any[] = []
     for (let f = 0; ; f += 500) {
-      const { data, error } = await sb.from('conventions').select('id, numero')
+      const { data, error } = await sb.from('conventions').select('id, numero, signature_client_signed_at, signature_client_date')
         .eq('organization_id', ORG).in('status', ['signee_client', 'signee_complete'])
         .not('signature_client_signature_data', 'is', null).order('numero').range(f, f + 499)
       if (error) throw error
@@ -68,9 +69,19 @@ const RAISONS_ATTENDUES = new Set(['modifiee', 'archive_alteree'])
         const texte = textePages(convention).join('\n')
         // Bloc des signatures : de « Fait à » jusqu'au pied de page, sans les lignes d'avenant
         const bloc = ((texte.match(/Fait à[\s\S]{0,1500}/) || [''])[0]).replace(/Avenant[^\n]*/g, '')
-        if (!/Fait à [^\n,]+, en deux exemplaires originaux\./.test(texte)) anomalies.push(`${c.numero} : ligne « Fait à » inattendue`)
-        if (FAIT_DATE.test(texte)) anomalies.push(`${c.numero} : « Fait à » porte encore une date`)
-        if (/Le \d{2}\/\d{2}\/\d{4}/.test(bloc)) anomalies.push(`${c.numero} : date sous une signature`)
+        // Jour réel (heure de Paris) attendu ; la date portée, lue en temps universel, ne doit jamais apparaître
+        const paris = (o: any) => (d: string) => new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', ...o }).format(new Date(d))
+        const court = paris({ day: '2-digit', month: '2-digit', year: 'numeric' })
+        const long = (d: string) => paris({ day: 'numeric', month: 'long', year: 'numeric' })(d).replace(/^1 /, '1er ')
+        const porteeCourt = c.signature_client_date ? new Intl.DateTimeFormat('fr-FR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(c.signature_client_date)) : null
+        if (c.signature_client_signed_at) {
+          if (!texte.includes(`, le ${long(c.signature_client_signed_at)}, en deux exemplaires originaux.`)) anomalies.push(`${c.numero} : « Fait à » sans le jour réel ${long(c.signature_client_signed_at)}`)
+          if (!bloc.includes(`Le ${court(c.signature_client_signed_at)}`)) anomalies.push(`${c.numero} : jour réel absent sous la signature`)
+          if (porteeCourt && porteeCourt !== court(c.signature_client_signed_at) && bloc.includes(porteeCourt)) anomalies.push(`${c.numero} : la date portée ${porteeCourt} est imprimée`)
+        } else {
+          if (!/Fait à [^\n,]+, en deux exemplaires originaux\./.test(texte)) anomalies.push(`${c.numero} : ligne « Fait à » inattendue`)
+          if (/Le \d{2}\/\d{2}\/\d{4}/.test(bloc)) anomalies.push(`${c.numero} : date sous une signature sans horodatage réel`)
+        }
         if (!/Signé électroniquement/.test(bloc)) anomalies.push(`${c.numero} : mention « Signé électroniquement » absente`)
 
         const joint = await joindreCertificatSignature(sb, ORG, c.id, convention)
@@ -103,7 +114,7 @@ const RAISONS_ATTENDUES = new Set(['modifiee', 'archive_alteree'])
 
     console.log(`${signees.length} conventions signées en ligne · ${avecCertificat} avec certificat en dernière page · ${(nonSignees || []).length} non signées contrôlées`)
     for (const [raison, numeros] of Object.entries(sansCertificat)) console.log(`sans certificat (${raison}) : ${numeros.length} · ${numeros.join(', ')}`)
-    console.log(anomalies.length ? `ANOMALIES :\n  ${anomalies.join('\n  ')}` : 'Aucune anomalie : plus de date de signature imprimée, certificat en dernière page quand il peut suivre.')
+    console.log(anomalies.length ? `ANOMALIES :\n  ${anomalies.join('\n  ')}` : 'Aucune anomalie : jour réel de signature imprimé, jamais la date portée, certificat en dernière page quand il peut suivre.')
     process.exitCode = anomalies.length ? 1 : 0
   } finally {
     fs.rmSync(TMP, { recursive: true, force: true })

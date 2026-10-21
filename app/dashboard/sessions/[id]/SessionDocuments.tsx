@@ -70,9 +70,9 @@ interface DatePastille { texte: string; info?: string }
 
 /**
  * Date d'une convention dans sa pastille : l'horodatage réel de la signature
- * électronique (heure de Paris) quand il existe. La convention signée ne porte
- * plus de date de signature (21/10/2026) : sans horodatage réel, la pastille
- * dit « Signé » sans date. Tant que rien n'est signé : l'envoi.
+ * électronique (heure de Paris) quand il existe, jamais la date portée. Sans
+ * horodatage réel, la pastille dit « Signé » sans date. Tant que rien n'est
+ * signé : l'envoi.
  */
 function dateConvention(c: { sent_at: string | null; signature_client_date: string | null; signature_client_signed_at?: string | null }): DatePastille | null {
   if (c.signature_client_signed_at) {

@@ -104,7 +104,7 @@ export function ConventionSignatureBlock({
                 <div className="text-xs text-surface-600 space-y-0.5">
                   {signatureClientNom && <div>Signé par <strong>{signatureClientNom}</strong></div>}
                   {/* L'horodatage réel n'existe que pour une signature électronique : c'est celui du certificat */}
-                  {/* La convention signée ne porte plus de date (21/10/2026) : seul l'horodatage réel se montre */}
+                  {/* Le jour réel de la signature, celui qu'imprime la convention ; jamais la date portée */}
                   {signatureClientSignedAt && (
                     <div>Signée électroniquement le {horodatageParis(signatureClientSignedAt)} (heure de Paris)</div>
                   )}
