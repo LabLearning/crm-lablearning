@@ -35,6 +35,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if ('error' in auth) return auth.error
   const supabase = await createServiceRoleClient()
   const orgId = auth.user.organizationId
+  // Le dossier porte les coordonnées des candidats et de l'employeur : droits du module POEI
+  const { data: permissions } = await supabase.from('permissions').select('*')
+    .eq('organization_id', orgId).eq('role', auth.user.role)
+  const { checkDashboardAccess } = await import('@/lib/dashboard-guard')
+  if (!checkDashboardAccess('/dashboard/poei', auth.user.role as any, (permissions || []) as any).allowed) {
+    return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+  }
 
   const { data: poei } = await supabase
     .from('poei')
