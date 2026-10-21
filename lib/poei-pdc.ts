@@ -72,27 +72,30 @@ const sansPoint = (t: string) => t.trim().replace(/[\s.;:]+$/, '')
 const initiale = (t: string) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t)
 
 /**
- * Raccourcit une phrase trop longue à une articulation : d'abord deux-points,
- * point-virgule, tiret ou parenthèse (même un peu au-delà de la limite), puis une
- * virgule qui n'ouvre pas une énumération, puis avant une seconde action
- * (« … du restaurant et appliquer les bons réflexes »). Sinon la phrase reste
- * entière : la case réduit sa police.
+ * Raccourcit une phrase trop longue à une articulation, la plus tardive sous la
+ * limite pour garder le plus de texte : d'abord deux-points, point-virgule, tiret
+ * ou parenthèse (même un peu au-delà de la limite), puis une virgule qui n'ouvre
+ * pas une énumération, puis avant une seconde action (« … du restaurant et
+ * appliquer les bons réflexes »). Sinon la phrase reste entière : la case
+ * réduit sa police.
  */
 function couper(texte: string, max: number, min = 20): string {
   const t = sansPoint(texte)
   if (t.length <= max) return t
-  const premier = (re: RegExp, limite: number, accepte: (i: number) => boolean = () => true) => {
+  const dernier = (re: RegExp, limite: number, accepte: (i: number) => boolean = () => true) => {
+    let trouve = -1
     let m: RegExpExecArray | null
     while ((m = re.exec(t))) {
       if (m.index > limite) break
-      if (m.index >= min && accepte(m.index)) return m.index
+      if (m.index >= min && accepte(m.index)) trouve = m.index
     }
-    return -1
+    return trouve
   }
-  let i = premier(/\s:\s|\s;\s|\s[–—]\s|\s\(/g, Math.round(max * 1.4))
-  // « production, pliage, presse, sortie » : une virgule suivie d'une autre de près est une énumération
-  if (i < 0) i = premier(/,\s/g, max, (j) => !/^,\s[^,]{1,24},/.test(t.slice(j)))
-  if (i < 0) i = premier(/\set\s(?=[a-zàâçéèêëîïôûùüÿœ]+(?:er|ir|re)\s)/g, max)
+  let i = dernier(/\s:\s|\s;\s|\s[–—]\s|\s\(/g, Math.round(max * 1.4))
+  // « production, pliage, presse, sortie, salle et caisse » : une virgule précédée ou suivie
+  // d'une autre de près est dans une énumération, on n'y coupe pas
+  if (i < 0) i = dernier(/,\s/g, max, (j) => !/^,\s[^,]{1,24},/.test(t.slice(j)) && !/,[^,]{1,24}$/.test(t.slice(0, j)))
+  if (i < 0) i = dernier(/\set\s(?=[a-zàâçéèêëîïôûùüÿœ]+(?:er|ir|re)\s)/g, max)
   return i < 0 ? t : sansPoint(t.slice(0, i))
 }
 
