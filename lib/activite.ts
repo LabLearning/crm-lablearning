@@ -76,6 +76,9 @@ const CHAMPS: Record<string, string> = {
   date_naissance: 'date de naissance', statut_paiement: 'statut de paiement', taux_commission: 'taux de commission',
   date_partenariat: 'date de partenariat', numero_dossier_opco: 'dossier OPCO', montant_finance_opco: 'montant financé',
   date_incident: "date de l'incident", gravite: 'gravité', mesures_prises: 'mesures prises', apprenant_id: 'apprenant',
+  // Conventions : la date portée n'est plus imprimée nulle part depuis le 21/10/2026 ; l'heure réelle est l'autre colonne
+  signature_client_date: 'date portée côté client (non imprimée)', signature_of_date: 'date portée côté organisme (non imprimée)',
+  signature_client_signed_at: 'signature électronique du client (heure réelle)',
 }
 export function libelleChamp(c: string): string {
   return CHAMPS[c] || c.replace(/_/g, ' ')
