@@ -172,7 +172,7 @@ const PROCESSUS: Record<string, { titre: string; reference: string; intro: strin
         titre: '1. Avant la session',
         etapes: [
           { quand: 'Au premier contact', quoi: "Recueil du besoin avec l'établissement : contexte, participants, niveau initial, objectifs, contraintes et besoins d'adaptation (handicap, langue). Il conditionne l'envoi de la convention.", outil: 'recueil du besoin (onglet Recueil de la session)' },
-          { quand: 'À la contractualisation', quoi: 'Convention signée électroniquement par le gérant — datée avant le début de session ; le programme et les tarifs (barèmes OPCO) y sont joints.', outil: 'convention + email_logs' },
+          { quand: 'À la contractualisation', quoi: 'Convention signée électroniquement par le gérant avant le début de session ; le programme et les tarifs (barèmes OPCO) y sont joints, et le certificat de signature électronique (date et heure réelles) en dernière page.', outil: 'convention + certificat de signature + email_logs' },
           { quand: 'J-1', quoi: "Convocation envoyée à chaque stagiaire (ou au référent de l'établissement) avec le programme, le règlement intérieur et le livret d'accueil.", outil: 'marquage convocations_sent_at + email_logs (cron J-1)' },
         ],
       },

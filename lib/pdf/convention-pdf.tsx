@@ -292,9 +292,16 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
     : ''
   const introText = `Établie entre l'organisme de formation et le bénéficiaire désignés ci-dessous.${qualiopiPhrase}`
 
-  // « Fait à … le … » avant signatures — date de signature si signée, sinon date d'émission
-  // (jamais la date de session : une convention émise avant la formation portait une date passée/future incohérente)
-  const dateFait = convention.signature_of_date || convention.signature_client_date || convention.date_emission || convention.created_at || new Date().toISOString()
+  // « Fait à … » avant les signatures. Une convention signée ne porte plus aucune date, ni ici ni
+  // sous les signatures (demande de Brahim du 21/10/2026) : la date et l'heure réelles de la
+  // signature électronique sont sur le certificat de signature joint en dernière page, et une
+  // date ramenée à la veille de la formation n'est plus imprimée. Tant que rien n'est signé, la
+  // ligne garde la date d'émission (jamais la date de session).
+  const signee = signeeParLeClient || !!convention.signature_client_nom || !!convention.signature_of_date
+  const dateFait = convention.date_emission || convention.created_at || new Date().toISOString()
+  const faitMention = signee
+    ? `Fait à ${ville}, en deux exemplaires originaux.`
+    : `Fait à ${ville}, le ${fmtLongDate(dateFait)}, en deux exemplaires originaux.`
 
   return (
     <Document title={`${((convention as any).type === 'particulier' || (convention as any).client?.type === 'particulier') ? 'Contrat' : 'Convention'} ${convention.numero || ''}`} author={ofName}>
@@ -528,9 +535,9 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
           </View>
         )}
 
-        {/* Signatures (cartes partagées) */}
+        {/* Signatures (cartes partagées), sans date : l'horodatage réel est sur le certificat */}
         <PdfSignatureCards
-          faitMention={`Fait à ${ville}, le ${fmtLongDate(dateFait)}, en deux exemplaires originaux.`}
+          faitMention={faitMention}
           items={[
             {
               title: `Pour le bénéficiaire — ${clientName}`,
@@ -538,7 +545,6 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               mention: 'Lu et approuvé, bon pour accord',
               signed: !!convention.signature_client_nom,
               signedBy: convention.signature_client_nom,
-              signedDate: convention.signature_client_date ? fmtDate(convention.signature_client_date) : null,
               signature: convention.signature_client_signature_data || null,
             },
             {
@@ -547,7 +553,6 @@ export function ConventionPDF({ convention, org }: { convention: any; org?: any 
               mention: 'Représentant légal',
               signed: !!convention.signature_of_date,
               signedBy: ofName,
-              signedDate: convention.signature_of_date ? fmtDate(convention.signature_of_date) : null,
               stamp: org?.tampon_signature_url || null,
             },
           ]}

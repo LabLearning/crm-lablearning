@@ -10,12 +10,12 @@ interface Props {
   conventionId: string
   status: string
   signatureUrl: string | null
-  /** Date portée sur la convention côté client : seul le jour a un sens, pas l'heure. */
+  /** Date portée côté client : elle ne sert plus qu'à savoir que le client a signé (elle n'est plus imprimée). */
   signatureClientDate: string | null
   /** Horodatage réel de la signature électronique du client ; absent si elle a été signée sur papier ou avant qu'il soit enregistré. */
   signatureClientSignedAt: string | null
   signatureClientNom: string | null
-  /** Date portée sur la convention côté organisme. */
+  /** Date portée côté organisme : elle ne sert plus qu'à savoir que l'organisme a signé. */
   signatureOfDate: string | null
   signatureOfNom: string | null
   signatureTokenExpiresAt: string | null
@@ -32,13 +32,6 @@ function horodatageParis(d: string): string {
   const heure = new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
   return `${formatDate(d, { month: 'short', timeZone: 'Europe/Paris' })} à ${heure}`
 }
-
-/**
- * Date portée sur la convention : le jour seul. Il est enregistré en temps
- * universel, avec l'heure du clic, et le PDF rendu par le serveur l'imprime
- * ainsi ; lu à l'heure de Paris, un clic tardif le ferait glisser au lendemain.
- */
-const jourPorte = (d: string) => formatDate(d, { timeZone: 'UTC' })
 
 export function ConventionSignatureBlock({
   conventionId, status, signatureUrl, signatureClientDate, signatureClientSignedAt, signatureClientNom,
@@ -94,7 +87,7 @@ export function ConventionSignatureBlock({
               )}
               {exemplaireArchive && (
                 <a href={`/api/pdf/convention/${conventionId}?exemplaire=signe`}
-                  title="Fichier figé à l'instant de la signature : c'est son empreinte qui figure sur le certificat."
+                  title="Fichier figé à l'instant de la signature, tel quel : c'est son empreinte qui figure sur le certificat. Figé avant le 21/10/2026, il porte encore la date de signature imprimée à l'époque (la veille de la formation pour une signature tardive)."
                   className="btn-secondary text-xs inline-flex items-center gap-1.5">
                   <Archive className="h-3.5 w-3.5" /> Exemplaire signé archivé
                 </a>
@@ -111,10 +104,11 @@ export function ConventionSignatureBlock({
                 <div className="text-xs text-surface-600 space-y-0.5">
                   {signatureClientNom && <div>Signé par <strong>{signatureClientNom}</strong></div>}
                   {/* L'horodatage réel n'existe que pour une signature électronique : c'est celui du certificat */}
+                  {/* La convention signée ne porte plus de date (21/10/2026) : seul l'horodatage réel se montre */}
                   {signatureClientSignedAt && (
                     <div>Signée électroniquement le {horodatageParis(signatureClientSignedAt)} (heure de Paris)</div>
                   )}
-                  {signatureClientDate && <div>Date portée sur la convention : {jourPorte(signatureClientDate)}</div>}
+                  {!signatureClientNom && !signatureClientSignedAt && <div>Signée (hors signature électronique)</div>}
                 </div>
               ) : <div className="text-xs text-surface-500">En attente</div>}
             </div>
@@ -128,8 +122,7 @@ export function ConventionSignatureBlock({
               <div className="font-medium text-surface-900">{organismeNom ? `${organismeNom} (OF)` : 'Organisme de formation'}</div>
               {signatureOfDate ? (
                 <div className="text-xs text-surface-600 space-y-0.5">
-                  {signatureOfNom && <div>Signé par <strong>{signatureOfNom}</strong></div>}
-                  <div>Date portée sur la convention : {jourPorte(signatureOfDate)}</div>
+                  {signatureOfNom ? <div>Signé par <strong>{signatureOfNom}</strong></div> : <div>Signée</div>}
                 </div>
               ) : <div className="text-xs text-amber-700">En attente — à contre-signer côté OF</div>}
             </div>

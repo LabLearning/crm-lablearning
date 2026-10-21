@@ -3,6 +3,9 @@ import { ConventionSignatureClient } from './ConventionSignatureClient'
 import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
+// La signature (action serveur de cette page) fige l'exemplaire, puis peut envoyer la copie
+// avec son certificat : sans durée déclarée, Vercel la couperait au bout de 10 à 15 s
+export const maxDuration = 60
 
 export default async function ConventionSignaturePage({ params }: { params: { token: string } }) {
   const supabase = await createServiceRoleClient()

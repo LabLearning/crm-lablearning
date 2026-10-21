@@ -302,6 +302,17 @@ export function phraseEvenement(action: string, entityType: string, entityId: st
     case 'send_convention_signature': return { verbe: 'a envoyé la convention à la signature', objet: cible ? `(${cible})` : null, precisions: [session ? `session ${session}` : ''].filter(Boolean) }
     case 'send_convention_inter': return { verbe: 'a envoyé la convention inter-entreprises', objet: client, precisions: [session ? `session ${session}` : ''].filter(Boolean) }
     case 'sign_convention': return { verbe: 'a signé la convention', objet: cible, precisions: [d.signataire ? `signataire : ${d.signataire}` : ''].filter(Boolean) }
+    // Chaque tirage du certificat de signature (il porte l'IP et la signature du client)
+    case 'emettre_certificat_signature': return {
+      verbe: 'a tiré le certificat de signature',
+      objet: cible ? `de la convention ${cible}` : null,
+      precisions: [
+        d.joint_a === 'convention' ? 'joint à la convention téléchargée'
+          : d.joint_a === 'apercu' ? 'joint à l’aperçu de la convention'
+          : d.joint_a === 'copie_signee_email' ? `joint à la copie envoyée au client${d.envoye === false ? ' (envoi en échec)' : ''}`
+          : '',
+      ].filter(Boolean),
+    }
     case 'send_contrat_signature': return { verbe: 'a envoyé le contrat formateur à la signature', objet: cible, precisions: [session ? `session ${session}` : ''].filter(Boolean) }
     case 'sign_contrat_formateur': return { verbe: 'a signé le contrat formateur', objet: cible, precisions: [d.signataire ? `signataire : ${d.signataire}` : ''].filter(Boolean) }
     case 'send_signature': return { verbe: 'a envoyé le certificat de réalisation à la signature', objet: cible, precisions }

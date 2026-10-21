@@ -7,6 +7,9 @@ import { ConventionPDF } from '@/lib/pdf/convention-pdf'
 
 const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : ''
 
+// Convention signée : son certificat suit (deux rendus et le dossier de preuve)
+export const maxDuration = 60
+
 // Aperçu de la convention AVANT génération : rendu à partir de la session,
 // sans rien écrire en base. Si une convention existe déjà, on rend celle-ci.
 //
@@ -40,8 +43,13 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
     const loaded = await loadConventionForPdf(supabase, existing.id)
     if (loaded) {
       const buffer = await renderToBuffer(createElement(ConventionPDF, { convention: loaded.convention, org: loaded.org }) as any)
-      return new NextResponse(new Uint8Array(buffer), {
-        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': disposition(`convention-${loaded.convention.numero || 'apercu'}.pdf`), 'Cache-Control': 'private, max-age=0' },
+      // Signée électroniquement : son certificat suit, comme au téléchargement de la convention
+      const { conventionPourCompte } = await import('@/lib/convention-certificat-joint')
+      const { pdf, certificatJoint } = await conventionPourCompte(
+        supabase, { organizationId: auth.user.organizationId, role: auth.user.role }, loaded.convention, new Uint8Array(buffer), 'apercu',
+      )
+      return new NextResponse(new Uint8Array(pdf), {
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': disposition(`convention-${loaded.convention.numero || 'apercu'}.pdf`), 'Cache-Control': certificatJoint ? 'private, no-store' : 'private, max-age=0' },
       })
     }
   }

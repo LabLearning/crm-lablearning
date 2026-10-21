@@ -60,27 +60,16 @@ function horodatageParis(d: string): string {
   return `${formatDate(d, { month: 'short', timeZone: 'Europe/Paris' })} à ${heure}`
 }
 
-/**
- * Date portée sur la convention : le jour seul. Il est enregistré en temps
- * universel, avec l'heure du clic, et le PDF rendu par le serveur l'imprime
- * ainsi ; lu à l'heure de Paris, un clic tardif le ferait glisser au lendemain.
- */
-const jourPorte = (d: string) => formatDate(d, { month: 'short', timeZone: 'UTC' })
-
-const INFO_DATE_PORTEE = 'Date portée : le jour inscrit sur la convention. Il peut différer du jour réel de la signature.'
-const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature : c'est son empreinte qui figure sur le certificat."
+const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature, tel quel : c'est son empreinte qui figure sur le certificat. Figé avant le 21/10/2026, il porte encore la date de signature imprimée à l'époque (la veille de la formation pour une signature tardive)."
 
 /**
- * Signature du client : l'horodatage réel quand elle est électronique et, à
- * part, la date portée sur la convention. Sans horodatage réel (signée sur
- * papier, ou ancienne), la date portée seule.
+ * Signature du client : l'horodatage réel quand elle est électronique. La
+ * convention signée ne porte plus de date de signature (21/10/2026) : sans
+ * horodatage réel (signée sur papier, ou ancienne), « signée » seulement.
  */
 function signatureClient(c: ConventionListe): string | null {
-  const portee = c.signature_client_date ? `date portée : ${jourPorte(c.signature_client_date)}` : null
-  if (c.signature_client_signed_at) {
-    return `signée électroniquement le ${horodatageParis(c.signature_client_signed_at)}${portee ? ` (${portee})` : ''}`
-  }
-  return portee ? `signée (${portee})` : null
+  if (c.signature_client_signed_at) return `signée électroniquement le ${horodatageParis(c.signature_client_signed_at)}`
+  return c.signature_client_date ? 'signée' : null
 }
 
 /** Les deux signatures d'une convention, sous sa ligne. */
@@ -88,13 +77,13 @@ function EtatSignatures({ c }: { c: ConventionListe }) {
   const client = signatureClient(c)
   return (
     <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-      <div title={c.signature_client_date ? INFO_DATE_PORTEE : undefined} className={`flex items-center gap-1 text-xs ${client ? 'text-success-600' : 'text-surface-400'}`}>
+      <div className={`flex items-center gap-1 text-xs ${client ? 'text-success-600' : 'text-surface-400'}`}>
         <PenTool className="h-3 w-3 shrink-0" />
         {client ? `Client : ${client}` : 'Client en attente'}
       </div>
-      <div title={c.signature_of_date ? INFO_DATE_PORTEE : undefined} className={`flex items-center gap-1 text-xs ${c.signature_of_date ? 'text-success-600' : 'text-surface-400'}`}>
+      <div className={`flex items-center gap-1 text-xs ${c.signature_of_date ? 'text-success-600' : 'text-surface-400'}`}>
         <PenTool className="h-3 w-3 shrink-0" />
-        {c.signature_of_date ? `OF : signée (date portée : ${jourPorte(c.signature_of_date)})` : 'OF en attente'}
+        {c.signature_of_date ? 'OF : signée' : 'OF en attente'}
       </div>
     </div>
   )

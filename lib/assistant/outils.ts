@@ -178,7 +178,7 @@ export async function executerOutil(
       if (!s) return { erreur: 'Session introuvable dans cette organisation' }
       const [{ data: insc }, { data: convs }, { data: factures }] = await Promise.all([
         supabase.from('inscriptions').select('status, apprenant:apprenants(id, prenom, nom, email)').eq('session_id', sid),
-        org(supabase.from('conventions').select('id, numero, status, sent_at, signature_client_date, client:client_id(raison_sociale, nom_commercial)')).eq('session_id', sid),
+        org(supabase.from('conventions').select('id, numero, status, sent_at, signature_client_date, signature_client_signed_at, client:client_id(raison_sociale, nom_commercial)')).eq('session_id', sid),
         org(supabase.from('factures').select('id, numero, status, montant_ttc')).eq('session_id', sid),
       ])
       const fid = (s as any).formation?.id
@@ -191,7 +191,8 @@ export async function executerOutil(
           lien: `/dashboard/sessions/${s.id}`,
         },
         stagiaires: (insc || []).map((i: any) => ({ nom: `${i.apprenant?.prenom || ''} ${i.apprenant?.nom || ''}`.trim(), statut: i.status, lien: i.apprenant ? `/dashboard/apprenants/${i.apprenant.id}` : null })),
-        conventions: (convs || []).map((c: any) => ({ numero: c.numero, statut: c.status, signee_le: c.signature_client_date, partie: nomClient(c.client), pdf: `/api/pdf/convention/${c.id}` })),
+        // Horodatage réel de la signature, jamais la date portée (ramenée à la veille de la formation)
+        conventions: (convs || []).map((c: any) => ({ numero: c.numero, statut: c.status, signee_le: c.signature_client_signed_at || null, partie: nomClient(c.client), pdf: `/api/pdf/convention/${c.id}` })),
         factures: (factures || []).map((f: any) => ({ numero: f.numero, statut: f.status, montant_ttc: f.montant_ttc, pdf: `/api/pdf/facture/${f.id}` })),
         documents: {
           convocation: `/api/pdf/convocation-session/${sid}`,
@@ -215,14 +216,14 @@ export async function executerOutil(
         org(supabase.from('contacts').select('prenom, nom, email, telephone, fonction')).eq('client_id', cid).limit(6),
         org(supabase.from('sessions').select('id, date_debut, date_fin, status, formation:formation_id(intitule)')).eq('client_id', cid).order('date_debut', { ascending: false }).limit(8),
         org(supabase.from('factures').select('id, numero, status, montant_ttc, date_emission')).eq('client_id', cid).order('created_at', { ascending: false }).limit(8),
-        org(supabase.from('conventions').select('id, numero, status, signature_client_date, session_id')).eq('client_id', cid).order('created_at', { ascending: false }).limit(8),
+        org(supabase.from('conventions').select('id, numero, status, signature_client_date, signature_client_signed_at, session_id')).eq('client_id', cid).order('created_at', { ascending: false }).limit(8),
       ])
       return {
         client: { ...c, nom: nomClient(c), lien: `/dashboard/clients/${cid}` },
         contacts: contacts || [],
         sessions: (sessions || []).map((s: any) => ({ formation: s.formation?.intitule, du: s.date_debut, statut: s.status, lien: `/dashboard/sessions/${s.id}` })),
         factures: (factures || []).map((f: any) => ({ numero: f.numero, statut: f.status, montant_ttc: f.montant_ttc, pdf: `/api/pdf/facture/${f.id}` })),
-        conventions: (convs || []).map((cv: any) => ({ numero: cv.numero, statut: cv.status, signee_le: cv.signature_client_date, pdf: `/api/pdf/convention/${cv.id}` })),
+        conventions: (convs || []).map((cv: any) => ({ numero: cv.numero, statut: cv.status, signee_le: cv.signature_client_signed_at || null, pdf: `/api/pdf/convention/${cv.id}` })),
       }
     }
 

@@ -142,13 +142,16 @@ export function ConventionsClient({
                 {conv.montant_ht != null && (
                   <div>{Number(conv.montant_ht).toLocaleString('fr-FR')} EUR HT</div>
                 )}
+                {/* Jour réel de la signature, jamais la date portée (ramenée à la veille de la formation) */}
                 {(conv.signature_client_date || isJustSigned) && (
                   <div className="flex items-center gap-1.5 text-success-600 font-medium mt-1">
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                    Signée le {formatDate(
-                      conv.signature_client_date || new Date().toISOString(),
-                      { day: 'numeric', month: 'long', year: 'numeric' }
-                    )}
+                    {conv.signature_client_signed_at || isJustSigned
+                      ? `Signée le ${formatDate(
+                          conv.signature_client_signed_at || new Date().toISOString(),
+                          { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }
+                        )}`
+                      : 'Signée'}
                   </div>
                 )}
               </div>

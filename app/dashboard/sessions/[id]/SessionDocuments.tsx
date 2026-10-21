@@ -14,7 +14,7 @@ interface Convention {
   id: string; numero: string | null; status: string | null
   sent_at: string | null; signature_client_date: string | null; signature_client_nom: string | null
   signature_of_date: string | null
-  /** Horodatage réel de la signature électronique du client (signature_client_date est la date portée sur la convention) */
+  /** Horodatage réel de la signature électronique du client (signature_client_date, date portée, n'est plus imprimée) */
   signature_client_signed_at?: string | null
   /** Signée électroniquement par le client : certificat de signature disponible */
   certificat_signature?: boolean
@@ -55,7 +55,7 @@ interface Props {
   conventionsSession?: { id: string; numero: string; client_id: string | null; sent_at: string | null; signature_client_date: string | null; signature_client_signed_at?: string | null; certificat_signature?: boolean; exemplaire_archive?: boolean; participants_snapshot: { apprenant_id?: string }[] | null }[]
 }
 
-const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature : c'est son empreinte qui figure sur le certificat."
+const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature, tel quel : c'est son empreinte qui figure sur le certificat. Figé avant le 21/10/2026, il porte encore la date de signature imprimée à l'époque (la veille de la formation pour une signature tardive)."
 
 function fmtDateHeure(d: string | null | undefined): string {
   if (!d) return ''
@@ -70,11 +70,9 @@ interface DatePastille { texte: string; info?: string }
 
 /**
  * Date d'une convention dans sa pastille : l'horodatage réel de la signature
- * électronique (heure de Paris) quand il existe ; sinon la date portée sur la
- * convention, au jour près. Son heure est bien celle du clic, mais son jour
- * peut avoir été ramené à la veille de la session : cet instant n'a pas existé.
- * Ce jour est enregistré en temps universel ; lu à l'heure de Paris, un clic
- * tardif le ferait glisser au lendemain. Tant que rien n'est signé : l'envoi.
+ * électronique (heure de Paris) quand il existe. La convention signée ne porte
+ * plus de date de signature (21/10/2026) : sans horodatage réel, la pastille
+ * dit « Signé » sans date. Tant que rien n'est signé : l'envoi.
  */
 function dateConvention(c: { sent_at: string | null; signature_client_date: string | null; signature_client_signed_at?: string | null }): DatePastille | null {
   if (c.signature_client_signed_at) {
@@ -84,12 +82,7 @@ function dateConvention(c: { sent_at: string | null; signature_client_date: stri
       info: 'Signature électronique : date et heure réelles (heure de Paris)',
     }
   }
-  if (c.signature_client_date) {
-    return {
-      texte: formatDate(c.signature_client_date, { day: '2-digit', month: 'short', timeZone: 'UTC' }),
-      info: 'Date portée sur la convention',
-    }
-  }
+  if (c.signature_client_date) return { texte: '' }
   return c.sent_at ? { texte: fmtDateHeure(c.sent_at) } : null
 }
 

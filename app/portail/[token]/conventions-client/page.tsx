@@ -15,7 +15,7 @@ export default async function ClientConventionsPage({ params }: { params: { toke
   const { data: conventions } = await supabase
     .from('conventions')
     .select(`
-      id, numero, type, status, montant_ht, created_at, signature_client_date,
+      id, numero, type, status, montant_ht, created_at, signature_client_date, signature_client_signed_at,
       formation:formation_id(intitule, duree_heures),
       session:sessions(date_debut, date_fin, lieu)
     `)

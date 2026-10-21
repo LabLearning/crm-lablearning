@@ -394,7 +394,7 @@ export async function signConventionPublicAction(
       if (orgEmail && !toEmails.includes(orgEmail)) toEmails.push(orgEmail)
 
       if (convFull && toEmails.length > 0) {
-        // L'exemplaire envoyé est celui qui vient d'être figé, à l'octet près
+        // L'exemplaire envoyé est celui qui vient d'être figé (le fichier archivé, lui, reste sans certificat)
         let buffer: Buffer | Uint8Array | null = fige?.buffer || null
         if (!buffer) {
           const { renderToBuffer } = await import('@react-pdf/renderer')
@@ -402,31 +402,63 @@ export async function signConventionPublicAction(
           const { ConventionPDF } = await import('@/lib/pdf/convention-pdf')
           buffer = await renderToBuffer(createElement(ConventionPDF, { convention: convFull as any, org: orgFull }) as any)
         }
+        // Suivi de son certificat de signature en dernière page, comme dans Dendreo, une fois
+        // le tirage inscrit au journal (le signataire n'a pas de compte : ligne écrite ici). Un
+        // certificat impossible à produire ou à journaliser ne retient jamais la copie, qui part seule
+        let certificatJoint = false
+        let journalCertificat: { id: string; details: Record<string, unknown> } | null = null
+        try {
+          const { joindreCertificatSignature } = await import('@/lib/convention-certificat-joint')
+          const joint = await joindreCertificatSignature(supabase, conv.organization_id, conv.id, new Uint8Array(buffer))
+          if (joint.ok) {
+            const details = { numero: joint.numero, empreinte: joint.empreinte, joint_a: 'copie_signee_email' }
+            const { data: ligne, error: errJournal } = await supabase.from('audit_logs').insert({
+              organization_id: conv.organization_id, user_id: null,
+              action: 'emettre_certificat_signature', entity_type: 'convention', entity_id: conv.id, details,
+            }).select('id').single()
+            if (ligne?.id) { buffer = joint.pdf; certificatJoint = true; journalCertificat = { id: ligne.id, details } }
+            else console.error('[certificat joint à la copie]', errJournal?.message)
+          } else if (joint.raison !== 'desactive') console.warn('[certificat joint à la copie]', conv.id, joint.raison)
+        } catch (e) { console.error('[certificat joint à la copie]', e) }
 
         const { sendDocumentEmail } = await import('@/lib/email')
-        const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString('fr-FR') : '—'
-        await sendDocumentEmail({
-          to: toEmails,
-          orgName: orgFull?.name || 'Lab Learning',
-          orgEmail,
-          orgLogoUrl: (await (await import('@/lib/pdf/org-logo')).resolveEmailLogoUrl(supabase, orgFull)) || undefined,
-          qualiopiCertified: (orgFull as any)?.is_qualiopi !== false,
-          recipientName: cli?.raison_sociale || 'Madame, Monsieur',
-          subject: `Convention ${(convFull as any).numero} signée — copie exécutée`,
-          docTitle: 'Convention signée — copie pour vos dossiers',
-          intro: `La convention de formation a été signée par les deux parties. Vous trouverez ci-joint l'exemplaire signé exécutoire.`,
-          metadata: [
-            ['Référence', (convFull as any).numero || ''],
-            ['Formation', (convFull as any).formation?.intitule || '—'],
-            ['Signée le', fmtDate((convFull as any).signature_client_date)],
-          ],
-          pdfBuffer: Buffer.from(buffer),
-          pdfFilename: `convention-${(convFull as any).numero}-signee.pdf`,
-          footerNote: 'Cet exemplaire fait foi entre les parties. Conservez-le pour vos archives.',
-          organizationId: (conv as any).organization_id,
-          entityType: 'convention',
-          entityId: conv.id,
-        })
+        // Jour réel de la signature, à l'heure de Paris : jamais la date portée
+        const jourSignature = new Date(now).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })
+        let envoye = false
+        try {
+          const envoi = await sendDocumentEmail({
+            to: toEmails,
+            orgName: orgFull?.name || 'Lab Learning',
+            orgEmail,
+            orgLogoUrl: (await (await import('@/lib/pdf/org-logo')).resolveEmailLogoUrl(supabase, orgFull)) || undefined,
+            qualiopiCertified: (orgFull as any)?.is_qualiopi !== false,
+            recipientName: cli?.raison_sociale || 'Madame, Monsieur',
+            subject: `Convention ${(convFull as any).numero} signée — copie exécutée`,
+            docTitle: 'Convention signée — copie pour vos dossiers',
+            intro: certificatJoint
+              ? `La convention de formation a été signée par les deux parties. Vous trouverez ci-joint l'exemplaire signé exécutoire, suivi de son certificat de signature électronique.`
+              : `La convention de formation a été signée par les deux parties. Vous trouverez ci-joint l'exemplaire signé exécutoire.`,
+            metadata: [
+              ['Référence', (convFull as any).numero || ''],
+              ['Formation', (convFull as any).formation?.intitule || '—'],
+              ['Signée le', jourSignature],
+            ],
+            pdfBuffer: Buffer.from(buffer),
+            pdfFilename: `convention-${(convFull as any).numero}-signee.pdf`,
+            footerNote: 'Cet exemplaire fait foi entre les parties. Conservez-le pour vos archives.',
+            organizationId: (conv as any).organization_id,
+            entityType: 'convention',
+            entityId: conv.id,
+          })
+          envoye = !!envoi?.success
+        } finally {
+          // Le tirage est remis ou non selon l'envoi : la ligne du journal le dit
+          if (journalCertificat) {
+            await supabase.from('audit_logs')
+              .update({ details: { ...journalCertificat.details, envoye } })
+              .eq('id', journalCertificat.id)
+          }
+        }
       }
     } catch (e) { console.error('[email conv signee]', e) }
   }

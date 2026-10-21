@@ -51,7 +51,7 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
       : Promise.resolve({ data: [] }),
     sessionId ? supabase
       .from('conventions')
-      .select('id, numero, status, signature_client_date, signature_client_nom, sent_at, signature_token, akto_dossier_status, akto_dossier_numero')
+      .select('id, numero, status, signature_client_date, signature_client_signed_at, signature_client_nom, sent_at, signature_token, akto_dossier_status, akto_dossier_numero')
       .eq('session_id', sessionId)
       .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -239,8 +239,9 @@ export default async function DossierDetailPage({ params }: { params: { id: stri
                 <div className="text-sm font-medium text-surface-900">Convention {convention.numero}</div>
                 <div className="text-xs text-surface-500">
                   Statut : <strong>{convention.status}</strong>
+                  {/* Jour réel de la signature, jamais la date portée (plus imprimée sur la convention) */}
                   {convention.signature_client_date && (
-                    <> · Signée par {convention.signature_client_nom} le {formatDate(convention.signature_client_date)}</>
+                    <> · Signée{convention.signature_client_nom ? ` par ${convention.signature_client_nom}` : ''}{(convention as any).signature_client_signed_at ? ` le ${formatDate((convention as any).signature_client_signed_at, { timeZone: 'Europe/Paris' })}` : ''}</>
                   )}
                 </div>
               </div>

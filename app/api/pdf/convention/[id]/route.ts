@@ -6,6 +6,9 @@ import { requireApiUser } from '@/lib/api-auth'
 import { ConventionPDF } from '@/lib/pdf/convention-pdf'
 import { loadConventionForPdf } from '@/lib/pdf/convention-data'
 
+// Convention puis certificat de signature : deux rendus et le dossier de preuve
+export const maxDuration = 60
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -54,6 +57,8 @@ export async function GET(
   // son lien personnel lui en donne l'accès, et chaque lecture est une preuve
   const token = req.nextUrl.searchParams.get('token')
   let orgId: string
+  // Compte du CRM qui télécharge (absent pour le signataire, qui vient par son lien)
+  let roleCompte: string | null = null
   if (token) {
     const { data: c } = await supabase.from('conventions')
       .select('id, organization_id, signature_token, signature_token_expires_at')
@@ -66,6 +71,7 @@ export async function GET(
     const auth = await requireApiUser()
     if ('error' in auth) return auth.error
     orgId = auth.user.organizationId
+    roleCompte = auth.user.role
   }
 
   const loaded = await loadConventionForPdf(supabase, params.id)
@@ -114,6 +120,34 @@ export async function GET(
     createElement(ConventionPDF, { convention, org }) as any
   )
 
+  // Convention signée électroniquement, téléchargée depuis le CRM : son
+  // certificat de signature suit, en dernière page, comme dans Dendreo. Mêmes
+  // droits et même journal que le certificat seul (il porte l'adresse IP et la
+  // signature du client). Elle ne porte plus de date de signature : en cas de
+  // panne passagère du certificat, on fait réessayer plutôt que de remettre une
+  // convention signée sans date ni certificat. Sans les droits, pour une
+  // convention modifiée depuis sa signature sans le dire, ou une archive
+  // altérée, la convention part seule.
+  let fichier: Uint8Array = new Uint8Array(buffer)
+  let etatCertificat = 'sans_objet'
+  if (roleCompte) {
+    const { conventionPourCompte } = await import('@/lib/convention-certificat-joint')
+    const r = await conventionPourCompte(supabase, { organizationId: orgId, role: roleCompte }, convention, fichier, 'convention')
+    if (r.raison === 'indisponible') {
+      return new NextResponse(
+        `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Réessayez dans un instant</title></head>
+        <body style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:60px auto;padding:0 20px;color:#1C1917">
+        <h1 style="font-size:20px">Le certificat de signature n’a pas pu être joint</h1>
+        <p style="color:#57534E;font-size:14px;line-height:1.6">La convention ${convention.numero || ''} est signée électroniquement : elle se télécharge avec son certificat de signature en dernière page. Le service qui le produit n’a pas répondu. Réessayez dans un instant.</p>
+        </body></html>`,
+        { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Retry-After': '10', 'Cache-Control': 'no-store' } },
+      )
+    }
+    fichier = r.pdf
+    etatCertificat = r.certificatJoint ? 'joint' : (r.raison || 'sans_objet')
+  }
+  const certificatJoint = etatCertificat === 'joint'
+
   // Preuve de lecture, une fois le document réellement remis au signataire
   if (token) {
     const { origineRequete, journaliserEvenementConvention, estRobot, compteCrmConnecte } = await import('@/lib/preuve-signature-convention')
@@ -127,12 +161,15 @@ export async function GET(
     }
   }
 
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(new Uint8Array(fichier), {
     headers: {
       'Content-Type': 'application/pdf',
       // Depuis la page de signature, le PDF s'ouvre dans le navigateur
       'Content-Disposition': `${token ? 'inline' : 'attachment'}; filename="convention-${convention.numero}.pdf"`,
-      'Cache-Control': 'private, max-age=0',
+      // Avec le certificat, comme le certificat seul : jamais gardé en cache
+      'Cache-Control': certificatJoint ? 'private, no-store' : 'private, max-age=0',
+      // joint, ou la raison de son absence (droits, modifiee, archive_alteree, non_delivre…)
+      'X-Certificat-Signature': etatCertificat,
     },
   })
 }
