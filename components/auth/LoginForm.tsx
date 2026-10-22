@@ -8,10 +8,12 @@ import { createClient } from '@/lib/supabase/client'
 import { loginSchema } from '@/lib/validations/auth'
 import { Input } from '@/components/ui'
 
-export function LoginForm() {
+export function LoginForm({ suspendu = false }: { suspendu?: boolean }) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    suspendu ? 'Ce compte est suspendu. Pour le réactiver, contactez Lab Learning.' : null,
+  )
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

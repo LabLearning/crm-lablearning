@@ -43,6 +43,8 @@ export async function getFranchiseSession(): Promise<FranchiseSession> {
     .single()
 
   if (!realUser) redirect('/login')
+  // Un compte suspendu est déconnecté
+  if (realUser.status === 'suspended') redirect('/auth/suspendu')
 
   // Impersonation : super_admin → compte franchise
   let user = realUser

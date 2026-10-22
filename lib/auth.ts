@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { definirActeur } from '@/lib/acteur'
 import { cache } from 'react'
 import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
 import type { User, Organization, Permission } from '@/lib/types'
 
 export interface SessionContext {
@@ -10,6 +11,19 @@ export interface SessionContext {
   organization: Organization
   permissions: Permission[]
   impersonatedBy?: User
+}
+
+/**
+ * Une action serveur s'exécute avant le layout du tableau de bord, donc sans
+ * son contrôle de rôle : un formateur connecté pouvait lancer une action
+ * d'administration en l'appelant directement. Le contrôle se rejoue ici pour
+ * toute requête sous /dashboard, page comme action.
+ */
+function exigerAccesDashboard(role: string, permissions: Permission[]) {
+  const pathname = headers().get('x-pathname') || ''
+  if (!pathname.startsWith('/dashboard')) return
+  const acces = checkDashboardAccess(pathname, role as any, permissions)
+  if (!acces.allowed) redirect(acces.redirectTo)
 }
 
 // Mémoïsé par requête (React cache) : si getSession est appelé plusieurs fois
@@ -38,6 +52,9 @@ export const getSession = cache(async function getSession(): Promise<SessionCont
   if (!user) {
     redirect('/login')
   }
+
+  // Un compte suspendu est déconnecté, où qu'il aille
+  if (user.status === 'suspended') redirect('/auth/suspendu')
 
   // organization + permissions sont indépendantes (ne dépendent que de user) → en parallèle
   const [{ data: organization }, { data: permissions }] = await Promise.all([
@@ -78,6 +95,7 @@ export const getSession = cache(async function getSession(): Promise<SessionCont
         .eq('organization_id', impersonatedUser.organization_id)
         .eq('role', impersonatedUser.role)
 
+      exigerAccesDashboard(impersonatedUser.role, (impersonatedPermissions || []) as Permission[])
       return {
         user: impersonatedUser as User,
         organization: organization as Organization,
@@ -87,6 +105,7 @@ export const getSession = cache(async function getSession(): Promise<SessionCont
     }
   }
 
+  exigerAccesDashboard(user.role, (permissions || []) as Permission[])
   return {
     user: user as User,
     organization: organization as Organization,
@@ -110,5 +129,6 @@ export const getOptionalSession = cache(async function getOptionalSession() {
     .eq('id', authUser.id)
     .single()
 
+  if (user?.status === 'suspended') return null
   return user as User | null
 })

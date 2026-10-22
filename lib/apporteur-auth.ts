@@ -27,6 +27,8 @@ export async function getApporteurSession(): Promise<ApporteurSession> {
   const supabase = await createServiceRoleClient()
   const { data: realUser } = await supabase.from('users').select('*').eq('id', authUser.id).single()
   if (!realUser) redirect('/login')
+  // Un compte suspendu est déconnecté
+  if (realUser.status === 'suspended') redirect('/auth/suspendu')
 
   let user = realUser
   let impersonatedBy: User | undefined
