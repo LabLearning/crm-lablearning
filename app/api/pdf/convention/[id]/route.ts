@@ -121,7 +121,7 @@ export async function GET(
   )
 
   // Convention signée électroniquement, téléchargée depuis le CRM : son
-  // certificat de signature suit, en dernière page, comme dans Dendreo. Mêmes
+  // certificat de signature suit, juste avant l'annexe (le programme). Mêmes
   // droits et même journal que le certificat seul (il porte l'adresse IP et la
   // signature du client). En cas de panne passagère du certificat, on fait
   // réessayer : une convention signée en ligne ne part pas sans lui par
@@ -137,7 +137,7 @@ export async function GET(
         `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Réessayez dans un instant</title></head>
         <body style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:60px auto;padding:0 20px;color:#1C1917">
         <h1 style="font-size:20px">Le certificat de signature n’a pas pu être joint</h1>
-        <p style="color:#57534E;font-size:14px;line-height:1.6">La convention ${convention.numero || ''} est signée électroniquement : elle se télécharge avec son certificat de signature en dernière page. Le service qui le produit n’a pas répondu. Réessayez dans un instant.</p>
+        <p style="color:#57534E;font-size:14px;line-height:1.6">La convention ${convention.numero || ''} est signée électroniquement : elle se télécharge avec son certificat de signature, placé juste avant l’annexe. Le service qui le produit n’a pas répondu. Réessayez dans un instant.</p>
         </body></html>`,
         { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Retry-After': '10', 'Cache-Control': 'no-store' } },
       )

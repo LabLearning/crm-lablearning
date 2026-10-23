@@ -1,7 +1,8 @@
 /**
- * Convention signée suivie de son certificat de signature électronique : la
- * dernière page est le certificat, comme sur les conventions signées dans
- * Dendreo (demande de Brahim du 21/10/2026). C'est le certificat de la route
+ * Convention signée suivie de son certificat de signature électronique (demande
+ * de Brahim du 21/10/2026) : le certificat se place juste après la convention,
+ * avant son annexe, le programme (demande du 23/10/2026 ; il était jusque-là la
+ * dernière page). C'est le certificat de la route
  * /api/pdf/preuve-signature/convention/[id], à l'identique : il décrit la
  * signature et l'exemplaire signé archivé, jamais la date portée.
  *
@@ -53,6 +54,26 @@ export function modificationsNonMentionnees(preuve: PreuveSignatureConvention): 
     .map((e) => e.libelle)
 }
 
+/**
+ * Page où commence l'annexe de la convention : la première après la page 1
+ * dont l'en-tête est « Annexe — Programme de formation ». Introuvable, ou
+ * texte illisible : null, le certificat va alors en fin de document.
+ */
+export async function debutAnnexe(conventionPdf: Uint8Array): Promise<number | null> {
+  try {
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    // Une copie : la lecture peut détacher la mémoire du tableau qu'on lui passe
+    const doc = await getDocumentProxy(new Uint8Array(conventionPdf))
+    const { text } = await extractText(doc, { mergePages: false })
+    const pages = (Array.isArray(text) ? text : [text]).map((t) => String(t || '').replace(/\s+/g, ' '))
+    const i = pages.findIndex((t, n) => n > 0 && /Annexe\s*[—–-]\s*Programme de formation/i.test(t))
+    return i > 0 ? i : null
+  } catch (e) {
+    console.error('[annexe de la convention]', e)
+    return null
+  }
+}
+
 export async function joindreCertificatSignature(
   supabase: any,
   orgId: string,
@@ -76,7 +97,9 @@ export async function joindreCertificatSignature(
     // Le titre et l'auteur du fichier restent ceux de la convention
     const pdf = await PDFDocument.load(conventionPdf, { updateMetadata: false })
     const pagesCertificat = await PDFDocument.load(certificat, { updateMetadata: false })
-    for (const page of await pdf.copyPages(pagesCertificat, pagesCertificat.getPageIndices())) pdf.addPage(page)
+    // Juste après la convention, avant son annexe ; à défaut, en dernière page
+    let position = (await debutAnnexe(conventionPdf)) ?? pdf.getPageCount()
+    for (const page of await pdf.copyPages(pagesCertificat, pagesCertificat.getPageIndices())) pdf.insertPage(position++, page)
     return { ok: true, pdf: await pdf.save(), numero: dossier.numero, empreinte: dossier.preuve.empreinteDossier }
   } catch (e) {
     console.error('[certificat joint à la convention]', e)

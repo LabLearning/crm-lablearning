@@ -405,7 +405,7 @@ export async function signConventionPublicAction(
           const { ConventionPDF } = await import('@/lib/pdf/convention-pdf')
           buffer = await renderToBuffer(createElement(ConventionPDF, { convention: convFull as any, org: orgFull }) as any)
         }
-        // Suivi de son certificat de signature en dernière page, comme dans Dendreo, une fois
+        // Suivi de son certificat de signature, juste avant l'annexe (le programme), une fois
         // le tirage inscrit au journal (le signataire n'a pas de compte : ligne écrite ici). Un
         // certificat impossible à produire ou à journaliser ne retient jamais la copie, qui part seule
         let certificatJoint = false
