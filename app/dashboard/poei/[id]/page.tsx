@@ -28,6 +28,9 @@ import type { CandidatMail } from './PoeiMails'
 import type { CandidatDoc } from './PoeiDocuments'
 import type { LigneCandidat, Etat } from './PoeiPilotage'
 import type { Poei, PoeiCandidat } from '@/lib/types/poei'
+import { peutVoirMarge } from '@/lib/rentabilite'
+import { rentabiliteSession, MESSAGE_RENTABILITE_INDISPONIBLE } from '@/lib/rentabilite-data'
+import { SessionRentabilite } from '@/app/dashboard/sessions/[id]/SessionRentabilite'
 import { montantTotalPoei } from '@/lib/poei-candidat'
 
 export const dynamic = 'force-dynamic'
@@ -117,12 +120,24 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   // l'intervention n'a pas de colonne session.
   const idsInterventions = ((interventions || []) as any[]).map((iv) => iv.id)
   const { data: sessionsInterv } = idsInterventions.length
-    ? await supabase.from('sessions').select('id, poei_intervention_id').in('poei_intervention_id', idsInterventions)
+    ? await supabase.from('sessions').select('id, poei_intervention_id, date_debut').in('poei_intervention_id', idsInterventions)
     : { data: [] as any[] }
   const idsSessionsPoei = [
     (p as any).session?.id,
     ...((sessionsInterv || []) as any[]).map((x) => x.id),
   ].filter(Boolean) as string[]
+
+  // ── Frais et marge du parcours (onglet Frais) : la session qui porte le
+  // parcours (chapeau, sinon première intervention) reçoit les frais, et la
+  // rentabilité lit le parcours entier. Lancé tout de suite, attendu au rendu.
+  const porteuseId: string | null = (p as any).session?.id
+    || [...((sessionsInterv || []) as any[])].sort((a, b) => String(a.date_debut || '9999').localeCompare(String(b.date_debut || '9999')))[0]?.id
+    || null
+  const voitMarge = peutVoirMarge(session.user.role)
+  const vueFraisP = porteuseId && voitMarge
+    ? rentabiliteSession(supabase, session.organization.id, porteuseId, session.user.role)
+        .catch((e: unknown) => { console.error('[poei frais]', e); return { erreur: MESSAGE_RENTABILITE_INDISPONIBLE } })
+    : null
 
   // Heures des certificats : lues sur le parcours lui-même (heures saisies, sinon durée), session chapeau ou non.
   // Le bilan final (attestation de compétences) reprend exactement les mêmes.
@@ -450,6 +465,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   }
   const nbFactures = Object.keys(facturesByCandidat).length
   const nbSignes = Object.values(sigMap).filter((s) => s.signed_at).length
+  const vueFrais = vueFraisP ? await vueFraisP : null
 
   return (
     <div className="space-y-5 animate-fade-in max-w-5xl">
@@ -651,6 +667,22 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             }}
           />
         }
+        frais={!voitMarge ? null : (
+          <>
+            <div className="card p-4 sm:p-5 text-sm text-surface-600 leading-relaxed">
+              Saisissez ici les frais du parcours : transport, logement, repas, salle, formateur payé hors contrat, autres frais.
+              Ils sont déduits de la marge et, pour une franchise rémunérée sur le budget net, de sa commission.
+              Les formateurs sous contrat d&apos;intervention sont déjà comptés : ne les ajoutez pas une seconde fois.
+            </div>
+            {porteuseId && vueFrais ? (
+              <SessionRentabilite vue={vueFrais} sessionId={porteuseId} />
+            ) : (
+              <div className="card p-5 text-sm text-surface-600">
+                Ce parcours n&apos;a pas encore de session : les frais se saisissent dès qu&apos;une session porte le parcours (session chapeau ou première intervention).
+              </div>
+            )}
+          </>
+        )}
         mails={
           <PoeiMails
             poeiId={p.id}

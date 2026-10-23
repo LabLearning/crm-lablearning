@@ -89,7 +89,7 @@ export default function FranchiseDetailClient({
       const cs = (l.status || 'a_venir') as CommStatus
       if (cs !== 'annulee') {
         g.pec += Number(l.base_montant) || 0
-        g.cout += Number(l.cout_formateur) || 0
+        g.cout += (Number(l.cout_formateur) || 0) + (Number(l.frais_annexes) || 0)
         g.commission += Number(l.commission_montant) || 0
         if (!(Number(l.base_montant) > 0)) g.sansMontant++
       }
@@ -387,6 +387,8 @@ const SOURCE_COUT: Record<string, string> = {
  */
 function CoutFormateurCell({ ligne }: { ligne: LigneCommissionSession }) {
   const cout = Number(ligne.cout_formateur) || 0
+  // Frais du parcours POEI (onglet Frais de la POEI), déduits en plus en budget net
+  const frais = Number(ligne.frais_annexes) || 0
   const net = ligne.commission_type === 'budget_net'
   return (
     <div className="hidden md:flex flex-col items-end gap-0.5 w-36 text-right">
@@ -394,6 +396,7 @@ function CoutFormateurCell({ ligne }: { ligne: LigneCommissionSession }) {
         <>
           <span className="text-sm tabular-nums text-surface-700">{fmtEuro(cout)}</span>
           <span className="text-[10px] leading-tight text-surface-400">{SOURCE_COUT[ligne.cout_source || ''] || 'coût formateur'}</span>
+          {frais > 0 && <span className="text-[11px] leading-tight tabular-nums text-surface-500">+ {fmtEuro(frais)} de frais</span>}
         </>
       ) : net && ligne.cout_source !== 'fige' ? (
         <Link href={`/dashboard/sessions/${ligne.session_id}?tab=session`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:underline"

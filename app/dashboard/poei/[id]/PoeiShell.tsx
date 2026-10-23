@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { LayoutGrid, Settings, Users, Target, CalendarRange, CalendarClock, ClipboardCheck, ReceiptEuro, Mails, FileStack, ShieldAlert, CheckSquare } from '@/components/ui/icons'
+import { LayoutGrid, Settings, Users, Target, CalendarRange, CalendarClock, ClipboardCheck, ReceiptEuro, Mails, FileStack, ShieldAlert, CheckSquare, Wallet } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
-type Onglet = 'pilotage' | 'documents' | 'incidents' | 'dossier' | 'candidats' | 'positionnement' | 'interventions' | 'planning' | 'emargement' | 'evaluations' | 'facturation' | 'mails'
+type Onglet = 'pilotage' | 'documents' | 'incidents' | 'dossier' | 'candidats' | 'positionnement' | 'interventions' | 'planning' | 'emargement' | 'evaluations' | 'facturation' | 'frais' | 'mails'
 
-const ONGLETS_VALIDES: Onglet[] = ['pilotage', 'documents', 'incidents', 'dossier', 'candidats', 'positionnement', 'interventions', 'planning', 'emargement', 'evaluations', 'facturation', 'mails']
+const ONGLETS_VALIDES: Onglet[] = ['pilotage', 'documents', 'incidents', 'dossier', 'candidats', 'positionnement', 'interventions', 'planning', 'emargement', 'evaluations', 'facturation', 'frais', 'mails']
 
 /**
  * Fiche d'un dossier POEI organisée en parcours plutôt qu'en empilement.
@@ -19,7 +19,7 @@ const ONGLETS_VALIDES: Onglet[] = ['pilotage', 'documents', 'incidents', 'dossie
  */
 export function PoeiShell({
   nbCandidats, nbInterventions, nbMails, nbIncidents = 0, alertes,
-  pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, emargement, evaluations, facturation, mails,
+  pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, emargement, evaluations, facturation, frais = null, mails,
 }: {
   nbCandidats: number
   nbInterventions: number
@@ -38,11 +38,14 @@ export function PoeiShell({
   emargement: React.ReactNode
   evaluations: React.ReactNode
   facturation: React.ReactNode
+  /** Frais du parcours et marge : absent pour un rôle qui ne voit pas la marge */
+  frais?: React.ReactNode | null
   mails: React.ReactNode
 }) {
   const searchParams = useSearchParams()
   const depuisUrl = searchParams?.get('onglet') as Onglet | null
-  const [onglet, setOnglet] = useState<Onglet>(depuisUrl && ONGLETS_VALIDES.includes(depuisUrl) ? depuisUrl : 'pilotage')
+  const ouvrable = (id: Onglet | null): id is Onglet => !!id && ONGLETS_VALIDES.includes(id) && (id !== 'frais' || frais != null)
+  const [onglet, setOnglet] = useState<Onglet>(ouvrable(depuisUrl) ? depuisUrl : 'pilotage')
   const barre = useRef<HTMLDivElement>(null)
 
   function choisir(id: Onglet) {
@@ -73,12 +76,13 @@ export function PoeiShell({
     { id: 'documents', label: 'Documents', icon: FileStack },
     { id: 'incidents', label: 'Incidents', icon: ShieldAlert, n: nbIncidents },
     { id: 'facturation', label: 'Facturation', icon: ReceiptEuro },
+    ...(frais != null ? [{ id: 'frais' as const, label: 'Frais', icon: Wallet }] : []),
     { id: 'mails', label: 'Mails', icon: Mails, n: nbMails },
     { id: 'dossier', label: 'Paramètres', icon: Settings },
   ]
 
   const contenu: Record<Onglet, React.ReactNode> = {
-    pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, emargement, evaluations, facturation, mails,
+    pilotage, documents, incidents, dossier, candidats, positionnement, interventions, planning, emargement, evaluations, facturation, frais, mails,
   }
 
   return (

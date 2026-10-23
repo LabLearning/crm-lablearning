@@ -141,8 +141,9 @@ export async function chargerDonneesRentabilite(
     L.parIds<FactureFormateurRentab>(ids, (p, from, to) => supabase.from('factures_formateur')
       .select('id, numero, session_id, formateur_id, status, montant_ht, montant_ttc, fichier_url')
       .eq('organization_id', orgId).in('session_id', p).order('id').range(from, to)),
+    // select('*') : frais_annexes n'existe qu'après la migration 166
     L.parIds<CommissionSessionRentab>(ids, (p, from, to) => supabase.from('commissions_sessions')
-      .select('session_id, franchise_id, status, commission_montant, base_montant, base_source, cout_formateur, cout_formateur_manuel, commission_type, calculee_at')
+      .select('*')
       .eq('organization_id', orgId).in('session_id', p).order('id').range(from, to)),
     tolerant(L.parIds<FraisRentab>(ids, (p, from, to) => supabase.from('session_frais')
       .select('id, session_id, categorie, libelle, montant, date_frais, formateur_id, justificatif_path, justificatif_nom, notes')

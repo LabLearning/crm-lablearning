@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
-import { peutVoirMarge, MESSAGE_MIGRATION_FRAIS } from '@/lib/rentabilite'
+import { peutVoirMarge, MESSAGE_MIGRATION_FRAIS, MESSAGE_MIGRATION_FRAIS_FORMATEUR } from '@/lib/rentabilite'
 import { fraisSchema } from '@/lib/validations/frais'
 import type { ActionResult } from '@/lib/types'
 
@@ -20,6 +20,8 @@ const TYPES_ACCEPTES: Record<string, string> = {
 const BUCKET = 'documents'
 
 const tableAbsente = (e: any) => ['PGRST205', '42P01'].includes(String(e?.code))
+// Catégorie refusée par la contrainte d'avant la migration 166 (« formateur »)
+const categorieRefusee = (e: any) => String(e?.code) === '23514' && /categorie/.test(String(e?.message || ''))
 
 async function contexte() {
   const session = await getSession()
@@ -67,10 +69,38 @@ async function formateurDeLOrg(supabase: any, orgId: string, formateurId: string
   return !!data
 }
 
+/**
+ * Les frais d'un parcours POEI entrent dans la commission de sa franchise
+ * (budget net) : elle est recalculée tout de suite, sans attendre la prochaine
+ * ouverture de la fiche franchise. Les commissions validées ou payées restent figées.
+ */
+async function recalculerCommissionPoei(supabase: any, orgId: string, sessionId: string) {
+  try {
+    const { data: s } = await supabase.from('sessions')
+      .select('id, poei_intervention_id, client:client_id(franchise_id)')
+      .eq('id', sessionId).eq('organization_id', orgId).maybeSingle()
+    const client = Array.isArray(s?.client) ? s.client[0] : s?.client
+    if (!s || !client?.franchise_id) return
+    let parcours = !!s.poei_intervention_id
+    if (!parcours) {
+      const { data: p } = await supabase.from('poei').select('id').eq('session_id', sessionId).eq('organization_id', orgId).limit(1)
+      parcours = !!p?.length
+    }
+    if (!parcours) return
+    const { syncFranchiseCommissions } = await import('@/lib/commission')
+    await syncFranchiseCommissions(supabase, client.franchise_id, orgId)
+  } catch (e) {
+    console.error('[frais → commission franchise]', e)
+  }
+}
+
 function revalider() {
-  // Couvre la session du frais et la porteuse d'un parcours POEI
+  // Couvre la session du frais et la porteuse d'un parcours POEI, son onglet
+  // Frais, et les commissions franchise qui déduisent les frais d'une POEI
   revalidatePath('/dashboard/sessions/[id]', 'page')
+  revalidatePath('/dashboard/poei/[id]', 'page')
   revalidatePath('/dashboard/rentabilite')
+  revalidatePath('/dashboard/franchises', 'layout')
 }
 
 /** Ajoute un frais annexe à une session, avec son justificatif éventuel. */
@@ -124,11 +154,13 @@ export async function ajouterFraisAction(sessionId: string, formData: FormData):
     // Le fichier est déjà déposé : on le retire pour ne pas laisser d'orphelin.
     if (chemin) await supabase.storage.from(BUCKET).remove([chemin])
     if (tableAbsente(error)) return { success: false, error: MESSAGE_MIGRATION_FRAIS }
+    if (categorieRefusee(error)) return { success: false, error: MESSAGE_MIGRATION_FRAIS_FORMATEUR }
     console.error('[frais ajout]', error)
     return { success: false, error: 'Enregistrement impossible' }
   }
 
   await logAudit({ action: 'create', entity_type: 'session_frais', entity_id: data.id, details: { session_id: sessionId, categorie: parsed.data.categorie, montant: parsed.data.montant } })
+  await recalculerCommissionPoei(supabase, orgId, sessionId)
   revalider()
   return { success: true, data: { id: data.id } }
 }
@@ -175,6 +207,7 @@ export async function modifierFraisAction(fraisId: string, formData: FormData): 
   const { error } = await supabase.from('session_frais').update(patch).eq('id', fraisId).eq('organization_id', orgId)
   if (error) {
     if (nouveauChemin) await supabase.storage.from(BUCKET).remove([nouveauChemin])
+    if (categorieRefusee(error)) return { success: false, error: MESSAGE_MIGRATION_FRAIS_FORMATEUR }
     console.error('[frais modification]', error)
     return { success: false, error: 'Enregistrement impossible' }
   }
@@ -184,6 +217,7 @@ export async function modifierFraisAction(fraisId: string, formData: FormData): 
   }
 
   await logAudit({ action: 'update', entity_type: 'session_frais', entity_id: fraisId, details: { session_id: frais.session_id, categorie: parsed.data.categorie, montant: parsed.data.montant } })
+  await recalculerCommissionPoei(supabase, orgId, frais.session_id)
   revalider()
   return { success: true }
 }
@@ -207,6 +241,7 @@ export async function supprimerFraisAction(fraisId: string): Promise<ActionResul
   if (frais.justificatif_path) await supabase.storage.from(BUCKET).remove([frais.justificatif_path])
 
   await logAudit({ action: 'delete', entity_type: 'session_frais', entity_id: fraisId, details: { session_id: frais.session_id, categorie: frais.categorie, montant: Number(frais.montant) } })
+  await recalculerCommissionPoei(supabase, orgId, frais.session_id)
   revalider()
   return { success: true }
 }

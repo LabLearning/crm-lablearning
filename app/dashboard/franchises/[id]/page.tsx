@@ -84,6 +84,8 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
   const { etatSession } = await import('@/lib/franchise-data')
   const caTotal = actives.filter((l) => l.session && etatSession(l.session) === 'terminee').reduce((s, l) => s + Number(l.base_montant || 0), 0)
   const coutFormateurTotal = actives.reduce((s, l) => s + Number(l.cout_formateur || 0), 0)
+  // Frais des parcours POEI déduits des commissions au budget net (migration 166)
+  const fraisTotal = actives.reduce((s, l) => s + Number(l.frais_annexes || 0), 0)
   // Couverture : établissements formés = ceux qui ont au moins une session
   const nbFormes = new Set(actives.map((l) => l.client?.id).filter(Boolean)).size
   const commAVenir = lignes.filter((l) => l.status === 'a_venir').reduce((s, l) => s + Number(l.commission_montant || 0), 0)
@@ -135,7 +137,7 @@ export default async function FranchiseDetailPage({ params }: { params: { id: st
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <FinCard label="Sessions réalisées (prise en charge)" value={fmtEuro(caTotal)} />
         <FinCard label="Prise en charge, toutes sessions" value={fmtEuro(pecTotal)} />
-        <FinCard label="Coût formateurs" value={fmtEuro(coutFormateurTotal)} />
+        <FinCard label={fraisTotal > 0 ? 'Coût formateurs et frais POEI' : 'Coût formateurs'} value={fmtEuro(coutFormateurTotal + fraisTotal)} />
         <FinCard label="Commissions totales" value={fmtEuro(commAVenir + commValidee + commPayee)} accent />
       </div>
 

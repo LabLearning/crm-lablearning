@@ -166,7 +166,13 @@ export default async function FranchiseFinancierPage() {
                         <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-700">
                           {Number(x.base_montant) > 0 ? fmtEuro(x.base_montant) : <span className="text-xs text-surface-400">à compléter</span>}
                         </td>
-                        {isNet && <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-500">{fmtEuro(x.cout_formateur)}</td>}
+                        {isNet && (
+                          <td className="px-4 py-3 text-right text-sm tabular-nums text-surface-500">
+                            {fmtEuro(x.cout_formateur)}
+                            {/* Frais du parcours POEI (transport, logement, salle…), déduits eux aussi */}
+                            {Number(x.frais_annexes) > 0 && <div className="text-[11px] text-surface-400">+ {fmtEuro(Number(x.frais_annexes))} de frais</div>}
+                          </td>
+                        )}
                         <td className={`px-4 py-3 text-right text-sm font-bold tabular-nums ${b.couleur}`}>
                           {fmtEuroPrecis(x.commission_montant)}
                         </td>

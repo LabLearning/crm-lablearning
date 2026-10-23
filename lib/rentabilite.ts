@@ -26,7 +26,7 @@ export const SEUIL_MARGE_FAIBLE = 0.30
 export const STATUTS_FACTURE_EMISE = ['emise', 'envoyee', 'payee_partiellement', 'payee', 'en_retard'] as const
 
 export const CATEGORIES_FRAIS_VALEURS = [
-  'deplacement', 'hebergement', 'repas', 'salle', 'materiel', 'supports', 'sous_traitance', 'autre',
+  'deplacement', 'hebergement', 'repas', 'salle', 'formateur', 'materiel', 'supports', 'sous_traitance', 'autre',
 ] as const
 export type CategorieFrais = (typeof CATEGORIES_FRAIS_VALEURS)[number]
 
@@ -35,11 +35,15 @@ export const CATEGORIES_FRAIS = [
   { valeur: 'hebergement', label: 'Hébergement', icone: 'Home' },
   { valeur: 'repas', label: 'Repas', icone: 'Utensils' },
   { valeur: 'salle', label: 'Salle', icone: 'Building2' },
+  // Un formateur payé hors contrat : les contrats sont déjà comptés à part (migration 166)
+  { valeur: 'formateur', label: 'Formateur (hors contrat)', icone: 'UserCheck' },
   { valeur: 'materiel', label: 'Matériel', icone: 'Wrench' },
   { valeur: 'supports', label: 'Supports pédagogiques', icone: 'BookOpen' },
   { valeur: 'sous_traitance', label: 'Sous-traitance', icone: 'Briefcase' },
   { valeur: 'autre', label: 'Autre', icone: 'Tag' },
 ] as const
+
+export const MESSAGE_MIGRATION_FRAIS_FORMATEUR = 'Appliquez la migration 166 pour la catégorie Formateur.'
 
 export function libelleCategorieFrais(v: string | null | undefined): string {
   return CATEGORIES_FRAIS.find((c) => c.valeur === v)?.label || 'Autre'
@@ -245,6 +249,8 @@ export interface CommissionSessionRentab {
   session_id: string; franchise_id: string | null; status: string | null
   commission_montant: Num; base_montant: Num; base_source: string | null
   cout_formateur: Num; cout_formateur_manuel: Num; commission_type: string | null; calculee_at: string | null
+  /** Frais du parcours POEI déduits en budget net (migration 166) */
+  frais_annexes?: Num
 }
 export interface FraisRentab {
   id: string; session_id: string; categorie: string; libelle: string; montant: Num
@@ -1328,7 +1334,7 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
         cle: `cf:${porteuse!.id}`,
         famille: 'commission_franchise',
         libelle: `Commission ${nomFr}`,
-        detail: `${commissionTypeLabel(String(ligne.commission_type || 'budget_debloque'))} · parcours de ${euro(n(ligne.base_montant))}${ligne.commission_type === 'budget_net' ? ` moins ${euro(n(ligne.cout_formateur))} de coût formateur` : ''}`,
+        detail: `${commissionTypeLabel(String(ligne.commission_type || 'budget_debloque'))} · parcours de ${euro(n(ligne.base_montant))}${ligne.commission_type === 'budget_net' ? ` moins ${euro(n(ligne.cout_formateur))} de coût formateur${n(ligne.frais_annexes) > 0 ? ` et ${euro(n(ligne.frais_annexes))} de frais` : ''}` : ''}`,
         montant: n(ligne.commission_montant),
         qualite: 'a_venir',
         sessionId: porteuse!.id,

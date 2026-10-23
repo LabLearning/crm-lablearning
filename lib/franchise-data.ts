@@ -145,6 +145,8 @@ export interface LigneCommissionSession {
   base_source: string
   cout_formateur: number
   cout_formateur_manuel: number | null
+  /** Frais du parcours POEI déduits en budget net (migration 166 ; absent avant) */
+  frais_annexes?: number | null
   /** D'où vient le coût formateur (renseigné seulement à la demande, pour la fiche franchise de l'administration). */
   cout_source?: SourceCoutLigne
   commission_montant: number
@@ -170,9 +172,9 @@ export type SourceCoutLigne = SourceCoutFormateur | 'parcours' | 'fige'
 export async function getFranchiseCommissionLines(supabase: any, franchiseId: string, orgId: string, opts?: { avecSources?: boolean }): Promise<LigneCommissionSession[]> {
   const { data } = await supabase
     .from('commissions_sessions')
+    // * : frais_annexes n'existe qu'après la migration 166
     .select(`
-      id, session_id, status, base_montant, base_source, cout_formateur, cout_formateur_manuel,
-      commission_montant, commission_taux, commission_type, payee_at,
+      *,
       client:client_id(id, raison_sociale, ville),
       session:session_id(id, reference, intitule, date_debut, date_fin, status, formation:formation_id(intitule))
     `)

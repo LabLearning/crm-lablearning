@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Paperclip, Pencil, Trash2, Info, ExternalLink,
-  Route, Home, Utensils, Building2, Wrench, BookOpen, Briefcase, Tag,
+  Route, Home, Utensils, Building2, Wrench, BookOpen, Briefcase, Tag, UserCheck,
   type LucideIcon,
 } from '@/components/ui/icons'
 import { Button, Input, Select, RowMenu, useToast } from '@/components/ui'
@@ -15,7 +15,7 @@ import {
 } from '@/lib/rentabilite'
 import { ajouterFraisAction, modifierFraisAction, supprimerFraisAction, lienJustificatifFraisAction } from './frais-actions'
 
-const ICONES: Record<string, LucideIcon> = { Route, Home, Utensils, Building2, Wrench, BookOpen, Briefcase, Tag }
+const ICONES: Record<string, LucideIcon> = { Route, Home, Utensils, Building2, Wrench, BookOpen, Briefcase, Tag, UserCheck }
 const iconeCategorie = (v: string): LucideIcon => ICONES[CATEGORIES_FRAIS.find((c) => c.valeur === v)?.icone || 'Tag'] || Tag
 const TAILLE_MAX = 4 * 1024 * 1024
 

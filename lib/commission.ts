@@ -3,7 +3,10 @@
  *
  * Deux modes (configurés sur la fiche franchise, table franchises) :
  *   - 'budget_debloque' : taux% × montant_prise_en_charge        (ex: 10%)
- *   - 'budget_net'      : taux% × (prise_en_charge - cout_formateur) (ex: 40%)
+ *   - 'budget_net'      : taux% × (prise_en_charge - cout_formateur) (ex: 40%) ;
+ *     pour un parcours POEI, les frais du parcours (transport, logement, salle,
+ *     formateur hors contrat…, table session_frais) sont déduits aussi
+ *     (demande de Brahim du 23/10/2026)
  *
  * Le montant obtenu est un montant TTC : c'est ce que la franchise facture,
  * elle n'ajoute pas de TVA par-dessus.
@@ -23,13 +26,16 @@ export function computeCommission(params: {
   taux: number // pourcentage, ex: 10 ou 40
   montantPriseEnCharge: number
   coutFormateur: number
+  /** Frais annexes déduits en plus du coût formateur, en budget net (parcours POEI) */
+  frais?: number
 }): { montant: number; base: number } {
   const taux = Number(params.taux || 0)
   const pec = Number(params.montantPriseEnCharge || 0)
   const cf = Number(params.coutFormateur || 0)
+  const fr = Math.max(0, Number(params.frais || 0))
 
   if (params.type === 'budget_net') {
-    const base = Math.max(0, pec - cf)
+    const base = Math.max(0, pec - cf - fr)
     return { base, montant: round2(base * (taux / 100)) }
   }
   // budget_debloque (par défaut)
@@ -41,7 +47,7 @@ export function computeCommission(params: {
  * tels quels, sans ajouter de TVA par-dessus.
  */
 export function commissionTypeLabel(type: CommissionType | string | null): string {
-  if (type === 'budget_net') return '40% TTC du budget net (après frais formateur)'
+  if (type === 'budget_net') return '40% TTC du budget net (après frais formateur, et frais du parcours pour une POEI)'
   return '10% TTC du budget débloqué'
 }
 
@@ -179,6 +185,8 @@ export interface SessionCommissionResult {
   base: number
   baseSource: 'opco' | 'prix_ht' | 'factures' | 'poei' | 'aucune'
   coutFormateur: number
+  /** Frais du parcours POEI déduits (budget net) ; 0 ailleurs */
+  frais?: number
   type: CommissionType
   status: CommissionStatus
 }
@@ -254,6 +262,8 @@ export interface CommissionSessionExistante {
   base_source: string | null
   cout_formateur: number | string | null
   cout_formateur_manuel?: number | string | null
+  /** Absente avant la migration 166 */
+  frais_annexes?: number | string | null
   commission_type: string | null
 }
 
@@ -299,6 +309,7 @@ function snapshotCommission(e: CommissionSessionExistante): SessionCommissionRes
     montant: Number(e.commission_montant || 0), base: Number(e.base_montant || 0),
     baseSource: (e.base_source as SessionCommissionResult['baseSource']) || 'aucune',
     coutFormateur: Number(e.cout_formateur || 0),
+    frais: Number(e.frais_annexes || 0),
     type: (e.commission_type as CommissionType) || 'budget_debloque',
     status: e.status as CommissionStatus,
   }
@@ -371,6 +382,8 @@ export interface EntreeCommissionPoei {
   montantPoei: number | null
   /** Contrats formateur de toutes les interventions du parcours (hors annulés) */
   coutFormateurs: number
+  /** Frais du parcours (session_frais de ses sessions), déduits en budget net */
+  fraisAnnexes?: number
   existante: CommissionSessionExistante | null
 }
 
@@ -400,10 +413,12 @@ export function calculerCommissionPoei(e: EntreeCommissionPoei & { force?: boole
   const taux = Number(e.franchise.taux_commission || (type === 'budget_net' ? 40 : 10))
   const base = Math.max(0, Number(e.montantPoei || 0))
   const coutFormateur = Math.max(0, Number(e.coutFormateurs || 0))
-  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur })
+  // Les frais ne comptent qu'en budget net : le budget débloqué se commissionne brut
+  const frais = type === 'budget_net' ? Math.round(Math.max(0, Number(e.fraisAnnexes || 0)) * 100) / 100 : 0
+  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur, frais })
   const exStatus = e.existante?.status
   const status: CommissionStatus = exStatus && exStatus !== 'annulee' ? exStatus as CommissionStatus : 'a_venir'
-  return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource: base > 0 ? 'poei' : 'aucune', coutFormateur, type, status }, taux }
+  return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource: base > 0 ? 'poei' : 'aucune', coutFormateur, frais, type, status }, taux }
 }
 
 /**
@@ -565,15 +580,23 @@ export async function syncFranchiseCommissions(
   const lire = (table: string, colonnes: string, filtre: (q: any) => any) =>
     Promise.all(paquets(ids).map((p) => toutLire((f, t) => filtre(supabase.from(table).select(colonnes).in('session_id', p)).range(f, t)))).then((r) => r.flat())
   const formateurIds = Array.from(new Set(sessions.map((x: any) => x.formateur_id).filter(Boolean))) as string[]
-  const [existantes, poeis, inscriptions, factures, contrats, facturesFormateur, formateurs] = await Promise.all([
-    lire('commissions_sessions', 'id, session_id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type, commission_taux, franchise_id, client_id', (q) => q),
+  const [existantes, poeis, inscriptions, factures, contrats, facturesFormateur, formateurs, frais] = await Promise.all([
+    // select('*') : frais_annexes n'existe qu'après la migration 166, et une
+    // colonne nommée absente ferait échouer la lecture… et dégeler les lignes validées
+    lire('commissions_sessions', '*', (q) => q),
     lire('poei', 'id, session_id', (q) => q),
     lire('inscriptions', 'session_id', (q) => q.not('status', 'in', '("annule","abandonne")')),
     lire('factures', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","annulee")')),
     lire('contrats_formateur', 'id, session_id, montant_ht', (q) => q.neq('status', 'annule')),
     lire('factures_formateur', 'session_id, montant_ht', (q) => q),
     Promise.all(paquets(formateurIds).map((p) => supabase.from('formateurs').select('id, tarif_journalier').eq('organization_id', organizationId).in('id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
+    // Frais annexes des sessions : ceux d'un parcours POEI sont déduits de sa commission
+    lire('session_frais', 'session_id, montant', (q) => q.eq('organization_id', organizationId)),
   ])
+  const sommeFrais = (sessionIds: string[]) => {
+    const dans = new Set(sessionIds)
+    return Math.round((frais as any[]).filter((f) => dans.has(f.session_id)).reduce((t, f) => t + Number(f.montant || 0), 0) * 100) / 100
+  }
   const facturesFormateurDe = (() => { const m = new Map<string, any[]>(); for (const x of facturesFormateur as any[]) { if (!m.has(x.session_id)) m.set(x.session_id, []); m.get(x.session_id)!.push(x) } return m })()
   const tarifDuFormateur = new Map((formateurs as any[]).map((f) => [f.id, f.tarif_journalier]))
   const parSession = <T,>(l: any[]) => { const m = new Map<string, any[]>(); for (const x of l) { const k = x.session_id; if (!m.has(k)) m.set(k, []); m.get(k)!.push(x) } return m }
@@ -593,7 +616,7 @@ export async function syncFranchiseCommissions(
   for (const p of poeis as any[]) poeiDeSession.set(p.session_id, p.id)
   for (const x of sessions as any[]) if (x.poei_intervention_id && poeiDeLIntervention.get(x.poei_intervention_id)) poeiDeSession.set(x.id, poeiDeLIntervention.get(x.poei_intervention_id))
   const poeiIds = Array.from(new Set(poeiDeSession.values()))
-  const infosPoei = new Map<string, { poei: any; candidats: number; couts: number; representative: string }>()
+  const infosPoei = new Map<string, { poei: any; candidats: number; couts: number; frais: number; representative: string }>()
   if (poeiIds.length) {
     const [lignesPoei, candidats, toutesInterventions] = await Promise.all([
       Promise.all(paquets(poeiIds).map((p) => supabase.from('poei')
@@ -625,6 +648,8 @@ export async function syncFranchiseCommissions(
           })),
           contratsChapeauHt: somme(p.session_id ? contratsDe.get(p.session_id) : []),
         }).montant,
+        // Frais saisis sur toutes les sessions du parcours (onglet Frais de la POEI)
+        frais: sommeFrais(sessionsDuParcours.map((x) => x.id)),
         representative,
       })
     }
@@ -650,6 +675,7 @@ export async function syncFranchiseCommissions(
             ? Number(infos.poei.montant_total)
             : (Number(infos.poei.montant_horaire) || 0) * (Number(infos.poei.duree_heures) || 0) * infos.candidats || null,
           coutFormateurs: infos.couts,
+          fraisAnnexes: infos.frais,
           existante,
         })
       : calculerCommissionSession({
@@ -677,15 +703,17 @@ export async function syncFranchiseCommissions(
     }
     if (r.fige) continue
     const { montant, base, baseSource, coutFormateur, type, status } = r.resultat
+    const fraisLigne = Number(r.resultat.frais || 0)
     const ligne = {
       organization_id: organizationId, franchise_id: franchiseSession, session_id: sess.id, client_id: sess.client_id,
-      base_montant: base, base_source: baseSource, cout_formateur: coutFormateur, commission_type: type,
+      base_montant: base, base_source: baseSource, cout_formateur: coutFormateur, frais_annexes: fraisLigne, commission_type: type,
       commission_taux: r.taux, commission_montant: montant, status,
     }
-    // Rien n'a changé : pas d'écriture
+    // Rien n'a changé : pas d'écriture (frais comparés seulement quand la colonne existe)
     const identique = existante
       && Number(existante.base_montant) === base && existante.base_source === baseSource
       && Number(existante.cout_formateur) === coutFormateur && existante.commission_type === type
+      && (!('frais_annexes' in existante) || Number(existante.frais_annexes || 0) === fraisLigne)
       && Number(existante.commission_taux) === r.taux && Number(existante.commission_montant) === montant
       && existante.status === status && existante.franchise_id === franchiseSession && existante.client_id === sess.client_id
     if (!identique) aEcrire.push({ ...ligne, calculee_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -693,6 +721,15 @@ export async function syncFranchiseCommissions(
 
   if (opts?.essai) return aEcrire.length + aSupprimer.length
   for (const p of paquets(aSupprimer)) await supabase.from('commissions_sessions').delete().in('id', p)
-  for (const p of paquets(aEcrire, 200)) await supabase.from('commissions_sessions').upsert(p, { onConflict: 'session_id' })
+  for (const p of paquets(aEcrire, 200)) {
+    const { error } = await supabase.from('commissions_sessions').upsert(p, { onConflict: 'session_id' })
+    // Avant la migration 166, la colonne frais_annexes n'existe pas : la
+    // commission (frais déjà déduits) s'écrit quand même, sans le détail
+    if (error && /frais_annexes/.test(String(error.message || ''))) {
+      const { error: e2 } = await supabase.from('commissions_sessions')
+        .upsert(p.map(({ frais_annexes, ...l }: any) => l), { onConflict: 'session_id' })
+      if (e2) console.error('[commissions franchise]', e2.message)
+    } else if (error) console.error('[commissions franchise]', error.message)
+  }
   return sessions.length
 }
