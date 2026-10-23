@@ -538,7 +538,12 @@ export function construireUnites(d: DonneesRentabilite): Unite[] {
     sessionIds.forEach((id) => dansPoei.add(id))
     const poeis = poeiIds.map((id) => d.idx.poeiParId.get(id)!).sort((a, b) => String(a.numero || '').localeCompare(String(b.numero || '')))
     const sessions = sessionIds.map((id) => d.idx.sessionParId.get(id)!).sort((a, b) => String(a.date_debut || '').localeCompare(String(b.date_debut || '')))
-    const porteuseIds = uniques(poeis.map((p) => p.session_id).filter((id): id is string => !!id && sessionIds.includes(id)))
+    // La session chapeau porte le parcours ; sans chapeau, la première intervention
+    // datée, comme pour la commission franchise (lib/commission.ts) : l'onglet Frais
+    // de la POEI y saisit les frais et y lit la rentabilité du parcours entier
+    const chapeaux = uniques(poeis.map((p) => p.session_id).filter((id): id is string => !!id && sessionIds.includes(id)))
+    const premiere = [...sessions].sort((a, b) => String(a.date_debut || '9999').localeCompare(String(b.date_debut || '9999')))[0]
+    const porteuseIds = chapeaux.length ? chapeaux : premiere ? [premiere.id] : []
     const dates = [...sessions.map((s) => s.date_debut), ...poeis.map((p) => p.date_debut)].filter((x): x is string => !!x).sort()
     unites.push({
       id: 'poei:' + poeis.map((p) => p.id).join('+'),
