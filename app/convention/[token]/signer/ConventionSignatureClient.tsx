@@ -5,6 +5,7 @@ import { Pen, CheckCircle2, RotateCcw, FileText } from '@/components/ui/icons'
 import { signConventionPublicAction, signalerOuvertureConventionAction } from '@/app/dashboard/conventions/signature-actions'
 import { texteConsentement } from '@/lib/consentement-convention'
 import { cadreSigne, MESSAGE_SIGNATURE_VIDE } from '@/lib/signature-encre'
+import { ApercuPdf } from '@/components/signature/ApercuPdf'
 
 interface ConventionInfo {
   id: string
@@ -34,9 +35,10 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
   const [signataireNom, setSignataireNom] = useState('')
   const [consentement, setConsentement] = useState(false)
   // La case dit « j'ai pris connaissance de la convention » : elle ne se coche
-  // qu'après l'ouverture du document complet. Mémorisé pour l'onglet, car
-  // certains navigateurs rechargent la page au retour du PDF.
+  // qu'une fois le document complet affiché dans la page (ou ouvert en plein
+  // écran). Mémorisé pour l'onglet, car certains navigateurs rechargent la page.
   const [documentOuvert, setDocumentOuvert] = useState(false)
+  const [apercuEnEchec, setApercuEnEchec] = useState(false)
   const cleLecture = `ll_convention_lue_${convention.id}`
   const lienDocument = `/api/pdf/convention/${convention.id}?token=${encodeURIComponent(token)}`
   useEffect(() => {
@@ -166,15 +168,20 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           </div>
         </div>
         <p className="text-sm text-surface-700">{convention.objet}</p>
-        <a
-          href={lienDocument}
-          target="_blank"
-          rel="noreferrer"
-          onClick={noterLecture}
-          className="btn-secondary mt-4 inline-flex items-center gap-2"
-        >
-          <FileText className="h-4 w-4" /> Lire {particulier ? 'le contrat complet' : 'la convention complète'} (PDF)
-        </a>
+      </div>
+
+      {/* Le document complet, lu dans la page : plus besoin d'ouvrir un autre onglet */}
+      <div className="card p-4 sm:p-6 space-y-3">
+        <div>
+          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">{particulier ? 'Le contrat' : 'La convention'}</div>
+          <div className="text-sm text-surface-600 mt-1">Lisez {nomDocument} ci-dessous avant de signer.</div>
+        </div>
+        <ApercuPdf
+          url={lienDocument}
+          titre={particulier ? `Contrat ${convention.numero || ''}`.trim() : `Convention ${convention.numero || ''}`.trim()}
+          onCharge={noterLecture}
+          onEchec={() => setApercuEnEchec(true)}
+        />
       </div>
 
       {/* Détails */}
@@ -283,10 +290,16 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           </label>
           {!documentOuvert && (
             <p className="mt-2 text-xs text-surface-600">
-              Ouvrez d’abord {particulier ? 'le contrat complet' : 'la convention complète'} pour pouvoir cocher cette case :{' '}
-              <a href={lienDocument} target="_blank" rel="noreferrer" onClick={noterLecture} className="font-semibold text-brand-600 underline">
-                lire {nomDocument} (PDF)
-              </a>
+              {apercuEnEchec ? (
+                <>
+                  Ouvrez d’abord {particulier ? 'le contrat complet' : 'la convention complète'} pour pouvoir cocher cette case :{' '}
+                  <a href={lienDocument} target="_blank" rel="noreferrer" onClick={noterLecture} className="font-semibold text-brand-600 underline">
+                    lire {nomDocument} (PDF)
+                  </a>
+                </>
+              ) : (
+                <>Cette case se coche une fois {nomDocument} affiché{particulier ? '' : 'e'} ci-dessus.</>
+              )}
             </p>
           )}
         </div>
