@@ -1,0 +1,227 @@
+{
+  "slug": "plan-de-developpement-des-competences-restaurant",
+  "titre": "Plan de développement des compétences : former son équipe de restaurant",
+  "titreCourt": "Plan de développement des compétences",
+  "description": "Formations obligatoires ou non, priorités, calendrier, financement par AKTO : comment bâtir le plan de développement des compétences de votre restaurant.",
+  "chapeau": "Le plan de développement des compétences réunit les formations que vous décidez pour vos salariés. Dans un restaurant, il part des formations imposées par la réglementation, puis des besoins du service. Voici comment le construire, et où en est son financement par AKTO en cette fin d’année 2026.",
+  "categorie": "Financement",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/photos/guides/financer-formation-restauration-rapide-opco.webp",
+  "imageAlt": "Ordinateur portable, carnet et tasse de café sur un comptoir en bois, devant une cuisine professionnelle où travaille l’équipe",
+  "aRetenir": [
+    "Le plan de développement des compétences est le cadre dans lequel l’employeur organise la formation de ses salariés ; il a remplacé le plan de formation.",
+    "Une formation obligatoire se suit sur le temps de travail, salaire maintenu, et le salarié ne peut pas la refuser sans commettre une faute.",
+    "En restauration, AKTO finance la formation des salariés des entreprises de moins de 50 salariés, selon les règles de chaque branche et dans la limite des fonds disponibles.",
+    "En restauration rapide, AKTO indique en octobre 2026 que l’enveloppe 2026 est intégralement engagée : c’est le moment de préparer le plan 2027."
+  ],
+  "sections": [
+    {
+      "id": "definition",
+      "titre": "Qu’est-ce que le plan de développement des compétences ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plan de développement des compétences, ou **PDC**, est le cadre qui permet à l’employeur de définir sa politique de formation. Il a remplacé le plan de formation. Les formations qu’il prévoit sont à votre initiative : elles servent à adapter chaque salarié à son poste, à maintenir sa capacité à occuper un emploi, et peuvent aussi développer ses compétences."
+        },
+        {
+          "type": "p",
+          "texte": "Derrière l’outil, il y a une obligation inscrite dans le code du travail : l’employeur **assure l’adaptation des salariés à leur poste de travail** et veille au maintien de leur capacité à occuper un emploi (article L6321-1). Le plan est la façon la plus simple d’organiser cette obligation et d’en garder la trace."
+        },
+        {
+          "type": "p",
+          "texte": "Tous vos salariés y ont accès, apprentis compris, sans condition d’ancienneté. Vous choisissez qui vous formez, à condition de ne retenir aucun critère discriminant, comme l’âge ou la situation familiale."
+        }
+      ]
+    },
+    {
+      "id": "obligatoires-ou-non",
+      "titre": "Formations obligatoires ou non : ce qui change",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plan distingue les formations obligatoires des autres. Elles n’obéissent pas aux mêmes règles :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Règle",
+            "Formation obligatoire",
+            "Formation non obligatoire"
+          ],
+          "lignes": [
+            [
+              "Définition",
+              "Elle conditionne l’exercice d’une activité ou d’une fonction, en application d’un texte",
+              "Toute autre formation décidée par l’employeur"
+            ],
+            [
+              "Quand",
+              "Sur le temps de travail, salaire maintenu",
+              "Sur le temps de travail, salaire maintenu ; ou en dehors, avec l’accord écrit du salarié et sans salaire, dans la limite de 30 heures par an sauf accord collectif"
+            ],
+            [
+              "Refus du salarié",
+              "Faute pouvant justifier un licenciement",
+              "Ni faute, ni motif de licenciement"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Dans un restaurant, la réglementation impose quelques formations, à placer en tête du plan :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "la **formation à l’hygiène alimentaire** de 14 heures : au moins une personne de l’établissement doit l’avoir suivie, sauf dispense ;",
+            "le **permis d’exploitation**, pour l’exploitant, si vous servez de l’alcool à consommer sur place ;",
+            "une **formation pratique à la sécurité** pour chaque salarié embauché, ou qui change de poste ou de technique ;",
+            "des **instructions ou une formation en hygiène** adaptées au poste, pour toute personne qui manipule des aliments."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Le détail de ces obligations est dans notre guide [Ouvrir un restaurant rapide : les formations et démarches à prévoir](/guides/ouvrir-restaurant-rapide-formations-obligations)."
+        }
+      ]
+    },
+    {
+      "id": "construire",
+      "titre": "Comment construire le plan de votre restaurant ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "**Faites l’inventaire.** Pour chaque salarié : son poste, les formations suivies, les attestations obtenues. Notre [tableau de suivi des formations de l’équipe](/modeles/suivi-formations-equipe-restaurant) sert à cela.",
+            "**Repérez les écarts.** Une seule personne formée à l’hygiène par établissement, c’est fragile : si elle part, l’établissement n’est plus en règle. Un équipier qui devient manager, une nouvelle carte, un appareil de cuisson neuf : chaque changement crée un besoin.",
+            "**Écoutez l’équipe.** Le plan peut tenir compte des entretiens de parcours professionnel que vous menez avec vos salariés. Ce sont eux qui savent où ils bloquent.",
+            "**Classez par priorité.** D’abord ce qu’impose la réglementation, ensuite la sécurité des clients et de l’équipe (hygiène, allergènes, prévention des accidents), enfin le service, la vente et la gestion.",
+            "**Fixez le calendrier.** Évitez les périodes de forte activité et tenez compte du délai de la prise en charge : chez AKTO, la demande se dépose 30 jours calendaires avant le début de la formation."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un plan utile tient sur une page par établissement : pour chaque formation, qui, quoi, quand, et avec quel financement. Reprenez-le chaque année, et à chaque arrivée ou départ qui change l’organisation de l’équipe."
+        }
+      ]
+    },
+    {
+      "id": "akto",
+      "titre": "Quel rôle pour AKTO, l’OPCO de la restauration ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les restaurants rapides (convention collective **IDCC 1501**) et les hôtels, cafés, restaurants (**IDCC 1979**) relèvent d’**AKTO**, leur opérateur de compétences. Pour les entreprises de **moins de 50 salariés**, AKTO finance les formations du plan selon les règles fixées chaque année pour chaque branche, sous réserve des fonds disponibles. L’organisme de formation doit avoir un numéro de déclaration d’activité valide et être certifié Qualiopi."
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Branche",
+            "Budget annuel 2026, formations hors catalogue d’AKTO",
+            "Situation au 23 octobre 2026"
+          ],
+          "lignes": [
+            [
+              "Restauration rapide (IDCC 1501)",
+              "4 000 € sous 11 salariés, 9 000 € de 11 à 49 salariés",
+              "Enveloppe 2026 intégralement engagée : AKTO demande de ne plus déposer de dossiers pour 2026"
+            ],
+            [
+              "Hôtels, cafés, restaurants (IDCC 1979)",
+              "2 000 € sous 11 salariés, 3 000 € de 11 à 25 salariés, 6 000 € de 26 à 49 salariés",
+              "Demandes à déposer complètes au plus tard le 20 novembre 2026, pour un traitement garanti avant le 31 décembre"
+            ]
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Restauration rapide : préparez 2027",
+          "texte": "AKTO explique que la dotation de l’État pour la formation dans les entreprises de moins de 50 salariés a été réduite, et que l’enveloppe 2026 de la branche est **intégralement engagée** : les dossiers qui n’ont pas pu être engagés ne seront pas pris en charge. Profitez de ce temps pour bâtir votre plan, et vérifiez les règles 2027 de votre branche sur le site d’AKTO avant de déposer vos premières demandes.",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Les plafonds par heure et par salarié sont détaillés dans notre guide [financer la formation de votre équipe avec AKTO](/guides/financer-formation-restauration-rapide-opco). Votre propre formation, si vous dirigez l’entreprise sans être salarié, ne relève pas d’AKTO : voyez [l’AGEFICE et la formation du dirigeant non salarié](/blog/agefice-formation-dirigeant-non-salarie)."
+        }
+      ]
+    },
+    {
+      "id": "accompagnement",
+      "titre": "Comment nous vous accompagnons",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Nous faisons avec vous le point sur les obligations et les besoins de chaque établissement, puis nous proposons un calendrier compatible avec le service. Nous préparons avec vous les pièces de la demande de prise en charge : programme, devis, convention. Vous déposez la demande dans votre espace AKTO ; nous vous guidons à chaque étape et répondons aux demandes de pièces. Les formations ont lieu dans votre établissement, sur les postes de votre équipe."
+        },
+        {
+          "type": "p",
+          "texte": "Vous voulez construire le plan de votre équipe ? [Demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un salarié peut-il refuser une formation ?",
+      "r": "Pas une formation obligatoire : ce refus est une faute pouvant justifier un licenciement. En revanche, refuser une formation non obligatoire, ou une formation proposée en dehors du temps de travail, n’est ni une faute ni un motif de licenciement."
+    },
+    {
+      "q": "Une formation peut-elle avoir lieu en dehors des heures de travail ?",
+      "r": "Seulement une formation non obligatoire, avec l’accord écrit du salarié. Sans accord collectif, la limite est de 30 heures par an et par salarié, et le salarié peut revenir sur son accord dans les 8 jours. Ces heures ne sont pas rémunérées."
+    },
+    {
+      "q": "Qui paie la formation des salariés ?",
+      "r": "Les frais de formation du plan sont à la charge de l’employeur. Une entreprise de moins de 50 salariés peut demander à AKTO une prise en charge, accordée selon les règles de sa branche et dans la limite des fonds disponibles."
+    },
+    {
+      "q": "Peut-on encore faire financer une formation par AKTO en 2026 ?",
+      "r": "Cela dépend de votre branche. En restauration rapide, AKTO indique que l’enveloppe 2026 est intégralement engagée et demande de ne plus déposer de dossiers pour 2026. En hôtels, cafés, restaurants, les demandes doivent être déposées complètes au plus tard le 20 novembre 2026 pour que leur traitement soit garanti avant le 31 décembre."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public : Plan de développement des compétences (PDC) pour un salarié du secteur privé",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F11267"
+    },
+    {
+      "libelle": "Code du travail, article L6321-1 : adaptation des salariés à leur poste (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049049416"
+    },
+    {
+      "libelle": "AKTO : règles de prise en charge 2026, restauration rapide",
+      "url": "https://www.akto.fr/regles-de-prise-en-charge-restauration-rapide/"
+    },
+    {
+      "libelle": "AKTO : règles de prise en charge 2026, hôtels, cafés, restaurants",
+      "url": "https://www.akto.fr/regles-de-prise-en-charge-hotels-cafes-restaurants/"
+    },
+    {
+      "libelle": "AKTO : déposer et suivre une demande de prise en charge",
+      "url": "https://www.akto.fr/entreprise/financer-une-formation/deposer-demande/"
+    },
+    {
+      "libelle": "Observatoire AKTO : la branche hôtels, cafés, restaurants (IDCC 1979)",
+      "url": "https://observatoire.akto.fr/branches/hotels-cafes-restaurants/"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Licences de débits de boissons",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F22379"
+    },
+    {
+      "libelle": "Code du travail, article L4141-2 : formation à la sécurité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006903166"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|manag|pr[eé]vention",
+  "guides": [
+    "financer-formation-restauration-rapide-opco",
+    "ouvrir-restaurant-rapide-formations-obligations"
+  ]
+}

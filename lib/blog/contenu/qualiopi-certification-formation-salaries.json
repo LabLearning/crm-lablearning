@@ -1,0 +1,247 @@
+{
+  "slug": "qualiopi-certification-formation-salaries",
+  "titre": "Qualiopi : ce que la certification garantit quand vous formez vos salariés",
+  "titreCourt": "Qualiopi : ce que garantit la certification",
+  "description": "Qualiopi conditionne le financement de vos formations. Ce que contrôle le référentiel, ce que vous devez recevoir et comment vérifier un organisme.",
+  "chapeau": "Sans certification Qualiopi, un organisme de formation ne peut pas être financé par votre OPCO. La certification dit aussi ce que vous êtes en droit d’attendre, avant, pendant et après la formation. Voici comment la lire, et comment vérifier qu’un organisme la détient.",
+  "categorie": "Formation",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/metiers/formation.webp",
+  "imageAlt": "Un formateur debout s’adresse à des stagiaires en tablier qui prennent des notes dans une salle lumineuse",
+  "aRetenir": [
+    "La certification Qualiopi est exigée des organismes de formation financés par un opérateur de compétences, l’État ou les régions.",
+    "Elle repose sur sept critères, précisés par 33 indicateurs à partir du 1er novembre 2026.",
+    "Avant l’inscription, vous devez disposer des objectifs, du contenu, des horaires, des modalités d’évaluation et de la liste des formateurs.",
+    "La liste publique des organismes de formation indique si un organisme est certifié pour les actions de formation."
+  ],
+  "sections": [
+    {
+      "id": "definition",
+      "titre": "Qu’est-ce que la certification Qualiopi ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Qualiopi est la certification qualité des organismes qui réalisent des actions concourant au développement des compétences. Elle est délivrée par un organisme certificateur, à l’issue d’un audit, sur la base d’un référentiel national fixé par décret."
+        },
+        {
+          "type": "p",
+          "texte": "Elle porte sur une ou plusieurs catégories d’actions : les actions de formation, les bilans de compétences, la validation des acquis de l’expérience et l’apprentissage. Pour former vos salariés, c’est la catégorie **actions de formation** qui compte. C’est l’organisme qui est certifié, pas chacune de ses formations."
+        }
+      ]
+    },
+    {
+      "id": "financement",
+      "titre": "Pourquoi conditionne-t-elle le financement ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’article L6316-1 du code du travail impose la certification aux organismes financés par un opérateur de compétences, par l’État, par les régions ou par la Caisse des dépôts et consignations, entre autres. En restauration, cela se traduit ainsi :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**AKTO**, l’OPCO de la restauration, ne finance une formation que si l’organisme a un numéro de déclaration d’activité valide et la certification Qualiopi ;",
+            "l’**AGEFICE**, qui finance la formation des dirigeants non salariés, pose la même condition ;",
+            "pour la **formation à l’hygiène alimentaire** de 14 heures, l’organisme doit, depuis le 1er février 2026, être autorisé par la DRAAF, ce qui suppose notamment la certification Qualiopi ou équivalent."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un organisme non certifié peut vous former, mais ni AKTO ni l’AGEFICE ne financeront la formation. Voyez aussi [qui doit suivre la formation hygiène alimentaire](/guides/formation-hygiene-alimentaire-restauration-rapide) et [l’AGEFICE pour le dirigeant non salarié](/blog/agefice-formation-dirigeant-non-salarie)."
+        }
+      ]
+    },
+    {
+      "id": "referentiel",
+      "titre": "Que contrôle le référentiel ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le code du travail fixe sept critères de qualité :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "l’information du public sur les formations, les délais pour y accéder et les résultats obtenus ;",
+            "des objectifs précis, et des formations adaptées aux publics dès leur conception ;",
+            "l’adaptation de l’accueil, de l’accompagnement, du suivi et de l’évaluation ;",
+            "des moyens pédagogiques, techniques et d’encadrement adaptés aux formations ;",
+            "la qualification des formateurs et le développement de leurs compétences ;",
+            "l’investissement de l’organisme dans son environnement professionnel ;",
+            "le recueil et la prise en compte des appréciations et des réclamations."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Chaque critère est précisé par des indicateurs, vérifiés en audit. Un décret du 1er août 2026 actualise le référentiel : à partir du **1er novembre 2026**, il compte 33 indicateurs au lieu de 32, et les sept critères ne changent pas. Après l’obtention de la certification, un audit de surveillance a lieu entre le 14e et le 22e mois. Une non-conformité majeure doit être corrigée sous trois mois, et la certification peut être refusée, suspendue ou retirée selon la gravité, le nombre ou la répétition des écarts."
+        }
+      ]
+    },
+    {
+      "id": "ce-que-vous-recevez",
+      "titre": "Ce que vous devez concrètement recevoir",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le référentiel et le code du travail se traduisent par des documents et des étapes précises :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Quand",
+            "Ce que l’organisme vous doit"
+          ],
+          "lignes": [
+            [
+              "Avant de choisir",
+              "Une information détaillée et vérifiable : prérequis, objectifs, durée, délais d’accès, tarifs, contacts, méthodes, modalités d’évaluation, accessibilité aux personnes en situation de handicap"
+            ],
+            [
+              "Avant l’inscription",
+              "Les objectifs et le contenu, la liste des formateurs, les horaires, les modalités d’évaluation, les coordonnées d’un interlocuteur et le règlement intérieur, puis la convention de formation"
+            ],
+            [
+              "Au démarrage",
+              "Un positionnement, avec une évaluation des acquis à l’entrée"
+            ],
+            [
+              "À la fin",
+              "L’évaluation de l’atteinte des objectifs, une preuve de suivi pour chaque salarié et le certificat de réalisation demandé par l’OPCO"
+            ],
+            [
+              "Après",
+              "Le recueil de votre appréciation et une façon de signaler une difficulté ou une réclamation"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Si l’un de ces éléments manque, demandez-le : un organisme certifié doit pouvoir le fournir. Gardez la convention, le programme et le certificat de réalisation avec vos dossiers de formation : ce sont les pièces sur lesquelles l’OPCO s’appuie pour financer la formation."
+        }
+      ]
+    },
+    {
+      "id": "en-cas-de-probleme",
+      "titre": "Que faire si une formation ne tient pas ses promesses ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Adressez-vous d’abord à l’organisme. Le référentiel lui impose de recueillir l’appréciation des stagiaires et des entreprises, de traiter les difficultés et les réclamations, puis d’en tirer des mesures d’amélioration. Écrivez-lui en précisant ce qui ne correspond pas au programme ou à la convention, et gardez une trace de vos échanges et des documents reçus."
+        },
+        {
+          "type": "p",
+          "texte": "Les financeurs ont aussi leur rôle : le code du travail les charge de contrôler la qualité des formations effectuées. Si le problème est sérieux, signalez-le à votre conseiller AKTO, pièces à l’appui."
+        }
+      ]
+    },
+    {
+      "id": "verifier",
+      "titre": "Comment vérifier qu’un organisme est certifié ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "Consultez la **liste publique des organismes de formation**, publiée par le ministère du Travail et mise à jour chaque jour. Pour chaque organisme, elle indique les catégories d’actions couvertes par une certification en cours de validité : vérifiez que les actions de formation en font partie. L’Annuaire des Entreprises indique aussi si une structure est certifiée Qualiopi, dans l’onglet « Labels et certificats ».",
+            "Demandez le **certificat** : il précise les catégories d’actions couvertes et porte une date d’échéance. Une certification peut être suspendue ou retirée : vérifiez-la au moment de signer, pas une fois pour toutes.",
+            "Regardez le **numéro de déclaration d’activité** : il prouve que l’organisme est déclaré, rien de plus. Quand un organisme le cite dans sa publicité, la loi impose la mention « Cet enregistrement ne vaut pas agrément de l’État »."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La certification dit qu’un organisme travaille selon un référentiel. Elle ne dit pas si le formateur connaît votre métier, ni si le programme colle à votre carte : ces questions-là, posez-les vous-même."
+        },
+        {
+          "type": "p",
+          "texte": "Lab Learning est certifié Qualiopi au titre des actions de formation, ce que vous pouvez vérifier dans la liste publique, comme pour tout organisme. Pour connaître le programme et le déroulé d’une formation dans votre établissement, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Qualiopi est-elle obligatoire pour un organisme de formation ?",
+      "r": "Elle est obligatoire pour être financé par un opérateur de compétences, l’État, les régions ou la Caisse des dépôts et consignations. Un organisme non certifié peut exercer, mais ses formations ne peuvent pas être prises en charge par ces financeurs."
+    },
+    {
+      "q": "Comment savoir si un organisme est certifié Qualiopi ?",
+      "r": "Consultez la liste publique des organismes de formation, mise à jour chaque jour par le ministère du Travail : elle indique, pour chaque organisme, les catégories d’actions certifiées. Vous pouvez aussi demander le certificat et vérifier sa date d’échéance."
+    },
+    {
+      "q": "Un organisme certifié l’est-il pour toutes ses formations ?",
+      "r": "La certification porte sur des catégories d’actions : actions de formation, bilans de compétences, validation des acquis de l’expérience, apprentissage. Pour former vos salariés, vérifiez qu’elle couvre les actions de formation."
+    },
+    {
+      "q": "Qu’est-ce qui change pour Qualiopi au 1er novembre 2026 ?",
+      "r": "Le référentiel national qualité est actualisé par un décret du 1er août 2026 : il passe de 32 à 33 indicateurs, et les sept critères restent les mêmes."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Code du travail, article L6316-1 : certification des prestataires financés (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600506"
+    },
+    {
+      "libelle": "Code du travail, articles L6316-1 à L6316-5 : qualité des actions de formation, dont les contrôles des financeurs (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000037385712"
+    },
+    {
+      "libelle": "Code du travail, article R6316-1 : les sept critères de qualité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038624068"
+    },
+    {
+      "libelle": "Code du travail, annexe : référentiel national qualité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000038591641"
+    },
+    {
+      "libelle": "Décret n° 2026-728 du 1er août 2026 relatif au référentiel national sur la qualité des actions concourant au développement des compétences (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054608509"
+    },
+    {
+      "libelle": "Arrêté du 6 juin 2019 relatif aux modalités d’audit associées au référentiel national (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000038565293"
+    },
+    {
+      "libelle": "Code du travail, article L6353-8 : informations remises avant l’inscription (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000037386191"
+    },
+    {
+      "libelle": "Code du travail, article L6352-12 : mention de la déclaration d’activité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006904409"
+    },
+    {
+      "libelle": "Ministère du Travail : liste publique des organismes de formation (data.gouv.fr)",
+      "url": "https://www.data.gouv.fr/fr/datasets/liste-publique-des-organismes-de-formation-l-6351-7-1-du-code-du-travail/"
+    },
+    {
+      "libelle": "AKTO : règles de prise en charge 2026, hôtels, cafés, restaurants",
+      "url": "https://www.akto.fr/regles-de-prise-en-charge-hotels-cafes-restaurants/"
+    },
+    {
+      "libelle": "AKTO : déposer et suivre une demande de prise en charge",
+      "url": "https://www.akto.fr/entreprise/financer-une-formation/deposer-demande/"
+    },
+    {
+      "libelle": "AGEFICE : les critères de financement 2026",
+      "url": "https://communication-agefice.fr/les-criteres-de-financement-2026/"
+    },
+    {
+      "libelle": "DRAAF Pays de la Loire : formation à l’hygiène alimentaire en restauration commerciale, un nouveau décret",
+      "url": "https://draaf.pays-de-la-loire.agriculture.gouv.fr/formation-a-l-hygiene-alimentaire-en-restauration-commerciale-un-nouveau-decret-a2052.html"
+    },
+    {
+      "libelle": "DRAAF Normandie : formation à l’hygiène alimentaire en restauration commerciale, autorisation des organismes depuis le 1er février 2026",
+      "url": "https://draaf.normandie.agriculture.gouv.fr/formation-a-l-hygiene-alimentaire-en-restauration-commerciale-a825.html"
+    },
+    {
+      "libelle": "Service-Public : Plan de développement des compétences (PDC) pour un salarié du secteur privé",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F11267"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|manag",
+  "guides": [
+    "formation-hygiene-alimentaire-restauration-rapide"
+  ]
+}

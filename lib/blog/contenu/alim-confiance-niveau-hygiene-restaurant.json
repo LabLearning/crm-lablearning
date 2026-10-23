@@ -1,0 +1,200 @@
+{
+  "slug": "alim-confiance-niveau-hygiene-restaurant",
+  "titre": "Alim’confiance : comprendre le niveau d’hygiène publié pour votre restaurant",
+  "titreCourt": "Alim’confiance : le niveau d’hygiène publié",
+  "description": "Niveaux d’hygiène Alim’confiance, durée de publication, délai pour présenter vos observations, affichage en vitrine : l’essentiel pour un restaurant.",
+  "chapeau": "Après chaque contrôle sanitaire, le niveau d’hygiène de votre restaurant est publié sur Alim’confiance, et vos clients peuvent le consulter. Voici ce que signifie chaque niveau, combien de temps il reste en ligne et ce que vous pouvez faire avant et après sa publication.",
+  "categorie": "Réglementation",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 5,
+  "image": "/site/photos/guides/controle-hygiene-restaurant-ddpp.webp",
+  "imageAlt": "Mains remplissant une grille de contrôle sur un plan de travail en inox, devant une armoire réfrigérée ouverte garnie de boîtes alimentaires",
+  "aRetenir": [
+    "Après un contrôle officiel, le nom, l’adresse, la date du contrôle et le niveau d’hygiène de l’établissement sont publiés sur Alim’confiance.",
+    "Le résultat reste en ligne un an à compter de la date du contrôle, et un nouveau contrôle le remplace.",
+    "Avant l’attribution d’un niveau autre que « très satisfaisant », l’exploitant dispose de 15 jours pour faire valoir ses observations.",
+    "Un restaurant peut afficher son niveau sur sa devanture, mais rien ne l’y oblige."
+  ],
+  "sections": [
+    {
+      "id": "ce-qui-est-publie",
+      "titre": "Que publie Alim’confiance après un contrôle ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les contrôles sanitaires des restaurants sont menés par les agents de la **DDPP**, la direction départementale de la protection des populations, **sans préavis**, pendant les heures d’ouverture. Les résultats des contrôles réalisés depuis le 1er mars 2017 sont publiés sur le site Alim’confiance du ministère de l’Agriculture, pour tous les établissements de la chaîne alimentaire."
+        },
+        {
+          "type": "p",
+          "texte": "Pour chaque établissement, quatre informations sont rendues publiques : son **nom**, son **adresse**, la **date du dernier contrôle** et le **niveau d’hygiène** constaté lors de ce contrôle. Le détail des constats de l’inspecteur n’en fait pas partie."
+        },
+        {
+          "type": "p",
+          "texte": "Ce niveau résume tout ce que l’inspecteur a examiné : l’état et la propreté des locaux et du matériel, le respect des températures, la traçabilité des produits, l’hygiène du personnel, le nettoyage et la désinfection, et la formation de l’équipe."
+        }
+      ]
+    },
+    {
+      "id": "quatre-niveaux",
+      "titre": "Les quatre niveaux d’hygiène, et ce qu’ils signifient",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le code rural définit quatre mentions. Chacune dépend de ce que l’inspecteur a constaté et de la suite donnée au contrôle :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Niveau publié",
+            "Ce qu’il signifie"
+          ],
+          "lignes": [
+            [
+              "Très satisfaisant",
+              "Aucune non-conformité, ou seulement des non-conformités mineures"
+            ],
+            [
+              "Satisfaisant",
+              "Des non-conformités qui ne justifient pas de mesure de police administrative, avec une lettre d’avertissement ; ou un contrôle de suivi favorable après une mise en demeure ou une fermeture"
+            ],
+            [
+              "À améliorer",
+              "L’exploitant est mis en demeure de corriger dans un délai fixé par l’administration, et un nouveau contrôle vérifie les corrections"
+            ],
+            [
+              "À corriger de manière urgente",
+              "Des non-conformités susceptibles de mettre en danger la santé du consommateur, avec une fermeture administrative ou le retrait ou la suspension de l’agrément sanitaire"
+            ]
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Après une mise en demeure",
+          "texte": "Un contrôle de suivi favorable fait passer l’établissement au niveau « satisfaisant ». Le niveau « très satisfaisant » ne peut revenir qu’à l’occasion d’un contrôle ultérieur.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "duree-publication",
+      "titre": "Combien de temps le résultat reste-t-il en ligne ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le résultat reste consultable **un an** à compter de la date du contrôle. Comme le site présente le niveau du dernier contrôle officiel, un nouveau contrôle remplace le résultat précédent."
+        },
+        {
+          "type": "p",
+          "texte": "La mention est attribuée à l’exploitant, identifié par son **numéro SIRET**, et non au local : un point à garder en tête quand on reprend un restaurant."
+        }
+      ]
+    },
+    {
+      "id": "observations",
+      "titre": "Avant la publication : 15 jours pour faire valoir vos observations",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Lorsque les agents envisagent un niveau « satisfaisant », « à améliorer » ou « à corriger de manière urgente », vous êtes informé de leur appréciation **avant l’attribution de la mention**. Vous disposez alors de **15 jours** pour faire valoir vos observations, sur la mention elle-même et sur sa publication."
+        },
+        {
+          "type": "p",
+          "texte": "Servez-vous de ce délai pour montrer ce qui est déjà corrigé. Une réponse écrite, appuyée de preuves datées, est plus utile qu’une contestation de principe :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "les **photos** des équipements réparés et des zones remises en état ;",
+            "les **factures** d’intervention, de matériel ou de lutte contre les nuisibles ;",
+            "les **relevés** de température et de nettoyage tenus depuis le contrôle ;",
+            "les **attestations de formation** de l’équipe."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "affichage-vitrine",
+      "titre": "Faut-il afficher son niveau en vitrine ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Ce n’est pas une obligation. Les restaurants, comme les métiers de bouche, **ont la possibilité** d’afficher leur niveau d’hygiène sur leur devanture, avec l’affichette que leur transmettent les services départementaux de l’État."
+        },
+        {
+          "type": "p",
+          "texte": "Affiché ou non, le résultat reste en ligne, consultable par n’importe quel client avant de pousser votre porte. Un niveau « très satisfaisant » affiché à l’entrée devient un argument visible ; un niveau plus bas se corrige d’abord en cuisine."
+        }
+      ]
+    },
+    {
+      "id": "preparer-le-prochain-controle",
+      "titre": "Comment préparer le prochain contrôle ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le niveau publié se joue le jour où l’inspecteur entre, sans prévenir. Ce qu’il regarde et les documents qu’il demande sont détaillés dans notre guide [contrôle d’hygiène : comment s’y préparer](/guides/controle-hygiene-restaurant-ddpp). Ce que vous devez pouvoir montrer sans chercher :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "des **relevés de température** tenus chaque jour, écarts compris, avec ce qui a été fait : notre [modèle de relevé](/modeles/releve-temperatures-restaurant) est prêt à imprimer ;",
+            "un **plan de nettoyage** appliqué et enregistré : voyez [comment le construire pour votre cuisine](/blog/plan-nettoyage-desinfection-cuisine) ;",
+            "une **chaîne du froid** tenue de la livraison au service : voyez [les erreurs qui coûtent cher](/blog/chaine-du-froid-restauration-rapide-erreurs) ;",
+            "le classeur du [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant), rangé là où toute l’équipe le trouve ;",
+            "l’**attestation de formation** à l’hygiène alimentaire de la personne formée, ou son justificatif de dispense."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Entre deux contrôles, faites chaque semaine un **tour de contrôle interne** avec une grille écrite, et désignez à chaque service une personne responsable de l’hygiène, pas seulement le gérant. Les écarts se repèrent alors avant que l’inspecteur ne les trouve."
+        },
+        {
+          "type": "p",
+          "texte": "Ces gestes ne tiennent que si toute l’équipe les connaît, y compris en l’absence du gérant. Pour former la vôtre dans votre établissement, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Combien de temps le niveau d’hygiène reste-t-il affiché sur Alim’confiance ?",
+      "r": "Un an à compter de la date du contrôle. Le site présente le niveau du dernier contrôle officiel : un nouveau contrôle remplace donc le résultat précédent."
+    },
+    {
+      "q": "Peut-on contester le niveau d’hygiène attribué à son restaurant ?",
+      "r": "Avant l’attribution d’un niveau « satisfaisant », « à améliorer » ou « à corriger de manière urgente », l’exploitant est informé de l’appréciation envisagée et dispose de 15 jours pour faire valoir ses observations sur la mention et sur sa publication."
+    },
+    {
+      "q": "Un restaurant doit-il afficher son niveau d’hygiène ?",
+      "r": "Non. Les restaurants ont la possibilité d’afficher leur niveau sur leur devanture, avec l’affichette transmise par les services départementaux de l’État. Le résultat reste de toute façon consultable en ligne."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Code rural et de la pêche maritime, articles D231-3-8 à D231-3-12 : publication des résultats des contrôles sanitaires (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006071367/LEGISCTA000033627248/"
+    },
+    {
+      "libelle": "Code rural et de la pêche maritime, article D231-3-11 : les quatre niveaux d’hygiène (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033627264"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : « Alim’confiance », les résultats des contrôles sanitaires accessibles à tous",
+      "url": "https://agriculture.gouv.fr/alimconfiance-les-resultats-des-controles-sanitaires-accessibles-tous/"
+    },
+    {
+      "libelle": "Alim’confiance : résultats des contrôles sanitaires",
+      "url": "https://alimconfiance.agriculture.gouv.fr/"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire|nettoyage",
+  "guides": [
+    "controle-hygiene-restaurant-ddpp",
+    "plan-de-maitrise-sanitaire-pms-restaurant"
+  ]
+}

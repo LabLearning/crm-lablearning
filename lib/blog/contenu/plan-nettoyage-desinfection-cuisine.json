@@ -1,0 +1,166 @@
+{
+  "slug": "plan-nettoyage-desinfection-cuisine",
+  "titre": "Plan de nettoyage et de désinfection : le construire pour votre cuisine",
+  "titreCourt": "Plan de nettoyage et désinfection en cuisine",
+  "description": "Nettoyer n’est pas désinfecter. Qui fait quoi, quand, comment et avec quel produit : construire le plan de nettoyage de votre cuisine et en garder la trace.",
+  "chapeau": "Un plan de nettoyage dit ce que l’on nettoie, quand, avec quoi, comment et par qui. Encore faut-il qu’il décrive votre cuisine et que l’équipe l’applique. Voici comment le construire, le faire vivre et prouver qu’il est suivi.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 5,
+  "image": "/site/metiers/cuisine.webp",
+  "imageAlt": "Cuisinier en veste blanche et tablier qui flambe une poêle sur un feu au gaz, sous les hottes d’une cuisine professionnelle en inox",
+  "aRetenir": [
+    "Nettoyer enlève les salissures, désinfecter réduit le nombre de microbes : désinfecter une surface sale ne sert à rien.",
+    "Pour chaque zone et chaque matériel, le plan dit quoi, quand, avec quel produit, comment et qui.",
+    "Un produit s’utilise selon sa fiche technique : dosage, température de l’eau, temps d’action, rinçage.",
+    "La feuille d’enregistrement prouve que le plan est appliqué, et les fiches techniques des produits font partie des documents demandés lors d’un contrôle."
+  ],
+  "sections": [
+    {
+      "id": "nettoyer-ou-desinfecter",
+      "titre": "Nettoyer et désinfecter, deux gestes différents",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé par l’administration, distingue trois actions : le **nettoyage** élimine les souillures visibles, la **désinfection** réduit le nombre de micro-organismes, le **rinçage** élimine les résidus des produits. Il le résume d’une phrase : « Désinfecter une surface sale ne sert à rien ». L’ordre compte :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "débarrasser et racler : retirer les denrées, les déchets et les débris ;",
+            "laver avec un détergent, en frottant ;",
+            "rincer à l’eau potable, surtout si le fabricant du désinfectant le conseille ;",
+            "désinfecter, en laissant agir le temps indiqué ;",
+            "rincer à nouveau, sauf si le produit est prévu pour s’utiliser sans rinçage ;",
+            "sécher : raclette, lavette propre ou papier à usage unique."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Le guide ramène les réglages d’un nettoyage efficace à quatre lettres, **TACT** : la température de l’eau, l’action mécanique, la concentration du produit et son temps d’action. Température, dosage et temps suivent les préconisations du fournisseur. Un produit qui lave et désinfecte en une seule fois simplifie le travail, mais le guide le réserve aux surfaces peu sales : une grande quantité de salissures neutralise l’effet du désinfectant."
+        }
+      ]
+    },
+    {
+      "id": "contenu-du-plan",
+      "titre": "Ce que le plan doit dire",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plan couvre **tous les locaux et tout le matériel**, y compris le matériel de nettoyage lui-même. Pour chaque ligne, il répond à cinq questions :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Question",
+            "Ce qu’il faut écrire",
+            "Exemple"
+          ],
+          "lignes": [
+            ["Quoi ?", "La zone, l’équipement ou l’ustensile", "Planche à découper"],
+            ["Quand ?", "La fréquence", "Après chaque usage, et au moins en fin de journée"],
+            ["Avec quoi ?", "Le produit, son dosage, son temps d’action, la température de l’eau", "Détergent, puis désinfectant, aux doses de la fiche technique"],
+            ["Comment ?", "La méthode, étape par étape", "Laver, rincer, désinfecter, rincer, égoutter à la verticale"],
+            ["Qui ?", "Le poste qui le fait, et celui qui contrôle", "L’équipier du poste, contrôle par le manager"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Partez de ce qui se fait réellement dans votre cuisine, poste par poste. Notre [modèle de plan de nettoyage](/modeles/plan-nettoyage-desinfection-restaurant) liste déjà seize zones et matériels d’un restaurant rapide : il vous reste à indiquer vos produits, leurs dosages et qui s’en charge."
+        }
+      ]
+    },
+    {
+      "id": "produits-et-materiel",
+      "titre": "Des produits adaptés, bien dosés, bien rangés",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "**Des produits prévus pour le contact alimentaire.** Détergents et désinfectants doivent être aptes au nettoyage ou à la désinfection des surfaces en contact avec les aliments. Le guide de la restauration rapide demande de s’assurer que le désinfectant est bien qualifié de biocide de type TP4 : en cas de doute, interrogez votre fournisseur.",
+            "**La fiche technique fait foi** : dosage, température de l’eau, temps d’action, rinçage.",
+            "**Rangés à l’écart des denrées**, dans un placard ou un local réservé, avec la fiche de données de sécurité de chaque produit à disposition de l’équipe.",
+            "**Jamais mélangés**, et jamais transvasés dans un contenant sans étiquette ou ayant contenu un aliment."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Côté matériel, le même guide proscrit serpillières, éponges, chiffons et spirales inox. Il conseille des lavettes synthétiques entretenues, des raclettes en caoutchouc et des balais à manche en métal ou en plastique, nettoyés et désinfectés après usage."
+        }
+      ]
+    },
+    {
+      "id": "surfaces-a-risque",
+      "titre": "Les surfaces à ne pas oublier",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les surfaces au **contact des aliments** passent en premier : plans de travail, planches, couteaux, trancheuses, bacs. Le matériel de préparation se nettoie, se désinfecte et se rince aussi souvent que nécessaire, et en particulier avant et à la fin de chaque journée de travail. Les éléments démontables, comme les couteaux et les grilles, sont séparés, nettoyés, désinfectés et rincés à la fin des opérations."
+        },
+        {
+          "type": "p",
+          "texte": "Viennent ensuite les **points touchés par les mains** : poignées de portes et de réfrigérateurs, interrupteurs. Le guide juge leur maîtrise indispensable, car les mains sont le premier outil de travail. N’oubliez pas les chambres froides et les armoires réfrigérées, les siphons et les poubelles. Enfin, on ne nettoie pas à côté de denrées non protégées, et le balayage à sec est proscrit pendant la production."
+        },
+        {
+          "type": "encadre",
+          "titre": "Allergènes : nettoyer entre deux préparations",
+          "texte": "Depuis 2021, le règlement européen demande qu’un équipement ayant servi à un produit allergène soit nettoyé, puis contrôlé au moins pour vérifier l’absence de débris visibles, avant de servir à une denrée qui n’en contient pas.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "faire-vivre-le-plan",
+      "titre": "Faire vivre le plan et en garder la trace",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plan est appliqué par du **personnel formé** : affichez-le là où l’on nettoie. Le plus simple : chaque jour, la personne qui a nettoyé coche ce qu’elle a fait, et en fin de semaine le responsable vise la feuille. Le contrôle visuel est la première vérification. Des tests de surface, comme les lames gélosées, ou des analyses confiées à un laboratoire permettent d’aller plus loin, et de corriger le plan si besoin."
+        },
+        {
+          "type": "p",
+          "texte": "Ces enregistrements font partie des bonnes pratiques d’hygiène de votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant). Service-Public cite, parmi les documents à présenter lors d’un [contrôle sanitaire](/guides/controle-hygiene-restaurant-ddpp), la fiche des interventions de nettoyage, de dératisation et de désinfection, et les fiches techniques des produits d’entretien. Le guide de la restauration rapide prévoit de conserver les fiches d’enregistrement du nettoyage trois ans au minimum."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe au nettoyage et à la désinfection de votre cuisine, sur place, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un produit 2 en 1 suffit-il pour nettoyer et désinfecter ?",
+      "r": "Il simplifie le travail, mais le guide de bonnes pratiques d’hygiène de la restauration rapide le juge moins efficace qu’un nettoyage suivi d’une désinfection, et le réserve aux surfaces peu sales : une grande quantité de salissures neutralise le désinfectant."
+    },
+    {
+      "q": "Faut-il rincer après la désinfection ?",
+      "r": "Oui, à l’eau potable, pour éliminer les résidus du désinfectant, sauf si le produit est prévu pour s’utiliser sans rinçage. C’est sa fiche technique qui le précise."
+    },
+    {
+      "q": "Peut-on confier le nettoyage à une société extérieure ?",
+      "r": "Oui. Le guide demande alors une convention ou un cahier des charges : produits utilisés, fréquence, moyens de contrôle, modes opératoires. Le nettoyage au fil de la production, comme celui des couteaux pendant les préparations, est en général fait par l’équipe."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide (2024)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires, annexe II",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|nettoyage",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "controle-hygiene-restaurant-ddpp"
+  ]
+}

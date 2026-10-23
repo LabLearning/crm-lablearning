@@ -1,0 +1,195 @@
+{
+  "slug": "integrer-nouvel-equipier-restauration-rapide",
+  "titre": "Intégrer un nouvel équipier en restauration rapide : le plan des 30 premiers jours",
+  "titreCourt": "Intégrer un équipier : les 30 premiers jours",
+  "description": "Accueil, sécurité, hygiène, binôme, points d’étape : un plan semaine par semaine pour former un nouvel équipier en restauration rapide.",
+  "chapeau": "Les premières semaines d’un équipier fixent ses habitudes : ce qu’il apprend alors, bien ou mal, il le refera à chaque service. Voici un plan d’intégration semaine par semaine, avec les obligations qui s’appliquent dès le premier jour.",
+  "categorie": "Équipe et management",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/metiers/rapide.webp",
+  "imageAlt": "Burger et frites dressés sur un comptoir en inox, sauce versée à la cuillère, dans une cuisine de restauration rapide",
+  "aRetenir": [
+    "Chaque salarié embauché doit recevoir une formation pratique et appropriée à la sécurité, pendant son temps de travail.",
+    "Toute personne qui manipule des aliments doit être encadrée et recevoir des instructions ou une formation en hygiène adaptées à son poste.",
+    "La visite d’information et de prévention a lieu dans les trois mois qui suivent la prise de poste, et avant l’affectation pour un mineur ou un travailleur de nuit.",
+    "Un binôme, des postes appris un par un et trois points d’étape suffisent à structurer le premier mois."
+  ],
+  "sections": [
+    {
+      "id": "avant-son-arrivee",
+      "titre": "Ce qu’il faut préparer avant son arrivée",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un équipier que personne n’attend commence mal. Avant son premier jour, préparez son planning des quatre premières semaines, sa tenue, son casier, ses accès à la caisse ou à la borne, et choisissez l’équipier confirmé qui sera son binôme. Prévenez l’équipe de son arrivée et du poste qu’il apprendra en premier."
+        },
+        {
+          "type": "p",
+          "texte": "Les **équipements de protection individuelle** que demande le poste, comme des gants anti-coupure, sont fournis par l’employeur, sans frais pour le salarié. L’employeur en assure aussi l’entretien et le remplacement."
+        },
+        {
+          "type": "p",
+          "texte": "Un livret d’accueil de deux pages suffit : horaires, règles de la maison, consignes d’hygiène, numéros utiles, nom du binôme et du responsable. Il ne remplace pas les explications au poste, mais il évite au nouveau de poser dix fois la même question."
+        }
+      ]
+    },
+    {
+      "id": "premier-jour",
+      "titre": "Le premier jour : sécurité et hygiène avant tout",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le code du travail impose à l’employeur d’organiser une **formation pratique et appropriée à la sécurité** pour chaque travailleur qu’il embauche. Elle est dispensée lors de l’embauche, pendant le temps de travail, et tient compte de l’expérience et de la langue de la personne. Elle porte sur trois points, qui se traduisent ainsi dans un restaurant rapide :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**circuler dans l’établissement** : cuisine, réserve, chambre froide, zones glissantes, sorties de secours ;",
+            "**travailler en sécurité à son poste** : friteuse, grill, trancheuse, couteaux, produits de nettoyage, port de charges ;",
+            "**réagir en cas d’accident ou de sinistre** : brûlure, coupure, départ de feu, évacuation, personne à prévenir."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Le même jour, donnez les règles d’hygiène qui ne se discutent pas : tenue propre, cheveux couverts, lavage des mains en prenant son poste, après les toilettes, après avoir touché les déchets ou des produits crus. Expliquez aussi qu’un salarié malade, avec une grippe ou une gastro-entérite, ou blessé avec une plaie, ne manipule pas d’aliments : il doit vous prévenir avant de prendre son poste."
+        },
+        {
+          "type": "encadre",
+          "titre": "La visite d’information et de prévention",
+          "texte": "Chaque nouveau salarié passe une visite d’information et de prévention auprès du service de prévention et de santé au travail, **dans les trois mois** qui suivent sa prise de poste. Pour un salarié de moins de 18 ans ou un travailleur de nuit, elle a lieu **avant l’affectation** au poste.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "semaine-1",
+      "titre": "Semaine 1 : un binôme et un seul poste",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La première semaine, le nouveau travaille en binôme avec un équipier confirmé, si possible toujours le même. Il apprend un seul poste, celui où l’on encadre le plus facilement un débutant : la préparation froide, l’assemblage ou le comptoir."
+        },
+        {
+          "type": "p",
+          "texte": "Le binôme montre, fait faire, puis corrige. Surtout, il explique pourquoi : pourquoi on étiquette un produit entamé, pourquoi la viande crue ne croise pas les crudités, pourquoi on ne court pas en cuisine. Le code du travail le demande d’ailleurs pour la sécurité : l’utilité des mesures de prévention doit être expliquée au travailleur."
+        },
+        {
+          "type": "p",
+          "texte": "Pour l’hygiène, la [formation de 14 heures](/guides/formation-hygiene-alimentaire-restauration-rapide) est exigée pour au moins une personne de l’établissement, pas pour chaque équipier. Les autres doivent être encadrés et recevoir des **instructions ou une formation en hygiène adaptées à leur poste**. Montrez au nouveau le classeur du [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant) et les relevés qu’il aura à remplir."
+        }
+      ]
+    },
+    {
+      "id": "semaines-2-a-4",
+      "titre": "Semaines 2 à 4 : les postes appris un par un",
+      "blocs": [
+        {
+          "type": "tableau",
+          "entetes": [
+            "Période",
+            "Ce que l’équipier apprend",
+            "Le point de contrôle"
+          ],
+          "lignes": [
+            [
+              "Semaine 1",
+              "Accueil, sécurité, hygiène, un premier poste en binôme",
+              "Il tient son poste avec l’aide de son binôme"
+            ],
+            [
+              "Semaine 2",
+              "Un deuxième poste, les relevés de température, l’étiquetage",
+              "Il remplit seul un relevé, vérifié par le manager"
+            ],
+            [
+              "Semaine 3",
+              "Un poste de cuisson, les allergènes, le nettoyage de fin de service",
+              "Il sait où trouver la réponse à une question sur les allergènes"
+            ],
+            [
+              "Semaine 4",
+              "Un service chargé, l’ouverture ou la fermeture",
+              "Il tient un poste seul pendant un coup de feu"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Chaque nouveau poste apporte ses propres risques. Le code du travail prévoit d’ailleurs la même formation à la sécurité pour un salarié qui **change de poste ou de technique** : passer de l’assemblage à la friteuse en fait partie. Pour les gestes à transmettre, voyez [comment prévenir coupures, brûlures et chutes en cuisine](/blog/prevenir-accidents-cuisine-coupures-brulures)."
+        },
+        {
+          "type": "p",
+          "texte": "Ne passez au poste suivant que lorsque le précédent est acquis. Un équipier qui tient trois postes à moitié au bout d’un mois est moins utile, et moins sûr, qu’un équipier qui en tient deux parfaitement."
+        }
+      ]
+    },
+    {
+      "id": "points-d-etape",
+      "titre": "Trois points d’étape, et ce qui donne envie de rester",
+      "blocs": [
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "**À la fin de la première semaine** : un quart d’heure pour faire le point sur ce qui est clair, ce qui ne l’est pas, ce qui l’inquiète.",
+            "**À la fin de la deuxième semaine** : on vérifie ensemble, en cuisine, les gestes d’hygiène et de sécurité.",
+            "**À la fin du premier mois** : le bilan des postes maîtrisés et la suite du parcours."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour donner envie de rester, misez sur ce qui se voit tout de suite : un planning connu à l’avance, un binôme disponible, des remarques faites sur le moment et sans éclat, et la perspective d’apprendre autre chose. Dites au nouveau ce qu’il pourra faire dans six mois : former à son tour, devenir référent d’un poste, préparer un rôle de manager."
+        },
+        {
+          "type": "p",
+          "texte": "Une formation commune dans l’établissement donne à toute l’équipe les mêmes repères, anciens comme nouveaux. Pour vos salariés, sa prise en charge est possible, sous réserve de l’accord de l’OPCO : voyez [comment financer la formation de votre équipe](/guides/financer-formation-restauration-rapide-opco). Pour bâtir un parcours d’intégration adapté à votre restaurant, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "La formation à la sécurité d’un nouvel équipier est-elle obligatoire ?",
+      "r": "Oui. L’employeur doit organiser une formation pratique et appropriée à la sécurité pour chaque salarié qu’il embauche, et de nouveau quand un salarié change de poste ou de technique. Elle a lieu pendant le temps de travail."
+    },
+    {
+      "q": "Un nouvel équipier doit-il suivre la formation hygiène alimentaire de 14 heures ?",
+      "r": "Pas nécessairement. Cette formation est exigée pour au moins une personne de l’établissement. Les autres salariés qui manipulent des aliments doivent être encadrés et recevoir des instructions ou une formation en hygiène adaptées à leur poste."
+    },
+    {
+      "q": "Dans quel délai organiser la visite médicale d’un nouvel équipier ?",
+      "r": "La visite d’information et de prévention a lieu dans un délai maximum de trois mois après la prise de poste. Pour un salarié de moins de 18 ans ou un travailleur de nuit, elle a lieu avant l’affectation au poste."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Code du travail, article L4141-2 : formation à la sécurité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006903166"
+    },
+    {
+      "libelle": "Code du travail, articles R4141-1 à R4141-10 : information et formation à la sécurité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000019960811"
+    },
+    {
+      "libelle": "Code du travail, article R4323-95 : fourniture des équipements de protection individuelle (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018531306"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Service-Public : Médecine au travail, qu’est-ce que la visite d’information et de prévention (Vip) ?",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F34061"
+    }
+  ],
+  "formations": "[eé]quipier|hygi[eè]ne alimentaire|pr[eé]vention",
+  "guides": [
+    "ouvrir-restaurant-rapide-formations-obligations",
+    "formation-hygiene-alimentaire-restauration-rapide",
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "financer-formation-restauration-rapide-opco"
+  ]
+}

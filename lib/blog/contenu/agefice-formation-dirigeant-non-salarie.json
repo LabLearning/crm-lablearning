@@ -1,0 +1,207 @@
+{
+  "slug": "agefice-formation-dirigeant-non-salarie",
+  "titre": "AGEFICE : la formation du dirigeant non salarié en restauration",
+  "titreCourt": "AGEFICE : la formation du dirigeant",
+  "description": "Gérant majoritaire, entrepreneur individuel : l’AGEFICE peut financer votre formation. Qui y a droit, démarches, délais et plafonds 2026.",
+  "chapeau": "Vos salariés relèvent d’AKTO. Vous, si vous dirigez votre restaurant comme travailleur non salarié, relevez en principe de l’AGEFICE, avec d’autres règles et un autre circuit. Voici qui y a droit, comment se passe une demande et ce qu’elle peut financer en 2026.",
+  "categorie": "Financement",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/metiers/management.webp",
+  "imageAlt": "Un homme en chemise noire s’adresse à un groupe de jeunes cuisiniers en tenue blanche dans une salle de restaurant",
+  "aRetenir": [
+    "L’AGEFICE finance la formation des dirigeants non salariés du commerce, de l’industrie et des services, à jour de leur contribution à la formation professionnelle.",
+    "La demande se dépose avec l’aide d’un Point d’Accueil AGEFICE, au plus tôt 4 mois et au moins 15 jours calendaires avant le début de la formation.",
+    "En 2026, l’enveloppe peut atteindre 3 000 € par an et par dirigeant, dans la limite de 42 € de l’heure pour une formation en présentiel.",
+    "L’AGEFICE rembourse le dirigeant après la formation, sur justificatifs ; la formation des salariés relève de l’OPCO."
+  ],
+  "sections": [
+    {
+      "id": "qui",
+      "titre": "Qui peut bénéficier de l’AGEFICE ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’AGEFICE est le fonds d’assurance formation des **dirigeants non salariés** du commerce, de l’industrie et des services, inscrits à l’Urssaf ou à la Sécurité sociale des indépendants. Sont concernés :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "le gérant majoritaire de SARL ;",
+            "l’associé unique d’une EURL ;",
+            "l’associé d’une SNC ;",
+            "l’entrepreneur individuel et l’auto-entrepreneur ;",
+            "le conjoint collaborateur ou associé, si une contribution majorée a été versée à ce titre."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Deux conditions : être **à jour de votre contribution à la formation professionnelle**, et que l’AGEFICE soit le fonds indiqué sur l’attestation correspondante. Vous la téléchargez depuis votre compte Urssaf. Si un autre fonds y figure, c’est vers lui qu’il faut vous tourner."
+        },
+        {
+          "type": "encadre",
+          "titre": "Président de SAS ou de SASU : pas d’AGEFICE",
+          "texte": "Les dirigeants assimilés salariés n’entrent pas dans le champ de l’AGEFICE : présidents et directeurs généraux de SAS, dirigeants de SASU, gérants minoritaires ou égalitaires de SARL, gérants non associés d’EURL. Vérifiez votre statut avant de bâtir un projet de formation.",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Boucher, boulanger ou pâtissier inscrit au répertoire des métiers ? L’AGEFICE oriente les artisans vers le FAFCEA pour les formations « métiers », et vers le conseil de la formation de la chambre de métiers et de l’artisanat de région pour la gestion. En cas de double immatriculation, c’est le fonds indiqué sur votre attestation qui compte."
+        }
+      ]
+    },
+    {
+      "id": "ce-qui-est-finance",
+      "titre": "Quelles formations, et jusqu’à quel montant en 2026 ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’AGEFICE finance les formations qui mènent à une qualification reconnue, les formations **obligatoires** légalement imposées pour exercer, et les autres formations, métier ou transversales, dès lors qu’elles sont professionnalisantes et liées à l’activité de l’entreprise. L’organisme doit avoir un numéro de déclaration d’activité et être **certifié Qualiopi**."
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Plafonds 2026",
+            "Montant"
+          ],
+          "lignes": [
+            [
+              "Enveloppe annuelle, contribution d’au moins 7 €",
+              "3 000 € par dirigeant"
+            ],
+            [
+              "Formation menant à un diplôme national ou à un titre inscrit au RNCP, contribution d’au moins 7 €",
+              "Jusqu’à 5 000 €"
+            ],
+            [
+              "Enveloppe annuelle, contribution inférieure à 7 €",
+              "600 €"
+            ],
+            [
+              "Formation en présentiel",
+              "42 € de l’heure"
+            ],
+            [
+              "À distance, en direct avec le formateur",
+              "35 € de l’heure"
+            ],
+            [
+              "À distance, en autonomie avec suivi",
+              "20 € de l’heure"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Une formation de 14 heures en présentiel est donc remboursée au plus 588 € (14 heures à 42 €), dans la limite de votre enveloppe. Ne sont jamais financés : la TVA, sauf opérations particulières, les frais d’inscription, et les frais de déplacement, de repas ou d’hébergement facturés par l’organisme. Une formation de moins de 3 heures n’est pas prise en charge."
+        },
+        {
+          "type": "encadre",
+          "titre": "Vous venez de créer votre restaurant ?",
+          "texte": "Un dirigeant nouvellement immatriculé n’est pas encore à jour de sa contribution : l’AGEFICE ne peut pas le financer. Exception : quelques formations obligatoires avant l’installation, dont le **permis d’exploitation** des hôteliers et restaurateurs. Il faut alors fournir notamment un extrait Kbis et une attestation d’affiliation à l’Urssaf qui désigne l’AGEFICE.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "demarche",
+      "titre": "Comment se passe une demande ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "**Vérifiez que vous relevez de l’AGEFICE**, sur votre attestation de contribution à la formation professionnelle.",
+            "**Choisissez la formation.** L’organisme vous remet le programme et la convention, ou à défaut un devis. Si vous signez tous deux l’imprimé de demande de financement, il peut remplacer la convention.",
+            "**Déposez la demande avec votre Point d’Accueil AGEFICE**, au plus tôt 4 mois et au moins 15 jours calendaires avant le début de la formation. Une demande envoyée directement au siège de l’AGEFICE n’est pas instruite.",
+            "**Attendez l’accord**, transmis par le Point d’Accueil. Si les dates changent, signalez-le par le formulaire prévu, 15 jours calendaires avant la date de début initiale.",
+            "**Suivez la formation et réglez l’organisme** : l’AGEFICE demande une attestation d’assiduité et de règlement.",
+            "**Transmettez les justificatifs** à votre Point d’Accueil, notamment l’attestation d’assiduité et de règlement, les fiches d’évaluation et le certificat de réalisation. L’accord reste valable quatre mois après la fin de la formation.",
+            "**Recevez le remboursement**, versé par l’AGEFICE par l’intermédiaire de votre Point d’Accueil."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Le site de l’AGEFICE permet de trouver votre Point d’Accueil par code postal ou par département. Respectez chaque délai : un critère non respecté peut faire perdre le droit au remboursement."
+        }
+      ]
+    },
+    {
+      "id": "salaries",
+      "titre": "Ce que l’AGEFICE ne couvre pas : vos salariés",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’AGEFICE ne finance que la formation du dirigeant et de son conjoint collaborateur ou associé. La formation de vos salariés relève de votre opérateur de compétences, AKTO pour la restauration, dans le cadre du [plan de développement des compétences](/blog/plan-de-developpement-des-competences-restaurant)."
+        },
+        {
+          "type": "p",
+          "texte": "Si vous suivez une formation avec votre équipe, chaque financement se demande de son côté, avec ses propres délais : au moins 15 jours calendaires avant le début pour l’AGEFICE, 30 jours calendaires pour AKTO. Les règles d’AKTO sont détaillées dans notre guide [financer la formation de votre équipe](/guides/financer-formation-restauration-rapide-opco)."
+        }
+      ]
+    },
+    {
+      "id": "accompagnement",
+      "titre": "Comment nous vous accompagnons",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Nous vérifions avec vous que la formation entre dans les critères de l’AGEFICE, nous vous remettons le programme et la convention, et nous signons avec vous l’imprimé de demande. Vous déposez la demande avec votre Point d’Accueil ; nous vous guidons à chaque étape, jusqu’aux justificatifs de fin de formation."
+        },
+        {
+          "type": "p",
+          "texte": "Vous dirigez un restaurant et vous voulez vous former, seul ou avec votre équipe ? [Demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Je préside une SASU : l’AGEFICE peut-elle financer ma formation ?",
+      "r": "Non. Les dirigeants assimilés salariés, dont les présidents de SAS et les dirigeants de SASU, n’entrent pas dans le champ de l’AGEFICE."
+    },
+    {
+      "q": "Combien de temps avant la formation faut-il déposer la demande ?",
+      "r": "Au plus tôt 4 mois et au moins 15 jours calendaires avant le début de la formation, avec l’aide d’un Point d’Accueil AGEFICE. Hors de ce délai, la demande peut être refusée."
+    },
+    {
+      "q": "L’AGEFICE paie-t-elle directement l’organisme de formation ?",
+      "r": "En règle générale, non. Après la formation, l’AGEFICE verse le remboursement au dirigeant, par l’intermédiaire de son Point d’Accueil, sur présentation des justificatifs, dont une attestation d’assiduité et de règlement."
+    },
+    {
+      "q": "Quel montant l’AGEFICE rembourse-t-elle en 2026 ?",
+      "r": "Jusqu’à 3 000 € par an et par dirigeant dont la contribution atteint au moins 7 €, dans la limite de 42 € de l’heure en présentiel, 35 € à distance en direct et 20 € à distance en autonomie. Le plafond peut aller jusqu’à 5 000 € pour un diplôme national ou un titre inscrit au RNCP."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "AGEFICE : les ressortissants de l’AGEFICE",
+      "url": "https://communication-agefice.fr/les-ressortissants-de-lagefice/"
+    },
+    {
+      "libelle": "AGEFICE : les critères de financement 2026",
+      "url": "https://communication-agefice.fr/les-criteres-de-financement-2026/"
+    },
+    {
+      "libelle": "AGEFICE : plafonds financiers année 2026",
+      "url": "https://communication-agefice.fr/plafonds-financiers-annee-2026/"
+    },
+    {
+      "libelle": "AGEFICE : les étapes clefs 2026",
+      "url": "https://communication-agefice.fr/les-etapes-clefs-2026/"
+    },
+    {
+      "libelle": "AGEFICE : trouver un Point d’Accueil",
+      "url": "https://communication-agefice.fr/trouver-un-point-daccueil/"
+    },
+    {
+      "libelle": "AKTO : déposer et suivre une demande de prise en charge",
+      "url": "https://www.akto.fr/entreprise/financer-une-formation/deposer-demande/"
+    }
+  ],
+  "formations": "gestion|pilotage|manag|hygi[eè]ne|permis d.exploitation",
+  "guides": [
+    "financer-formation-restauration-rapide-opco"
+  ]
+}

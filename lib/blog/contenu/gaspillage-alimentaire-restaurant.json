@@ -1,0 +1,199 @@
+{
+  "slug": "gaspillage-alimentaire-restaurant",
+  "titre": "Réduire le gaspillage alimentaire dans un restaurant",
+  "titreCourt": "Gaspillage alimentaire au restaurant",
+  "description": "Contenants pour les restes, tri des biodéchets, rotation des stocks, dates, grammages : ce que la loi impose à un restaurant et comment jeter moins.",
+  "chapeau": "Chaque produit jeté a d’abord été acheté, stocké et souvent préparé. La loi impose peu de choses à un restaurant commercial, mais ces règles sont précises. Le reste se gagne en cuisine, avec une équipe qui sait gérer les stocks, les dates et les portions.",
+  "categorie": "Restauration rapide",
+  "publieLe": "2027-03-16",
+  "majLe": "2027-03-16",
+  "lecture": 6,
+  "image": "/site/metiers/cuisine.webp",
+  "imageAlt": "Cuisinier arrosant à la cuillère une poêle flambée sur un feu au gaz, devant une étagère de casseroles en inox",
+  "aRetenir": [
+    "Depuis le 1er juillet 2021, un restaurant fournit aux clients qui le demandent un contenant pour emporter ce qu’ils n’ont pas consommé, sauf pour une offre à volonté.",
+    "Depuis le 1er janvier 2024, tous les professionnels trient leurs biodéchets à la source, sans seuil minimum.",
+    "Un produit ne peut plus être vendu le lendemain de sa DLC, alors qu’une DDM dépassée n’interdit pas la vente.",
+    "Rotation des stocks, fiches techniques et suivi des pertes sont les leviers du quotidien."
+  ],
+  "sections": [
+    {
+      "id": "obligations",
+      "titre": "Ce que la loi impose à un restaurant",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les obligations les plus lourdes, comme les conventions de don des invendus, visent notamment les distributeurs de plus de 400 m² et la restauration collective qui prépare plus de 3 000 repas par jour. Pour un restaurant commercial, deux règles s’appliquent directement :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**les contenants pour les restes** : depuis le 1er juillet 2021, les restaurants et les débits de boissons mettent à la disposition des clients qui le demandent des contenants réutilisables ou recyclables, pour emporter les aliments ou boissons non consommés sur place. Seule exception : l’offre à volonté ;",
+            "**le tri des biodéchets** : depuis le 1er janvier 2024, le tri à la source est généralisé à tous les professionnels, sans seuil minimum. Restes de repas, épluchures et produits périmés en font partie, et se trient en général sans leur emballage."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les huiles de friture suivent leur propre règle : triées à part à partir de 60 litres par an, avec les biodéchets en dessous."
+        },
+        {
+          "type": "encadre",
+          "titre": "Un objectif national pour 2030",
+          "texte": "Le code de l’environnement fixe un cap : réduire de moitié, d’ici 2030, le gaspillage alimentaire de la restauration commerciale par rapport à 2015. C’est un objectif collectif, pas une obligation chiffrée pour chaque établissement.",
+          "ton": "info"
+        },
+        {
+          "type": "p",
+          "texte": "La loi fixe aussi un ordre de priorité : d’abord éviter le gaspillage, puis donner ou transformer les invendus encore consommables, ensuite les valoriser en alimentation animale, enfin en compost ou en énergie."
+        }
+      ]
+    },
+    {
+      "id": "stocks-et-dates",
+      "titre": "Commander, ranger, lire les dates",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une partie des pertes se décide avant la cuisson, au moment de la commande et du rangement :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**commandez au plus juste**, d’après les ventes réelles des semaines précédentes, en tenant compte des jours fériés, de la météo et des événements locaux ;",
+            "**rangez en premier entré, premier sorti** : le produit le plus ancien devant, le nouveau derrière. Le guide de bonnes pratiques d’hygiène de la restauration rapide demande de contrôler cette rotation et les dates limites chaque jour ;",
+            "**lisez la bonne date** : un produit ne peut plus être proposé à la vente le lendemain de sa DLC, tandis qu’une DDM dépassée signale une perte de qualité, pas un danger pour la santé. Le même guide note toutefois qu’en cuisine, l’usage est de ne pas dépasser non plus la DDM ;",
+            "**étiquetez ce qui est entamé** : une date d’ouverture lisible évite de jeter « par précaution » un produit encore bon."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Le mieux reste de ne pas atteindre ces dates : des commandes ajustées et une rotation tenue. Ces règles ont leur place dans votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant)."
+        }
+      ]
+    },
+    {
+      "id": "fiches-techniques",
+      "titre": "Fiches techniques et grammages",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une fiche technique par produit fixe la quantité de chaque ingrédient, le rendement et le dressage. Elle sert trois fois : le client reçoit la même portion quel que soit l’équipier, le coût de revient est connu, et les commandes se calculent au lieu de s’estimer."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "portionnez avec des outils plutôt qu’à l’œil : louches et cuillères calibrées, balance au poste ;",
+            "ajustez les grammages d’après les retours d’assiette : un accompagnement souvent laissé est servi en trop grande quantité ;",
+            "proposez plusieurs tailles de portion quand c’est possible."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "En restauration rapide, la production à l’avance pèse aussi sur les pertes. Le guide de bonnes pratiques demande de ne garder en maintien au chaud que les quantités adaptées à la demande, et de jeter en fin de journée ce qui est resté en liaison chaude. Produire par petites séries, au rythme des commandes, réduit à la fois le risque sanitaire et les pertes."
+        },
+        {
+          "type": "encadre",
+          "titre": "Garder pour le lendemain, oui, mais à quelles conditions ?",
+          "texte": "Selon le même guide, une préparation faite sur place peut être gardée si sa date limite n’est pas atteinte en fin de journée, si elle n’a pas été exposée à la vente, si la chaîne du froid ou du chaud n’a pas été rompue, si son aspect est conforme et si elle n’a pas déjà été refroidie une première fois.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "mesurer",
+      "titre": "Mesurer ce qui part à la poubelle",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Pour savoir quoi changer, il faut savoir ce qui est jeté. Le guide demande déjà de noter chaque jour les invendus mis en perte dans un document de suivi : c’est aussi votre premier outil contre le gaspillage."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "notez chaque jour les pertes par catégorie : produits périmés, préparations non vendues, retours d’assiette ;",
+            "faites le point chaque semaine avec l’équipe, en euros autant qu’en kilos ;",
+            "choisissez une ou deux actions à la fois, et vérifiez le résultat le mois suivant."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour fixer la durée de vie de vos préparations froides et les étiqueter, voyez aussi [les points de vigilance en sandwicherie](/blog/sandwicherie-snacking-hygiene)."
+        }
+      ]
+    },
+    {
+      "id": "equipe-et-formation",
+      "titre": "Le rôle de l’équipe et de la formation",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Rotation des stocks, étiquettes, températures, portions : ces gestes reposent sur l’équipe, nouveaux arrivants compris. Toute personne qui manipule des aliments doit être encadrée et recevoir des instructions ou une formation en hygiène adaptées à son poste : c’est le bon moment pour transmettre aussi les règles anti-gaspillage de la maison."
+        },
+        {
+          "type": "p",
+          "texte": "Une équipe qui comprend pourquoi la chambre froide se range dans un certain ordre, ou pourquoi une sauce porte une date, jette moins et se trompe moins. Pour organiser l’accueil des nouveaux, voyez notre [plan des 30 premiers jours](/blog/integrer-nouvel-equipier-restauration-rapide)."
+        },
+        {
+          "type": "p",
+          "texte": "Nous formons les équipes de restauration dans leur établissement. Une prise en charge par votre OPCO est possible, sous réserve de son accord. Pour recevoir un programme ou un devis, [contactez-nous](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un restaurant est-il obligé de fournir un « doggy bag » ?",
+      "r": "Oui, si le client le demande. Depuis le 1er juillet 2021, les établissements de restauration commerciale mettent à disposition des contenants réutilisables ou recyclables pour emporter les aliments et boissons non consommés sur place, sauf pour une offre à volonté."
+    },
+    {
+      "q": "Le tri des biodéchets est-il obligatoire pour un petit restaurant ?",
+      "r": "Oui. Depuis le 1er janvier 2024, le tri à la source des biodéchets est généralisé à l’ensemble des professionnels, sans seuil minimum."
+    },
+    {
+      "q": "Peut-on encore utiliser un produit dont la DDM est dépassée ?",
+      "r": "Une DDM dépassée signale une perte possible de qualité, pas un danger pour la santé, et le produit peut encore être proposé à la vente. Le guide de bonnes pratiques d’hygiène de la restauration rapide note toutefois que l’usage, en cuisine, est de gérer ces produits comme ceux à DLC, sans dépasser la date."
+    },
+    {
+      "q": "Un restaurant doit-il donner ses invendus ?",
+      "r": "Ce n’est pas une obligation pour un restaurant commercial. Les conventions de don obligatoires concernent notamment les distributeurs de plus de 400 m² et la restauration collective qui prépare plus de 3 000 repas par jour."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Code de l’environnement, articles L541-15-3 à L541-15-17 : lutte contre le gaspillage (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006074220/LEGISCTA000032043245/"
+    },
+    {
+      "libelle": "Code de l’environnement, article L541-1 : objectifs de réduction du gaspillage alimentaire (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041598665"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : lutte contre le gaspillage alimentaire, les lois françaises",
+      "url": "https://agriculture.gouv.fr/lutte-contre-le-gaspillage-alimentaire-les-lois-francaises"
+    },
+    {
+      "libelle": "Service-Public : tri à la source des biodéchets à partir du 1er janvier 2024",
+      "url": "https://www.service-public.gouv.fr/particuliers/actualites/A16963"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : tri à la source des déchets de l’entreprise",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F37782"
+    },
+    {
+      "libelle": "Service-Public : date limite de consommation (DLC) et date de durabilité minimale (DDM)",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F10990"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide, 2024 (PDF)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    }
+  ],
+  "formations": "gaspill|gestion des stocks|transition [eé]cologique|tra[cç]abilit[eé]|hygi[eè]ne",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant"
+  ]
+}

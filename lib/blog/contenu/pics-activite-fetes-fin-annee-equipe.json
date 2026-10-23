@@ -1,0 +1,190 @@
+{
+  "slug": "pics-activite-fetes-fin-annee-equipe",
+  "titre": "Fêtes de fin d’année : préparer l’équipe aux pics d’activité",
+  "titreCourt": "Fêtes de fin d’année : préparer l’équipe",
+  "description": "Plannings, renforts, hygiène, repos : comment préparer votre équipe de restaurant aux pics d’activité des fêtes, sans perdre en qualité ni épuiser personne.",
+  "chapeau": "En décembre, les commandes, les renforts et la fatigue arrivent en même temps. Ce qui a été préparé avant le rush se voit au service : plannings tenus, extras formés, cuisine propre jusqu’au dernier coup de feu. Voici les points à caler dès maintenant.",
+  "categorie": "Équipe et management",
+  "publieLe": "2026-12-01",
+  "majLe": "2026-12-01",
+  "lecture": 6,
+  "image": "/site/metiers/management.webp",
+  "imageAlt": "Formateur en chemise noire donnant des consignes à une équipe en tenue blanche réunie autour d’un plan de travail, dans un restaurant",
+  "aRetenir": [
+    "Un renfort embauché pour les fêtes reçoit, comme tout nouveau salarié, une formation pratique à la sécurité de son poste.",
+    "Tout extra qui manipule des aliments doit être encadré et recevoir des instructions d’hygiène adaptées à son poste.",
+    "Entre deux journées de travail, le repos est d’au moins 11 heures consécutives, sauf dérogation, sans jamais descendre sous 9 heures.",
+    "Pour un salarié à temps partiel, à défaut d’accord collectif, un changement de répartition des horaires se notifie au moins 7 jours ouvrés à l’avance."
+  ],
+  "sections": [
+    {
+      "id": "plannings",
+      "titre": "Bâtir les plannings tôt, avec les règles de repos",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Partez de deux listes : les services les plus chargés de l’an dernier, jour par jour, et les absences déjà connues, qu’il s’agisse de congés, d’examens d’étudiants ou de jours que certains ne peuvent pas travailler. Le planning de décembre se construit sur ces deux listes, pas au jour le jour."
+        },
+        {
+          "type": "p",
+          "texte": "Le code du travail fixe des repos minimaux, que votre convention collective peut aménager : vérifiez-la avant de bâtir le mois."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**Repos quotidien** : au moins 11 heures consécutives entre deux journées de travail. Un accord collectif peut prévoir moins, notamment en cas de surcroît d’activité, sans descendre sous 9 heures. Pour un salarié de 16 à 18 ans, c’est 12 heures.",
+            "**Repos hebdomadaire** : au moins 24 heures consécutives, auxquelles s’ajoutent les 11 heures de repos quotidien, soit 35 heures d’affilée.",
+            "**Temps partiel** : à défaut d’accord collectif fixant un autre délai, toute modification de la répartition des heures entre les jours de la semaine ou les semaines du mois est notifiée au salarié au moins 7 jours ouvrés à l’avance."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "La fermeture suivie d’une ouverture",
+          "texte": "Un équipier qui ferme à minuit ne peut pas reprendre avant 11 heures du matin, sauf dérogation. C’est la première chose à vérifier, nom par nom, avant d’afficher la semaine.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "renforts",
+      "titre": "Intégrer les renforts avant le premier rush",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un extra, un salarié en contrat court ou un intérimaire est un nouvel arrivant comme les autres. L’employeur doit organiser pour lui une **formation pratique et appropriée à la sécurité**, lors de l’embauche et pendant le temps de travail : circulation dans l’établissement, exécution du travail, conduite à tenir en cas d’accident ou de sinistre. Le texte ne prévoit pas d’exception pour les contrats courts."
+        },
+        {
+          "type": "p",
+          "texte": "Sur un poste présentant des risques particuliers pour sa santé ou sa sécurité, un salarié en CDD ou un intérimaire a même droit à une **formation renforcée à la sécurité**, avec un accueil et une information adaptés."
+        },
+        {
+          "type": "p",
+          "texte": "Côté hygiène, la règle vaut pour tous : toute personne qui manipule des aliments doit être **encadrée et recevoir des instructions ou une formation adaptées à son poste**. Pour un renfort, prévoyez au minimum :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "son poste et son binôme pour chaque service ;",
+            "les gestes de sécurité du poste, montrés puis refaits devant vous ;",
+            "les règles d’hygiène de base : tenue, lavage des mains, étiquetage des produits entamés, allergènes ;",
+            "la règle du salarié malade : avec une grippe, une gastro-entérite ou une plaie, il ne manipule pas d’aliments et vous prévient avant le service ;",
+            "la personne à prévenir en cas de problème et l’emplacement de la trousse de secours."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour un renfort de moins de 18 ans ou qui travaillera de nuit, la visite d’information et de prévention a lieu avant l’affectation au poste. Le déroulé complet est dans notre article sur [l’intégration d’un nouvel équipier](/blog/integrer-nouvel-equipier-restauration-rapide)."
+        }
+      ]
+    },
+    {
+      "id": "postes",
+      "titre": "Organiser les postes pour le coup de feu",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Fixez les postes avant chaque service et tenez-les : un équipier confirmé sur chaque poste clé, cuisson, friture, assemblage ; les renforts sur les postes qu’ils ont appris ; une personne chargée du réassort et du nettoyage en continu. Évitez de faire changer un renfort de poste en pleine soirée : il perd ses repères au pire moment."
+        },
+        {
+          "type": "p",
+          "texte": "Avant chaque service, cinq minutes suffisent pour un point d’équipe : produits du jour, ruptures, commandes groupées, qui fait quoi. Préparez à l’avance ce qui peut l’être, sans entasser les produits dans les enceintes froides : voyez [les erreurs de chaîne du froid qui coûtent cher](/blog/chaine-du-froid-restauration-rapide-erreurs)."
+        }
+      ]
+    },
+    {
+      "id": "hygiene-sous-pression",
+      "titre": "Garder l’hygiène quand tout s’accélère",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Sous pression, les premiers gestes à sauter sont souvent les mêmes : le lavage des mains entre deux tâches, l’étiquetage des produits entamés, les relevés de température, le nettoyage en cours de service. Ce sont aussi ceux qu’un inspecteur vérifie, et un contrôle sanitaire peut avoir lieu sans préavis, un soir de rush comme un autre."
+        },
+        {
+          "type": "p",
+          "texte": "Désignez pour chaque service une personne responsable de l’hygiène : elle fait les relevés à l’heure, vérifie le poste de lavage des mains et l’étiquetage. Une feuille de [relevé des températures](/modeles/releve-temperatures-restaurant) et un [plan de nettoyage](/modeles/plan-nettoyage-desinfection-restaurant) affichés en cuisine tiennent mieux qu’un rappel oral. Voyez aussi [comment se déroule un contrôle d’hygiène](/guides/controle-hygiene-restaurant-ddpp)."
+        }
+      ]
+    },
+    {
+      "id": "epuisement",
+      "titre": "Prévenir l’épuisement, pendant et après",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La fatigue accumulée se lit dans le service : erreurs de commande, oublis d’étiquetage, gestes précipités près de la friteuse ou de la trancheuse. C’est le signal pour alléger, pas pour accélérer."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "Tenez les pauses prévues, quitte à les décaler, plutôt que de les supprimer.",
+            "Répartissez les fermetures et les ouvertures entre tous, pas toujours sur les mêmes.",
+            "Prévoyez qui remplace qui en cas d’absence, avant qu’elle arrive.",
+            "Remerciez l’équipe pendant le mois, pas seulement après.",
+            "Faites un point d’équipe début janvier : ce qui a marché, ce qui est à revoir l’an prochain."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La charge des coups de feu fait partie des risques à évaluer dans votre [document unique](/guides/document-unique-duerp-restaurant) : mettez-le à jour avec ce que décembre vous a appris."
+        },
+        {
+          "type": "p",
+          "texte": "Une formation d’équipe sur l’organisation du service ou les règles d’hygiène se cale avant les périodes chargées. Pour vos salariés, sa prise en charge est possible, sous réserve de l’accord de l’OPCO. Pour la préparer, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un extra embauché pour une soirée doit-il recevoir une formation à la sécurité ?",
+      "r": "Oui. Le code du travail impose une formation pratique et appropriée à la sécurité pour tout travailleur embauché, sans exception pour les contrats courts. Elle est dispensée lors de l’embauche, pendant le temps de travail."
+    },
+    {
+      "q": "Peut-on enchaîner une fermeture tardive et une ouverture le lendemain matin ?",
+      "r": "Seulement si le salarié bénéficie d’au moins 11 heures de repos consécutives entre les deux. Un accord collectif peut prévoir une durée plus courte, notamment en cas de surcroît d’activité, mais jamais inférieure à 9 heures consécutives."
+    },
+    {
+      "q": "Combien de temps à l’avance prévenir un salarié à temps partiel d’un changement d’horaires ?",
+      "r": "À défaut d’accord collectif fixant un autre délai, toute modification de la répartition de ses heures entre les jours de la semaine ou les semaines du mois lui est notifiée au moins 7 jours ouvrés avant la date prévue."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Code du travail, article L4141-2 : formation à la sécurité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006903166"
+    },
+    {
+      "libelle": "Code du travail, articles R4141-1 à R4141-10 : information et formation à la sécurité (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000019960811"
+    },
+    {
+      "libelle": "Code du travail, article L4154-2 : formation renforcée à la sécurité des salariés en CDD et intérimaires (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000035653199"
+    },
+    {
+      "libelle": "Code du travail, article L3123-31 : délai de prévenance des salariés à temps partiel (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033019939"
+    },
+    {
+      "libelle": "Service-Public : Repos quotidien du salarié",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F990"
+    },
+    {
+      "libelle": "Service-Public : Repos hebdomadaire du salarié",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F2327"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Service-Public : Médecine au travail, qu’est-ce que la visite d’information et de prévention (Vip) ?",
+      "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F34061"
+    }
+  ],
+  "formations": "manag|rush|stress|conflit|hygi[eè]ne alimentaire",
+  "guides": [
+    "controle-hygiene-restaurant-ddpp",
+    "document-unique-duerp-restaurant"
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "slug": "gestes-postures-cuisine-mal-de-dos",
+  "titre": "Gestes et postures en cuisine : prévenir le mal de dos",
+  "titreCourt": "Gestes et postures : prévenir le mal de dos",
+  "description": "Cartons, fûts, plonge, postes debout : ce que dit le code du travail sur le port de charges et les mesures qui ménagent le dos de votre équipe en cuisine.",
+  "chapeau": "En cuisine, le dos travaille toute la journée : livraisons à ranger, fûts à descendre, plonge, heures debout au passe. Les troubles qui en résultent peuvent arrêter un salarié pendant des mois. Voici ce que dit la réglementation et les mesures qui les préviennent.",
+  "categorie": "Sécurité au travail",
+  "publieLe": "2027-01-19",
+  "majLe": "2027-01-19",
+  "lecture": 5,
+  "image": "/site/metiers/cuisine.webp",
+  "imageAlt": "Cuisinier en veste blanche et tablier faisant flamber une poêle sur un feu au gaz, dans une cuisine professionnelle",
+  "aRetenir": [
+    "Les troubles musculosquelettiques représentent plus de 80 % des maladies professionnelles reconnues.",
+    "Le code du travail demande d’abord d’éviter la manutention manuelle, puis de former les salariés aux gestes et postures.",
+    "Au-delà de 55 kg, le port habituel exige l’aptitude reconnue par le médecin du travail, sans dépasser 105 kg ; une femme ne porte pas plus de 25 kg.",
+    "Alléger les colis, ranger lourd à mi-hauteur et régler la hauteur des plans de travail réduisent l’effort à la source."
+  ],
+  "sections": [
+    {
+      "id": "chiffres",
+      "titre": "Le dos et les épaules, premières victimes du métier",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les troubles musculosquelettiques, ou **TMS**, touchent les muscles, les tendons et les nerfs, et se manifestent par des douleurs, de la raideur ou une perte de force. Selon l’INRS, ils représentent **plus de 80 % des maladies professionnelles reconnues**."
+        },
+        {
+          "type": "p",
+          "texte": "La restauration y est très exposée. Dans la restauration traditionnelle, **97 %** des maladies professionnelles reconnues chaque année sont des atteintes des bras, des épaules et du dos, selon des fiches de l’INRS et de l’Assurance Maladie mises à jour en 2017. Dans la restauration rapide, **40 %** des accidents du travail sont liés aux manutentions manuelles, et une maladie professionnelle entraîne en moyenne **223 jours d’arrêt** (dépliant de 2021)."
+        }
+      ]
+    },
+    {
+      "id": "code-du-travail",
+      "titre": "Ce que dit le code du travail sur le port de charges",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La règle de base est d’**éviter la manutention manuelle** : l’employeur prend les mesures d’organisation ou fournit les moyens appropriés, notamment des équipements mécaniques. Quand elle reste inévitable :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "l’employeur **évalue les risques** et organise les postes pour les éviter ou les réduire, avec des aides mécaniques ou, à défaut, des accessoires de préhension ;",
+            "il **informe** les salariés des risques et leur donne une **formation essentiellement pratique** aux gestes et postures à adopter ;",
+            "un salarié ne peut porter **habituellement plus de 55 kg** que s’il a été reconnu apte par le médecin du travail, et jamais plus de **105 kg** ;",
+            "une femme ne peut pas porter plus de **25 kg**, ni transporter plus de 40 kg avec une brouette, brouette comprise."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Un plafond légal n’est pas un objectif",
+          "texte": "Ces seuils sont des maximums. La norme NF X35-109, citée par l’INRS, retient des repères bien plus bas pour le transport manuel : **15 kg** comme valeur maximale acceptable et **25 kg** sous conditions, des valeurs à corriger encore selon la distance, la hauteur, la fréquence ou la posture.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "alleger-les-charges",
+      "titre": "Cartons, fûts, sacs : alléger avant de porter",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plus efficace est de réduire la charge avant qu’elle n’arrive dans les bras. L’INRS recommande de :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "se faire **livrer plus souvent**, par plus petites quantités ;",
+            "demander aux fournisseurs des **conditionnements plus légers** ;",
+            "**fractionner** les charges quand c’est possible, et porter les plus lourdes à deux ;",
+            "s’équiper d’**aides à la manutention** : diable, chariot, desserte, transpalette, et pour les fûts et les bonbonnes, un moyen mécanique plutôt que les bras ;",
+            "installer un **monte-charge** quand c’est possible, pour ne plus porter dans les escaliers."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rangement",
+      "titre": "Ranger la réserve à la bonne hauteur",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Dans la réserve et la chambre froide, la hauteur de rangement décide de l’effort :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "les produits **lourds et les plus utilisés** à mi-hauteur, au niveau de la taille ;",
+            "les produits légers et rarement utilisés en haut ou en bas ;",
+            "rien au-dessus de **1,80 m**, et surtout pas une charge lourde ;",
+            "un sol dégagé et des allées libres, pour circuler avec un chariot ;",
+            "un éclairage d’au moins **200 lux** dans les réserves et leurs escaliers."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Organisez ce rangement avec l’équipe : ce sont ses gestes qu’il doit faciliter."
+        }
+      ]
+    },
+    {
+      "id": "postes-de-travail",
+      "titre": "Plans de travail, plonge et postes debout",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un plan de travail trop bas fait courber le dos, trop haut il fait lever les épaules. L’INRS donne ces repères :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Type de travail",
+            "Repère",
+            "Hauteur pour un homme",
+            "Hauteur pour une femme"
+          ],
+          "lignes": [
+            [
+              "Travail de précision",
+              "Hauteur des coudes, ou plus haut",
+              "100 à 110 cm, ou plus",
+              "95 à 105 cm"
+            ],
+            [
+              "Travail léger",
+              "Entre les hanches et les coudes",
+              "90 à 95 cm",
+              "85 à 90 cm"
+            ],
+            [
+              "Travail lourd",
+              "Hauteur des hanches",
+              "75 à 90 cm",
+              "70 à 85 cm"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un plateau réglable en hauteur adapte un même plan à chacun. À la plonge, des **rehausses de fond** dans les bacs, ou des bacs gastro retournés, évitent de laver les petites pièces le dos voûté, et un lave-vaisselle placé à hauteur de taille plutôt qu’au sol ménage les chargements."
+        },
+        {
+          "type": "p",
+          "texte": "Pour les postes debout, le code du travail impose qu’un **siège approprié** soit mis à la disposition de chaque salarié, à son poste ou à proximité. L’INRS conseille de permettre l’alternance des postures, avec un siège assis-debout ou un repose-pieds, et des pauses régulières ; un tapis anti-fatigue ne vient qu’en complément."
+        }
+      ]
+    },
+    {
+      "id": "former-l-equipe",
+      "titre": "Former l’équipe aux bons gestes",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La formation aux gestes et postures est due aux salariés qui manipulent des charges, et elle doit être **essentiellement pratique**. Elle porte davantage quand elle part de vos propres situations : la livraison du matin, la plonge, la descente à la réserve. L’INRS recommande aussi la démarche **Prap**, de prévention des risques liés à l’activité physique, qui apprend aux salariés à analyser leur poste et à proposer des améliorations."
+        },
+        {
+          "type": "p",
+          "texte": "Ces risques s’inscrivent dans votre [document unique](/guides/document-unique-duerp-restaurant), et les gestes se transmettent dès l’arrivée de chaque salarié : voyez [ce que dit le code du travail sur la formation à la sécurité](/blog/formation-securite-nouveaux-salaries) et [comment prévenir coupures, brûlures et chutes](/blog/prevenir-accidents-cuisine-coupures-brulures). Pour former votre équipe dans votre établissement, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Quel poids un salarié peut-il porter au maximum ?",
+      "r": "Le code du travail n’autorise le port habituel de charges de plus de 55 kg qu’après une reconnaissance d’aptitude par le médecin du travail, et jamais au-delà de 105 kg. Une femme ne peut pas porter plus de 25 kg. Ce sont des plafonds : la norme NF X35-109, citée par l’INRS, retient 15 kg comme valeur maximale acceptable."
+    },
+    {
+      "q": "La formation gestes et postures est-elle obligatoire ?",
+      "r": "Pour les salariés dont l’activité comporte des manutentions manuelles, oui : l’employeur doit les informer des risques et leur donner une formation à la sécurité, essentiellement pratique, sur les gestes et postures à adopter. Le code n’en fixe pas la durée."
+    },
+    {
+      "q": "Faut-il prévoir des sièges pour un personnel qui travaille debout ?",
+      "r": "Oui. Le code du travail prévoit qu’un siège approprié soit mis à la disposition de chaque travailleur, à son poste ou à proximité. Un siège assis-debout permet d’alterner les postures entre deux tâches."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Code du travail, articles R4541-1 à R4541-10 : manutention des charges (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006072050/LEGISCTA000018492447/"
+    },
+    {
+      "libelle": "Code du travail, article R4541-9 : charges maximales (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018528889"
+    },
+    {
+      "libelle": "Code du travail, article R4225-5 : mise à disposition de sièges (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018532161"
+    },
+    {
+      "libelle": "INRS : Troubles musculosquelettiques, ce qu’il faut retenir",
+      "url": "https://www.inrs.fr/risques/tms-troubles-musculosquelettiques/ce-qu-il-faut-retenir.html"
+    },
+    {
+      "libelle": "INRS, ED 6218 : Organisez le rangement des produits et matériels",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%206218"
+    },
+    {
+      "libelle": "INRS, ED 6215 : Maintenez les couteaux aiguisés et en bon état (hauteur des plans de travail)",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%206215"
+    },
+    {
+      "libelle": "INRS, ED 6217 : Rehausses de fond pour les bacs de plonge",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%206217"
+    },
+    {
+      "libelle": "INRS, ED 6460 : Limiter le recours aux manutentions manuelles et aux déplacements avec port de charges",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%206460"
+    },
+    {
+      "libelle": "INRS, ED 6399 : Santé au travail, passez à l’action ! Restauration rapide (2021)",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%206399"
+    },
+    {
+      "libelle": "INRS, ED 933 : La restauration rapide, aide au repérage des risques",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%20933"
+    },
+    {
+      "libelle": "INRS, QR 162 : Station debout prolongée",
+      "url": "https://www.inrs.fr/media.html?refINRS=QR%20162"
+    }
+  ],
+  "formations": "postures|tms|prap|manutention|ergonom",
+  "guides": [
+    "document-unique-duerp-restaurant"
+  ]
+}

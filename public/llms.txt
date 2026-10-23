@@ -11,25 +11,29 @@
 
 ## Pages principales
 
-- [Accueil](https://crm.lab-learning.fr/site) : présentation de l'organisme et des branches couvertes
-- [Catalogue des formations](https://crm.lab-learning.fr/site/formations) : toutes les formations actives, avec durée, tarif calé sur la prise en charge OPCO, objectifs et programme
-- [Restauration rapide](https://crm.lab-learning.fr/site/branches/restauration-rapide)
-- [Restaurant & hôtellerie (HCR)](https://crm.lab-learning.fr/site/branches/restaurant-hcr)
-- [Boucherie-charcuterie](https://crm.lab-learning.fr/site/branches/boucherie-charcuterie)
-- [Boulangerie-pâtisserie](https://crm.lab-learning.fr/site/branches/boulangerie-patisserie)
-- [Financements](https://crm.lab-learning.fr/site/financements) : OPCO (plan de développement des compétences) et AGEFICE ; la décision de prise en charge appartient au financeur
-- [Nos résultats](https://crm.lab-learning.fr/site/resultats) : indicateurs de résultats publiés (satisfaction, réussite)
-- [Audit+](https://crm.lab-learning.fr/site/audit-plus) : notre outil d'audit terrain (audit hygiène HACCP, document unique DUERP, allergènes)
-- [Starkk](https://crm.lab-learning.fr/site/starkk) : notre assistant IA
-- [Contact](https://crm.lab-learning.fr/site/contact)
+- [Accueil](https://www.lab-learning.fr/) : présentation de l'organisme et des branches couvertes
+- [Catalogue des formations](https://www.lab-learning.fr/formations) : toutes les formations actives, avec durée, tarif calé sur la prise en charge OPCO, objectifs et programme
+- [Restauration rapide](https://www.lab-learning.fr/branches/restauration-rapide)
+- [Restaurant & hôtellerie (HCR)](https://www.lab-learning.fr/branches/restaurant-hcr)
+- [Boucherie-charcuterie](https://www.lab-learning.fr/branches/boucherie-charcuterie)
+- [Boulangerie-pâtisserie](https://www.lab-learning.fr/branches/boulangerie-patisserie)
+- [Financements](https://www.lab-learning.fr/financements) : OPCO (plan de développement des compétences) et AGEFICE ; la décision de prise en charge appartient au financeur
+- [Nos résultats](https://www.lab-learning.fr/resultats) : indicateurs de résultats publiés (satisfaction, réussite)
+- [Audit+](https://www.lab-learning.fr/audit-plus) : notre outil d'audit terrain (audit hygiène HACCP, document unique DUERP, allergènes)
+- [Starkk](https://www.lab-learning.fr/starkk) : notre assistant IA
+- [Guides](https://www.lab-learning.fr/guides) : formation hygiène obligatoire, document unique, allergènes, contrôle sanitaire, plan de maîtrise sanitaire, financement, avec les sources officielles
+- [Blog](https://www.lab-learning.fr/blog) : conseils pratiques pour les restaurants et commerces de bouche (hygiène, sécurité, financement, management), un nouvel article chaque semaine
+- [Modèles gratuits](https://www.lab-learning.fr/modeles) : tableau des allergènes, relevés de températures, plan de nettoyage, trame de document unique
+- [E-learning](https://www.lab-learning.fr/e-learning) : Learnexa, la plateforme de formation en ligne de Lab Learning
+- [Contact](https://www.lab-learning.fr/contact)
 
 ## Informations réglementaires
 
-- [Règlement intérieur stagiaires](https://crm.lab-learning.fr/site/reglement-interieur)
-- [Déposer une réclamation](https://crm.lab-learning.fr/site/reclamation)
-- [Certificat Qualiopi (PDF)](https://crm.lab-learning.fr/site/documents/certificat-qualiopi-lab-learning.pdf)
-- [Mentions légales](https://crm.lab-learning.fr/site/mentions-legales)
-- [CGV](https://crm.lab-learning.fr/site/cgv)
+- [Règlement intérieur stagiaires](https://www.lab-learning.fr/reglement-interieur)
+- [Déposer une réclamation](https://www.lab-learning.fr/reclamation)
+- [Certificat Qualiopi (PDF)](https://www.lab-learning.fr/site/documents/certificat-qualiopi-lab-learning.pdf)
+- [Mentions légales](https://www.lab-learning.fr/mentions-legales)
+- [CGV](https://www.lab-learning.fr/cgv)
 
 ## Domaines phares
 

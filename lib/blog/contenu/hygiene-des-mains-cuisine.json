@@ -1,0 +1,179 @@
+{
+  "slug": "hygiene-des-mains-cuisine",
+  "titre": "Lavage des mains en cuisine : la routine qui prévient les intoxications",
+  "titreCourt": "Lavage des mains en cuisine : la routine",
+  "description": "Quand se laver les mains, comment, avec quel équipement, et pourquoi les gants ne dispensent pas du lavage : la routine à faire adopter à toute l’équipe.",
+  "chapeau": "En cuisine, les mains touchent tout : la viande crue, les cartons, la poubelle, puis le pain du client. Voici quand les laver, comment, avec quel équipement, et comment faire de ce geste une habitude de toute l’équipe.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2026-11-10",
+  "majLe": "2026-11-10",
+  "lecture": 5,
+  "image": "/site/photos/modeles/affiche-lavage-des-mains.webp",
+  "imageAlt": "Affichette « Je me lave les mains, 30 secondes » : les six gestes du lavage, de « Je mouille » à « Je ferme », et les cinq moments où se laver les mains",
+  "aRetenir": [
+    "On se lave les mains en prenant son poste, après les toilettes, après les déchets, les emballages ou les produits crus, et avant de manipuler les aliments.",
+    "Comptez au moins 30 secondes de frottement, recommande l’INRS : paumes, dos des mains, entre les doigts, pouces, ongles, poignets.",
+    "Le lave-mains a de l’eau chaude et froide, du savon et un séchage hygiénique : le papier à usage unique est à privilégier.",
+    "Les gants ne dispensent pas du lavage : on se lave les mains avant de les enfiler et après les avoir retirés."
+  ],
+  "sections": [
+    {
+      "id": "quand",
+      "titre": "Quand se laver les mains ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Selon Service-Public, le lavage des mains est **obligatoire** à la reprise du travail, à la sortie des sanitaires, après avoir manipulé des déchets ou des matières premières, et avant de manipuler le beurre, le fromage, la crème ou la mayonnaise. Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé par l’administration, complète la liste :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "à chaque prise ou reprise de poste, et après chaque pause ;",
+            "après avoir mangé ou fumé ;",
+            "après s’être mouché, avoir toussé ou éternué ;",
+            "avant de manipuler les produits ;",
+            "après tout geste salissant : objets sales, produits crus, emballages, produits de nettoyage ;",
+            "à la fin du travail."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "En restauration rapide, le piège, ce sont les gestes qui s’enchaînent sans pause : ouvrir un carton de livraison, puis garnir un pain ; sortir la poubelle, puis reprendre son poste ; découper du poulet cru, puis préparer une salade."
+        }
+      ]
+    },
+    {
+      "id": "technique",
+      "titre": "La bonne technique, en six gestes",
+      "blocs": [
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "**Mouiller** les mains et les poignets.",
+            "**Savonner** avec le savon liquide du distributeur.",
+            "**Frotter au moins 30 secondes** : paumes, dos des mains, entre les doigts, bord des mains, pouces, ongles, poignets.",
+            "**Rincer** abondamment.",
+            "**Sécher** avec un essuie-mains en papier à usage unique, en tamponnant.",
+            "**Fermer le robinet** avec le papier, puis le jeter dans la poubelle."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La durée de 30 secondes est celle de l’affiche de l’INRS ; si la notice de votre savon indique un temps de contact plus long, suivez-la. Un lavage efficace suppose des **ongles courts et sans vernis**, et **aucun bijou aux mains ni aux avant-bras** : le guide de la restauration rapide ne tolère qu’une alliance lisse."
+        },
+        {
+          "type": "p",
+          "texte": "Le gel hydroalcoolique ne remplace pas ce lavage : l’Anses ne le recommande pas comme substitut dans la préparation des aliments, car son action est neutralisée dès que les mains portent des résidus d’aliments. Notre [affichette lavage des mains](/modeles/affiche-lavage-des-mains) reprend les six gestes, à placer au-dessus de chaque lave-mains."
+        }
+      ]
+    },
+    {
+      "id": "poste-de-lavage",
+      "titre": "Un poste de lavage bien équipé et bien placé",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le règlement européen demande un **nombre suffisant de lavabos** réservés au lavage des mains et judicieusement situés, avec de l’**eau courante chaude et froide** et de quoi se laver et se **sécher les mains de façon hygiénique**. Si besoin, ils sont séparés des bacs où l’on lave les aliments. Concrètement :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**de l’eau potable, chaude ou tiède**, comme le recommande le guide de la restauration rapide ;",
+            "**une commande non manuelle**, au pied, à la jambe ou par détecteur, pour ne pas se resalir les mains en fermant le robinet ;",
+            "**un distributeur de savon et un distributeur de papier à usage unique** : Service-Public conseille de privilégier le papier jetable, les torchons étant sources de microbes ;",
+            "**une poubelle à commande au pied** pour jeter le papier ;",
+            "un poste **propre, accessible et toujours approvisionné**, à l’entrée de la cuisine comme à la sortie des toilettes."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gants",
+      "titre": "Les gants ne dispensent pas du lavage",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un gant touche ce que toucherait une main nue. Le guide de la restauration rapide le dit sans détour : mieux vaut manipuler les produits avec des mains propres qu’avec des gants sales. Le port des gants **ne dispense pas de se laver les mains avant de les enfiler et après les avoir retirés**, et ils se changent autant de fois que nécessaire."
+        },
+        {
+          "type": "p",
+          "texte": "L’Anses pointe le piège : avec des gants, on n’a plus la sensation d’avoir les mains sales, et on ne les change plus aussi souvent qu’il le faudrait. Choisissez des gants à usage unique, aptes au contact alimentaire, et évitez le latex, qui peut transmettre un allergène aux aliments."
+        },
+        {
+          "type": "encadre",
+          "titre": "En cas de coupure",
+          "texte": "Une blessure se signale au responsable. Le règlement européen écarte de la manipulation des aliments une personne qui souffre de plaies infectées, dès qu’il existe un risque de contamination. Pour une petite lésion non infectée, le guide de la restauration rapide demande de la désinfecter, de la couvrir d’un pansement imperméable renouvelé régulièrement, puis d’un doigtier ou d’un gant étanche à usage unique.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "exemple-du-manager",
+      "titre": "Le manager montre l’exemple",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Depuis 2021, le règlement européen demande aux exploitants une **culture de la sécurité alimentaire** : l’engagement de la direction, des rôles clairs, une formation adéquate et une supervision appropriée du personnel. Pour le lavage des mains, cela commence par un manager qui se lave les mains en entrant en cuisine, devant son équipe."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "Montrez la routine à chaque nouvel arrivant avant sa première prise de poste : le guide de la restauration rapide prévoit une information à l’hygiène avant la prise de poste du personnel récemment embauché.",
+            "Affichez la procédure au-dessus des lave-mains et à la sortie des toilettes.",
+            "Observez sans attendre un contrôle : le guide prévoit une surveillance par contrôle visuel de l’hygiène et du comportement.",
+            "Glissez un rappel dans le point d’équipe avant le service."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Voyez aussi [comment intégrer un nouvel équipier](/blog/integrer-nouvel-equipier-restauration-rapide) et [qui doit suivre la formation hygiène alimentaire](/guides/formation-hygiene-alimentaire-restauration-rapide). Pour former votre équipe à ces gestes, dans votre établissement, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Le gel hydroalcoolique peut-il remplacer le lavage des mains en cuisine ?",
+      "r": "Non. L’Anses ne recommande pas de l’utiliser à la place du lavage dans la préparation des aliments : son action est neutralisée dès que les mains portent des résidus alimentaires. Il peut tout au plus compléter un lavage, sur des mains propres."
+    },
+    {
+      "q": "Combien de temps faut-il se laver les mains ?",
+      "r": "Comptez au moins 30 secondes de frottement, comme le recommande l’affiche de l’INRS, et davantage si la notice du savon l’indique. Le rinçage et le séchage viennent ensuite."
+    },
+    {
+      "q": "Faut-il un lave-mains séparé de l’évier où l’on lave les légumes ?",
+      "r": "Oui. Le règlement européen demande, en cas de besoin, de séparer les dispositifs de lavage des aliments de ceux réservés aux mains, et Service-Public prévoit en cuisine des lavabos différents pour les mains et pour les légumes."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires, annexe II, chapitres I, VIII et XI bis",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide (2024)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène et d’application de l’HACCP Restaurateur",
+      "url": "https://agriculture.gouv.fr/sites/default/files/gph_20165905_0001_p000.pdf"
+    },
+    {
+      "libelle": "Anses : L’opérateur comme source ou vecteur de la contamination des aliments (2018)",
+      "url": "https://www.anses.fr/system/files/GBPH2017SA0153.pdf"
+    },
+    {
+      "libelle": "INRS : affiche « Lavage des mains avec du savon » (AA 843, 2020)",
+      "url": "https://www.inrs.fr/media.html?refINRS=A+843"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp",
+  "guides": [
+    "formation-hygiene-alimentaire-restauration-rapide"
+  ]
+}

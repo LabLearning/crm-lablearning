@@ -1,0 +1,169 @@
+{
+  "slug": "allergenes-boulangerie-patisserie-vitrine",
+  "titre": "Allergènes en boulangerie-pâtisserie : informer le client en vitrine",
+  "titreCourt": "Allergènes en boulangerie-pâtisserie",
+  "description": "Pain, viennoiseries, gâteaux vendus sans emballage : comment informer le client sur les allergènes en vitrine, et limiter les contaminations au fournil.",
+  "chapeau": "Une baguette, un croissant, une tarte : en vitrine, rien n’est emballé, et pourtant le client allergique doit savoir ce qu’il achète. Voici ce que demande la réglementation pour les produits vendus sans emballage, les allergènes à surveiller au fournil et les supports qui fonctionnent au comptoir.",
+  "categorie": "Métiers de bouche",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 5,
+  "image": "/site/metiers/boulangerie.webp",
+  "imageAlt": "Mains farinées d’un boulanger posées sur des baguettes dorées et des miches de campagne, sur un plan de travail fariné",
+  "aRetenir": [
+    "Pour un produit vendu sans emballage, les allergènes s’indiquent sur le produit ou juste à côté, sans doute possible sur le produit concerné.",
+    "Chaque allergène se nomme en toutes lettres : écrire « allergènes » ne suffit pas.",
+    "Au fournil, la farine, les graines et les fruits à coque voyagent : l’organisation de la production compte autant que l’étiquette.",
+    "La mention « traces éventuelles » est recommandée mais pas obligatoire, et elle ne dispense pas des précautions au fournil."
+  ],
+  "sections": [
+    {
+      "id": "ce-que-dit-la-regle",
+      "titre": "Que dit la règle pour les produits vendus sans emballage ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Pour les denrées **non préemballées**, le code de la consommation précise comment informer le client sur les allergènes : ces règles viennent du décret n° 2015-447 du 17 avril 2015. L’information doit être indiquée **sur la denrée elle-même ou à proximité**, de façon qu’il n’existe aucune incertitude sur le produit auquel elle se rapporte."
+        },
+        {
+          "type": "p",
+          "texte": "Trois cas sont visés, et une boulangerie-pâtisserie les connaît tous :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "les produits **présentés sans emballage** : pain, viennoiseries, pâtisseries, quiches ;",
+            "les produits **emballés à la demande** du client, comme une tarte mise en boîte au moment de la vente ;",
+            "les produits **préemballés en vue de leur vente immédiate** : sandwichs, salades composées, sachets de biscuits préparés le matin."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La fiche officielle de Service-Public ajoute que le client ne doit avoir **ni à chercher l’information, ni à la demander**. Si vous proposez des formules à consommer sur place, une règle s’ajoute : l’information est écrite, lisible et visible, ou un écrit indique clairement où la consulter librement."
+        }
+      ]
+    },
+    {
+      "id": "allergenes-du-fournil",
+      "titre": "Les allergènes que l’on retrouve partout au fournil",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La liste réglementaire compte quatorze allergènes. En boulangerie-pâtisserie, plusieurs se retrouvent dans presque tout ce qui sort du four :"
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Allergène", "Où on le trouve souvent"],
+          "lignes": [
+            ["Céréales contenant du gluten", "Farines de blé, d’épeautre, de seigle, d’orge ou d’avoine : pains, pâtes à tarte, viennoiseries"],
+            ["Œufs", "Brioches, crèmes, dorure des viennoiseries"],
+            ["Lait", "Beurre, pains au lait, crèmes, garnitures"],
+            ["Fruits à coque", "Amandes, noisettes, pistaches, noix : frangipane, praliné, décors"],
+            ["Graines de sésame", "Pains spéciaux, mélanges de graines, décors"],
+            ["Soja", "Lécithine de certains chocolats et ingrédients du commerce : lisez les fiches techniques"],
+            ["Sulfites", "Certains fruits secs ou confits : à déclarer au-delà de 10 mg/kg ou 10 mg/l"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Sans oublier la moutarde, le poisson ou le céleri des sandwichs et des produits traiteur. Nommez chaque allergène **en toutes lettres** : Service-Public rappelle qu’écrire « allergènes » ne suffit pas, et que la lécithine de soja s’écrit en clair, pas sous son code « E 322 »."
+        }
+      ]
+    },
+    {
+      "id": "contaminations-croisees",
+      "titre": "Au fournil, limiter les contaminations croisées",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La farine vole, les graines roulent, les fruits à coque passent d’un plan de travail à l’autre. Or une réaction allergique peut être grave, même pour une faible quantité. Quelques règles d’organisation limitent le risque :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "fabriquez d’abord les produits sans fruits à coque ni sésame, puis ceux qui en contiennent ;",
+            "réservez des ustensiles et des plaques aux fruits à coque, et rangez ces ingrédients dans des bacs fermés et étiquetés ;",
+            "nettoyez le plan de travail, le batteur et le laminoir entre deux productions qui n’ont pas les mêmes allergènes : voyez [comment construire votre plan de nettoyage](/blog/plan-nettoyage-desinfection-cuisine) ;",
+            "gardez les produits finis à l’abri des graines et des décors des autres, en vitrine comme en réserve."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "« Traces » et « sans gluten » : deux mentions à manier avec soin",
+          "texte": "Une mention comme « traces éventuelles de… » ou « fabriqué dans un atelier qui utilise… » est recommandée mais pas obligatoire : elle informe, elle ne remplace pas les précautions. La mention « sans gluten », elle, n’est permise que si la teneur en gluten est inférieure à 20 mg/kg, ce qui est très difficile à garantir dans un fournil où la farine de blé circule.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "supports-en-vitrine",
+      "titre": "Quels supports en vitrine ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Vous choisissez le support, pourvu que le client fasse sans hésiter le lien entre le produit et ses allergènes :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**l’étiquette-prix ou le chevalet** de chaque produit, avec ses allergènes sous le nom ;",
+            "**un tableau affiché contre la vitrine**, où chaque produit porte exactement le nom de son étiquette ;",
+            "**l’étiquette du sachet ou de la boîte** pour les produits préparés à l’avance, sandwichs et salades compris."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un classeur rangé derrière la caisse ne suffit pas pour la vitrine : l’information doit se voir près du produit. Partez de notre [modèle de tableau des allergènes](/modeles/tableau-allergenes-restaurant), et mettez-le à jour à chaque nouvelle recette, à chaque changement de fournisseur ou de farine. Pour tout ce que vous achetez prêt à l’emploi, la fiche technique du fournisseur est la seule source fiable."
+        }
+      ]
+    },
+    {
+      "id": "equipe-de-vente",
+      "titre": "Préparer l’équipe de vente",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Au comptoir, la question arrive en plein rush : « Il y a des noisettes dedans ? » La bonne réponse n’est jamais « je ne crois pas ». Chaque vendeur doit savoir où se trouve l’information, la lire avec le client et, au moindre doute, demander au fournil avant de répondre."
+        },
+        {
+          "type": "p",
+          "texte": "Pour aller plus loin sur l’affichage, voyez notre guide sur [les 14 allergènes à déclarer](/guides/allergenes-restaurant-affichage-obligatoire), et [nos formations pour la boulangerie-pâtisserie](/branches/boulangerie-patisserie). Pour former vos vendeurs et votre fournil, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Faut-il afficher les allergènes du pain en boulangerie ?",
+      "r": "Oui. Le pain fait partie des produits vendus sans emballage : ses allergènes doivent être indiqués sur le produit ou à proximité. Pensez au gluten, mais aussi aux graines, au lait ou aux œufs de certains pains spéciaux."
+    },
+    {
+      "q": "Un classeur des allergènes à la caisse suffit-il ?",
+      "r": "Pas pour les produits de la vitrine : l’information doit figurer sur le produit ou à côté, sans que le client ait à la chercher ni à la demander. Pour les repas pris sur place, un classeur en libre accès est possible si un écrit indique clairement où le consulter."
+    },
+    {
+      "q": "La mention « peut contenir des traces » est-elle obligatoire ?",
+      "r": "Non. Elle est recommandée quand un allergène peut se retrouver par accident dans un produit, mais elle n’est pas imposée et ne dispense pas de limiter les contaminations au fournil."
+    },
+    {
+      "q": "Peut-on vendre un pain « sans gluten » fabriqué dans le même fournil ?",
+      "r": "La mention n’est permise que si la teneur en gluten est inférieure à 20 mg/kg. Dans un fournil où l’on travaille la farine de blé, c’est très difficile à garantir sans locaux, matériel et contrôles dédiés."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Quels allergènes doivent être mentionnés sur un produit alimentaire ?",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32192"
+    },
+    {
+      "libelle": "Code de la consommation, articles R412-12 à R412-16 : allergènes des denrées non préemballées (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000032807848"
+    },
+    {
+      "libelle": "Décret n° 2015-447 du 17 avril 2015 relatif à l’information des consommateurs sur les allergènes et les denrées alimentaires non préemballées (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/eli/decret/2015/4/17/EINC1431134D/jo/texte"
+    }
+  ],
+  "formations": "allerg[eè]n|[eé]tiquetage|hygi[eè]ne|haccp",
+  "guides": ["allergenes-restaurant-affichage-obligatoire"]
+}

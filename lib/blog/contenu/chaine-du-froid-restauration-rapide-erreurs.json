@@ -1,0 +1,170 @@
+{
+  "slug": "chaine-du-froid-restauration-rapide-erreurs",
+  "titre": "Chaîne du froid en restauration rapide : les erreurs qui coûtent cher",
+  "titreCourt": "Chaîne du froid : erreurs qui coûtent cher",
+  "description": "Livraison qui attend, chambre froide trop pleine, décongélation à l’air libre : les erreurs de chaîne du froid en restauration rapide et comment les éviter.",
+  "chapeau": "En restauration rapide, la chaîne du froid cède rarement d’un coup : elle se rompt par petites habitudes, au fil des livraisons et des coups de feu. Voici les erreurs à repérer dans votre cuisine, ce qu’elles peuvent coûter et la bonne pratique pour chacune.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/metiers/rapide.webp",
+  "imageAlt": "Main qui nappe de sauce à la cuillère un burger au fromage servi avec des frites, sur un comptoir en inox",
+  "aRetenir": [
+    "La chaîne du froid ne doit pas être interrompue : le règlement européen ne tolère que de courtes sorties du froid, le temps de la manipulation.",
+    "Une livraison se contrôle avant de signer le bon, puis se range sans attendre, les produits réfrigérés et surgelés en premier.",
+    "Une viande, un poisson ou un plat cuisiné se décongèle au froid ou directement à la cuisson, jamais à température ambiante.",
+    "Sans relevés de température, impossible de prouver que le froid a été tenu : ils font partie des documents demandés lors d’un contrôle."
+  ],
+  "sections": [
+    {
+      "id": "pourquoi-ca-compte",
+      "titre": "Pourquoi une petite rupture compte",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le règlement européen sur l’hygiène des aliments est clair : les denrées qui favorisent la multiplication des microbes ne doivent pas être conservées à des températures qui présentent un risque, et **la chaîne du froid ne doit pas être interrompue**. Il admet seulement de courtes sorties du froid, le temps de préparer, de manipuler ou de servir."
+        },
+        {
+          "type": "p",
+          "texte": "En France, l’arrêté du 21 décembre 2009 fixe la température maximale de chaque denrée, **en tous points du produit** : +2 °C pour la viande hachée, +4 °C pour la volaille, +3 °C pour une préparation faite à l’avance. Le détail est dans notre article sur [les températures de conservation](/blog/temperatures-conservation-aliments-cuisine)."
+        },
+        {
+          "type": "p",
+          "texte": "Une rupture se paie de plusieurs façons : des produits à jeter, un risque d’intoxication pour vos clients, un contrôle qui tourne mal. Les suites d’un contrôle vont de l’avertissement à la fermeture de l’établissement, et le niveau d’hygiène attribué est publié sur [Alim’confiance](/blog/alim-confiance-niveau-hygiene-restaurant)."
+        }
+      ]
+    },
+    {
+      "id": "livraisons",
+      "titre": "Une livraison se contrôle et se range sans attendre",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "**L’erreur.** Les cartons restent dans le couloir pendant le coup de feu de midi, et le bon de livraison est signé sans rien vérifier. Les produits se réchauffent sans que cela se voie."
+        },
+        {
+          "type": "p",
+          "texte": "**La bonne pratique.** Contrôlez avant de signer : température, dates, état des emballages, propreté du camion. Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé par l’administration, conseille de **refuser un produit qui dépasse de plus de 2 °C sa température de conservation**, ou de plus de 3 °C pour un produit congelé, et de **tout ranger en moins de 30 minutes**, en commençant par les produits réfrigérés, surgelés et congelés."
+        },
+        {
+          "type": "p",
+          "texte": "Notez chaque contrôle : notre [modèle de relevé des températures](/modeles/releve-temperatures-restaurant) comprend une fiche de contrôle à réception. Un produit refusé se signale aussi sur le bon de livraison."
+        }
+      ]
+    },
+    {
+      "id": "enceintes",
+      "titre": "Une enceinte trop pleine ou trop souvent ouverte ne tient plus le froid",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "**Les erreurs.** La chambre froide déborde après une grosse commande, des cartons bouchent les sorties d’air, et la porte reste ouverte pendant le service. L’air froid circule mal et l’enceinte ne tient plus sa température."
+        },
+        {
+          "type": "p",
+          "texte": "**La bonne pratique.** Le même guide demande de **ne pas surcharger** les chambres froides, de **ne pas bloquer les couloirs de ventilation** et de **limiter les ouvertures de porte**. Réglez chaque enceinte sur le produit le plus fragile qu’elle contient. Rangez en haut les produits prêts à servir, en bas les produits crus et ceux en décongélation : le froid descend, et rien ne coule sur ce qui sera servi tel quel."
+        },
+        {
+          "type": "p",
+          "texte": "Le réfrigérateur de ligne, ouvert sans cesse pendant le rush, peut dépasser sa température de réglage : il ne sert qu’à un stockage de courte durée, pour les besoins du service. N’y mettez que les quantités nécessaires."
+        }
+      ]
+    },
+    {
+      "id": "decongelation",
+      "titre": "La décongélation se fait au froid, pas sur le plan de travail",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "**L’erreur.** Des steaks hachés ou du poulet sortis du congélateur le matin et laissés sur le plan de travail pour gagner du temps. Le guide de la restauration rapide le dit simplement : la décongélation à température ambiante favorise la prolifération microbienne."
+        },
+        {
+          "type": "p",
+          "texte": "**La bonne pratique.** L’arrêté du 21 décembre 2009 prévoit deux méthodes : décongeler **dans une enceinte réfrigérée**, entre 0 °C et la température maximale de conservation du produit, ou entre 0 et +4 °C si aucune n’est fixée ; ou **cuire ou réchauffer directement** le produit encore congelé. Une fois décongelé, le produit se conserve aux températures des produits réfrigérés."
+        },
+        {
+          "type": "p",
+          "texte": "Décongelez dans un bac qui laisse s’écouler le liquide, placé en bas de l’enceinte, et identifiez le produit avec sa date de décongélation. Il ne se recongèle pas : Service-Public classe la recongélation d’un produit déjà décongelé parmi les pratiques interdites."
+        }
+      ]
+    },
+    {
+      "id": "refroidissement",
+      "titre": "Un plat cuisiné à l’avance doit refroidir vite",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "**L’erreur.** Une sauce, du riz ou une viande cuite laissés à refroidir sur le plan de travail jusqu’à la fin du service, ou une grande marmite encore chaude glissée dans la chambre froide au milieu des autres produits."
+        },
+        {
+          "type": "p",
+          "texte": "**La bonne pratique.** Le règlement européen demande de réfrigérer **dès que possible après la cuisson** ce qui sera conservé ou servi froid. L’arrêté du 21 décembre 2009 fixe le repère pour la restauration collective, et le guide de la restauration rapide le reprend : la température à cœur doit passer **de +63 °C à moins de +10 °C en deux heures au plus**. L’arrêté prévoit ensuite une conservation entre 0 et +3 °C."
+        },
+        {
+          "type": "p",
+          "texte": "Portionnez en bacs peu profonds, utilisez une cellule de refroidissement si vous en avez une, et notez l’heure et la température au début et à la fin : c’est l’objet de notre [fiche de refroidissement et de remise en température](/modeles/refroidissement-remise-en-temperature)."
+        }
+      ]
+    },
+    {
+      "id": "releves",
+      "titre": "Sans relevés, le froid tenu ne se prouve pas",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "**L’erreur.** Pas de feuille de relevé, ou une feuille remplie en fin de semaine, de mémoire, avec la même valeur tous les jours. Le jour du contrôle, rien ne montre que vos enceintes ont tenu leur température."
+        },
+        {
+          "type": "p",
+          "texte": "**La bonne pratique.** Relevez chaque enceinte à heure fixe, à l’ouverture et à la fermeture par exemple, notez la valeur réellement lue et, en cas d’écart, ce que vous avez fait. Service-Public range les fiches d’enregistrement des températures parmi les documents à présenter lors d’un contrôle sanitaire, et ces contrôles ont lieu sans préavis. Ces relevés font partie de votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant) : voyez aussi [comment se déroule un contrôle d’hygiène](/guides/controle-hygiene-restaurant-ddpp)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe à ces gestes, dans votre établissement et sur votre matériel, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Peut-on décongeler des steaks hachés à température ambiante pour gagner du temps ?",
+      "r": "Non. L’arrêté du 21 décembre 2009 prévoit une décongélation au froid, sans dépasser la température de conservation du produit, ou une cuisson directe du produit encore congelé. Pour un steak haché surgelé, la cuisson sans décongélation préalable fait partie des méthodes prévues."
+    },
+    {
+      "q": "Combien de temps une livraison peut-elle rester hors du froid ?",
+      "r": "Le règlement européen n’admet que de courtes périodes, le temps de la manipulation. Le guide de bonnes pratiques d’hygiène de la restauration rapide fixe un objectif concret : tout ranger en moins de 30 minutes, en commençant par les produits réfrigérés, surgelés et congelés."
+    },
+    {
+      "q": "Que faire si la chambre froide affiche une température trop haute ?",
+      "r": "Vérifiez d’abord qu’elle n’est pas en cycle de dégivrage, puis mesurez la température à cœur des produits avec un autre thermomètre. Si l’écart est réel, appelez votre frigoriste, transférez ou éliminez les produits selon ce que prévoit votre plan de maîtrise sanitaire, et notez l’anomalie avec ce que vous avez fait."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires, annexe II, chapitre IX",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009 relatif aux règles sanitaires applicables aux activités de commerce de détail, annexes I, IV et VI (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000021573483"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide (2024)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "DRAAF Bretagne : Alim’confiance, accéder aux résultats des contrôles sanitaires d’un établissement",
+      "url": "https://draaf.bretagne.agriculture.gouv.fr/alim-confiance-acceder-aux-resultats-des-controles-sanitaires-d-un-a830.html"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "controle-hygiene-restaurant-ddpp"
+  ]
+}

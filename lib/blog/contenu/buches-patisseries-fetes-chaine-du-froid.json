@@ -1,0 +1,185 @@
+{
+  "slug": "buches-patisseries-fetes-chaine-du-froid",
+  "titre": "Bûches et pâtisseries de fêtes : tenir la chaîne du froid",
+  "titreCourt": "Bûches de Noël : tenir la chaîne du froid",
+  "description": "Crèmes, mousses, bûches glacées : les températures à tenir, la place à prévoir au froid, les précommandes et les conseils de transport à donner au client.",
+  "chapeau": "En décembre, la production de pâtisseries grimpe, avec les mêmes chambres froides qu’en octobre. Les crèmes et les mousses, elles, supportent mal le moindre passage au chaud. Voici comment tenir la chaîne du froid, de la fabrication jusqu’à la table du client.",
+  "categorie": "Métiers de bouche",
+  "publieLe": "2026-12-15",
+  "majLe": "2026-12-15",
+  "lecture": 5,
+  "image": "/site/metiers/patisserie.webp",
+  "imageAlt": "Pâtissière dressant à la poche une rosace de crème fouettée sur un entremets rose garni de framboises, d’une myrtille et d’une petite fleur",
+  "aRetenir": [
+    "Une pâtisserie à la crème ou aux œufs est une denrée très périssable : elle peut devenir rapidement dangereuse si la température n’est pas maîtrisée.",
+    "Tenir +3 °C dans les vitrines et les chambres froides respecte à la fois la limite des préparations élaborées à l’avance et celle des autres denrées très périssables.",
+    "Une bûche glacée se conserve à -18 °C et ne se recongèle jamais une fois décongelée.",
+    "Le client repart avec la chaîne du froid entre les mains : dites-lui comment transporter et ranger sa bûche."
+  ],
+  "sections": [
+    {
+      "id": "pourquoi-a-risque",
+      "titre": "Pourquoi les pâtisseries de fêtes sont à surveiller",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Crème pâtissière, crème au beurre, chantilly, mousses : ces préparations à base d’œufs, de lait et de crème sont des **denrées très périssables**. L’arrêté du 21 décembre 2009 définit ainsi une denrée qui peut devenir **rapidement dangereuse**, notamment du fait de son instabilité microbiologique, lorsque la température de conservation n’est pas maîtrisée."
+        },
+        {
+          "type": "p",
+          "texte": "En décembre, tout se cumule : des volumes qui montent, des enceintes pleines dont la porte s’ouvre sans arrêt, des bûches fabriquées plusieurs jours avant leur retrait, des renforts qui découvrent la maison. C’est dans ces conditions que la chaîne du froid se rompt, souvent sans que personne ne le voie."
+        }
+      ]
+    },
+    {
+      "id": "temperatures",
+      "titre": "Les températures à tenir",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le tableau du ministère de l’Agriculture, tiré de l’arrêté du 21 décembre 2009, donne les limites maximales :"
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Produit", "Température maximale"],
+          "lignes": [
+            ["Préparations culinaires élaborées à l’avance, dans un commerce de détail", "+3 °C"],
+            ["Autres denrées très périssables", "+4 °C"],
+            ["Ovoproduits (œufs liquides, jaunes, blancs), sauf UHT", "+4 °C"],
+            ["Glaces et crèmes glacées, bûches glacées comprises", "-18 °C"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Une bûche montée plusieurs jours à l’avance peut relever de la première ligne, une tartelette du jour de la deuxième : en réglant vitrines et chambres froides pour tenir **+3 °C**, vous respectez les deux. Trois règles complètent le tableau :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**Les crèmes cuites** : Service-Public demande de refroidir le plus rapidement possible jusqu’à 3 °C, puis de mettre au froid dès que possible. Notez-le sur une [fiche de refroidissement](/modeles/refroidissement-remise-en-temperature).",
+            "**La décongélation** : toujours au réfrigérateur, jamais à l’air libre.",
+            "**La recongélation** : interdite pour un produit déjà décongelé une fois, bûche glacée comprise."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les autres familles d’aliments sont détaillées dans [les repères de température en cuisine](/blog/temperatures-conservation-aliments-cuisine)."
+        }
+      ]
+    },
+    {
+      "id": "place-au-froid",
+      "titre": "Faire de la place au froid avant le pic",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le froid se planifie comme la production. Avant les fêtes, faites le compte :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "combien de bûches, d’entremets et de bases vous stockerez le jour le plus chargé ;",
+            "combien de place offrent vraiment vos chambres froides et vos vitrines sans les bourrer : l’air froid doit circuler autour des produits ;",
+            "ce que vous pouvez sortir du froid ces jours-là, comme les boissons ou les produits qui n’en ont pas besoin ;",
+            "si une enceinte de plus est nécessaire, et qui en relève la température."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Au laboratoire, travaillez par petites séries : sortez les biscuits, inserts et crèmes nécessaires au montage d’une fournée, puis remettez-les au froid entre deux étapes. En boutique, les pâtisseries à la crème restent en vitrine réfrigérée toute la journée, y compris celles que l’on aimerait mettre en avant sur le comptoir."
+        },
+        {
+          "type": "p",
+          "texte": "Pendant le pic, multipliez les contrôles : Service-Public rappelle que la température des réfrigérateurs et des chambres froides doit être **contrôlée en permanence**. Notez vos relevés sur une [feuille de relevé](/modeles/releve-temperatures-restaurant), avec ce que vous faites quand une enceinte dérive. Ces règles ont leur place dans votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant)."
+        }
+      ]
+    },
+    {
+      "id": "precommandes-retraits",
+      "titre": "Précommandes et retraits : organiser le jour J",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "Proposez des créneaux de retrait, pour étaler la file d’attente.",
+            "Préparez chaque commande au froid, dans sa boîte, étiquetée au nom du client.",
+            "Ne sortez la boîte qu’au moment où le client arrive : aucune bûche n’attend sur le comptoir.",
+            "Sur la boîte, indiquez le nom du produit, ses allergènes, « à conserver au réfrigérateur » et la date limite que vous avez fixée, sous la forme « à consommer jusqu’au… »."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour un produit emballé à la demande du client ou préparé pour une vente immédiate, l’information sur les allergènes doit figurer sur le produit ou à proximité : l’étiquette de la boîte est le support le plus simple. Entre le praliné, le biscuit et le décor, reprenez la fiche de chaque recette, comme expliqué dans notre article sur [les allergènes en vitrine](/blog/allergenes-boulangerie-patisserie-vitrine). Pour l’organisation de l’équipe, voyez [comment préparer les pics d’activité des fêtes](/blog/pics-activite-fetes-fin-annee-equipe)."
+        },
+        {
+          "type": "encadre",
+          "titre": "Si vous livrez",
+          "texte": "Une commande que vous livrez vous-même, à une entreprise ou à un particulier, reste dans votre chaîne du froid jusqu’à la remise : caissons isothermes propres, trajets groupés et courts, boîtes calées à plat, et un relevé de température au départ comme à l’arrivée.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "conseils-client",
+      "titre": "Les conseils à donner au client",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une fois la porte passée, la bûche dépend de votre client. Donnez-lui les bons réflexes, de vive voix et sur un petit mot glissé avec la boîte :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "la transporter à plat, dans un sac isotherme si le trajet est long ;",
+            "rentrer directement, sans laisser la boîte dans une voiture ;",
+            "la ranger au réfrigérateur dès l’arrivée ;",
+            "pour une bûche glacée, la placer tout de suite au congélateur et ne jamais la recongeler si elle a décongelé ;",
+            "ne la sortir qu’au moment du dessert, ou un peu avant si la recette le demande."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe de fabrication et de vente à l’hygiène et à la chaîne du froid, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "À quelle température conserver une bûche à la crème ?",
+      "r": "Le tableau du ministère de l’Agriculture fixe +3 °C au plus pour les préparations élaborées à l’avance dans un commerce de détail, et +4 °C pour les autres denrées très périssables. Régler ses enceintes pour tenir +3 °C permet de respecter les deux."
+    },
+    {
+      "q": "Comment conserver une bûche glacée ?",
+      "r": "À -18 °C au plus, comme les glaces et les crèmes glacées. Un produit décongelé ne doit jamais être recongelé."
+    },
+    {
+      "q": "Faut-il indiquer les allergènes sur la boîte d’une bûche commandée ?",
+      "r": "Pour un produit emballé à la demande du client ou préparé à l’avance pour une vente immédiate, l’information sur les allergènes doit figurer sur le produit ou à proximité. L’étiquette de la boîte est le support le plus simple."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Ministère de l’Agriculture : températures de conservation des produits d’origine animale (tableau récapitulatif)",
+      "url": "https://agriculture.gouv.fr/telecharger/119391"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009 relatif aux règles sanitaires applicables aux activités de commerce de détail (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000021573483"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Code de la consommation, articles R412-12 à R412-16 : allergènes des denrées non préemballées (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000032807848"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : Décrypter l’étiquetage alimentaire (DLC et DDM)",
+      "url": "https://agriculture.gouv.fr/decrypter-letiquetage-alimentaire"
+    }
+  ],
+  "formations": "cha[iî]ne du froid|hygi[eè]ne|haccp|ma[iî]trise sanitaire",
+  "guides": ["plan-de-maitrise-sanitaire-pms-restaurant"]
+}

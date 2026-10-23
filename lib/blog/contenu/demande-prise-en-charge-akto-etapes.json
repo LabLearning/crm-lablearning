@@ -1,0 +1,192 @@
+{
+  "slug": "demande-prise-en-charge-akto-etapes",
+  "titre": "Demande de prise en charge AKTO : les étapes, pas à pas",
+  "titreCourt": "Demande de prise en charge AKTO : étapes",
+  "description": "Convention, programme, dépôt sur MonEspace 30 jours avant, accord, justificatifs, subrogation : les étapes d’une demande de prise en charge AKTO.",
+  "chapeau": "Pour que la formation de vos salariés soit financée par AKTO, la demande se dépose avant la formation, avec un dossier complet. Voici les étapes telles qu’AKTO les décrit, de la convention au paiement de l’organisme, et les points qui font perdre une prise en charge.",
+  "categorie": "Financement",
+  "publieLe": "2027-01-12",
+  "majLe": "2027-01-12",
+  "lecture": 5,
+  "image": "/site/photos/guides/financer-formation-restauration-rapide-opco.webp",
+  "imageAlt": "Ordinateur portable ouvert sur un comptoir en bois, à côté d’un carnet et d’un café, avec une cuisine professionnelle en arrière-plan",
+  "aRetenir": [
+    "La demande se dépose sur MonEspace, l’espace en ligne d’AKTO, 30 jours calendaires avant le début de la formation.",
+    "Le dossier contient la convention de formation signée et le programme ; AKTO répond sous 30 jours.",
+    "Seules les heures de formation effectivement réalisées peuvent être facturées à AKTO.",
+    "Depuis le 1er octobre 2026, la subrogation de paiement est réservée aux formations financées uniquement sur le plan des entreprises de moins de 50 salariés."
+  ],
+  "sections": [
+    {
+      "id": "regles",
+      "titre": "Avant tout : lire les règles de votre branche",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "AKTO finance les formations selon les critères définis par chaque branche, et ces critères changent d’une année à l’autre. Repérez votre branche grâce au code IDCC inscrit sur les bulletins de paie : **1501** pour la restauration rapide, **1979** pour les hôtels, cafés, restaurants. Lisez ensuite les règles de l’année en cours sur le site d’AKTO : budget selon l’effectif, plafond horaire, durée prise en charge. Elles servent à bâtir votre [plan de développement des compétences](/blog/plan-de-developpement-des-competences-restaurant)."
+        },
+        {
+          "type": "encadre",
+          "titre": "Ce qui s’est passé en 2026",
+          "texte": "En 2026, la restauration rapide disposait d’un budget annuel de 4 000 € sous 11 salariés et de 9 000 € de 11 à 49 salariés, avec une prise en charge plafonnée à 25 € de l’heure en présentiel, dans la limite de 14 heures. À l’automne, AKTO a indiqué que l’enveloppe de la branche était **intégralement engagée** et a demandé de ne plus déposer de dossiers pour 2026. Les financements sont accordés dans la limite des fonds disponibles : déposez vos demandes tôt dans l’année.",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Une date limite s’ajoute en fin d’année : en 2026, les demandes devaient être déposées complètes au plus tard le 20 novembre pour que leur traitement soit garanti avant le 31 décembre. Votre conseiller AKTO peut aussi vous aider à utiliser au mieux votre budget formation : contactez-le avant de fixer votre calendrier. Les étapes et les délais qui suivent sont ceux qu’AKTO décrivait sur son site en octobre 2026 : vérifiez-les avant de déposer votre demande."
+        }
+      ]
+    },
+    {
+      "id": "dossier",
+      "titre": "Étape 1 : préparer un dossier complet",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une fois la formation choisie, AKTO demande un dossier complet, avec :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "la **convention de formation**, signée en trois exemplaires par votre entreprise et l’organisme de formation, avec l’ensemble des coûts pédagogiques ;",
+            "le **programme**, qui précise les objectifs, le contenu, la durée et les modalités de la formation."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Des pièces complémentaires peuvent être demandées pour certains dispositifs ou certaines formations. Vérifiez aussi que l’organisme a un numéro de déclaration d’activité valide et la certification Qualiopi : sans eux, pas de prise en charge. Voyez [ce que garantit la certification Qualiopi](/blog/qualiopi-certification-formation-salaries)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour une formation du catalogue Espace Formation d’AKTO, aucun document n’est à fournir : l’inscription se fait en ligne. Les étapes qui suivent concernent les formations choisies hors de ce catalogue."
+        }
+      ]
+    },
+    {
+      "id": "depot",
+      "titre": "Étape 2 : déposer la demande sur MonEspace",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La demande se dépose dans **MonEspace**, l’espace en ligne de votre entreprise chez AKTO, **30 jours calendaires avant le début de la formation**. La saisie est guidée. Vous recevez ensuite par e-mail un accusé de réception avec le numéro de votre dossier."
+        },
+        {
+          "type": "p",
+          "texte": "Avant de valider, vérifiez que les dates, le nombre d’heures, les noms des salariés et le coût correspondent exactement à la convention. C’est votre entreprise qui dépose la demande, depuis son espace. L’organisme de formation prépare les pièces avec vous ; la demande, elle, part de chez vous."
+        }
+      ]
+    },
+    {
+      "id": "accord",
+      "titre": "Étape 3 : attendre l’accord avant de commencer",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "AKTO vous communique son accord ou son refus sous 30 jours. Sur MonEspace, vous suivez le dossier et répondez aux éventuelles demandes de pièces. L’accord est aussi transmis à l’organisme de formation : la formation peut alors démarrer."
+        },
+        {
+          "type": "p",
+          "texte": "AKTO finance la formation selon les modalités qui figurent sur l’accord : gardez-le avec la convention, et veillez à ce que la formation s’y conforme. Si elle est annulée ou interrompue, pour une absence ou une maladie par exemple, prévenez AKTO dès que possible."
+        }
+      ]
+    },
+    {
+      "id": "apres",
+      "titre": "Étape 4 : justificatifs et paiement après la formation",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Pour une formation financée en totalité sur le plan de développement des compétences des entreprises de moins de 50 salariés, deux cas se présentent :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Votre choix",
+            "Qui paie l’organisme",
+            "Les justificatifs"
+          ],
+          "lignes": [
+            [
+              "Subrogation de paiement",
+              "AKTO, directement",
+              "L’organisme de formation les fournit à AKTO"
+            ],
+            [
+              "Sans subrogation",
+              "Vous, puis AKTO vous rembourse",
+              "Vous déposez sur MonEspace le certificat de réalisation, une copie de la facture de l’organisme et une facture de remboursement adressée à AKTO"
+            ]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Avec la réforme de la TVA des OPCO, les autres formations engagées depuis le 1er octobre 2026 ne peuvent plus bénéficier de la subrogation de paiement."
+        },
+        {
+          "type": "p",
+          "texte": "Le **certificat de réalisation** est établi par l’organisme qui a dispensé la formation, pour en justifier la réalisation. Il est exigé quelle que soit la modalité : en présentiel, à distance ou en situation de travail."
+        },
+        {
+          "type": "encadre",
+          "titre": "Seules les heures suivies sont payées",
+          "texte": "AKTO ne prend en charge que les heures de formation **effectivement réalisées**. Un salarié absent une demi-journée, c’est une demi-journée qui ne sera pas financée : faites signer les feuilles de présence à chaque séance et signalez toute absence.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "accompagnement",
+      "titre": "Ce que nous préparons avec vous",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Nous préparons le dossier avec vous : programme détaillé, convention avec l’ensemble des coûts pédagogiques, calendrier qui laisse les 30 jours nécessaires. Vous déposez la demande dans votre espace AKTO ; nous vous guidons pendant la saisie et répondons aux demandes de pièces. Après la formation, nous établissons le certificat de réalisation."
+        },
+        {
+          "type": "p",
+          "texte": "Les règles de prise en charge de la restauration rapide sont détaillées dans notre guide [financer la formation de votre équipe avec AKTO](/guides/financer-formation-restauration-rapide-opco). Vous préparez les formations de l’année ? [Demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Combien de temps avant la formation faut-il déposer la demande AKTO ?",
+      "r": "30 jours calendaires avant le début de la formation, sur MonEspace, l’espace en ligne d’AKTO."
+    },
+    {
+      "q": "Quelles pièces joindre à une demande de prise en charge AKTO ?",
+      "r": "La convention de formation signée par l’entreprise et l’organisme, avec l’ensemble des coûts pédagogiques, et le programme de la formation. Des pièces complémentaires peuvent être demandées pour certains dispositifs."
+    },
+    {
+      "q": "AKTO peut-il payer directement l’organisme de formation ?",
+      "r": "Oui, par la subrogation de paiement, pour les formations financées uniquement sur le plan de développement des compétences des entreprises de moins de 50 salariés. Pour les autres formations engagées depuis le 1er octobre 2026, la subrogation n’est plus possible."
+    },
+    {
+      "q": "Que se passe-t-il si un salarié est absent pendant la formation ?",
+      "r": "Prévenez AKTO dès que possible. Seules les heures de formation effectivement réalisées peuvent être facturées à AKTO."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "AKTO : déposer et suivre une demande de prise en charge",
+      "url": "https://www.akto.fr/entreprise/financer-une-formation/deposer-demande/"
+    },
+    {
+      "libelle": "AKTO : règles de prise en charge 2026, restauration rapide",
+      "url": "https://www.akto.fr/regles-de-prise-en-charge-restauration-rapide/"
+    },
+    {
+      "libelle": "AKTO : règles de prise en charge 2026, hôtels, cafés, restaurants",
+      "url": "https://www.akto.fr/regles-de-prise-en-charge-hotels-cafes-restaurants/"
+    },
+    {
+      "libelle": "Observatoire AKTO : la branche hôtels, cafés, restaurants (IDCC 1979)",
+      "url": "https://observatoire.akto.fr/branches/hotels-cafes-restaurants/"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|manag|pr[eé]vention",
+  "guides": [
+    "financer-formation-restauration-rapide-opco"
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "slug": "accueil-client-service-en-salle",
+  "titre": "Accueil et service en salle : ce qu’une formation change pour vos clients",
+  "titreCourt": "Accueil et service en salle : former l’équipe",
+  "description": "Accueil, prise de commande, conseil sans forcer, allergènes, réclamations : ce que change une équipe de salle formée ensemble, dans votre établissement.",
+  "chapeau": "Avant de goûter un plat, le client a déjà vécu l’accueil, l’attente et la prise de commande. Ces moments s’apprennent comme un geste de cuisine. Voici ce qu’une formation de l’équipe de salle change concrètement pour vos clients.",
+  "categorie": "Équipe et management",
+  "publieLe": "2027-02-16",
+  "majLe": "2027-02-16",
+  "lecture": 6,
+  "image": "/site/metiers/hcr.webp",
+  "imageAlt": "Barista versant du lait mousseux dans une tasse noire pour dessiner un motif, devant une machine à expresso",
+  "aRetenir": [
+    "Un bon accueil tient en quelques gestes précis que toute l’équipe peut apprendre.",
+    "Conseiller sans forcer, c’est faire une seule proposition, adaptée à la commande, et accepter le refus.",
+    "Pour un repas pris sur place, l’information sur les allergènes est écrite et consultable sans la demander : le serveur la complète, il ne la remplace pas.",
+    "Tout professionnel qui vend à des consommateurs doit désigner un médiateur de la consommation et en communiquer les coordonnées."
+  ],
+  "sections": [
+    {
+      "id": "accueil",
+      "titre": "L’accueil : les premières secondes comptent",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un accueil réussi tient en quelques gestes : regarder le client qui entre, le saluer même en plein service, lui annoncer l’attente, l’installer ou l’orienter vers la commande. Rien de compliqué, mais rien d’automatique quand l’équipe est sous pression."
+        },
+        {
+          "type": "p",
+          "texte": "Une formation fixe ces gestes pour tout le monde, du plus ancien au dernier arrivé. Elle donne aussi des phrases simples pour les moments délicats : une table pas encore prête, une attente qui s’allonge, un plat en rupture."
+        },
+        {
+          "type": "p",
+          "texte": "L’accueil passe aussi par ce que le client lit avant d’entrer. Les règles d’affichage sont précises :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "à l’extérieur, pendant le service, le **menu et la carte du jour** ;",
+            "visibles depuis l’extérieur et sur la terrasse, les **prix des boissons et des plats les plus souvent servis**, comme le café, le demi, le soda, le plat du jour ou le sandwich ;",
+            "à l’intérieur, la **liste des boissons et leurs prix** ;",
+            "la mention **« prix service compris »** si le prix inclut le service ;",
+            "l’indication que vous servez **gratuitement de l’eau potable**."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "commande-conseil",
+      "titre": "Prise de commande et conseil : vendre sans forcer",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La prise de commande est le moment où l’on peut le plus aider le client, ou le plus l’agacer. Reformuler la commande, signaler un délai, demander la cuisson, vérifier une allergie : ces gestes évitent les erreurs et les retours en cuisine."
+        },
+        {
+          "type": "p",
+          "texte": "La vente additionnelle a mauvaise réputation quand elle est récitée. Bien faite, c’est un conseil : une boisson qui accompagne le plat, un dessert à partager pour une table qui hésite, une formule quand elle est vraiment plus avantageuse. La règle à transmettre tient en une phrase : **une seule proposition, adaptée à la commande, et on accepte le non sans insister**."
+        },
+        {
+          "type": "p",
+          "texte": "Pour conseiller, il faut connaître la carte. Chaque membre de l’équipe doit pouvoir décrire un plat en une phrase, citer ses ingrédients principaux et orienter un client selon son appétit, son temps ou son budget. C’est un exercice central d’une formation en salle : goûter, décrire, s’entraîner à le dire."
+        }
+      ]
+    },
+    {
+      "id": "allergenes",
+      "titre": "Répondre aux questions sur les allergènes",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Quatorze allergènes doivent être signalés dès qu’ils entrent dans la préparation d’un plat. Pour un repas pris sur place, l’information est donnée **par écrit, de façon lisible et visible**, et le client doit pouvoir la consulter directement, sans avoir à la demander : sur la carte, une affiche ou un classeur signalé."
+        },
+        {
+          "type": "encadre",
+          "titre": "La phrase à bannir",
+          "texte": "« Je pense qu’il n’y en a pas. » Face à un client allergique, l’équipier qui n’est pas sûr va vérifier dans le tableau ou en cuisine. Il complète l’information écrite, il ne la remplace pas.",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Former la salle, c’est lui apprendre à lire le [tableau des allergènes](/modeles/tableau-allergenes-restaurant), à poser la bonne question au client, à transmettre la demande en cuisine sans ambiguïté, et à connaître les risques de contact : friteuse partagée, sauces, garnitures. Le détail est dans notre article [préparer l’équipe à répondre au client](/blog/allergenes-former-equipe-salle). Les clients interrogent aussi sur l’origine des viandes : voyez [ce que vous devez indiquer](/blog/origine-viande-restaurant-affichage)."
+        }
+      ]
+    },
+    {
+      "id": "reclamations",
+      "titre": "Gérer une réclamation sans perdre le client",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une réclamation traitée sur le moment, calmement, a les meilleures chances de s’arrêter là. La méthode s’apprend en quatre temps :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "**écouter** jusqu’au bout, sans interrompre ni se justifier ;",
+            "**reformuler** pour montrer que l’on a compris ;",
+            "**proposer** une solution à la mesure du problème : refaire le plat, le remplacer, faire un geste ;",
+            "**transmettre** au responsable et noter l’incident pour qu’il ne se reproduise pas."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Chacun doit savoir jusqu’où il peut aller seul et quand il passe la main. Un client qui signale un malaise après un repas, lui, est toujours confié tout de suite au responsable : c’est une alerte sanitaire, qu’il traite selon votre plan de maîtrise sanitaire et consigne sur une [fiche de non-conformité](/modeles/fiche-non-conformite-alerte-sanitaire)."
+        },
+        {
+          "type": "p",
+          "texte": "Si le désaccord persiste, le client dispose d’un recours : tout professionnel qui vend à des consommateurs doit **désigner un médiateur de la consommation** et en communiquer les coordonnées de façon visible, notamment quand une réclamation n’a pas abouti. Le client doit d’abord avoir tenté de régler le litige avec vous, par une réclamation écrite."
+        }
+      ]
+    },
+    {
+      "id": "former-ensemble",
+      "titre": "Ce que l’équipe gagne à être formée ensemble",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Former une seule personne ne change pas un service. Former l’équipe de salle ensemble, dans l’établissement, donne à chacun les mêmes repères : la même façon d’accueillir, les mêmes réponses sur les allergènes, les mêmes limites pour les gestes commerciaux. Les mises en situation peuvent se faire sur votre carte, à vos tables, dans vos conditions de rush."
+        },
+        {
+          "type": "p",
+          "texte": "C’est aussi un moment où l’équipe se parle : la salle découvre les contraintes de la cuisine, et l’inverse. Pour vos salariés, la prise en charge de la formation est possible, sous réserve de l’accord de l’OPCO : voyez [les financements](/financements) et [les étapes d’une demande de prise en charge AKTO](/blog/demande-prise-en-charge-akto-etapes)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe de salle dans votre établissement, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un serveur peut-il se contenter de répondre oralement sur les allergènes ?",
+      "r": "Non. Pour un repas pris sur place, l’information doit être donnée par écrit, de façon lisible et visible, et le client doit pouvoir la consulter sans la demander. Le serveur complète cette information, il ne la remplace pas."
+    },
+    {
+      "q": "Faut-il afficher les prix à l’extérieur du restaurant ?",
+      "r": "Oui. Le menu et la carte du jour sont affichés à l’extérieur pendant le service, et les prix des boissons et des plats les plus souvent servis, comme le café, le soda, le plat du jour ou le sandwich, doivent être visibles depuis l’extérieur et sur la terrasse. Si le prix inclut le service, la mention « prix service compris » doit figurer."
+    },
+    {
+      "q": "Un client mécontent peut-il saisir un médiateur ?",
+      "r": "Oui, après avoir tenté de régler le litige avec vous par une réclamation écrite. Tout professionnel qui vend à des consommateurs doit désigner un médiateur de la consommation et en communiquer les coordonnées."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Réglementation dans un bar ou un restaurant (alcool, aliment, hygiène, sécurité)",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F22387"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Quels allergènes doivent être mentionnés sur un produit alimentaire ?",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32192"
+    },
+    {
+      "libelle": "Code de la consommation, articles R412-12 à R412-16 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000032807848"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Médiation des litiges de la consommation",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F33338"
+    }
+  ],
+  "formations": "accueil|relation client|vente|service client|allerg[eè]n",
+  "guides": [
+    "allergenes-restaurant-affichage-obligatoire"
+  ]
+}

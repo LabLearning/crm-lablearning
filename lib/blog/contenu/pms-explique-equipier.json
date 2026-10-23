@@ -1,0 +1,160 @@
+{
+  "slug": "pms-explique-equipier",
+  "titre": "Le plan de maîtrise sanitaire expliqué à un équipier",
+  "titreCourt": "Le PMS expliqué à un équipier",
+  "description": "Bonnes pratiques d’hygiène, HACCP, traçabilité, non-conformités : le plan de maîtrise sanitaire en mots simples, et ce que l’équipier en fait chaque jour.",
+  "chapeau": "Le plan de maîtrise sanitaire n’est pas l’affaire du seul gérant : c’est l’équipe qui l’applique, service après service. Voici comment l’expliquer en mots simples, ce que chaque équipier fait concrètement, et comment le manager le transmet.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2026-12-22",
+  "majLe": "2026-12-22",
+  "lecture": 5,
+  "image": "/site/photos/guides/plan-de-maitrise-sanitaire-pms-restaurant.webp",
+  "imageAlt": "Registre de relevés ouvert sur un plan de travail en inox, avec un stylo, un thermomètre sonde et un rouleau d’étiquettes, dans une cuisine professionnelle",
+  "aRetenir": [
+    "Le PMS décrit ce que le restaurant fait pour servir des aliments sûrs : bonnes pratiques d’hygiène, méthode HACCP, traçabilité et gestion des non-conformités.",
+    "Pour l’équipier, il se traduit en gestes simples : tenue, mains, températures, nettoyage, étiquettes, et signaler ce qui ne va pas.",
+    "Les feuilles qu’il remplit prouvent que le plan est appliqué.",
+    "Le guide de la restauration rapide prévoit une information à l’hygiène avant la prise de poste, puis des formations courtes et régulières."
+  ],
+  "sections": [
+    {
+      "id": "en-une-phrase",
+      "titre": "Le PMS en une phrase",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le plan de maîtrise sanitaire, ou **PMS**, décrit les mesures que le restaurant prend pour assurer l’hygiène et la sécurité des aliments qu’il prépare. Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé par l’administration, le définit en trois blocs : les **bonnes pratiques d’hygiène**, des procédures fondées sur les **principes HACCP**, et la **traçabilité avec la gestion des non-conformités**."
+        },
+        {
+          "type": "p",
+          "texte": "Pour un équipier, on peut le dire plus simplement : **ce que l’on fait ici pour que personne ne tombe malade, et la preuve qu’on le fait**. Le classeur décrit votre restaurant ; l’équipe le fait exister à chaque service."
+        },
+        {
+          "type": "p",
+          "texte": "Le règlement européen le prévoit : toute personne qui manipule des aliments est **encadrée et dispose d’instructions ou d’une formation** en hygiène adaptées à son activité. Expliquer le PMS en fait partie. Le détail du plan est dans notre guide du [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant)."
+        }
+      ]
+    },
+    {
+      "id": "bonnes-pratiques",
+      "titre": "Les bonnes pratiques d’hygiène : les gestes de tous les jours",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "C’est la partie que l’équipier applique le plus. Le guide de la restauration rapide la résume en « règles d’or », à rappeler souvent :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "porter une tenue propre et complète ;",
+            "être attentif à son état de santé et **prévenir son responsable** en cas de gastro-entérite ou de plaie infectée ;",
+            "se laver les mains [comme il faut et quand il faut](/blog/hygiene-des-mains-cuisine) ;",
+            "respecter la **chaîne du froid et du chaud**, et faire les relevés de température prévus ;",
+            "ranger chaque denrée dans sa zone et respecter la **marche en avant** : les produits avancent de la réception au client, sans retour en arrière ni croisement des circuits ;",
+            "utiliser du matériel propre, et **nettoyer et désinfecter** son poste selon le [plan de nettoyage](/blog/plan-nettoyage-desinfection-cuisine)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "haccp",
+      "titre": "La méthode HACCP, vue depuis le poste",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "HACCP est une façon de raisonner : à chaque étape, de la livraison au client, on se demande ce qui peut mal tourner et comment on l’empêche. Pour l’équipier, cela donne quatre réflexes : il y a des **points à surveiller**, chacun a une **limite**, on sait **quoi faire** quand elle est dépassée, et on **l’écrit**."
+        },
+        {
+          "type": "p",
+          "texte": "Un exemple : la viande hachée. Sa limite est de **+2 °C**, fixée par l’arrêté du 21 décembre 2009. L’équipier relève la température de l’enceinte à l’heure prévue. Si elle dépasse cette limite, il mesure la température à cœur d’un produit et prévient son responsable, qui décide du sort des produits. La feuille garde la trace de l’écart et de ce qui a été fait. Les repères de chaque produit sont dans [les températures de conservation](/blog/temperatures-conservation-aliments-cuisine)."
+        }
+      ]
+    },
+    {
+      "id": "tracabilite-non-conformites",
+      "titre": "Traçabilité et non-conformités : étiqueter, dater, signaler",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La **traçabilité**, c’est pouvoir dire d’où vient chaque produit. Au poste, cela veut dire :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "garder l’étiquette d’origine d’un produit déconditionné tant qu’il est utilisé : l’arrêté du 21 décembre 2009 demande de conserver son identification et sa durée de vie pendant toute sa détention ;",
+            "identifier ce qui est entamé ou décongelé, avec sa date, sans jamais dépasser la date limite d’origine ;",
+            "utiliser d’abord ce qui est arrivé en premier, et ne jamais garder un produit périmé."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Une **non-conformité**, c’est tout ce qui sort de la règle : un produit à l’odeur douteuse, un emballage abîmé, un réfrigérateur trop chaud, un client qui signale un problème. Le réflexe de l’équipier : mettre le produit de côté, prévenir son responsable, noter ce qui s’est passé. Et quand un fournisseur rappelle un produit, on le retire tout de suite. Notre [fiche de non-conformité](/modeles/fiche-non-conformite-alerte-sanitaire) sert à cela, et la [fiche de traçabilité](/modeles/fiche-tracabilite-etiquettes-restaurant) propose des étiquettes à découper."
+        }
+      ]
+    },
+    {
+      "id": "transmettre",
+      "titre": "Comment le manager le transmet",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Expliquez toujours le pourquoi : pour le guide de la restauration rapide, la formation sert à comprendre pourquoi et comment les dangers apparaissent ou s’accroissent. Le guide prévoit une **information à l’hygiène avant la prise de poste** de tout nouvel arrivant, puis des **formations courtes**, renouvelées régulièrement et appuyées sur un texte écrit, éventuellement illustré. Au quotidien, il conseille d’aborder l’hygiène dans les réunions avant le service et d’afficher les règles de base."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "Montrez le classeur et l’endroit où il se trouve, dès le premier jour.",
+            "Expliquez une partie à la fois, au poste, avec les vraies feuilles de relevé.",
+            "Faites remplir les feuilles par l’équipier lui-même, et relisez-les chaque semaine.",
+            "Gardez une trace de ce que vous avez transmis : date, sujet, personnes informées."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Au moins une personne de l’établissement doit avoir suivi la [formation hygiène alimentaire de 14 heures](/guides/formation-hygiene-alimentaire-restauration-rapide) : appuyez-vous sur elle pour faire vivre le plan. Notre [trame de PMS](/modeles/plan-de-maitrise-sanitaire-pms-restauration-rapide) réunit les règles et toutes les feuilles de relevé, et l’arrivée d’un nouveau est détaillée dans [intégrer un nouvel équipier](/blog/integrer-nouvel-equipier-restauration-rapide). Pour former votre équipe sur place, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Chaque équipier doit-il suivre la formation hygiène alimentaire de 14 heures ?",
+      "r": "Non. Une seule personne de l’établissement doit l’avoir suivie. Les autres salariés qui manipulent des aliments doivent être encadrés et recevoir des instructions ou une formation en hygiène adaptées à leur activité, que l’établissement peut organiser lui-même."
+    },
+    {
+      "q": "Que doit faire un équipier qui a une gastro-entérite ?",
+      "r": "Prévenir immédiatement son responsable, comme le prévoit le règlement européen. Le guide de la restauration rapide prévoit alors son exclusion temporaire des zones où l’on manipule les aliments, et la consultation d’un médecin."
+    },
+    {
+      "q": "Qui remplit les feuilles du PMS ?",
+      "r": "Celui qui fait le geste : l’équipier qui relève la température, celui qui a nettoyé, celui qui a réceptionné la livraison. Le responsable relit les feuilles et vérifie que chaque écart a reçu une suite."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide (2024)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires, article 5 et annexe II",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009 relatif aux règles sanitaires applicables aux activités de commerce de détail, annexes I et V (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000021573483"
+    },
+    {
+      "libelle": "Règlement (CE) n° 178/2002, articles 18 et 19 : traçabilité et retrait des denrées",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32002R0178"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "formation-hygiene-alimentaire-restauration-rapide"
+  ]
+}

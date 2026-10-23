@@ -1,0 +1,165 @@
+{
+  "slug": "releves-temperature-bonnes-pratiques",
+  "titre": "Relevés de température : bien les faire et bien les garder",
+  "titreCourt": "Relevés de température : bien les tenir",
+  "description": "Quoi relever, à quelle fréquence, avec quel thermomètre, que faire d’un écart et combien de temps garder les relevés de température de votre restaurant.",
+  "chapeau": "Une feuille de relevé ne sert pas qu’à rassurer l’inspecteur : c’est elle qui vous alerte quand une enceinte commence à faiblir. Voici comment la tenir pour qu’elle soit utile et crédible, et combien de temps la garder.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2027-03-02",
+  "majLe": "2027-03-02",
+  "lecture": 5,
+  "image": "/site/metiers/hygiene.webp",
+  "imageAlt": "Mains en gants noirs qui pulvérisent un produit et essuient un plan de travail en inox avec une lavette blanche, en cuisine professionnelle",
+  "aRetenir": [
+    "Relevez chaque enceinte froide à heure fixe, et notez aussi la réception, le refroidissement, la remise en température et le maintien au chaud.",
+    "La fréquence est fixée par votre plan de maîtrise sanitaire : le guide de la restauration rapide parle d’un contrôle quotidien.",
+    "Un thermomètre se vérifie : le même guide conseille une vérification annuelle, ou à défaut un contrôle dans la glace fondante.",
+    "Le règlement européen demande de garder les relevés pendant une période appropriée ; le guide de la restauration rapide retient trois ans au minimum."
+  ],
+  "sections": [
+    {
+      "id": "quoi-relever",
+      "titre": "Quoi relever ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "D’abord les **enceintes froides** : chambres froides, armoires et réfrigérateurs de ligne, vitrines, congélateurs. Ensuite les **étapes où la température change** : la réception, le refroidissement d’un plat cuisiné à l’avance, la remise en température, le maintien au chaud. Service-Public cite, parmi les documents à présenter lors d’un contrôle, les fiches d’enregistrement des températures des réserves et des réfrigérateurs, et les couples temps et température des cuissons et des refroidissements."
+        },
+        {
+          "type": "p",
+          "texte": "La cuisson compte aussi : pour les steaks hachés de bœuf, le guide de bonnes pratiques d’hygiène de la restauration rapide, validé par l’administration, recommande d’atteindre **70 °C à cœur pendant 2 minutes**, et de le contrôler au thermomètre pendant ou à la fin de la cuisson."
+        },
+        {
+          "type": "p",
+          "texte": "Gardez en tête que les températures réglementaires s’appliquent **en tous points du produit**. L’afficheur mesure en général l’air de l’enceinte : en cas de doute, c’est le produit que l’on mesure. Les repères sont dans [les températures de conservation](/blog/temperatures-conservation-aliments-cuisine)."
+        }
+      ]
+    },
+    {
+      "id": "frequence",
+      "titre": "À quelle fréquence ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le règlement européen demande des procédures de surveillance efficaces, sans fixer d’horaire. C’est votre plan de maîtrise sanitaire qui fixe la fréquence, et le guide de la restauration rapide parle d’un **contrôle quotidien** de la température des enceintes et des vitrines."
+        },
+        {
+          "type": "p",
+          "texte": "Deux relevés par jour, à l’ouverture et à la fermeture, montrent en plus si l’enceinte tient la nuit et après le coup de feu. Relevez toujours aux mêmes heures, en dehors des cycles de dégivrage, et notez la valeur réellement lue, même quand elle est bonne."
+        },
+        {
+          "type": "encadre",
+          "titre": "Une version allégée existe",
+          "texte": "Le guide de bonnes pratiques d’hygiène des restaurateurs, validé lui aussi, admet une surveillance par vérifications visuelles régulières de la température des équipements de froid, en n’enregistrant que les écarts. Une feuille remplie chaque jour reste la preuve la plus simple à présenter.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "thermometre",
+      "titre": "Avec quel thermomètre ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "**L’afficheur de l’enceinte** suffit au relevé courant. Le guide de la restauration rapide conseille d’équiper armoires et chambres froides d’un thermomètre extérieur à lecture directe.",
+            "**Le thermomètre sonde** mesure le produit à cœur : réception, refroidissement, remise en température, maintien au chaud. Nettoyez et désinfectez la sonde entre deux mesures.",
+            "**Le thermomètre laser** donne une mesure rapide en surface, mais pas la température à cœur en cas de litige."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Un thermomètre faux rend tous vos relevés faux. Le guide conseille de **faire vérifier chaque thermomètre tous les ans**. À défaut, comparez-le à un thermomètre étalon gardé pour cet usage, ou plongez la sonde dans un mélange d’eau et de glace fondante : il doit indiquer 0 °C. Les sondes intégrées aux meubles et aux chambres froides relèvent de votre contrat de maintenance. Notez la date de chaque vérification."
+        }
+      ]
+    },
+    {
+      "id": "ecart",
+      "titre": "Que faire d’un écart ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le guide de la restauration rapide décrit la marche à suivre quand une enceinte dépasse la température fixée par votre plan de maîtrise sanitaire :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "vérifier que l’enceinte n’est pas en dégivrage, et que l’écart ne vient pas d’un coup de feu avec des ouvertures répétées ;",
+            "mesurer la température à cœur des produits, et contrôler l’afficheur avec un autre thermomètre ;",
+            "si l’écart est réel, prévenir la maintenance ;",
+            "selon l’écart et ce que prévoit votre plan, transférer les produits dans une autre enceinte et les utiliser rapidement, ou les éliminer ;",
+            "noter l’anomalie, l’heure de l’intervention, la température après correction et le devenir des produits, puis vérifier le retour à la normale."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "C’est un principe de la méthode HACCP inscrit dans le règlement européen : prévoir les actions correctives à mener quand la surveillance révèle un problème. Une ligne d’écart bien remplie vaut mieux qu’une feuille parfaite : des relevés identiques jour après jour éveillent la méfiance. Pour un écart sérieux, notre [fiche de non-conformité](/modeles/fiche-non-conformite-alerte-sanitaire) aide à tout noter, et notre [fiche de relevé des températures](/modeles/releve-temperatures-restaurant) prévoit une colonne pour les actions correctives."
+        }
+      ]
+    },
+    {
+      "id": "conservation-et-controle",
+      "titre": "Combien de temps les garder, et ce que l’on vous demandera",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le règlement européen demande de conserver les documents et dossiers **pendant une période appropriée**, sans fixer de durée. Le guide de la restauration rapide est plus précis : **trois ans au minimum** pour les fiches de contrôle des températures, les enregistrements automatiques des chambres froides négatives et tout document qui fait suite à une action corrective. Gardez les douze derniers mois sous la main, au même endroit, connu de toute l’équipe, et archivez le reste."
+        },
+        {
+          "type": "p",
+          "texte": "Les contrôles sanitaires ont lieu sans préavis. Service-Public cite, parmi les documents à présenter, les fiches d’enregistrement des températures, les fiches de non-conformité et les fiches d’actions de correction : quoi, quand, comment. Le niveau d’hygiène qui en résulte est publié : voyez [comment lire le résultat Alim’confiance](/blog/alim-confiance-niveau-hygiene-restaurant) et [comment se déroule un contrôle](/guides/controle-hygiene-restaurant-ddpp). Les erreurs à éviter en amont sont dans [chaîne du froid : les erreurs qui coûtent cher](/blog/chaine-du-froid-restauration-rapide-erreurs)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe aux relevés et aux actions correctives, dans votre établissement, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un enregistreur automatique dispense-t-il des relevés à la main ?",
+      "r": "Il peut servir de relevé, à condition que ses données soient conservées et que quelqu’un les lise. Le guide de la restauration rapide cite les disques enregistreurs parmi les dispositifs de surveillance, et compte les enregistrements automatiques des chambres froides négatives parmi les preuves à garder trois ans. Comme tout thermomètre, l’appareil doit être régulièrement vérifié."
+    },
+    {
+      "q": "Faut-il noter la température de l’afficheur ou celle d’un thermomètre ?",
+      "r": "L’afficheur suffit au relevé courant : le guide de la restauration rapide prévoit de lire l’afficheur, ou à défaut le thermomètre interne. En cas d’écart, vérifiez avec un autre thermomètre et mesurez le produit à cœur."
+    },
+    {
+      "q": "Combien de temps garder les feuilles de relevé ?",
+      "r": "Le règlement européen parle d’une période appropriée, sans fixer de durée. Le guide de bonnes pratiques d’hygiène de la restauration rapide retient trois ans au minimum pour les fiches de contrôle des températures."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires, article 5",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide (2024)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène et d’application de l’HACCP Restaurateur",
+      "url": "https://agriculture.gouv.fr/sites/default/files/gph_20165905_0001_p000.pdf"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe I : températures de conservation (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864893"
+    },
+    {
+      "libelle": "DRAAF Bretagne : Alim’confiance, accéder aux résultats des contrôles sanitaires d’un établissement",
+      "url": "https://draaf.bretagne.agriculture.gouv.fr/alim-confiance-acceder-aux-resultats-des-controles-sanitaires-d-un-a830.html"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "controle-hygiene-restaurant-ddpp"
+  ]
+}

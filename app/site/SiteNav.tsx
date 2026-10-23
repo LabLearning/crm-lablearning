@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { Menu, X, ArrowRight, ChevronDown, GraduationCap, Banknote, HeartHandshake, TrendingUp, Users, Bulb, ClipboardCheck, AiChat, Whatsapp, BookOpen, Download, MonitorPlay } from './icons'
+import { Menu, X, ArrowRight, ChevronDown, GraduationCap, Banknote, HeartHandshake, TrendingUp, Users, Bulb, ClipboardCheck, AiChat, Whatsapp, BookOpen, Download, MonitorPlay, Newspaper } from './icons'
 import { BRANCHES } from './branches'
 import { useLienWhatsapp } from './useLienWhatsapp'
 
@@ -19,6 +19,7 @@ const ORGANISME = [
   { href: '/resultats', label: 'Résultats', desc: 'Nos indicateurs, en toute transparence', Icon: TrendingUp },
   { href: '/faq', label: 'FAQ', desc: 'Les réponses aux questions fréquentes', Icon: Bulb },
   { href: '/guides', label: 'Guides', desc: 'Hygiène, sécurité, financement : ce que disent les textes', Icon: BookOpen },
+  { href: '/blog', label: 'Blog', desc: 'Des conseils pratiques, un nouvel article chaque semaine', Icon: Newspaper },
 ]
 
 /** Les outils maison de Lab Learning ; d'autres viendront s'ajouter ici. */

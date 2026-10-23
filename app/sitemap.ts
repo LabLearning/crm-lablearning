@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { guidesPublies } from '@/lib/guides'
+import { articlesParus } from '@/lib/blog'
 import { getVilles } from '@/lib/site-villes'
 import { MODELES } from '@/lib/modeles'
 
@@ -62,6 +63,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...guidesPublies().map((g) => ({ url: `${BASE}/guides/${g.slug}`, lastModified: g.majLe, changeFrequency: 'monthly' as const, priority: 0.7 })),
     ]
     : []
+  // Articles parus seulement : ceux qui attendent leur date entrent le jour venu
+  const parus = articlesParus()
+  const blog: MetadataRoute.Sitemap = parus.length
+    ? [
+      { url: `${BASE}/blog`, lastModified: parus[0].publieLe, changeFrequency: 'weekly', priority: 0.7 },
+      ...parus.map((a) => ({ url: `${BASE}/blog/${a.slug}`, lastModified: a.majLe, changeFrequency: 'monthly' as const, priority: 0.6 })),
+    ]
+    : []
   const modeles: MetadataRoute.Sitemap = [
     { url: `${BASE}/modeles`, changeFrequency: 'monthly', priority: 0.7 },
     ...MODELES.map((m) => ({ url: `${BASE}/modeles/${m.slug}`, lastModified: m.majLe, changeFrequency: 'monthly' as const, priority: 0.7 })),
@@ -79,5 +88,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Sans base joignable, le plan garde ses autres pages.
   }
 
-  return [...fixes, ...branches, ...formations, ...guides, ...modeles, ...villes]
+  return [...fixes, ...branches, ...formations, ...guides, ...blog, ...modeles, ...villes]
 }

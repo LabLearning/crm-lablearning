@@ -1,0 +1,189 @@
+{
+  "slug": "chaleur-ete-cuisine-hygiene",
+  "titre": "Préparer l’été : chaleur, cuisine et chaîne du froid",
+  "titreCourt": "Chaleur en cuisine : préparer l’été",
+  "description": "Matériel frigorifique, livraisons, relevés, vitrines, terrasses et santé de l’équipe : les points à préparer en cuisine avant les fortes chaleurs.",
+  "chapeau": "Quand il fait chaud, les enceintes froides peinent, les livraisons supportent mal l’attente et la cuisine devient éprouvante pour l’équipe. Mieux vaut s’y préparer au printemps qu’en pleine vague de chaleur. Voici les points à vérifier, en hygiène comme en santé au travail.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2027-04-06",
+  "majLe": "2027-04-06",
+  "lecture": 6,
+  "image": "/site/photos/guides/formation-hygiene-alimentaire-restauration-rapide.webp",
+  "imageAlt": "Thermomètre sonde planté dans un steak haché posé sur un plan de travail en inox, dans une cuisine éclairée par le soleil",
+  "aRetenir": [
+    "Faites contrôler vos équipements froids avant l’été : compresseurs, condenseurs, capteurs de température et joints.",
+    "À la livraison, les produits réfrigérés et surgelés sont rangés en priorité, et un produit hors température peut être refusé.",
+    "Les vitrines se protègent du soleil, et aucun produit chaud n’entre dans une enceinte froide.",
+    "Lors d’un épisode de chaleur intense, l’employeur fournit de l’eau potable fraîche en quantité suffisante et adapte l’organisation du travail."
+  ],
+  "sections": [
+    {
+      "id": "materiel-froid",
+      "titre": "Avant l’été, faire vérifier le matériel froid",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une chambre froide ou une saladette qui peinait déjà au printemps ne tiendra pas sa température pendant une vague de chaleur. Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé officiellement, demande que compresseurs, condenseurs, évaporateurs, circuits frigorifiques, capteurs de température et joints d’étanchéité soient **contrôlés régulièrement** par un service de maintenance ou un prestataire. Le printemps est le bon moment pour le faire :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "faites passer votre frigoriste avant les premières chaleurs, pas pendant ;",
+            "nettoyez les parties accessibles, grilles de ventilation et joints, et confiez les parties inaccessibles à un personnel habilité ;",
+            "vérifiez l’afficheur de chaque enceinte avec un thermomètre de contrôle ;",
+            "dégagez l’espace autour des groupes froids, pour que l’air circule."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Notez dès maintenant le numéro de votre frigoriste et la conduite à tenir en cas de panne : notre [fiche de non-conformité](/modeles/fiche-non-conformite-alerte-sanitaire) prévoit une case pour vos numéros utiles."
+        }
+      ]
+    },
+    {
+      "id": "livraisons",
+      "titre": "Les livraisons, premier moment critique",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un camion qui attend, des cartons posés au soleil : la chaîne du froid peut se rompre dès la réception. Le guide demande d’agir vite : les produits réfrigérés, surgelés et congelés sont déchargés et rangés en priorité, et chaque contrôle est noté. En cas d’écart non conforme de la température à cœur, vous êtes en droit de refuser la livraison."
+        },
+        {
+          "type": "p",
+          "texte": "Pour le contrôle, le guide décrit une méthode en deux temps : une mesure au contact des emballages, avec un écart toléré de 2 °C par rapport à la température réglementaire, puis, si cet écart est dépassé, une mesure à cœur du produit, avec un écart toléré de 1 °C."
+        },
+        {
+          "type": "p",
+          "texte": "Demandez à vos fournisseurs des créneaux aux heures fraîches, et évitez qu’ils tombent en plein service : personne n’a alors le temps de ranger. Les erreurs à éviter sont détaillées dans notre article sur [la chaîne du froid en restauration rapide](/blog/chaine-du-froid-restauration-rapide-erreurs)."
+        }
+      ]
+    },
+    {
+      "id": "releves",
+      "titre": "Des relevés plus fréquents",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les températures à respecter ne changent pas avec la saison : **3 °C au plus** pour une préparation élaborée à l’avance, **4 °C au plus** pour les denrées très périssables, **63 °C au moins** pour un plat maintenu chaud. Ce qui change, c’est la marge : une enceinte ouverte sans cesse en plein service remonte plus vite quand il fait chaud dehors."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "ajoutez un relevé en milieu de service les jours de forte chaleur, en plus de l’ouverture et de la fermeture ;",
+            "notez la température réellement lue, et l’action menée en cas d’écart ;",
+            "en cas d’écart, contrôlez la température à cœur d’un produit avant de décider, puis appliquez ce que prévoit votre plan de maîtrise sanitaire : transfert dans une autre enceinte et utilisation rapide, ou élimination."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Ces relevés font partie de votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant). Notre [fiche de relevé des températures](/modeles/releve-temperatures-restaurant) prévoit la colonne des actions correctives, et notre article sur [les relevés de température](/blog/releves-temperature-bonnes-pratiques) détaille la méthode."
+        }
+      ]
+    },
+    {
+      "id": "vitrines-terrasses",
+      "titre": "Vitrines, terrasses et service",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Plusieurs règles du guide sur l’exposition à la vente comptent encore plus l’été :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "protégez les vitrines des rayons du soleil, par un store par exemple, et placez les produits les plus sensibles à l’endroit le moins exposé ;",
+            "mettez les vitrines en marche assez tôt pour y charger les produits à la bonne température ;",
+            "ne placez rien devant les sorties d’air froid et limitez l’ouverture des portes ;",
+            "n’introduisez jamais un produit chaud dans une vitrine réfrigérée : refroidissez-le d’abord rapidement ;",
+            "gardez en tête qu’une vitrine n’est ni un lieu de stockage permanent, ni un appareil de remise en température."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "En terrasse, le risque vient de l’attente au soleil : sauces, beurre, desserts lactés. Servez à la demande, gardez les condiments au froid entre deux services et ne laissez rien attendre dehors. Entre 63 °C et 10 °C, les microbes se multiplient : la chaleur réduit le temps dont vous disposez."
+        }
+      ]
+    },
+    {
+      "id": "sante-equipe",
+      "titre": "La santé de l’équipe face à la chaleur",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’INRS cite les cuisines parmi les lieux de travail marqués par des températures élevées. Il retient des repères pour agir en prévention : **30 °C** pour une activité sédentaire, **28 °C** pour un travail physique. Fatigue, sueurs abondantes, nausées, maux de tête, vertiges ou crampes peuvent annoncer une déshydratation ou un coup de chaleur."
+        },
+        {
+          "type": "p",
+          "texte": "Depuis le 1er juillet 2025, le code du travail encadre les **épisodes de chaleur intense**, c’est-à-dire les vigilances canicule jaune, orange ou rouge de Météo-France. L’employeur doit notamment :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "évaluer ce risque et l’intégrer à son [document unique](/guides/document-unique-duerp-restaurant) ;",
+            "prévoir des mesures adaptées : organisation et horaires de travail, aménagement des postes, équipements, information et formation des salariés ;",
+            "fournir pendant ces épisodes de l’**eau potable fraîche en quantité suffisante**, avec un moyen de la garder au frais près des postes ;",
+            "adapter les mesures aux salariés vulnérables en raison de leur âge ou de leur état de santé ;",
+            "organiser le signalement des malaises, avec une attention particulière aux salariés qui travaillent seuls."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "En toute saison, l’employeur met à disposition de l’eau potable et fraîche pour permettre aux salariés de se désaltérer et de se rafraîchir. En cuisine, cela se traduit aussi par des pauses plus fréquentes, une rotation aux postes les plus chauds, une hotte et une ventilation vérifiées, et les tâches lourdes placées aux heures les plus fraîches."
+        },
+        {
+          "type": "p",
+          "texte": "Nous formons les équipes de restauration dans leur établissement. Une prise en charge par votre OPCO est possible, sous réserve de son accord. Pour recevoir un programme ou un devis, [contactez-nous](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "L’employeur doit-il fournir de l’eau à ses salariés quand il fait chaud ?",
+      "r": "Oui. En toute saison, il met à disposition de l’eau potable et fraîche. Lors d’un épisode de chaleur intense, il fournit une quantité suffisante d’eau potable fraîche et un moyen de la maintenir au frais près des postes de travail."
+    },
+    {
+      "q": "À partir de quelle température la chaleur devient-elle un risque en cuisine ?",
+      "r": "L’INRS retient comme repères pour agir 30 °C pour une activité sédentaire et 28 °C pour un travail physique. Les obligations du code du travail propres à la chaleur s’appliquent, elles, lors des vigilances canicule jaune, orange ou rouge de Météo-France."
+    },
+    {
+      "q": "Peut-on refuser une livraison arrivée trop chaude ?",
+      "r": "Oui. Le guide de bonnes pratiques d’hygiène de la restauration rapide indique qu’en cas d’écart non conforme lors du contrôle de la température à cœur, le restaurateur est en droit de refuser la livraison."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide, 2024 (PDF)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe I : températures de conservation (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864893"
+    },
+    {
+      "libelle": "Code du travail, articles R4463-1 à R4463-8 : épisodes de chaleur intense (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006072050/LEGISCTA000051676919/"
+    },
+    {
+      "libelle": "Arrêté du 27 mai 2025 relatif aux seuils de vigilance canicule pour la protection des travailleurs (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000051676145"
+    },
+    {
+      "libelle": "Code du travail, article R4225-2 : eau potable et fraîche (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018532169"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : chaleur, quelles obligations pour l’employeur ?",
+      "url": "https://entreprendre.service-public.gouv.fr/actualites/A18326"
+    },
+    {
+      "libelle": "INRS : travail à la chaleur, ce qu’il faut retenir",
+      "url": "https://www.inrs.fr/risques/chaleur/ce-qu-il-faut-retenir.html"
+    }
+  ],
+  "formations": "cha[iî]ne du froid|hygi[eè]ne|haccp|ma[iî]trise sanitaire|pr[eé]vention des risques",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "document-unique-duerp-restaurant"
+  ]
+}

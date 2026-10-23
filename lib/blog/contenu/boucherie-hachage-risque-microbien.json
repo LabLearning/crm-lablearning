@@ -1,0 +1,192 @@
+{
+  "slug": "boucherie-hachage-risque-microbien",
+  "titre": "Boucherie : hachage et découpe, maîtriser le risque microbien",
+  "titreCourt": "Hachage en boucherie : le risque microbien",
+  "description": "Viande hachée et E. coli : pourquoi le hachage augmente le risque, les règles de préparation au comptoir, le nettoyage du hachoir et le conseil de cuisson.",
+  "chapeau": "Une pièce de bœuf et la même viande passée au hachoir ne présentent pas le même risque. Le hachage appelle donc des règles à part : préparation à la demande, froid strict, hachoir impeccable, traçabilité. Voici pourquoi, et comment les appliquer au comptoir.",
+  "categorie": "Métiers de bouche",
+  "publieLe": "2027-03-30",
+  "majLe": "2027-03-30",
+  "lecture": 5,
+  "image": "/site/photos/guides/controle-hygiene-restaurant-ddpp.webp",
+  "imageAlt": "Mains notant un relevé sur une planchette à pince, devant une armoire réfrigérée ouverte remplie de bacs en plastique",
+  "aRetenir": [
+    "Au comptoir, la viande hachée se prépare à la demande et à la vue du client ; la préparer à l’avance demande un atelier conforme et une déclaration au préfet.",
+    "La viande hachée se conserve à +2 °C au plus, et à -18 °C si elle est congelée.",
+    "Le hachoir se démonte entièrement pour être nettoyé et désinfecté, au moins en fin de journée.",
+    "Pour les jeunes enfants et les personnes âgées, l’Anses recommande de cuire la viande hachée à cœur, à 70 °C."
+  ],
+  "sections": [
+    {
+      "id": "pourquoi-la-viande-hachee",
+      "titre": "Pourquoi la viande hachée est plus à risque",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le principal réservoir des E. coli producteurs de shigatoxines, ou **STEC**, est le tube digestif des ruminants, et surtout des bovins, qui les portent sans être malades. À l’abattoir, une carcasse peut être contaminée **en surface**, pendant la dépouille ou l’éviscération."
+        },
+        {
+          "type": "p",
+          "texte": "Sur une pièce entière, ces bactéries restent à la surface, là où la cuisson agit en premier. Le hachage les répartit dans toute la viande : le centre d’un steak haché peut en contenir, et seule une cuisson suffisante à cœur les détruit."
+        },
+        {
+          "type": "p",
+          "texte": "Ces bactéries peuvent provoquer un **syndrome hémolytique et urémique** (SHU), une atteinte grave des reins. Selon l’Anses, les plus exposés sont les enfants de moins de 15 ans, surtout avant 5 ans, et les personnes âgées ou immunodéprimées. En France, la viande hachée de bœuf consommée crue ou insuffisamment cuite fait partie des aliments les plus souvent mis en cause dans les épidémies."
+        },
+        {
+          "type": "encadre",
+          "titre": "Le froid ralentit, il ne tue pas",
+          "texte": "D’après l’Anses, la plupart des souches d’E. coli se multiplient à partir de 6 °C environ. Le froid freine leur croissance mais ne les détruit pas : c’est la cuisson qui le fait. D’où l’importance de garder la viande hachée bien en dessous de ce seuil, du hachoir jusqu’au client.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "regles-de-preparation",
+      "titre": "Les règles de préparation au comptoir",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’arrêté du 21 décembre 2009 pose la règle de base : au commerce de détail, la viande hachée se prépare **à la demande et à la vue de l’acheteur**. La préparer à l’avance n’est possible que si l’atelier répond aux exigences européennes de fabrication de la viande hachée et si l’exploitant a déclaré cette activité au préfet. Dans tous les cas, les exigences européennes sur les matières premières de la viande hachée s’appliquent."
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Produit", "Réfrigéré", "Congelé"],
+          "lignes": [
+            ["Viandes hachées", "+2 °C", "-18 °C"],
+            ["Préparations de viandes : chair à saucisse, saucisses, viandes marinées", "+4 °C", "-18 °C"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Au quotidien, prenez ces habitudes :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "hachez des pièces propres, bien parées, sorties du froid au dernier moment ;",
+            "gardez la tête du hachoir au froid avant usage, pour ne pas réchauffer la viande ;",
+            "remettez la viande hachée au client aussitôt, emballée, avec un conseil : au réfrigérateur, et à cuisiner rapidement ;",
+            "ne laissez jamais de viande hachée en attente sur le comptoir."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nettoyer-le-hachoir",
+      "titre": "Nettoyer le hachoir : démonter, laver, désinfecter",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le hachoir cumule les recoins : la vis, le couteau et la grille retiennent de la viande et de la graisse. La méthode tient en cinq étapes :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "débrancher la machine ;",
+            "démonter la trémie, la vis, le couteau, la grille et l’écrou ;",
+            "retirer les résidus, puis laver chaque pièce avec un détergent, en frottant ;",
+            "rincer, puis désinfecter avec un produit prévu pour le contact alimentaire, à la dose et pendant le temps indiqués par le fabricant ;",
+            "rincer si la notice le demande, laisser sécher, remonter sur un plan propre."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "D’après l’Anses, les STEC sont sensibles à tous les désinfectants autorisés en industrie agroalimentaire, **à condition de suivre leur mode d’emploi** : respectez la dose et le temps de contact indiqués."
+        },
+        {
+          "type": "p",
+          "texte": "Inscrivez la fréquence dans votre [plan de nettoyage](/modeles/plan-nettoyage-desinfection-restaurant) : au moins en fin de journée, comme le demande Service-Public pour les ustensiles, et, par prudence, entre deux espèces de viande. Voyez [comment construire ce plan](/blog/plan-nettoyage-desinfection-cuisine) et [comment prévenir les coupures](/blog/prevenir-accidents-cuisine-coupures-brulures) pendant le démontage."
+        }
+      ]
+    },
+    {
+      "id": "tracabilite",
+      "titre": "Traçabilité : savoir ce qui est passé au hachoir",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Vous devez pouvoir dire qui vous a fourni chaque denrée, et retirer sans attendre un produit rappelé. Pour la viande hachée, cela suppose de savoir quelle pièce, venue de quel fournisseur, a été hachée et quand :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "gardez l’étiquette de chaque pièce ou carcasse et les bons de livraison tant que la viande est en stock ;",
+            "notez sur une [fiche de traçabilité](/modeles/fiche-tracabilite-etiquettes-restaurant) les pièces passées au hachoir dans la journée ;",
+            "étiquetez les préparations du jour avec leur date de fabrication ;",
+            "consultez les rappels de produits publiés sur le site officiel RappelConso."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Ces enregistrements font partie de votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant). Les températures, elles, se relèvent chaque jour : voyez [comment bien faire et bien garder vos relevés](/blog/releves-temperature-bonnes-pratiques)."
+        }
+      ]
+    },
+    {
+      "id": "conseil-de-cuisson",
+      "titre": "Le conseil de cuisson à donner au client",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Votre client ne sait pas toujours que la viande hachée ne se cuit pas comme une pièce entière. Pour les populations sensibles, jeunes enfants et personnes âgées, l’Anses recommande de **cuire à cœur, à 70 °C**, les viandes hachées et les produits à base de viande hachée."
+        },
+        {
+          "type": "p",
+          "texte": "Au comptoir, une phrase suffit : « Pour les enfants, bien cuit à cœur. » Dites-la chaque fois qu’un client achète du haché pour sa famille, et formez toute l’équipe à le faire. Voyez aussi [les règles d’hygiène au comptoir et au laboratoire](/blog/hygiene-boucherie-comptoir-laboratoire)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe de boucherie au hachage, à la découpe et à l’hygiène du laboratoire, [demandez-nous un programme ou un devis](/contact). Une prise en charge de la formation est possible, sous réserve de l’accord de votre OPCO."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Comment nettoyer et désinfecter un hachoir à viande ?",
+      "r": "Machine débranchée, démontez la trémie, la vis, le couteau, la grille et l’écrou, retirez les résidus et lavez chaque pièce au détergent. Rincez, désinfectez avec un produit prévu pour le contact alimentaire, à la dose et pendant le temps indiqués par le fabricant, puis rincez si la notice le demande et laissez sécher avant de remonter."
+    },
+    {
+      "q": "À quelle température conserver la viande hachée ?",
+      "r": "À +2 °C au plus quand elle est réfrigérée, et à -18 °C quand elle est congelée, selon le tableau du ministère de l’Agriculture tiré de l’arrêté du 21 décembre 2009."
+    },
+    {
+      "q": "Quel conseil de cuisson donner pour un enfant ?",
+      "r": "Cuire à cœur, à 70 °C, la viande hachée et les produits qui en contiennent : c’est la recommandation de l’Anses pour les populations sensibles, jeunes enfants et personnes âgées."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe VII : cession de viande hachée (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864965"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : températures de conservation des produits d’origine animale (tableau récapitulatif)",
+      "url": "https://agriculture.gouv.fr/telecharger/119391"
+    },
+    {
+      "libelle": "Anses : fiche de description de danger biologique, E. coli producteurs de shigatoxines (STEC), mise à jour juillet 2024",
+      "url": "https://www.anses.fr/sites/default/files/Fiche-EHEC-2024-MPEX-0031.pdf"
+    },
+    {
+      "libelle": "Anses : Aliments contaminés par la bactérie E. coli, quels effets sur la santé et comment prévenir les infections ?",
+      "url": "https://www.anses.fr/fr/actualite/aliments-contamines-bacterie-e-coli-quels-effets-sante-comment-prevenir-infections"
+    },
+    {
+      "libelle": "Anses : avis du 18 mai 2017 sur les STEC hautement pathogènes en filière viande hachée bovine",
+      "url": "https://www.anses.fr/fr/system/files/BIORISK2016SA0121.pdf"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Règlement (CE) n° 178/2002, articles 18 et 19 : traçabilité et retrait des denrées",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32002R0178"
+    }
+  ],
+  "formations": "haccp|hygi[eè]ne|ma[iî]trise sanitaire|cha[iî]ne du froid|tra[cç]abilit[eé]",
+  "guides": ["plan-de-maitrise-sanitaire-pms-restaurant"]
+}

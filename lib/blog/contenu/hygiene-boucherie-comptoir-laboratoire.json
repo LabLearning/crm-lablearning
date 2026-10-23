@@ -1,0 +1,223 @@
+{
+  "slug": "hygiene-boucherie-comptoir-laboratoire",
+  "titre": "Boucherie : les règles d’hygiène au comptoir et au laboratoire",
+  "titreCourt": "Hygiène en boucherie : comptoir et labo",
+  "description": "Températures des viandes, cru et cuit, billot, machines, tenue, traçabilité : les règles d’hygiène d’une boucherie, du laboratoire au comptoir.",
+  "chapeau": "Dans une boucherie, la viande passe par deux mondes : le laboratoire, où l’on désosse, découpe et hache, et le comptoir, où l’on expose et sert. Les règles d’hygiène sont les mêmes, les pièges ne le sont pas. Voici les repères à tenir, de la carcasse au client.",
+  "categorie": "Métiers de bouche",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/metiers/boucherie.webp",
+  "imageAlt": "Couteau de chef tranchant une pièce de bœuf sur une planche en bois, l’autre main posée à plat sur la viande",
+  "aRetenir": [
+    "Chaque viande a sa température maximale : +7 °C pour les carcasses et pièces de gros, +4 °C pour les morceaux de découpe, +3 °C pour les abats, +2 °C pour la viande hachée.",
+    "Le cru et le cuit ne partagent ni réfrigérateur, ni planche, ni couteau, ni pince.",
+    "Le billot, les couteaux et les machines se nettoient à fond, au moins en fin de journée, selon un plan de nettoyage écrit.",
+    "Pour chaque morceau en vitrine, vous devez pouvoir dire de quel fournisseur il vient : gardez les étiquettes des carcasses et les bons de livraison."
+  ],
+  "sections": [
+    {
+      "id": "laboratoire-et-comptoir",
+      "titre": "Laboratoire et comptoir : ce qui change",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La réglementation appelle **atelier de boucherie** le commerce de détail où l’on désosse, découpe et hache des viandes d’ongulés domestiques et de volailles pour les céder au consommateur. Le laboratoire concentre les opérations à risque : carcasses entières, scie, hachoir, déchets. Le comptoir réunit sur quelques mètres de la viande crue, des produits cuits, des clients et de l’argent."
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Point de vigilance", "Au laboratoire", "Au comptoir"],
+          "lignes": [
+            ["Température", "Chambre froide, viande sortie du froid le moins longtemps possible", "Vitrine réglée sur le produit le plus fragile qu’elle contient"],
+            ["Contamination", "Zones propres et sales séparées, rien posé au sol", "Cru et cuit séparés, pinces pour servir"],
+            ["Matériel", "Billot, scie, hachoir, poussoir", "Couteaux, planches, trancheuse, balance"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La fiche officielle de Service-Public demande de **séparer les zones de travail sales** (plonge, poubelles) **des zones propres** (élaboration et stockage), de ne jamais poser les marchandises à même le sol et de ranger les produits de nettoyage à part."
+        }
+      ]
+    },
+    {
+      "id": "temperatures",
+      "titre": "Quelles températures pour les viandes ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’arrêté du 21 décembre 2009 fixe une température maximale par famille de produits, que le ministère de l’Agriculture a réunies dans un tableau. Pour une boucherie :"
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Produit", "Réfrigéré", "Congelé"],
+          "lignes": [
+            ["Carcasses entières et pièces de gros (bœuf, veau, porc, agneau)", "+7 °C", "-12 °C"],
+            ["Morceaux de découpe", "+4 °C", "-12 °C"],
+            ["Abats", "+3 °C", "-12 °C"],
+            ["Volailles et lapins", "+4 °C", "-12 °C"],
+            ["Préparations de viandes : saucisses, brochettes marinées", "+4 °C", "-18 °C"],
+            ["Viandes hachées", "+2 °C", "-18 °C"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Une vitrine qui expose à la fois des morceaux de découpe et des abats doit tenir la plus basse des deux températures. Relevez-la à l’ouverture et à la fermeture sur une [feuille de relevé](/modeles/releve-temperatures-restaurant), et notez ce que vous faites quand elle dérive. Les autres familles de produits sont dans [les repères de température en cuisine](/blog/temperatures-conservation-aliments-cuisine)."
+        },
+        {
+          "type": "encadre",
+          "titre": "La viande hachée se prépare à la demande",
+          "texte": "Au commerce de détail, la viande hachée se prépare **à la demande et à la vue de l’acheteur**. La hacher à l’avance n’est possible que si l’atelier respecte les règles européennes de fabrication de la viande hachée, et après une déclaration de cette activité au préfet.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "cru-et-cuit",
+      "titre": "Cru et cuit : deux circuits qui ne se croisent pas",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le jambon cuit, les pâtés ou les plats traiteur se mangent sans nouvelle cuisson. S’ils touchent une planche, un couteau ou une main qui sort de la viande crue, rien ne détruira ensuite les microbes ramassés en chemin."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**Au froid** : Service-Public demande de conserver les matières premières et les produits transformés dans des réfrigérateurs différents.",
+            "**En vitrine** : une zone pour le cru, une zone pour le cuit, sans contact entre les plats.",
+            "**À la découpe** : des planches et des couteaux réservés au cuit, faciles à reconnaître, par exemple à leur couleur.",
+            "**Au service** : des pinces pour les produits cuits, comme le demande Service-Public pour les aliments servis en vrac.",
+            "**Les mains** : lavées entre la viande crue, les déchets ou l’encaissement et un produit cuit."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "billot-couteaux-machines",
+      "titre": "Billot, couteaux et machines : un nettoyage complet",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Service-Public demande de laver les plans de travail et les ustensiles « à chaque service en fin de journée », conseille de privilégier l’inox ou l’émail et précise que les ustensiles et le matériel en **bois brut** sont interdits. Dans une boucherie, trois postes demandent une attention particulière :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**Le billot** : le règlement européen demande des surfaces faciles à nettoyer, en matériaux lisses et lavables, sauf si l’exploitant prouve à l’administration qu’un autre matériau convient. Sans fente ni creux où la viande et l’eau s’installent, il se racle et se nettoie après chaque séance de découpe ; s’il se creuse ou se fend, il se rabote ou se remplace.",
+            "**Les couteaux** : nettoyés et désinfectés entre la viande crue et les produits cuits, rangés propres dans un support lui-même nettoyé.",
+            "**Le hachoir, la scie, la trancheuse, le poussoir** : machine débranchée, démontée, nettoyée pièce par pièce, désinfectée avec un produit employé à la bonne dose et pendant le temps indiqué, puis séchée."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Écrivez qui nettoie quoi, avec quel produit et à quelle fréquence, dans un [plan de nettoyage](/modeles/plan-nettoyage-desinfection-restaurant). Voyez [comment le construire](/blog/plan-nettoyage-desinfection-cuisine), et [comment prévenir les coupures](/blog/prevenir-accidents-cuisine-coupures-brulures) quand on manipule les lames."
+        }
+      ]
+    },
+    {
+      "id": "tenue-et-formation",
+      "titre": "Tenue, mains et formation de l’équipe",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Pour toute personne au contact des aliments, la fiche Service-Public demande :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "des **vêtements propres** et une **coiffe** ;",
+            "un **lavage des mains** à la reprise du travail, en sortant des sanitaires, après avoir manipulé des déchets ou des matières premières ;",
+            "des **gants** pour préparer ou servir, jetés et changés souvent ; ils ne remplacent pas le lavage des mains."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Le règlement européen écarte de la manipulation des denrées une personne atteinte d’une maladie transmissible par les aliments, d’une diarrhée ou de plaies infectées, dès qu’il existe un risque de contamination : elle doit prévenir immédiatement son responsable."
+        },
+        {
+          "type": "p",
+          "texte": "La formation hygiène alimentaire de 14 heures, obligatoire en restauration commerciale, ne vise pas les bouchers et les charcutiers, même quand ils vendent des plats cuisinés. Le règlement européen s’applique en revanche à toute l’équipe : chacun doit être **encadré et disposer d’instructions ou d’une formation en hygiène** adaptées à son poste."
+        }
+      ]
+    },
+    {
+      "id": "tracabilite",
+      "titre": "Traçabilité : de la carcasse au morceau",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le règlement européen sur la sécurité des aliments vous impose de pouvoir dire **qui vous a fourni** chaque denrée, et de retirer sans attendre un produit rappelé. En pratique :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "gardez les bons de livraison et l’étiquette de chaque carcasse ou quartier tant que la viande est en stock ;",
+            "notez, au moment de la découpe, de quelle carcasse viennent les morceaux mis en vitrine ;",
+            "étiquetez les préparations du jour, saucisses, farces ou brochettes, avec leur date de fabrication ;",
+            "tenez une [fiche de traçabilité](/modeles/fiche-tracabilite-etiquettes-restaurant) simple, remplie au fil de la journée."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Colonne vertébrale des bovins : une autorisation à part",
+          "texte": "Détenir et désosser des carcasses de bovins contenant de l’os vertébral classé matériel à risque spécifié n’est possible que dans un atelier de boucherie **autorisé par le préfet**. L’atelier s’engage alors notamment à réserver à ce désossage un matériel facile à identifier (planches, couteaux, scies), à peser les matériels à risque retirés, à les stocker en bacs étanches au froid jusqu’à leur enlèvement par une entreprise spécialisée, et à conserver les documents trois ans.",
+          "ton": "info"
+        },
+        {
+          "type": "p",
+          "texte": "Les déchets de découpe ne partent pas avec les ordures ménagères : Service-Public rappelle que les boucheries font appel à un équarrisseur. Toutes ces règles trouvent leur place dans votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe de boucherie à ces gestes, [demandez-nous un programme ou un devis](/contact). Une prise en charge de la formation est possible, sous réserve de l’accord de votre OPCO."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "À quelle température conserver la viande dans une boucherie ?",
+      "r": "Selon le tableau du ministère de l’Agriculture tiré de l’arrêté du 21 décembre 2009 : +7 °C au plus pour les carcasses entières et pièces de gros, +4 °C pour les morceaux de découpe, les volailles et les préparations de viandes, +3 °C pour les abats et +2 °C pour la viande hachée."
+    },
+    {
+      "q": "Un boucher doit-il suivre la formation hygiène alimentaire de 14 heures ?",
+      "r": "Non. Cette formation vise la restauration commerciale, et la fiche Service-Public range les bouchers et charcutiers parmi les activités qui en sont dispensées, même s’ils vendent des plats cuisinés. Toute l’équipe doit en revanche recevoir des instructions ou une formation en hygiène adaptées à son poste."
+    },
+    {
+      "q": "Peut-on hacher la viande à l’avance ?",
+      "r": "En principe, non : au commerce de détail, la viande hachée se prépare à la demande et à la vue de l’acheteur. La préparer à l’avance suppose un atelier conforme aux règles européennes de fabrication de la viande hachée et une déclaration de cette activité au préfet."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Ministère de l’Agriculture : températures de conservation des produits d’origine animale (tableau récapitulatif)",
+      "url": "https://agriculture.gouv.fr/telecharger/119391"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009 relatif aux règles sanitaires applicables aux activités de commerce de détail (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000021573483"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe V : remise directe, carcasses de bovins contenant de l’os vertébral (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864957"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe VII : cession de viande hachée (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864965"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires, annexe II, chapitres II, VIII et XII",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    },
+    {
+      "libelle": "Règlement (CE) n° 178/2002, articles 18 et 19 : traçabilité et retrait des denrées",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32002R0178"
+    }
+  ],
+  "formations": "haccp|hygi[eè]ne|ma[iî]trise sanitaire|cha[iî]ne du froid|tra[cç]abilit[eé]",
+  "guides": ["plan-de-maitrise-sanitaire-pms-restaurant"]
+}

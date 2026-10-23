@@ -1,0 +1,199 @@
+{
+  "slug": "temperatures-conservation-aliments-cuisine",
+  "titre": "Températures de conservation : les repères à connaître en cuisine",
+  "titreCourt": "Températures de conservation en cuisine",
+  "description": "Viande hachée, volaille, plats préparés, surgelés, maintien au chaud : les températures fixées par l’arrêté du 21 décembre 2009, et comment les tenir.",
+  "chapeau": "Chaque denrée a sa température limite, fixée par un arrêté du 21 décembre 2009. Voici les valeurs qui concernent une cuisine de restaurant, ce qu’elles veulent dire et la façon de les tenir au quotidien.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2026-10-23",
+  "majLe": "2026-10-23",
+  "lecture": 6,
+  "image": "/site/metiers/hygiene.webp",
+  "imageAlt": "Mains gantées de noir qui pulvérisent un produit et essuient un plan de travail en inox avec une lavette blanche, dans une cuisine professionnelle",
+  "aRetenir": [
+    "Les températures de l’arrêté du 21 décembre 2009 sont des maximums, à respecter en tous points du produit, pas seulement dans l’air de l’enceinte.",
+    "Viande hachée et poisson frais : +2 °C. Préparations faites à l’avance : +3 °C. Volailles, préparations de viandes et viandes en morceaux : +4 °C.",
+    "Un plat remis chaud au client doit être à +63 °C au moins.",
+    "Une enceinte qui contient plusieurs produits se règle sur le plus fragile, et la température fixée par le fabricant sur l’étiquette se respecte."
+  ],
+  "sections": [
+    {
+      "id": "ce-que-fixe-l-arrete",
+      "titre": "Ce que fixe l’arrêté du 21 décembre 2009",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Ce texte fixe les règles sanitaires du **commerce de détail** des produits d’origine animale et des denrées qui en contiennent, restaurants compris. Son annexe I donne, pour chaque famille de denrées, une **température maximale de conservation**, à respecter « en tous points du produit » : c’est la température de l’aliment qui compte, pas seulement celle de l’air de l’enceinte."
+        },
+        {
+          "type": "p",
+          "texte": "L’arrêté distingue les denrées **périssables**, qui peuvent devenir dangereuses quand la température de conservation n’est pas maîtrisée, et les denrées **très périssables**, qui peuvent le devenir rapidement. Pour un produit préemballé, le fabricant peut fixer sa propre température de conservation : suivez alors celle de l’étiquette. Les denrées qui ne contiennent aucun produit d’origine animale relèvent d’un autre arrêté, du 8 octobre 2013."
+        },
+        {
+          "type": "p",
+          "texte": "L’arrêté admet d’autres températures quand elles s’appuient sur un guide de bonnes pratiques d’hygiène validé ou sur une analyse des dangers validée. Sans l’un ou l’autre, ses valeurs s’imposent."
+        }
+      ]
+    },
+    {
+      "id": "au-refrigerateur",
+      "titre": "Au réfrigérateur : les températures à ne pas dépasser",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les valeurs ci-dessous sont celles que l’annexe I fixe pour les établissements de remise directe et de restauration collective. Un restaurant commercial fait partie des premiers : il remet directement les aliments au consommateur."
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Denrée",
+            "Température maximale"
+          ],
+          "lignes": [
+            ["Viandes hachées", "+2 °C"],
+            ["Produits de la pêche frais, crustacés et mollusques cuits", "+2 °C"],
+            ["Abats de boucherie", "+3 °C"],
+            ["Préparations culinaires élaborées à l’avance", "+3 °C"],
+            ["Préparations de viandes, comme une viande marinée", "+4 °C"],
+            ["Volailles, lapins et petit gibier", "+4 °C"],
+            ["Viandes de boucherie en morceaux de découpe", "+4 °C"],
+            ["Viandes de boucherie en carcasses ou pièces de gros", "+7 °C"],
+            ["Ovoproduits, sauf UHT", "+4 °C"],
+            ["Autres denrées très périssables", "+4 °C"],
+            ["Autres denrées périssables", "+8 °C"],
+            ["Lait pasteurisé, fromages affinés", "Celle fixée par le fabricant"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Une **préparation culinaire élaborée à l’avance** est destinée à être consommée plus tard : sauce, garniture, plat cuisiné. Elle se conserve au froid, c’est la liaison froide, ou au chaud, c’est la liaison chaude. Les **préparations de viandes** sont des viandes fraîches auxquelles on a ajouté des condiments, des additifs ou d’autres denrées. Côté bas, la limite est la température à laquelle le produit commence à geler."
+        },
+        {
+          "type": "p",
+          "texte": "Le froid ne détruit pas les microbes : il ralentit leur croissance au réfrigérateur et la suspend au congélateur, rappelle le guide de bonnes pratiques d’hygiène de la restauration rapide. Un produit réfrigéré ne se garde donc en général que quelques jours, dans la limite de sa date limite de consommation, et un produit décongelé, fragilisé, demande une attention particulière."
+        }
+      ]
+    },
+    {
+      "id": "au-congelateur",
+      "titre": "Au congélateur : congelés et surgelés",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Pour les denrées congelées, l’arrêté fixe des maximums, sans limite basse :"
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Denrée congelée",
+            "Température maximale"
+          ],
+          "lignes": [
+            ["Glaces et crèmes glacées", "-18 °C"],
+            ["Viandes hachées et préparations de viandes congelées", "-18 °C"],
+            ["Produits de la pêche congelés", "-18 °C"],
+            ["Autres denrées congelées", "-12 °C"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les produits vendus comme **surgelés** relèvent d’un autre texte, un décret de 1964 : ils restent à **-18 °C ou moins** jusqu’à leur utilisation par le restaurant. Pour les produits congelés, l’arrêté admet un écart de 3 °C au plus en surface, pour de brèves périodes, au chargement et au déchargement."
+        }
+      ]
+    },
+    {
+      "id": "chaud-refroidissement-rechauffage",
+      "titre": "Au chaud, au refroidissement, au réchauffage",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un plat cuisiné remis chaud au client doit être à **+63 °C au moins** : c’est la seule température minimale de l’annexe I. Entre +10 °C et +63 °C, les microbes se multiplient : une préparation doit traverser cette zone le plus vite possible."
+        },
+        {
+          "type": "tableau",
+          "entetes": [
+            "Étape",
+            "Repère de l’arrêté"
+          ],
+          "lignes": [
+            ["Refroidissement rapide", "De +63 °C à +10 °C à cœur en 2 heures au plus"],
+            ["Conservation après refroidissement", "Entre 0 et +3 °C"],
+            ["Remise en température", "De +10 °C à +63 °C au moins en 1 heure au plus"],
+            ["Décongélation", "Au froid, sans dépasser la température de conservation du produit, ou par cuisson directe"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les trois premiers repères sont imposés à la restauration collective. Le guide de la restauration rapide, validé par l’administration, reprend celui du refroidissement : moins de +10 °C à cœur en moins de deux heures. La règle de décongélation, elle, s’applique aussi aux restaurants."
+        },
+        {
+          "type": "p",
+          "texte": "Pour le maintien au chaud, le même guide ajoute trois règles : ce qui est gardé au chaud se vend dans la journée, un produit présenté à la vente ne se refroidit pas pour être resservi, et un bain-marie sert à maintenir en température, pas à réchauffer, sauf consigne contraire du fournisseur."
+        }
+      ]
+    },
+    {
+      "id": "au-quotidien",
+      "titre": "Tenir ces températures au quotidien",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "**Réglez chaque enceinte sur le produit le plus fragile** qu’elle contient : +2 °C si elle garde de la viande hachée, même à côté de produits à +4 °C.",
+            "**Une vitrine réfrigérée n’est pas un lieu de stockage permanent** : mettez-la en marche assez tôt pour y placer des produits déjà froids, protégez-la du soleil et ne masquez pas ses sorties d’air.",
+            "**Relevez la température à heure fixe**, sur l’afficheur ou avec un thermomètre, et notez la valeur réellement lue.",
+            "**En cas d’écart, mesurez le produit à cœur** avec un thermomètre sonde : c’est sa température qui compte."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Notre [fiche de relevé des températures](/modeles/releve-temperatures-restaurant) rappelle ces repères et prévoit une colonne pour les actions correctives. Le rangement des enceintes et les erreurs qui font déraper ces températures, comme une chambre froide trop pleine, sont détaillés dans [chaîne du froid : les erreurs qui coûtent cher](/blog/chaine-du-froid-restauration-rapide-erreurs), et leur place dans votre organisation dans notre guide du [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe à ces repères, dans votre établissement et sur votre matériel, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "À quelle température régler le réfrigérateur où je stocke la viande hachée et les sauces ?",
+      "r": "Sur la limite du produit le plus fragile, ici la viande hachée : +2 °C. Le guide de bonnes pratiques d’hygiène de la restauration rapide le recommande pour toute enceinte qui contient des produits aux températures de conservation différentes."
+    },
+    {
+      "q": "Un surgelé peut-il être stocké à -12 °C ?",
+      "r": "Non. Un produit surgelé doit rester à -18 °C ou moins jusqu’à son utilisation par le restaurant. La limite de -12 °C de l’arrêté vise d’autres denrées congelées."
+    },
+    {
+      "q": "Combien de jours garder une sauce faite maison au réfrigérateur ?",
+      "r": "C’est à vous de fixer la durée de vie de vos préparations, et de l’écrire dans votre plan de maîtrise sanitaire. Pour la restauration collective, l’arrêté du 21 décembre 2009 la limite au troisième jour après celui de la fabrication, faute d’étude de durée de vie : un repère utile pour un restaurant."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Arrêté du 21 décembre 2009 relatif aux règles sanitaires applicables aux activités de commerce de détail (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000021573483"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe I : températures de conservation (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864893"
+    },
+    {
+      "libelle": "Décret n° 64-949 du 9 septembre 1964, article 1 : produits surgelés (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000006557081"
+    },
+    {
+      "libelle": "Règlement (CE) n° 853/2004, annexe I : définition des préparations de viandes",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0853"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide (2024)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|ma[iî]trise sanitaire",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant"
+  ]
+}

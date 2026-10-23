@@ -1,0 +1,177 @@
+{
+  "slug": "origine-viande-restaurant-affichage",
+  "titre": "Origine des viandes au restaurant : ce que vous devez indiquer",
+  "titreCourt": "Origine des viandes au restaurant",
+  "description": "Bœuf, porc, agneau, volaille : quelles mentions d’origine afficher au restaurant, sur place, à emporter ou en livraison, et ce que prévoient les textes.",
+  "chapeau": "Le bœuf depuis un décret de 2002, le porc, l’agneau et la volaille sans limite de durée depuis 2025 : vos clients doivent pouvoir connaître l’origine de la viande de leur plat. Voici quelles viandes sont concernées, les mentions exactes à écrire et où les afficher, que vous serviez sur place, à emporter ou en livraison.",
+  "categorie": "Réglementation",
+  "publieLe": "2026-11-24",
+  "majLe": "2026-11-24",
+  "lecture": 5,
+  "image": "/site/metiers/boucherie.webp",
+  "imageAlt": "Pièce de bœuf tranchée au couteau de chef sur une planche en bois, dans une cuisine baignée de lumière",
+  "aRetenir": [
+    "L’origine du bœuf, du porc, de l’agneau et des volailles doit être indiquée au client, que le repas soit servi sur place, à emporter ou livré.",
+    "Une mention suffit dans la plupart des cas : « Origine : (pays) » quand l’animal est né, a été élevé et abattu dans le même pays ; sinon, le détail des pays.",
+    "L’information doit être lisible et visible : affichage, carte, menu ou tout autre support, et avant la commande pour la vente à distance.",
+    "Depuis mars 2024, l’origine des viandes contenues dans les saucisses, le jambon et les autres produits transformés s’indique aussi, quand une réglementation vous permet de la connaître."
+  ],
+  "sections": [
+    {
+      "id": "quelles-viandes",
+      "titre": "Quelles viandes et quels restaurants sont concernés ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le décret n° 2002-1465 du 17 décembre 2002 vise les plats qui contiennent **un ou plusieurs morceaux de viande bovine, porcine, ovine ou de volaille**, ou de la **viande bovine hachée**. Il s’applique aux établissements qui servent des repas sur place, qu’ils fassent aussi de la vente à emporter ou de la livraison."
+        },
+        {
+          "type": "p",
+          "texte": "Pour le bœuf, l’obligation date de ce décret. Pour le porc, l’agneau et la volaille, le décret n° 2025-141 du 13 février 2025 l’a étendue sans limite de durée : elle s’applique depuis le 19 février 2025, en restauration commerciale comme en restauration collective. Selon sa notice, elle porte sur les viandes **achetées crues** par le restaurateur, pas sur celles achetées déjà préparées ou cuisinées."
+        },
+        {
+          "type": "encadre",
+          "titre": "Vente uniquement à emporter ou en livraison",
+          "texte": "Un établissement sans salle, qui vend seulement à emporter ou en livraison, relève du décret n° 2023-492 du 21 juin 2023, en vigueur depuis le 1er octobre 2023. Les viandes et les mentions sont les mêmes ; l’information est donnée **avant la commande**, de façon visible et lisible, y compris quand le client commande à distance.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "mentions",
+      "titre": "Quelles mentions écrire ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les textes imposent l’une des formules suivantes, selon le parcours de l’animal :"
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Situation", "Viande bovine", "Porc, agneau, volaille"],
+          "lignes": [
+            ["Naissance, élevage et abattage dans le même pays", "« Origine : (pays) »", "« Origine : (pays) »"],
+            ["Étapes dans des pays différents", "« Né et élevé : (pays de naissance et d’élevage) et abattu : (pays d’abattage) »", "« Élevé : (pays d’élevage) et abattu : (pays d’abattage) »"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Une ligne par viande suffit, par exemple « Steak haché : Origine France ». Prenez les pays sur les étiquettes et les documents qui accompagnent la viande livrée ; s’ils manquent, demandez-les à votre fournisseur avant de rédiger votre affichage."
+        }
+      ]
+    },
+    {
+      "id": "ou-afficher",
+      "titre": "Où et comment l’afficher ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Sur place, les mentions sont portées à la connaissance du client **de façon lisible et visible**, par affichage, sur les cartes et menus, ou sur tout autre support. À vous de choisir, selon la façon dont vos clients commandent :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "une ligne sous chaque plat de la carte ou du menu ;",
+            "un panneau ou une ardoise près de la caisse ou des écrans de commande ;",
+            "l’écran de la borne de commande ;",
+            "la fiche de chaque plat sur votre site et sur les plateformes de livraison, avant la validation de la commande."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Sans salle, l’information doit précéder la commande, même à distance. Si vous avez une salle et vendez aussi en ligne, faites de même : le client qui commande depuis son téléphone ne voit pas votre ardoise. Pour le reste de la vente à emporter, voyez [les règles d’hygiène de la vente à emporter et de la livraison](/blog/vente-a-emporter-livraison-hygiene)."
+        },
+        {
+          "type": "p",
+          "texte": "Tenez cet affichage à jour : un changement de fournisseur peut changer l’origine du jour au lendemain. Gardez les étiquettes et les bons de livraison qui justifient ce que vous affichez."
+        }
+      ]
+    },
+    {
+      "id": "produits-transformes",
+      "titre": "Et les viandes achetées déjà transformées ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le décret n° 2024-171 du 4 mars 2024, en vigueur depuis le 7 mars 2024, vise les **préparations de viandes** et les **produits à base de viande** qui vous sont fournis, comme des saucisses ou du jambon. Vous indiquez l’origine des viandes qu’ils contiennent **lorsque vous la connaissez en application d’une réglementation**, avec les mêmes mentions. Quand cette réglementation le prévoit, « UE » ou « hors UE » peut remplacer le nom du pays."
+        },
+        {
+          "type": "p",
+          "texte": "Cette information se donne avant la commande, de façon visible et lisible, **distincte** des mentions sur les viandes achetées crues, y compris pour la vente à distance."
+        },
+        {
+          "type": "encadre",
+          "titre": "Et le foie gras ?",
+          "texte": "La loi n° 2026-796 du 18 août 2026 a ajouté le foie gras aux produits dont l’origine doit être indiquée au restaurant, à l’article L. 412-9 du code de la consommation. Ses modalités d’application relèvent d’un décret : renseignez-vous avant de rédiger vos menus de fêtes.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "sanctions",
+      "titre": "Que risquez-vous ?",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "**Restaurant avec salle** : ne pas indiquer l’origine des viandes est puni de l’amende des **contraventions de cinquième classe**.",
+            "**Vente uniquement à emporter ou en livraison**, et **viandes des produits transformés** : une **amende administrative** de 1 500 € au plus pour une personne physique, 7 500 € pour une personne morale."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Au-delà de l’amende, c’est une question de confiance : vos équipiers doivent pouvoir répondre quand un client demande d’où vient le poulet. Préparez-les comme pour les allergènes : voyez [comment préparer l’équipe à répondre au client](/blog/allergenes-former-equipe-salle), et la liste des [affichages obligatoires à l’ouverture d’un restaurant](/guides/ouvrir-restaurant-rapide-formations-obligations)."
+        },
+        {
+          "type": "p",
+          "texte": "Pour former votre équipe aux règles d’hygiène et d’information du client, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Faut-il indiquer l’origine du poulet dans un restaurant rapide ?",
+      "r": "Oui, dès lors qu’il est acheté cru. Depuis le 19 février 2025, l’obligation vaut sans limite de durée pour la volaille, le porc et l’agneau, comme pour le bœuf, que le repas soit servi sur place, à emporter ou livré."
+    },
+    {
+      "q": "L’origine doit-elle figurer sur la carte ?",
+      "r": "Pas forcément. Sur place, elle peut être donnée par affichage, sur la carte ou le menu, ou sur tout autre support, du moment qu’elle est lisible et visible. Sans salle, elle doit être donnée avant la commande, y compris en ligne."
+    },
+    {
+      "q": "Faut-il indiquer l’origine de saucisses ou de nuggets achetés tout prêts ?",
+      "r": "Oui, lorsque vous la connaissez en application d’une réglementation : c’est l’objet du décret du 4 mars 2024 sur les préparations de viandes et les produits à base de viande. L’information se donne à part des mentions sur les viandes achetées crues."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Décret n° 2002-1465 du 17 décembre 2002 relatif à l’étiquetage des viandes bovines, porcines, ovines et de volailles dans les établissements de restauration, version en vigueur (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000411003"
+    },
+    {
+      "libelle": "Décret n° 2025-141 du 13 février 2025 modifiant le décret n° 2002-1465 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000051187015"
+    },
+    {
+      "libelle": "Décret n° 2023-492 du 21 juin 2023 : établissements proposant seulement des repas à emporter ou à livrer, version en vigueur (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000047715873"
+    },
+    {
+      "libelle": "Décret n° 2024-760 du 8 juillet 2024 modifiant le décret n° 2023-492 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000049907936"
+    },
+    {
+      "libelle": "Décret n° 2024-171 du 4 mars 2024 : origine des viandes des préparations de viandes et produits à base de viande en restauration (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000049237316"
+    },
+    {
+      "libelle": "Code de la consommation, article L412-9 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000041983647"
+    },
+    {
+      "libelle": "Loi n° 2026-796 du 18 août 2026 d’urgence pour la protection et la souveraineté agricoles, article 8 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054707007"
+    }
+  ],
+  "formations": "cadre l[eé]gal|tra[cç]abilit[eé]|[eé]tiquetage|r[eé]glementation",
+  "guides": ["ouvrir-restaurant-rapide-formations-obligations"]
+}

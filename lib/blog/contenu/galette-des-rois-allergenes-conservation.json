@@ -1,0 +1,191 @@
+{
+  "slug": "galette-des-rois-allergenes-conservation",
+  "titre": "Galette des rois : allergènes, cuisson et conservation",
+  "titreCourt": "Galette des rois : allergènes et hygiène",
+  "description": "Frangipane, crème d’amande, feuilletage : les allergènes à signaler, la conservation de la crème crue, la cuisson et l’information du client en janvier.",
+  "chapeau": "En janvier, la galette remplit les vitrines et les fournils tournent à plein. Derrière la pâte feuilletée se cachent au moins quatre allergènes, et une crème aux œufs crus qui ne supporte pas l’à-peu-près. Voici les points à tenir, de la crème d’amande à la remise au client.",
+  "categorie": "Métiers de bouche",
+  "publieLe": "2027-01-05",
+  "majLe": "2027-01-05",
+  "lecture": 5,
+  "image": "/site/metiers/boulangerie.webp",
+  "imageAlt": "Baguettes et miches de campagne alignées sur un plan de travail fariné, sous les mains d’un boulanger",
+  "aRetenir": [
+    "Une galette à la frangipane contient au moins du gluten, du lait, des œufs et des fruits à coque : chacun doit être nommé près du produit.",
+    "La crème d’amande crue se traite comme une denrée très périssable : au froid, couverte, étiquetée, sortie juste avant le garnissage.",
+    "La cuisson doit atteindre le centre de la galette, là où la crème est la plus épaisse.",
+    "Rappeler au client qu’une fève est cachée dans la galette, surtout s’il y a de jeunes enfants à table, relève du bon sens."
+  ],
+  "sections": [
+    {
+      "id": "allergenes",
+      "titre": "Quels allergènes dans une galette ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une galette classique réunit plusieurs des quatorze allergènes à déclaration obligatoire. Reprenez-la composant par composant :"
+        },
+        {
+          "type": "tableau",
+          "entetes": ["Composant", "Allergènes à signaler"],
+          "lignes": [
+            ["Pâte feuilletée", "Gluten (farine de blé), lait (beurre)"],
+            ["Crème d’amande", "Fruits à coque (amandes), œufs, lait (beurre)"],
+            ["Crème pâtissière de la frangipane", "Lait, œufs, gluten si elle contient de la farine de blé"],
+            ["Dorure", "Œufs, et lait si vous en ajoutez"],
+            ["Variantes pistache, noisette ou chocolat", "Fruits à coque ; lait et soja selon le chocolat"],
+            ["Brioche ou couronne des rois", "Gluten, œufs, lait ; sulfites éventuels des fruits confits"]
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La liste officielle range les **amandes**, les noisettes, les noix et les pistaches parmi les fruits à coque. Écrivez chaque allergène en toutes lettres, sur l’étiquette près de la galette et sur la boîte, comme pour tout produit vendu sans emballage : voyez [les allergènes en vitrine](/blog/allergenes-boulangerie-patisserie-vitrine) et notre guide sur [les 14 allergènes à déclarer](/guides/allergenes-restaurant-affichage-obligatoire)."
+        },
+        {
+          "type": "encadre",
+          "titre": "Les ingrédients achetés tout prêts",
+          "texte": "Praliné, pâte d’amande, chocolat, fruits confits, nappage : lisez la fiche technique de chaque produit acheté. Un praliné peut contenir des noisettes en plus des amandes, un chocolat du lait ou de la lécithine de soja, des fruits confits des sulfites, à déclarer au-delà de 10 mg/kg.",
+          "ton": "attention"
+        }
+      ]
+    },
+    {
+      "id": "creme-amande-crue",
+      "titre": "La crème d’amande crue : au froid, en petites quantités",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Beurre, sucre, poudre d’amande et œufs crus : la crème d’amande ne cuit qu’au four. D’ici là, traitez-la comme une **denrée très périssable**, pour laquelle le tableau du ministère de l’Agriculture fixe **+4 °C au plus**. Si vous travaillez des œufs liquides, ces ovoproduits se conservent eux aussi à +4 °C au plus, sauf les produits UHT."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "fabriquez-la par lots adaptés à la production prévue, plutôt qu’en une seule grosse cuve ;",
+            "conservez-la dans un bac fermé, étiqueté avec sa date de fabrication et la date limite fixée dans votre plan de maîtrise sanitaire ;",
+            "sortez seulement la quantité nécessaire au garnissage, et remettez le reste au froid aussitôt ;",
+            "utilisez les lots dans l’ordre de fabrication, le plus ancien d’abord ;",
+            "décongelez la pâte feuilletée surgelée au réfrigérateur, jamais à l’air libre, et ne la recongelez pas."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Ces règles ont leur place dans votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant). Expliquez-les aussi aux renforts de janvier : voyez [le plan de maîtrise sanitaire expliqué à un équipier](/blog/pms-explique-equipier)."
+        }
+      ]
+    },
+    {
+      "id": "cuisson",
+      "titre": "La cuisson : jusqu’au centre de la galette",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La crème d’amande contient des œufs crus : c’est la cuisson qui la rend sûre. Or le centre d’une grande galette, où la crème est la plus épaisse, cuit en dernier."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "Validez un temps et une température de cuisson pour chaque taille de galette, et notez-les sur la fiche recette.",
+            "Contrôlez le centre d’une galette par fournée : une crème encore liquide au milieu signale une cuisson à prolonger.",
+            "Laissez refroidir sur grille, à l’écart des postes de garnissage où l’on manipule la crème crue.",
+            "Fixez dans votre plan de maîtrise sanitaire combien de temps une galette cuite reste en vente, et dans quelles conditions."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "organisation-janvier",
+      "titre": "Organiser la production de janvier",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les semaines de l’Épiphanie concentrent les commandes. Quelques repères pour tenir la cadence sans relâcher l’hygiène :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "un planning de production par jour, qui tient compte des précommandes ;",
+            "une place réservée au froid pour la crème d’amande et les galettes crues en attente de cuisson ;",
+            "un nettoyage du plan de travail et des ustensiles entre une galette aux fruits à coque et une couronne qui n’en contient pas ;",
+            "des renforts formés avant leur premier jour, pas au milieu du rush."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Pensez aussi à la traçabilité : vous devez pouvoir dire qui vous a fourni chaque ingrédient, et retirer sans attendre un produit rappelé. Gardez les étiquettes des lots de poudre d’amande, de beurre et d’ovoproduits utilisés, et notez quels lots ont servi chaque jour : si un ingrédient est rappelé, vous saurez quelles galettes sont concernées."
+        },
+        {
+          "type": "p",
+          "texte": "Pour l’organisation de l’équipe pendant les périodes chargées, voyez [comment préparer les pics d’activité](/blog/pics-activite-fetes-fin-annee-equipe)."
+        }
+      ]
+    },
+    {
+      "id": "informer-le-client",
+      "titre": "Informer le client : allergènes, fève, conservation",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Au moment de la vente, donnez trois informations :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**les allergènes**, sur l’étiquette près de la galette et sur la boîte ;",
+            "**la fève** : un mot pour rappeler qu’elle est cachée dans la galette, surtout quand le client parle de jeunes enfants ;",
+            "**la conservation et le réchauffage** : comment garder la galette et la réchauffer, selon ce que vous avez prévu."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Quand un client allergique aux fruits à coque demande une galette « sans amande », ne promettez rien que le fournil ne puisse tenir : une couronne briochée fabriquée à côté de la frangipane peut avoir été en contact avec la poudre d’amande. Mieux vaut le dire clairement et laisser le client décider."
+        },
+        {
+          "type": "p",
+          "texte": "Un vendeur qui connaît la composition de chaque galette répond sans hésiter. Pour former votre équipe de fabrication et de vente, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Quels allergènes signaler sur une galette à la frangipane ?",
+      "r": "Au minimum le gluten de la farine de blé, le lait du beurre, les œufs et les fruits à coque des amandes. Ajoutez ceux des variantes et des ingrédients achetés tout prêts, d’après leurs fiches techniques."
+    },
+    {
+      "q": "À quelle température garder la crème d’amande avant cuisson ?",
+      "r": "Au froid, comme une denrée très périssable : le tableau du ministère de l’Agriculture fixe +4 °C au plus pour ces denrées. Sa durée de conservation est celle que vous avez fixée dans votre plan de maîtrise sanitaire."
+    },
+    {
+      "q": "Faut-il prévenir le client de la présence de la fève ?",
+      "r": "C’est un conseil de bon sens : un mot au moment de la vente évite une mauvaise surprise, en particulier quand de jeunes enfants partagent la galette."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Quels allergènes doivent être mentionnés sur un produit alimentaire ?",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32192"
+    },
+    {
+      "libelle": "Code de la consommation, articles R412-12 à R412-16 : allergènes des denrées non préemballées (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000032807848"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : températures de conservation des produits d’origine animale (tableau récapitulatif)",
+      "url": "https://agriculture.gouv.fr/telecharger/119391"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009 relatif aux règles sanitaires applicables aux activités de commerce de détail (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000021573483"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    },
+    {
+      "libelle": "Règlement (CE) n° 178/2002, articles 18 et 19 : traçabilité et retrait des denrées",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32002R0178"
+    }
+  ],
+  "formations": "allerg[eè]n|[eé]tiquetage|hygi[eè]ne|haccp",
+  "guides": ["allergenes-restaurant-affichage-obligatoire", "plan-de-maitrise-sanitaire-pms-restaurant"]
+}

@@ -1,0 +1,179 @@
+{
+  "slug": "farine-asthme-boulanger-prevention",
+  "titre": "Poussières de farine : prévenir l’asthme du boulanger",
+  "titreCourt": "Poussières de farine et asthme du boulanger",
+  "description": "Rhinite, asthme, gestes qui soulèvent la farine, équipements, aide de l’Assurance Maladie, suivi médical : comment prévenir l’asthme du boulanger au fournil.",
+  "chapeau": "La farine est la première cause d’asthme professionnel. Le risque commence souvent par un nez qui coule au fournil, et il se réduit surtout par des gestes et des équipements qui gardent la farine dans la cuve. Voici lesquels, et ce que prévoit le suivi médical.",
+  "categorie": "Sécurité au travail",
+  "publieLe": "2027-02-02",
+  "majLe": "2027-02-02",
+  "lecture": 5,
+  "image": "/site/metiers/boulangerie.webp",
+  "imageAlt": "Mains farinées d’un boulanger posées sur des baguettes et des pains de campagne alignés sur un plan de travail en bois fariné",
+  "aRetenir": [
+    "Les farines sont la première cause d’asthme professionnel et provoquent aussi des rhinites, qui précèdent en général l’asthme.",
+    "Les deux premières années d’exposition comptent beaucoup : les apprentis méritent une attention particulière.",
+    "Charger le pétrin par le bas, limiter le fleurage, aspirer au lieu de balayer et proscrire la soufflette réduisent la poussière à la source.",
+    "En 2026, une aide de l’Assurance Maladie est possible, sous réserve de son accord, pour équiper le fournil."
+  ],
+  "sections": [
+    {
+      "id": "le-risque",
+      "titre": "De la rhinite à l’asthme : un risque reconnu",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Selon l’INRS, les farines sont la **première cause d’asthme professionnel**. Elles provoquent aussi des **rhinites** : éternuements, nez qui coule, nez bouché. La rhinite précède en général l’asthme, et elle augmente le risque d’en développer un."
+        },
+        {
+          "type": "p",
+          "texte": "Un article publié par l’INRS en 2025 en donne la mesure. Sur 8 385 asthmes en relation avec le travail recensés entre 2001 et 2018 par le réseau national de vigilance des pathologies professionnelles, la farine était en cause dans **10 %** des cas, et dans 16 % des cas chez les hommes. En boulangerie, des études retrouvent une rhinite allergique chez **18 à 50 %** des personnes exposées à la farine."
+        },
+        {
+          "type": "p",
+          "texte": "La farine n’est pas seule en cause : certaines enzymes utilisées en boulangerie, comme l’alpha-amylase, sont aussi allergisantes, et les mix peuvent contenir des levures ou des acariens. L’intensité de l’exposition est un facteur de risque, en particulier pendant les **deux premières années** : un apprenti est concerné dès son arrivée au fournil."
+        },
+        {
+          "type": "p",
+          "texte": "La rhinite et l’asthme liés à l’utilisation de farines peuvent être reconnus comme **maladies professionnelles**, au titre du tableau 66 du régime général. Ce sont des maladies invalidantes, qui peuvent obliger à quitter le métier, apprenti comme boulanger expérimenté."
+        }
+      ]
+    },
+    {
+      "id": "gestes-a-risque",
+      "titre": "Les gestes qui soulèvent la farine",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Plusieurs gestes du quotidien mettent la farine en suspension, là où elle se respire :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "le **chargement du pétrin**, quand la farine est versée de haut ou que le sac est secoué ;",
+            "le **fleurage** des plans de travail et des pâtons ;",
+            "la **pesée** des farines et des poudres ;",
+            "le **nettoyage** au balai ou à la soufflette, qui remet en suspension ce qui était retombé."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "La farine se dépose ensuite dans les zones de pétrissage et de fleurage, sur les machines et les rebords. Sans nettoyage régulier, à l’humide ou par aspiration, ces dépôts finissent par être remis en suspension."
+        }
+      ]
+    },
+    {
+      "id": "bons-gestes",
+      "titre": "Les bons gestes au fournil",
+      "blocs": [
+        {
+          "type": "liste",
+          "items": [
+            "**Chargez le pétrin par le bas** : une manche à farine longue qui descend au fond de la cuve, l’eau versée avant la farine, et le sac vidé sans être secoué.",
+            "**Limitez le fleurage** au strict nécessaire ; le farineur, manuel ou automatique, fait partie des équipements que l’Assurance Maladie retient pour réduire l’exposition.",
+            "**Nettoyez chaque jour** les sols et les plans de travail avec un aspirateur conçu pour les poussières de farine, ou à l’humide.",
+            "**Évitez le balai et proscrivez la soufflette.**"
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Ces gestes ne demandent aucun investissement et se prennent dès le premier jour : c’est le moment de les montrer à chaque apprenti."
+        }
+      ]
+    },
+    {
+      "id": "equiper-le-fournil",
+      "titre": "Équiper le fournil, avec une aide possible",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les protections collectives passent avant les protections individuelles. L’INRS et l’Assurance Maladie recommandent :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "un **pétrin ou un batteur à capot plein**, et des machines à faible émission de farine, comme les diviseuses conçues pour cela ;",
+            "un **captage des poussières à la source**, notamment aux postes de pesée ;",
+            "un **aspirateur** adapté aux poussières de farine."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "La subvention Poussières de farine",
+          "texte": "En 2026, l’Assurance Maladie propose aux entreprises de 1 à 49 salariés une subvention de **70 %** du montant hors taxes de ces équipements (pétrin ou batteur à capot plein, diviseuse à faible émission, aspirateur adapté, farineur), dans la limite de **25 000 € HT** sur la période 2023-2028. Le budget est limité et les demandes sont traitées dans l’ordre d’arrivée : l’aide est possible, sous réserve de l’accord de l’Assurance Maladie.",
+          "ton": "info"
+        },
+        {
+          "type": "p",
+          "texte": "Un masque ne remplace pas ces mesures. L’INRS le réserve, en complément, aux expositions limitées dans le temps, liées à une opération particulière."
+        }
+      ]
+    },
+    {
+      "id": "suivi-medical",
+      "titre": "Repérer les premiers signes et suivre la santé",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Prenez au sérieux un salarié qui éternue, a le nez qui coule ou bouché, tousse ou a du mal à respirer au fournil, et qui va mieux pendant ses congés : ce rythme évoque une origine professionnelle. Orientez-le sans attendre vers le service de prévention et de santé au travail."
+        },
+        {
+          "type": "p",
+          "texte": "Lors du suivi de l’état de santé, le médecin du travail recherche ces symptômes, et une spirométrie peut être réalisée dès l’embauche pour disposer d’un examen de référence. Quand un asthme allergique est installé, l’éviction complète de l’allergène améliore nettement le pronostic : d’où l’intérêt d’agir dès les premiers signes."
+        },
+        {
+          "type": "p",
+          "texte": "Inscrivez enfin le risque et les mesures décidées dans votre [document unique](/guides/document-unique-duerp-restaurant) ; l’INRS propose un outil en ligne d’évaluation des risques conçu pour la boulangerie-pâtisserie. Les sacs de farine pèsent aussi sur le dos, et les manutentions sont à l’origine de 45 % des accidents dans ces métiers : voyez [nos repères de gestes et postures](/blog/gestes-postures-cuisine-mal-de-dos). Pour former votre équipe au fournil, [demandez-nous un programme ou un devis](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un masque suffit-il à protéger un boulanger de la farine ?",
+      "r": "Non. La prévention passe d’abord par les mesures collectives : machines à capot plein, captage à la source, aspiration plutôt que balayage. Un appareil de protection respiratoire peut les compléter, pour une exposition limitée dans le temps."
+    },
+    {
+      "q": "L’asthme du boulanger est-il une maladie professionnelle ?",
+      "r": "Oui. Les rhinites et les asthmes provoqués par l’utilisation de farines peuvent être reconnus au titre du tableau 66 du régime général, « Rhinites et asthmes professionnels »."
+    },
+    {
+      "q": "Existe-t-il une aide pour équiper le fournil ?",
+      "r": "En 2026, l’Assurance Maladie propose une subvention « Poussières de farine » aux entreprises de 1 à 49 salariés : 70 % du montant hors taxes des équipements retenus, dans la limite de 25 000 € HT sur la période 2023-2028. Elle est possible sous réserve de l’accord de l’Assurance Maladie et dans la limite de son budget."
+    },
+    {
+      "q": "Les apprentis sont-ils plus exposés ?",
+      "r": "Ils méritent une attention particulière, car la rhinite ou l’asthme apparaissent souvent pendant les deux premières années d’exposition. L’INRS recommande de les informer des risques de leur poste et de les former aux mesures de prévention."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "INRS : Boulangerie, pâtisserie, chocolaterie, glacerie, les risques du métier",
+      "url": "https://www.inrs.fr/metiers/commerce-service/boulangerie-patisserie/boulangerie-patisserie-risques.html"
+    },
+    {
+      "libelle": "INRS, ED 6400 : Santé au travail, passez à l’action ! Boulangerie, pâtisserie, chocolaterie, glacerie",
+      "url": "https://www.inrs.fr/media.html?refINRS=ED%206400"
+    },
+    {
+      "libelle": "INRS, TR 64 : Asthme et rhinite allergiques professionnels (2025)",
+      "url": "https://www.inrs.fr/media.html?refINRS=TR%2064"
+    },
+    {
+      "libelle": "INRS : Tableau 66 du régime général, rhinites et asthmes professionnels",
+      "url": "https://www.inrs.fr/publications/bdd/mp/tableau.html?refINRS=RG%2066"
+    },
+    {
+      "libelle": "Assurance Maladie : Poussières de farine, la subvention prévention",
+      "url": "https://www.ameli.fr/entreprise/sante-travail/prevention/aides-financieres/subventions-1-50-salaries/subventions-risques-chimiques/poussieres-de-farine"
+    },
+    {
+      "libelle": "Assurance Maladie : Filières boulangeries, pâtisseries et pâtes industrielles",
+      "url": "https://www.ameli.fr/entreprise/sante-travail/votre-secteur/agroalimentaire/boulangeries-patisseries-pates-industrielles"
+    }
+  ],
+  "formations": "pr[eé]vention|risques? professionnel|duerp|document unique",
+  "guides": [
+    "document-unique-duerp-restaurant"
+  ]
+}

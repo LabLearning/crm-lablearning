@@ -18,6 +18,7 @@ import {
   StarIcon, ArrowDown01Icon,
   AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon, PlayIcon,
   PauseIcon, FullScreenIcon, Download01Icon, PrinterIcon, RefreshIcon, ArrowUp02Icon,
+  NewspaperIcon,
 } from '@hugeicons/core-free-icons'
 
 type P = { className?: string; strokeWidth?: number }
@@ -75,6 +76,7 @@ export const ListChecks = make(CheckListIcon)           // compétences
 export const ClipboardCheck = make(TaskDone01Icon)      // évaluation
 export const Accessibility = make(AccessibilityIcon)
 export const BookOpen = make(BookOpen01Icon)            // programme
+export const Newspaper = make(NewspaperIcon)            // blog
 export const ListView = make(ListViewIcon)              // prérequis
 export const Bulb = make(BulbIcon)                      // méthodes
 

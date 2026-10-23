@@ -1,0 +1,191 @@
+{
+  "slug": "allergenes-former-equipe-salle",
+  "titre": "Allergènes : préparer l’équipe à répondre au client",
+  "titreCourt": "Allergènes : former l’équipe à répondre",
+  "description": "Client allergique au comptoir : la réponse à donner, un tableau des allergènes à jour, les contaminations à éviter en cuisine et qui tranche en cas de doute.",
+  "chapeau": "Un client vous signale une allergie au moment de commander. Ce que l’équipier répond compte autant que le tableau affiché : la réponse doit être juste, appuyée sur un écrit et assumée par quelqu’un. Voici comment y préparer votre équipe.",
+  "categorie": "Hygiène alimentaire",
+  "publieLe": "2026-10-27",
+  "majLe": "2026-10-27",
+  "lecture": 5,
+  "image": "/site/photos/guides/allergenes-restaurant-affichage-obligatoire.webp",
+  "imageAlt": "Œufs, farine, verre de lait, arachides, noisettes, moutarde, crevettes, pavé de saumon, sésame, soja et céleri posés sur un plan de travail en inox",
+  "aRetenir": [
+    "Dans un lieu où l’on mange sur place, l’information sur les 14 allergènes est écrite, et le client y accède directement, sans avoir à la demander.",
+    "L’équipier complète cette information sans la remplacer : il répond à partir du tableau, jamais de mémoire.",
+    "Le tableau suit la cuisine : il se met à jour à chaque changement de recette ou de fournisseur.",
+    "En cas de doute, une personne désignée tranche, et la réponse au client reste prudente."
+  ],
+  "sections": [
+    {
+      "id": "ce-que-dit-la-regle",
+      "titre": "Ce que la règle impose, et ce qu’elle laisse à l’équipe",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Quatorze allergènes doivent être signalés dès qu’ils entrent dans la fabrication d’un plat, y compris par un ingrédient qui en est issu. Dans un lieu où l’on mange sur place, le code de la consommation demande une information **écrite, lisible et visible** : soit l’information elle-même, soit l’indication écrite de l’endroit où le client peut la consulter **directement et librement**."
+        },
+        {
+          "type": "p",
+          "texte": "Pour un produit présenté sans emballage au comptoir, ou emballé devant le client, elle figure **sur le produit ou à proximité**, sans doute possible sur le produit concerné. En restauration rapide, les allergènes les plus fréquents sont le gluten des pains et des panures, le lait des fromages et des sauces, les œufs de la mayonnaise, la moutarde, le sésame des pains à burger et le soja de certaines sauces."
+        },
+        {
+          "type": "p",
+          "texte": "Le texte ne dit rien de la façon dont l’équipier répond. C’est pourtant à ce moment que se joue la sécurité du client : une réponse improvisée, même aimable, peut défaire tout le travail fait sur le tableau. Les règles d’affichage sont détaillées dans notre guide sur [les allergènes au restaurant](/guides/allergenes-restaurant-affichage-obligatoire)."
+        }
+      ]
+    },
+    {
+      "id": "au-comptoir",
+      "titre": "Au comptoir : une réponse en quatre temps",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Écrivez la marche à suivre, affichez-la près de la caisse et faites-la répéter à chaque nouvel arrivant. Elle tient en quatre gestes :"
+        },
+        {
+          "type": "liste",
+          "ordonnee": true,
+          "items": [
+            "**Écouter et reformuler** : quel allergène, pour qui, sur quel plat. « Vous êtes allergique à l’arachide, c’est bien cela ? »",
+            "**Montrer l’écrit** : ouvrir le tableau avec le client, à la ligne du plat, plutôt que répondre de mémoire.",
+            "**Signaler la commande** : la marquer pour la cuisine, afin qu’elle soit préparée à part, avec des ustensiles propres.",
+            "**Dire les limites** : si un contact avec l’allergène reste possible en cuisine, le dire clairement et laisser le client décider."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Les phrases à bannir",
+          "texte": "« Normalement, il n’y en a pas. » « Je crois que c’est bon. » « On peut enlever la sauce. » Une approximation dite avec assurance est plus dangereuse qu’un simple « je vérifie ».",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Au téléphone, le réflexe est le même : l’équipier lit au client la ligne du tableau, au lieu de répondre de mémoire."
+        }
+      ]
+    },
+    {
+      "id": "tableau-a-jour",
+      "titre": "Un tableau à jour, ou rien",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le tableau n’est fiable que s’il suit la cuisine. Chaque livraison à un restaurant doit être accompagnée d’un document indiquant les allergènes : c’est votre matière première. Trois situations font dériver un tableau :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "un fournisseur ou une référence qui change, par exemple lors d’une rupture de stock ;",
+            "une recette modifiée : nouvelle sauce, autre pain, garniture du moment ;",
+            "un plat ajouté à la carte sans sa ligne dans le tableau."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Quand un produit de remplacement arrive, comparez sa fiche à celle du produit habituel avant de l’utiliser : c’est souvent là que l’erreur se glisse. Confiez la mise à jour à une personne, datez chaque version et retirez l’ancienne de la circulation. Notre [modèle de tableau des allergènes](/modeles/tableau-allergenes-restaurant) prévoit une ligne par plat, une case par allergène et la date de mise à jour."
+        }
+      ]
+    },
+    {
+      "id": "en-cuisine",
+      "titre": "En cuisine : éviter les contaminations croisées",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un plat peut être exact sur le papier et dangereux dans l’assiette : une réaction allergique peut aller jusqu’au choc anaphylactique. Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé officiellement, cite des mesures simples :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "connaître les allergènes de chaque matière première et de chaque préparation ;",
+            "utiliser des ustensiles dédiés ;",
+            "travailler en dernier les matières premières qui contiennent des allergènes ;",
+            "nettoyer les plans de travail selon un protocole défini entre deux préparations ;",
+            "informer et former le personnel, en cuisine comme au service."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Deux points méritent une attention particulière : l’huile de friture partagée entre plusieurs produits, et les gants. Le même guide déconseille le latex, qui peut lui-même transporter un allergène dans les aliments. Voyez aussi comment [construire votre plan de nettoyage](/blog/plan-nettoyage-desinfection-cuisine)."
+        }
+      ]
+    },
+    {
+      "id": "en-cas-de-doute",
+      "titre": "En cas de doute, qui décide ?",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le doute arrive au pire moment : un remplaçant en caisse, une sauce dont personne ne connaît la composition, un produit livré sans sa fiche. Fixez la règle à l’avance :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**une personne référente par service**, manager ou chef de cuisine, que l’équipier appelle dès qu’il hésite ;",
+            "**une réponse par défaut** quand l’information ne peut pas être vérifiée : « Je ne peux pas vous le garantir », et le client choisit un autre plat ;",
+            "**une trace écrite** : le cas est noté et le tableau corrigé avant le service suivant."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les mentions du type « traces éventuelles de » sont recommandées, mais pas obligatoires. Elles ne remplacent ni le tableau ni les précautions en cuisine."
+        }
+      ]
+    },
+    {
+      "id": "former-l-equipe",
+      "titre": "Former toute l’équipe, nouveaux arrivants compris",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Toute personne qui manipule des aliments doit être encadrée et recevoir des instructions ou une formation en hygiène adaptées à son poste. Pour les allergènes, prévoyez un temps dédié à l’arrivée de chaque équipier, puis un rappel à chaque changement de carte : où est le tableau, comment le lire, les quatre gestes, qui appeler."
+        },
+        {
+          "type": "p",
+          "texte": "Un exercice fonctionne bien : un manager joue le client allergique, l’équipier répond. En quelques minutes, on voit qui applique la procédure et qui improvise. Pour l’accueil des nouveaux, voyez notre [plan des 30 premiers jours](/blog/integrer-nouvel-equipier-restauration-rapide)."
+        },
+        {
+          "type": "p",
+          "texte": "Nous formons les équipes de restauration dans leur établissement. Pour recevoir un programme ou un devis, [contactez-nous](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Un équipier peut-il répondre seulement à l’oral à un client allergique ?",
+      "r": "Il peut compléter l’information, pas la remplacer. Dans un lieu où l’on mange sur place, l’information sur les allergènes est donnée par écrit, de façon lisible et visible, ou l’endroit où la consulter est indiqué par écrit, avec un accès direct et libre pour le client."
+    },
+    {
+      "q": "Faut-il refaire le tableau des allergènes quand on change de fournisseur ?",
+      "r": "Oui, dès que la composition d’un produit change. Chaque livraison à un restaurant doit être accompagnée d’un document indiquant les allergènes : comparez-le à la version précédente pour repérer les changements."
+    },
+    {
+      "q": "La mention « peut contenir des traces » est-elle obligatoire ?",
+      "r": "Non. Signaler une présence involontaire d’allergènes est recommandé, mais pas obligatoire. Cette mention ne dispense pas des précautions prises en cuisine pour éviter les contaminations croisées."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Service-Public Entreprendre : Quels allergènes doivent être mentionnés sur un produit alimentaire ?",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32192"
+    },
+    {
+      "libelle": "Code de la consommation, articles R412-12 à R412-16 (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/id/LEGISCTA000032807848"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide, 2024 (PDF)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Règlement (CE) n° 852/2004 relatif à l’hygiène des denrées alimentaires",
+      "url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32004R0852"
+    }
+  ],
+  "formations": "allerg[eè]n|[eé]tiquetage|hygi[eè]ne|haccp",
+  "guides": [
+    "allergenes-restaurant-affichage-obligatoire"
+  ]
+}

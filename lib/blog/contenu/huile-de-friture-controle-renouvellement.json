@@ -1,0 +1,195 @@
+{
+  "slug": "huile-de-friture-controle-renouvellement",
+  "titre": "Huile de friture : contrôler, filtrer, renouveler",
+  "titreCourt": "Huile de friture : contrôler et renouveler",
+  "description": "Seuil de 25 % de composés polaires, test, filtration, changement du bain, acrylamide et sécurité de l’équipe : gérer l’huile de friture au restaurant.",
+  "chapeau": "Une huile de friture se dégrade à chaque service, et sa couleur ne suffit pas à dire quand la changer. La limite est fixée par un décret, le test est rapide, et la friteuse reste un poste à risque pour l’équipe. Voici comment gérer votre huile, du contrôle au changement de bain.",
+  "categorie": "Restauration rapide",
+  "publieLe": "2027-01-26",
+  "majLe": "2027-01-26",
+  "lecture": 6,
+  "image": "/site/metiers/rapide.webp",
+  "imageAlt": "Frites dorées et burger au fromage servis dans une assiette sur un comptoir en inox de cuisine",
+  "aRetenir": [
+    "Une huile dont la teneur en composés polaires dépasse 25 % est réputée impropre à la consommation humaine.",
+    "L’aspect de l’huile ne suffit pas : elle se contrôle par un test, à une fréquence que vous fixez, et chaque contrôle est noté.",
+    "Pour les frites, le guide de bonnes pratiques recommande 175 °C au plus et une surveillance de la couleur.",
+    "L’INRS demande d’attendre que l’huile soit redescendue à 40 °C avant toute manipulation."
+  ],
+  "sections": [
+    {
+      "id": "seuil-reglementaire",
+      "titre": "Pourquoi l’huile se dégrade, et la limite à ne pas dépasser",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "À chaque service, la chaleur et les débris qui carbonisent dans le bain dégradent l’huile. Cette dégradation se mesure par sa teneur en **composés polaires**. La surchauffe aggrave les choses : l’INRS demande de ne jamais dépasser 180 °C, car elle augmente nettement les substances toxiques et le risque d’inflammation."
+        },
+        {
+          "type": "encadre",
+          "titre": "25 %, le seuil réglementaire",
+          "texte": "Un décret de 2008 fixe la limite : une huile dont la teneur en composés polaires dépasse **25 %**, ou en polymères de triglycérides **14 %**, est réputée impropre à la consommation humaine. Au-delà, le bain se change, il ne se « rattrape » pas.",
+          "ton": "attention"
+        },
+        {
+          "type": "p",
+          "texte": "Le choix du matériel et de l’huile compte aussi : le guide de bonnes pratiques d’hygiène de la restauration rapide, validé officiellement, recommande des friteuses munies d’un thermostat et des corps gras adaptés à la friture, étiquetés « pour friture »."
+        }
+      ]
+    },
+    {
+      "id": "controler",
+      "titre": "Contrôler : un test, pas un coup d’œil",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une huile brune, qui mousse, qui fume ou qui dégage une odeur ou un goût désagréable doit être changée. Mais une huile d’apparence correcte n’est pas forcément conforme : le guide est explicite, l’appréciation visuelle seule ne suffit pas."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "**Le test** : bandelette colorimétrique, test chimique ou testeur électronique de composés polaires, utilisé selon sa notice.",
+            "**La fréquence** : c’est à vous de la fixer, selon votre volume de friture, et de l’écrire dans votre [plan de maîtrise sanitaire](/guides/plan-de-maitrise-sanitaire-pms-restaurant).",
+            "**La trace** : chaque mesure est notée, même quand l’huile est bonne, avec la décision prise : garder, filtrer ou changer."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Testez toujours dans les mêmes conditions, à la même heure : les mesures se comparent d’un jour à l’autre, et vous voyez à quelle vitesse votre huile se dégrade selon les produits frits. Notre [fiche de suivi des huiles de friture](/modeles/suivi-huiles-friture-restaurant) prévoit une ligne par contrôle et par friteuse."
+        }
+      ]
+    },
+    {
+      "id": "filtrer-renouveler",
+      "titre": "Filtrer et renouveler le bain",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Le guide recommande d’**écumer** l’huile pendant et après le service, et de la **filtrer régulièrement** pour retirer les débris qui carbonisent. Son exemple de procédure ajoute quelques gestes :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "n’allumez pas la friteuse plus d’une heure avant le service ;",
+            "complétez le niveau sans dépasser le repère maximal ;",
+            "après le service, éteignez et laissez refroidir avant de filtrer ;",
+            "après le nettoyage, laissez sécher la cuve, remettez l’huile et couvrez."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Quand le test dépasse le seuil, ou que l’huile montre des signes d’altération, le bain est arrêté et éliminé, et la cuve entièrement nettoyée avant d’être remplie. Notez chaque changement : c’est la preuve que le suivi fonctionne."
+        },
+        {
+          "type": "p",
+          "texte": "L’huile usagée est un déchet à trier. Stockez-la dans des bidons prévus à cet effet et faites-la enlever par un collecteur spécialisé, dont vous gardez les bons d’enlèvement. Une entreprise qui produit ou détient au moins **60 litres** d’huiles alimentaires par an les trie à part ; en dessous, elles sont triées avec les biodéchets."
+        },
+        {
+          "type": "p",
+          "texte": "Pensez aussi aux allergènes : le guide demande d’empêcher les contaminations croisées au poste de friture. Un bain partagé avec des produits panés peut transmettre du gluten à tout ce qui y cuit ensuite."
+        }
+      ]
+    },
+    {
+      "id": "acrylamide",
+      "titre": "Frites et acrylamide : la température et la couleur",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "L’acrylamide se forme dans les aliments riches en amidon et en asparagine, comme la pomme de terre, cuits au-delà de 120 °C. Selon l’Anses, les pommes de terre frites ou sautées sont l’aliment qui contribue le plus à l’exposition. Le règlement européen (UE) 2017/2158, appliqué depuis le 11 avril 2018, impose aux exploitants des mesures pour en limiter la teneur."
+        },
+        {
+          "type": "p",
+          "texte": "Pour les frites, le guide de bonnes pratiques traduit ces mesures en gestes :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "cuire à **175 °C au plus** et contrôler la couleur : une frite claire plutôt que brune ;",
+            "suivre le couple temps et température indiqué par le fournisseur ;",
+            "éliminer les fines, ces tout petits morceaux de frites ;",
+            "veiller à la qualité de l’huile ;",
+            "afficher un guide de couleur au poste et former l’équipe à s’en servir."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Si vous êtes franchisé d’un réseau approvisionné de façon centralisée, le règlement prévoit des mesures supplémentaires : demandez à votre enseigne celles qui s’appliquent à vos produits."
+        }
+      ]
+    },
+    {
+      "id": "securite-equipe",
+      "titre": "La friteuse, un poste à risque pour l’équipe",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Huile chaude, projections, risque d’incendie : l’INRS recommande notamment de :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "ne jamais laisser une friteuse en marche sans surveillance ;",
+            "bien égoutter les aliments avant de les plonger, pour éviter les projections d’huile bouillante ;",
+            "attendre que l’huile soit redescendue à **40 °C** avant toute manipulation, et ne jamais ajouter d’eau dans de l’huile chaude ;",
+            "privilégier une filtration automatisée, former et désigner la personne qui filtre, et lui fournir gants, tablier et lunettes ;",
+            "prévoir un couvercle ou une couverture ignifugée pour étouffer un début d’incendie, et des extincteurs adaptés aux feux de classe B ou F."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Ces risques ont leur place dans votre [document unique](/guides/document-unique-duerp-restaurant) et dans la formation à la sécurité de chaque nouvel arrivant. Voyez aussi [comment prévenir coupures, brûlures et chutes](/blog/prevenir-accidents-cuisine-coupures-brulures)."
+        },
+        {
+          "type": "p",
+          "texte": "Nous formons les équipes de restauration rapide dans leur établissement. Une prise en charge par votre OPCO est possible, sous réserve de son accord. Pour recevoir un programme ou un devis, [contactez-nous](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Quand faut-il changer l’huile de friture ?",
+      "r": "Dès que sa teneur en composés polaires dépasse 25 %, seuil au-delà duquel elle est réputée impropre à la consommation humaine, ou dès qu’elle montre des signes d’altération : couleur brune, mousse, odeur ou goût désagréable."
+    },
+    {
+      "q": "Un contrôle visuel de l’huile suffit-il ?",
+      "r": "Non. Le guide de bonnes pratiques d’hygiène de la restauration rapide demande un test rapide, comme une bandelette colorimétrique, à une fréquence fixée par l’établissement, et l’enregistrement de chaque contrôle."
+    },
+    {
+      "q": "À quelle température régler la friteuse ?",
+      "r": "Le guide de bonnes pratiques recommande de chauffer l’huile à 175 °C sans dépasser cette valeur, ce qui limite aussi l’acrylamide dans les frites. L’INRS demande de ne jamais dépasser 180 °C."
+    },
+    {
+      "q": "Que faire de l’huile de friture usagée ?",
+      "r": "La stocker dans des bidons prévus à cet effet et la faire enlever par un collecteur spécialisé. À partir de 60 litres par an, elle est triée à part ; en dessous, avec les biodéchets."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Décret n° 2008-184 du 26 février 2008, article 8 : huiles de friture (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000018191070"
+    },
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide, 2024 (PDF)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "INRS : La restauration rapide, aide au repérage des risques (ED 933)",
+      "url": "https://www.inrs.fr/dam/inrs/CataloguePapier/ED/TI-ED-933.pdf"
+    },
+    {
+      "libelle": "Anses : l’acrylamide dans les aliments",
+      "url": "https://www.anses.fr/fr/article/lacrylamide-aliments"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : tri à la source des déchets de l’entreprise",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F37782"
+    }
+  ],
+  "formations": "friture|hygi[eè]ne|haccp|ma[iî]trise sanitaire|pr[eé]vention des risques",
+  "guides": [
+    "plan-de-maitrise-sanitaire-pms-restaurant",
+    "document-unique-duerp-restaurant"
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "slug": "sandwicherie-snacking-hygiene",
+  "titre": "Sandwicherie et snacking : les points de vigilance en hygiène",
+  "titreCourt": "Sandwicherie : les points de vigilance",
+  "description": "Crudités, sauces maison aux œufs crus, assemblage, durée de vie, étiquetage et vitrine réfrigérée : les points d’hygiène à tenir en sandwicherie.",
+  "chapeau": "Un sandwich ne repasse pas par la cuisson : ce qui le contamine pendant sa préparation arrive tel quel chez le client. Crudités, sauces, assemblage, étiquettes et vitrine ont chacun leur règle. Voici les points qui comptent le plus.",
+  "categorie": "Restauration rapide",
+  "publieLe": "2027-02-09",
+  "majLe": "2027-02-09",
+  "lecture": 5,
+  "image": "/site/metiers/cuisine.webp",
+  "imageAlt": "Cuisinier en veste blanche et tablier tenant une poêle flambée sur un feu au gaz, sous les hottes d’une cuisine professionnelle",
+  "aRetenir": [
+    "Les crudités se lavent, et parfois se décontaminent, à l’écart des préparations froides, puis se rincent à l’eau potable.",
+    "L’Anses recommande de consommer une préparation à base d’œufs crus sans délai, ou de la garder au froid et de la consommer dans les 24 heures.",
+    "Le guide de bonnes pratiques recommande d’assembler en 30 minutes au plus, puis de placer aussitôt le produit au froid.",
+    "Chaque produit entamé ou préparé porte une étiquette avec sa date limite d’utilisation."
+  ],
+  "sections": [
+    {
+      "id": "crudites",
+      "titre": "Crudités : laver, et parfois décontaminer",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Les végétaux bruts font partie des produits les plus sensibles qui entrent en zone de préparation, surtout ceux livrés en vrac. Le guide de bonnes pratiques d’hygiène de la restauration rapide, validé officiellement, demande de les **prétraiter** avant usage, selon leur nature et votre analyse des dangers :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "un **lavage à l’eau potable** peut suffire quand leur contamination de départ est faible et que vous n’avez pas constaté de problème ;",
+            "une **décontamination**, avec un produit autorisé et à la dose prévue, se fait avant l’épluchage et est toujours suivie d’un **rinçage abondant à l’eau potable** ;",
+            "le lavage se fait à l’écart des préparations froides, ou à un autre moment, et les légumes sont égouttés avant usage."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les légumes vendus prêts à l’emploi, dits de quatrième gamme, ne sont pas concernés par ce prétraitement : respectez leur date limite et leur température de conservation."
+        }
+      ]
+    },
+    {
+      "id": "sauces-oeufs-crus",
+      "titre": "Sauces maison : attention aux œufs crus",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Selon l’Anses, les œufs et les aliments à base d’œufs crus, comme la mayonnaise, sont à l’origine de près de la moitié des toxi-infections alimentaires collectives dues aux salmonelles. Sa recommandation : consommer ces préparations **sans délai** après leur fabrication, ou les garder au froid et les consommer **dans les 24 heures**."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "préparez de petites quantités, au plus près du service ;",
+            "étiquetez chaque bac avec la date et l’heure de fabrication ;",
+            "jetez ce qui reste au-delà du délai fixé, sans exception ;",
+            "pour les sauces froides, envisagez des ovoproduits pasteurisés à la place des œufs coquille."
+          ]
+        },
+        {
+          "type": "encadre",
+          "titre": "Les ingrédients à surveiller en priorité",
+          "texte": "Le guide de bonnes pratiques prévoit, sous conditions strictes, des durées de vie particulières pour les sandwiches en vitrine. Il en exclut ceux qui contiennent de l’œuf coquille, de la mayonnaise ou une sauce élaborée sur place, de la viande ou du poisson crus, ou du fromage au lait cru.",
+          "ton": "info"
+        }
+      ]
+    },
+    {
+      "id": "assemblage",
+      "titre": "L’assemblage : vite, puis au froid",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Un sandwich, un wrap ou une salade composée passent par de nombreuses manipulations, sans cuisson derrière. Le guide recommande :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "d’assembler le plus vite possible, en **30 minutes au plus** à température ambiante ;",
+            "de sortir les ingrédients au fur et à mesure, ou de travailler sur une table à garnitures réfrigérée ;",
+            "de ne pas utiliser les mêmes ustensiles pour les produits crus et les produits cuits ;",
+            "de laisser refroidir le pain cuit au moins 30 minutes avant de le garnir ;",
+            "de protéger chaque produit fini et de le placer **aussitôt au froid, à 4 °C au plus**, jusqu’à la vente."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Les mains touchent chaque ingrédient : lavage avant de commencer et entre deux tâches, gants changés aussi souvent que nécessaire. Revoyez au besoin [la routine du lavage des mains](/blog/hygiene-des-mains-cuisine)."
+        }
+      ]
+    },
+    {
+      "id": "duree-de-vie-etiquetage",
+      "titre": "Durée de vie et étiquetage interne",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "Une matière première entamée ou décongelée prend une **DLC secondaire** : elle suit les préconisations du fournisseur, ne dépasse jamais la date limite d’origine du produit et reste sous votre responsabilité. Pour vos préparations, la durée de vie est définie par l’établissement, par le service qualité de l’enseigne ou d’après les recommandations du fournisseur."
+        },
+        {
+          "type": "p",
+          "texte": "Faute d’étude de durée de vie, un repère existe : en restauration collective, une préparation élaborée à l’avance se consomme au plus tard le troisième jour après sa fabrication. Cette règle ne s’impose pas à un restaurant commercial, mais elle donne un ordre de grandeur prudent."
+        },
+        {
+          "type": "liste",
+          "items": [
+            "chaque bac, sauce ou garniture porte son nom, sa date de préparation ou d’ouverture et sa date limite d’utilisation ;",
+            "un contenant sans étiquette est jeté ;",
+            "les dates limites sont vérifiées chaque jour, et ce contrôle est noté ;",
+            "les bons de livraison et les étiquettes d’origine sont conservés pour la traçabilité."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Notre [fiche de traçabilité et ses étiquettes à découper](/modeles/fiche-tracabilite-etiquettes-restaurant) est prête à imprimer."
+        }
+      ]
+    },
+    {
+      "id": "vitrine-refrigeree",
+      "titre": "La vitrine réfrigérée, dernier maillon",
+      "blocs": [
+        {
+          "type": "p",
+          "texte": "La vitrine n’est ni une chambre froide ni un appareil de refroidissement. Le guide demande :"
+        },
+        {
+          "type": "liste",
+          "items": [
+            "une température de consigne réglée à **4 °C** et vérifiée chaque jour ;",
+            "des sorties d’air froid dégagées : les sandwiches ne s’entassent pas ;",
+            "des portes ouvertes le moins possible ;",
+            "aucun produit chaud dans une vitrine réfrigérée ;",
+            "une vitrine nettoyée et désinfectée avant d’y placer les produits."
+          ]
+        },
+        {
+          "type": "p",
+          "texte": "Au service, les sandwiches se prennent avec des pinces ou des gants à usage unique, pas à mains nues. Pour ceux qui partent à emporter, le guide conseille d’indiquer au client une « durée à ne pas dépasser avant consommation », plus claire qu’une formule vague."
+        },
+        {
+          "type": "p",
+          "texte": "Un produit emballé d’avance pour être vendu tout de suite porte l’information sur les allergènes sur son emballage ou juste à côté, sans doute possible sur le produit concerné. Pour les commandes emportées ou livrées, voyez aussi [les règles d’hygiène de la vente à emporter](/blog/vente-a-emporter-livraison-hygiene)."
+        },
+        {
+          "type": "p",
+          "texte": "Dans un établissement de restauration rapide, au moins une personne doit avoir suivi la formation à l’hygiène alimentaire : voyez [qui doit la suivre](/guides/formation-hygiene-alimentaire-restauration-rapide). Nous formons les équipes de restauration rapide dans leur établissement. Pour recevoir un programme ou un devis, [contactez-nous](/contact)."
+        }
+      ]
+    }
+  ],
+  "faq": [
+    {
+      "q": "Combien de temps garder une mayonnaise maison ?",
+      "r": "L’Anses recommande de consommer les préparations à base d’œufs crus sans délai après leur préparation, ou de les garder au froid pour les consommer dans les 24 heures."
+    },
+    {
+      "q": "À quelle température régler une vitrine à sandwiches ?",
+      "r": "Le guide de bonnes pratiques d’hygiène de la restauration rapide demande une température de consigne de 4 °C, vérifiée chaque jour."
+    },
+    {
+      "q": "Faut-il laver les crudités avec un produit désinfectant ?",
+      "r": "Pas toujours. Un lavage à l’eau potable peut suffire si leur contamination de départ est faible. Une décontamination se fait avec un produit autorisé, avant l’épluchage, et elle est toujours suivie d’un rinçage abondant à l’eau potable."
+    }
+  ],
+  "sources": [
+    {
+      "libelle": "Ministère de l’Agriculture : guide de bonnes pratiques d’hygiène de la restauration rapide, 2024 (PDF)",
+      "url": "https://agriculture.gouv.fr/telecharger/144282"
+    },
+    {
+      "libelle": "Anses : qu’est-ce que la salmonellose et comment s’en prémunir ?",
+      "url": "https://www.anses.fr/fr/content/quest-ce-que-la-salmonellose-et-comment-sen-premunir"
+    },
+    {
+      "libelle": "Arrêté du 21 décembre 2009, annexe IV : restauration collective (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000041864953"
+    },
+    {
+      "libelle": "Code de la consommation, article R412-13 : allergènes des denrées non préemballées (Légifrance)",
+      "url": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032807852"
+    },
+    {
+      "libelle": "Service-Public Entreprendre : Règles d’hygiène dans la restauration et les commerces alimentaires",
+      "url": "https://entreprendre.service-public.gouv.fr/vosdroits/F32189"
+    }
+  ],
+  "formations": "hygi[eè]ne|haccp|tra[cç]abilit[eé]|cha[iî]ne du froid|ma[iî]trise sanitaire",
+  "guides": [
+    "formation-hygiene-alimentaire-restauration-rapide"
+  ]
+}
