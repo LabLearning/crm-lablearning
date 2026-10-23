@@ -84,7 +84,7 @@ export async function construirePreuveSignatureConvention(
 
   const [preuves, { data: orgRaw }, { data: notifs }, { data: mails }, { data: audits }, evenementsRes, activitesRes, avenantsRes, equipeRes, journalDebutRes, activitesSessionRes] = await Promise.all([
     supabase.from('conventions')
-      .select('signature_client_signed_at, signature_document_path, signature_document_sha256, signature_consentement, signature_token')
+      .select('signature_client_signed_at, signature_document_path, signature_document_sha256, signature_consentement, signature_token, sent_at')
       .eq('id', c.id).maybeSingle(),
     supabase.from('organizations').select('*').eq('id', orgId).single(),
     supabase.from('notifications').select('created_at')
@@ -511,8 +511,17 @@ export async function construirePreuveSignatureConvention(
   const echoue: any = derniere(emailsCycle.filter((m: any) => m.status !== 'sent'))
   const tParti = parti ? instant(parti) : null
   const tEchec = echoue ? instant(echoue) : null
+  // Lien généré dans le CRM (bouton « Lien », ou juste avant l'e-mail) : le
+  // générer vaut envoi, même transmis hors du CRM (WhatsApp, en main propre).
+  // sent_at date le premier lien du cycle quand le journal ne l'a pas.
+  const liensCycle = [
+    ...(audits || []).filter((a: any) => a.action === 'generate_signature_link').map((a: any) => iso(a.created_at)),
+    iso(p.sent_at),
+  ].filter((t): t is string => dansCycle(t)).sort()
+  const tLien = derniere(liensCycle)
   const envoi: PreuveSignatureConvention['parcours']['envoi'] = {
     email: tParti ? { le: tParti, pdfJoint: /signature requise/i.test(parti.subject || '') } : null,
+    lien: tLien ? { le: tLien } : null,
     echec: tEchec && (!tParti || tEchec > tParti) ? { le: tEchec, statut: String(echoue.status || 'inconnu') } : null,
   }
   const adressesCycle = Array.from(new Set(emailsCycle.filter((m: any) => m.status === 'sent').map((m: any) => String(m.to_email || '').toLowerCase()).filter(Boolean))) as string[]

@@ -95,6 +95,8 @@ export interface PreuveSignatureConvention {
     envoi: {
       /** Dernier e-mail de demande parti avant la signature */
       email: { le: string; pdfJoint: boolean } | null
+      /** Dernière génération du lien avant la signature : générer le lien vaut envoi */
+      lien: { le: string } | null
       /** E-mail de demande resté non parti, postérieur au dernier envoi */
       echec: { le: string; statut: string } | null
     }
@@ -199,8 +201,13 @@ export function CertificatSignatureConventionPDF({ preuve, org }: { preuve: Preu
     [org?.phone || org?.telephone, org?.email_contact || org?.email].filter(Boolean).join(' - ') || null,
   ].filter(Boolean).join('\n')
   const niveau = parcours.canal === 'portail' ? 'Espace client' : parcours.envoi.email ? 'E-mail (lien unique)' : 'Lien unique'
+  // Date d'envoi : le dernier e-mail de demande parti avant la signature ; à
+  // défaut, la génération du lien transmis hors du CRM, qui vaut envoi
+  // (décision de Brahim du 23/10/2026). Un e-mail garde sa date : les
+  // certificats déjà remis ne changent pas.
+  const envoiLe = parcours.envoi.email?.le || parcours.envoi.lien?.le || null
   const dateEnvoi = parcours.canal === 'portail' ? 'Espace client, sans e-mail'
-    : parcours.envoi.email ? dateLongue(parcours.envoi.email.le) : 'Aucun e-mail enregistré'
+    : envoiLe ? dateLongue(envoiLe) : 'Aucun envoi enregistré'
   const dateSignature = signature.horodatage ? dateLongue(signature.horodatage) : 'Non enregistrée'
 
   return (

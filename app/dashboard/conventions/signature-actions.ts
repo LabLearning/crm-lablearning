@@ -15,7 +15,7 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
 
   const { data: conv } = await supabase
     .from('conventions')
-    .select('id, organization_id, signature_token, status, session_id, participants_snapshot')
+    .select('id, organization_id, signature_token, status, session_id, participants_snapshot, sent_at')
     .eq('id', conventionId)
     .eq('organization_id', session.organization.id)
     .single()
@@ -60,6 +60,9 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
   // conventions renvoyées trois fois sur un jeton mort du 3 août).
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 30)
+  // Générer le lien vaut envoi, même s'il part hors du CRM (WhatsApp, en main
+  // propre) : une convention sans date d'envoi prend celle de ce lien
+  const envoiLe = conv.status === 'brouillon' || !conv.sent_at ? new Date().toISOString() : undefined
   let token = conv.signature_token
   if (!token) {
     token = createHash('sha256').update(randomBytes(32)).digest('hex')
@@ -69,13 +72,13 @@ export async function generateSignatureLinkAction(conventionId: string): Promise
         signature_token: token,
         signature_token_expires_at: expiresAt.toISOString(),
         status: conv.status === 'brouillon' ? 'envoyee' : conv.status,
-        sent_at: conv.status === 'brouillon' ? new Date().toISOString() : undefined,
+        sent_at: envoiLe,
       })
       .eq('id', conventionId)
   } else {
     await supabase
       .from('conventions')
-      .update({ signature_token_expires_at: expiresAt.toISOString() })
+      .update({ signature_token_expires_at: expiresAt.toISOString(), sent_at: conv.sent_at ? undefined : envoiLe })
       .eq('id', conventionId)
   }
 
