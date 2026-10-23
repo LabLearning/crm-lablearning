@@ -341,7 +341,7 @@ export default async function SiteHome() {
         </div>
         <div className="space-y-3">
           {[
-            { q: 'Combien coûte une formation, et qui la finance ?', r: "Dans la plupart des cas, votre OPCO prend en charge tout ou partie de la formation : nos tarifs sont calés sur les barèmes de votre branche, le reste à charge est souvent nul. On vous accompagne dans le dossier." },
+            { q: 'Combien coûte une formation, et qui la finance ?', r: "Selon votre branche, votre OPCO peut prendre en charge tout ou partie de la formation, sous réserve de son accord et de son budget de l'année. Nos tarifs sont calés sur les barèmes de votre branche, et on vous accompagne dans le dossier." },
             { q: 'La formation a-t-elle lieu dans mon établissement ?', r: "Oui, c'est notre spécialité : le formateur vient chez vous, forme vos équipes sur leur poste, avec votre matériel, sans fermer et sur vos horaires." },
             { q: 'Sous quel délai peut-on démarrer ?', r: "Une session se planifie généralement sous 2 à 4 semaines après validation du devis et de la prise en charge." },
             { q: 'Êtes-vous certifiés Qualiopi ?', r: "Oui : certification Qualiopi au titre des actions de formation, condition du financement par les OPCO. Nous sommes aussi inscrits sur la liste DRAAF pour l'hygiène alimentaire." },

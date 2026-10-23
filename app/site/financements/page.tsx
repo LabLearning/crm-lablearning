@@ -32,8 +32,8 @@ const OPCO: Dispositif = {
   t: 'Plan de développement des compétences',
   sous: 'Votre OPCO de branche',
   pourQui: 'Salariés en poste',
-  d: 'Votre opérateur de compétences finance tout ou partie de la formation de vos salariés : AKTO, OPCO EP, L’Opcommerce et les autres OPCO de branche. Nos tarifs sont calés sur leurs barèmes, le reste à charge est souvent nul.',
-  points: ['AKTO, OPCO EP, L’Opcommerce et d’autres', 'Formations pendant l’exploitation', 'Reste à charge souvent nul'],
+  d: 'Votre opérateur de compétences peut financer tout ou partie de la formation de vos salariés, sous réserve de son accord et de son budget de l’année : AKTO, OPCO EP, L’Opcommerce et les autres OPCO de branche. Nos tarifs sont calés sur leurs barèmes.',
+  points: ['AKTO, OPCO EP, L’Opcommerce et d’autres', 'Formations pendant l’exploitation', 'Tarifs calés sur les barèmes des OPCO'],
   logos: [
     { src: '/site/logos/financeurs/akto.png', alt: 'AKTO' },
     { src: '/site/logos/financeurs/opco-ep.svg', alt: 'OPCO EP' },

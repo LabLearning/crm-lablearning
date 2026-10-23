@@ -7,7 +7,7 @@
   "categorie": "Financement",
   "publie": true,
   "publieLe": "2026-10-06",
-  "majLe": "2026-10-06",
+  "majLe": "2026-10-23",
   "lecture": 5,
   "image": "/site/photos/guides/financer-formation-restauration-rapide-opco.webp",
   "imageAlt": "Gérant de restaurant préparant un dossier de formation sur son ordinateur avant l’ouverture",
@@ -36,6 +36,12 @@
       "id": "budget",
       "titre": "De quel budget disposez-vous en 2026 ?",
       "blocs": [
+        {
+          "type": "encadre",
+          "titre": "Enveloppe 2026 de la restauration rapide engagée",
+          "texte": "Au 23 octobre 2026, AKTO indique que l’enveloppe budgétaire 2026 du plan de développement des compétences de la restauration rapide est intégralement engagée et demande de ne plus déposer de nouveaux dossiers pour 2026 : les dossiers qui n’ont pas pu être engagés ne seront pas pris en charge. Pour une formation à venir, vérifiez les règles de l’année suivante sur la page officielle d’AKTO.",
+          "ton": "attention"
+        },
         {
           "type": "p",
           "texte": "Les entreprises de **moins de 50 salariés** bénéficient de la prise en charge des formations de leurs salariés au titre du plan de développement des compétences. Les règles publiées par AKTO pour la restauration rapide, applicables depuis le 15 janvier 2026, prévoient :"
@@ -104,7 +110,7 @@
         },
         {
           "type": "p",
-          "texte": "La première solution est la plus simple pour la trésorerie d’un restaurant. Nos tarifs sont calés sur les barèmes de la branche, si bien que le reste à charge est souvent nul."
+          "texte": "La première solution est la plus simple pour la trésorerie d’un restaurant. Nos tarifs sont calés sur les barèmes de la branche ; la part prise en charge dépend de l’accord d’AKTO et de son budget de l’année."
         }
       ]
     },

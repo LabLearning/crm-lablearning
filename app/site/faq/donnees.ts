@@ -3,7 +3,7 @@
 export const FAQ: { q: string; r: string }[] = [
   {
     q: 'Combien coûte une formation, et qui la finance ?',
-    r: "Dans la plupart des cas, la formation est prise en charge en tout ou partie par votre OPCO (AKTO, OPCO EP, OPCOmmerce selon votre branche) au titre du plan de développement des compétences. Nos tarifs sont calés sur les barèmes de prise en charge de votre branche : concrètement, le reste à charge est souvent nul ou très faible. On vous accompagne dans votre demande de prise en charge, de A à Z.",
+    r: "La formation peut être prise en charge en tout ou partie par votre OPCO (AKTO, OPCO EP, OPCOmmerce selon votre branche) au titre du plan de développement des compétences, sous réserve de son accord et de son budget de l'année. Nos tarifs sont calés sur les barèmes de prise en charge de votre branche. On vous accompagne dans votre demande de prise en charge, de A à Z.",
   },
   {
     q: "La formation a-t-elle lieu dans mon établissement ?",
