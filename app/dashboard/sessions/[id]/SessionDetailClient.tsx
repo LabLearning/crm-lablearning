@@ -340,8 +340,10 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
   const pointagesByDate: Record<string, any> = {}
   pointages.forEach(p => { pointagesByDate[p.date] = p })
 
+  // Heure de Paris : sans fuseau, le serveur (UTC) et le navigateur écrivaient
+  // deux heures différentes et React devait redessiner toute la fiche
   function formatHeure(iso: string) {
-    return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
   }
 
   function handleStatusChange(newStatus: string) {
