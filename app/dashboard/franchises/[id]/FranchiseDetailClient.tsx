@@ -399,7 +399,7 @@ function CoutFormateurCell({ ligne }: { ligne: LigneCommissionSession }) {
           {frais > 0 && <span className="text-[11px] leading-tight tabular-nums text-surface-500">+ {fmtEuro(frais)} de frais</span>}
         </>
       ) : net && ligne.cout_source !== 'fige' ? (
-        <Link href={`/dashboard/sessions/${ligne.session_id}?tab=session`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:underline"
+        <Link href={`/dashboard/sessions/${ligne.session_id}?tab=formateur`} className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:underline"
           title="Aucun coût formateur trouvé : renseignez la rémunération du formateur sur la session, la commission se recalcule seule">
           <AlertTriangle className="h-3 w-3" /> coût à renseigner
         </Link>

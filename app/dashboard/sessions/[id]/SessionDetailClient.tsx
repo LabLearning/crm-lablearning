@@ -13,7 +13,7 @@ import {
   GraduationCap, Mail, Phone, Building2, Camera, PenTool, Download,
   Star, ListChecks, FileSignature, Award, Euro, BookOpen, ClipboardList, FolderCheck, Mails, Route,
   QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2, Pencil, Sparkles, ReceiptEuro, Printer,
-  TrendingUp, Lock,
+  TrendingUp, Lock, UserCog,
   ShieldCheck as PackHygieneIcon, Landmark, Briefcase,
 } from '@/components/ui/icons'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
@@ -37,6 +37,7 @@ import { FacturationOpco } from './FacturationOpco'
 import { OPCO_COMPTE_STATUS_STYLES, libelleCompteOpco, type OpcoCompteStatus } from '@/lib/opco-compte'
 import { SessionAgefice } from './SessionAgefice'
 import { SessionRentabilite } from './SessionRentabilite'
+import { SessionFormateur } from './SessionFormateur'
 import { SaisieQuestionnaire } from '@/components/qcm/SaisieQuestionnaire'
 import { SaisieRapide } from '@/components/qcm/SaisieRapide'
 import { DetailReponse } from '@/components/qcm/DetailReponse'
@@ -72,6 +73,15 @@ interface Props {
   qcmBank?: any[]
   conventions?: any[]
   contratFormateur?: any
+  /** Onglet Formateur : fiche complète du formateur, contrats de la session (annulés compris), factures reçues */
+  formateurFiche?: any
+  contratsSession?: any[]
+  facturesFormateur?: any[]
+  missionProposeePar?: string | null
+  /** Changer ou affecter le formateur (droit de modifier les sessions) */
+  peutGererFormateur?: boolean
+  /** Le compte peut ouvrir les fiches formateur (module Formateurs) */
+  peutVoirFicheFormateur?: boolean
   formationsRef?: any[]
   formateursRef?: any[]
   clientsRef?: any[]
@@ -135,7 +145,7 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
     « facturation » n'y montre que la rentabilité et les frais annexes. */
 const ONGLETS_POEI: string[] = ['presences', 'apprenants', 'qcm', 'rapport', 'facturation']
 
-export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, poeiLien = null, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null, auditsSession = null }: Props) {
+export function SessionDetailClient({ session, inscriptions, emargements, feuillesEmargement = [], pointages, rapport, evaluations = [], qcmSessions = [], qcmReponses = [], qcmBank = [], conventions = [], contratFormateur = null, formateurFiche = null, contratsSession = [], facturesFormateur = [], missionProposeePar = null, peutGererFormateur = false, peutVoirFicheFormateur = false, formationsRef = [], formateursRef = [], clientsRef = [], clientContacts = [], emailLogs = [], docEmailLogs = [], opcos = [], factureOpco = null, accordPec = null, apprenantsRef = [], sessionFormationIds = [], evaluationsAppr = [], supports = [], positionnement = [], retoursClient = [], isFormateur, userRole, isPoei, poeiLien = null, recueilTemplates = [], recueil = null, formationIntitule = '', nbEvalAcquis = 0, derouleValidations = [], derouleTableManquante = false, socleEtat = [], estHygiene = false, etatsPieces = [], piecesTableManquante = false, dossiersAgefice = [], clientsApprenants = [], rentabilite = null, auditsSession = null }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -177,7 +187,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     } else toast('error', (r as any).error || 'Erreur')
   }
   const estAgefice = dossiersAgefice.length > 0 || (session as any).client?.financeur_type === 'agefice'
-  const [tab, setTab] = useState<'session' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>(poeiLien ? 'presences' : 'session')
+  const [tab, setTab] = useState<'session' | 'formateur' | 'presences' | 'apprenants' | 'pointages' | 'rapport' | 'evaluations' | 'qcm' | 'conventions' | 'docs' | 'contenu' | 'recueil' | 'deroule' | 'dossier' | 'mails' | 'facturation' | 'pack'>(poeiLien ? 'presences' : 'session')
   // Arrivée ciblée (ex. ?tab=facturation depuis la vue AGEFICE) : lue après montage,
   // jamais dans l'état initial, pour que le rendu serveur et le premier rendu client
   // soient identiques (sinon erreur d'hydratation sur la fiche session).
@@ -520,6 +530,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
       <div ref={tabsRef} role="tablist" aria-label="Sections de la session" className="relative flex gap-1 bg-surface-100 rounded-lg p-0.5 overflow-x-auto max-md:max-md:[scrollbar-width:none] md:[scrollbar-width:thin] md:[scrollbar-width:thin] max-md:max-md:[&::-webkit-scrollbar]:hidden md:[&::-webkit-scrollbar]:h-1.5 md:[&::-webkit-scrollbar-thumb]:rounded-full md:[&::-webkit-scrollbar-thumb]:bg-surface-300">
         {[
           { id: 'session' as const, label: 'Session', icon: Calendar },
+          ...(!isFormateur ? [{ id: 'formateur' as const, label: formateur ? 'Formateur' : 'Formateur (à affecter)', icon: GraduationCap }] : []),
           ...(!isFormateur ? [{ id: 'dossier' as const, label: derouleIncomplet ? `Conformité (${derouleIncomplet} à faire)` : 'Conformité', icon: FolderCheck }] : []),
           { id: 'apprenants' as const, label: `Apprenants (${inscriptions.length})`, icon: Users },
           ...(!isFormateur ? [{ id: 'recueil' as const, label: 'Recueil du besoin', icon: ClipboardList }] : []),
@@ -669,6 +680,27 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                   <Download className="h-3.5 w-3.5" /> Contrat prestation
                 </a>
               )}
+              {!isFormateur && !poeiLien && (
+                <button type="button" onClick={() => setTab('formateur')}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg border border-surface-200 text-surface-700 text-[13px] sm:text-xs font-medium hover:border-brand-300 hover:bg-brand-50/40 transition-colors shrink-0 w-full sm:w-auto">
+                  <UserCog className="h-3.5 w-3.5" /> Gérer le formateur
+                </button>
+              )}
+            </div>
+          )}
+          {/* Pas de formateur : on l'affecte depuis l'onglet Formateur */}
+          {!formateur && !isFormateur && !poeiLien && (
+            <div className="card p-4 flex flex-wrap items-center gap-3 sm:gap-4 border-dashed">
+              <div className="h-10 w-10 rounded-xl bg-surface-100 flex items-center justify-center shrink-0">
+                <GraduationCap className="h-5 w-5 text-surface-400" />
+              </div>
+              <div className="flex-1 min-w-0 text-sm text-surface-600">Aucun formateur sur cette session.</div>
+              {peutGererFormateur && (
+                <button type="button" onClick={() => setTab('formateur')}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[40px] sm:min-h-0 rounded-xl bg-brand-500 text-white text-sm font-medium hover:bg-brand-600 transition-colors shrink-0 w-full sm:w-auto">
+                  <UserCog className="h-4 w-4" /> Affecter un formateur
+                </button>
+              )}
             </div>
           )}
 
@@ -749,6 +781,29 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
             </div>
           </div>
         </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════
+          ONGLET FORMATEUR — fiche, rémunération, contrat, changement
+          ═══════════════════════════════════════════════ */}
+      {tab === 'formateur' && !isFormateur && !poeiLien && (
+        <SessionFormateur
+          session={session}
+          formateur={formateurFiche || formateur || null}
+          formateurs={formateursRef as any[]}
+          contrat={contratFormateur || null}
+          contrats={contratsSession as any[]}
+          factures={facturesFormateur as any[]}
+          docEmailLogs={docEmailLogs as any[]}
+          missionProposeePar={missionProposeePar}
+          nbJours={Array.isArray((session as any).horaires_jours) && (session as any).horaires_jours.length ? (session as any).horaires_jours.length : sessionDays.length}
+          peutGerer={peutGererFormateur}
+          peutVoirFiche={peutVoirFicheFormateur}
+          peutFixerRemuneration={['super_admin', 'gestionnaire', 'directeur_commercial'].includes(userRole)}
+          formationNom={(session as any).formation?.intitule || session.intitule || null}
+          dates={`du ${new Date(session.date_debut).toLocaleDateString('fr-FR')} au ${new Date(session.date_fin).toLocaleDateString('fr-FR')}`}
+          onVoirRentabilite={rentabilite ? () => setTab('facturation') : undefined}
+        />
       )}
 
       {/* ═══════════════════════════════════════════════

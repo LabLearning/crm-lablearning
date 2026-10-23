@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import { hasPermission } from '@/lib/permissions'
+import { peutGererSessions } from '@/lib/sessions-acces'
 import type { ActionResult } from '@/lib/types'
 
 /** Rôles externes : jamais de gestion de session, quel que soit le chemin d'appel. */
@@ -446,6 +447,8 @@ export async function sendConventionForSignatureAction(
  */
 export async function sendContratToFormateurAction(sessionId: string): Promise<ActionResult & { data?: { email: string } }> {
   const session = await getSession()
+  // Joignable hors du tableau de bord comme toute action exportée : personnel qui gère les sessions seulement
+  if (!peutGererSessions(session, 'update')) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: sess } = await supabase
@@ -466,10 +469,13 @@ export async function sendContratToFormateurAction(sessionId: string): Promise<A
   // n'existe encore (formateur pas encore passé par l'acceptation), on le crée
   // à la volée : sans ça l'envoi ne faisait qu'expédier un PDF statique et
   // l'état restait « non envoyé ».
+  // Un contrat ne vaut que pour le formateur qu'il désigne : celui d'un
+  // prédécesseur n'est jamais renvoyé (ensureContratFormateur l'annule)
   const { data: contratExistant } = await supabase
     .from('contrats_formateur')
     .select('id, signature_formateur_date')
     .eq('session_id', sessionId)
+    .eq('formateur_id', formateurId)
     .neq('status', 'annule')
     .order('created_at', { ascending: false })
     .limit(1)

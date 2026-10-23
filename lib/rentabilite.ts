@@ -1116,7 +1116,7 @@ export function postesFormateur(u: Unite, d: DonneesRentabilite): { postes: Post
       manque(ctx, `Coût formateur de ${nom}`)
       // Une intervention POEI porte sa rémunération : elle se renseigne sur la fiche POEI, onglet Interventions
       const href = intervention ? `/dashboard/poei/${intervention.poei_id}?onglet=interventions`
-        : sessionLien ? `/dashboard/sessions/${sessionLien.id}?tab=session` : undefined
+        : sessionLien ? `/dashboard/sessions/${sessionLien.id}?tab=formateur` : undefined
       if (href) liens.unshift({ href, label: 'Renseigner la rémunération' })
     }
     if (estPoei && intervention && sessionLien) {
@@ -1448,7 +1448,7 @@ export function calculerRentabilite(u: Unite, d: DonneesRentabilite): Rentabilit
   const postes = [...form.postes]
   if (!postes.length && !sansObjet) {
     const lien = principale
-      ? { href: `/dashboard/sessions/${principale.id}?tab=session`, label: 'Affecter un formateur' }
+      ? { href: `/dashboard/sessions/${principale.id}?tab=formateur`, label: 'Affecter un formateur' }
       : ctx.poei[0] ? { href: `/dashboard/poei/${ctx.poei[0].id}`, label: 'Affecter un formateur' } : undefined
     postes.push({
       cle: 'aucun', ancre: principale ? 's:' + principale.id : '', formateurId: null, montant: null, qualite: 'inconnu',

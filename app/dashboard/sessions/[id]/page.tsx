@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation'
 import { SessionDetailClient } from './SessionDetailClient'
 import { peutVoirMarge } from '@/lib/rentabilite'
 import { rentabiliteSession, MESSAGE_RENTABILITE_INDISPONIBLE } from '@/lib/rentabilite-data'
+import { peutGererSessions } from '@/lib/sessions-acces'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
 
 /** Onglets d'une session POEI ouverts depuis la fiche POEI ou la rentabilité ; tout le reste se gère sur la POEI.
     (« facturation » n'y affiche que la rentabilité et les frais annexes.) */
@@ -179,7 +181,7 @@ export default async function SessionDetailPage({ params, searchParams }: { para
   const [{ data: formationsRef }, { data: formateursRef }, { data: clientsRef }, { data: apprenantsRef }, { data: sessionFormations }] = await Promise.all([
     supabase.from('formations').select('id, intitule, reference, modalite, duree_heures, duree_jours')
       .eq('organization_id', session.organization.id).eq('is_active', true).order('intitule'),
-    supabase.from('formateurs').select('id, prenom, nom, tarif_journalier')
+    supabase.from('formateurs').select('id, prenom, nom, tarif_journalier, zone_intervention, a_verifier')
       .eq('organization_id', session.organization.id).eq('is_active', true).order('nom'),
     supabase.from('clients').select('id, raison_sociale, nom_commercial, sigle, siret, adresse, code_postal, ville')
       .eq('organization_id', session.organization.id).eq('type', 'entreprise').order('raison_sociale'),
@@ -188,16 +190,55 @@ export default async function SessionDetailPage({ params, searchParams }: { para
     supabase.from('session_formations').select('formation_id, ordre').eq('session_id', params.id).order('ordre'),
   ])
 
-  // Contrat de prestation formateur lié à la session (état + signature)
-  const { data: contratFormateur } = await supabase
-    .from('contrats_formateur')
-    .select('id, numero, status, montant_ht, sent_at, signature_token, signature_formateur_date, signature_formateur_nom')
-    .eq('session_id', params.id)
-    // Un contrat annulé (changement de formateur) n'est plus le contrat en vigueur
-    .neq('status', 'annule')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  // Onglet Formateur (personnel seulement, hors POEI) : fiche du formateur,
+  // contrats de la session annulés compris, factures reçues, auteur de la
+  // proposition de mission
+  const voirOngletFormateur = !poeiLien
+    && !(session.user.role === 'formateur' && (sessionData.formateur as any)?.user_id === session.user.id)
+  const orgId = session.organization.id
+  const proposePar = (sessionData as any).mission_proposed_by as string | null
+  const [
+    { data: contratFormateur },
+    { data: contratsSession },
+    { data: facturesFormateurSession },
+    { data: formateurFiche },
+    { data: proposeParUser },
+  ] = await Promise.all([
+    // Contrat de prestation en vigueur (état + signature). Un contrat annulé
+    // (changement de formateur) ne l'est plus, et un contrat ne vaut que pour
+    // le formateur qu'il désigne. Jamais son jeton de signature : il suffit
+    // pour signer à la place du formateur, et l'écran n'en a pas besoin.
+    (() => {
+      let q = supabase
+        .from('contrats_formateur')
+        .select('id, numero, status, montant_ht, sent_at, signature_formateur_date, signature_formateur_nom')
+        .eq('session_id', params.id)
+        .neq('status', 'annule')
+      if (formateurId) q = q.eq('formateur_id', formateurId)
+      return q.order('created_at', { ascending: false }).limit(1).maybeSingle()
+    })(),
+    voirOngletFormateur
+      ? supabase.from('contrats_formateur')
+          .select('id, numero, status, formateur_id, montant_ht, sent_at, signature_formateur_date, created_at, formateur:formateur_id(prenom, nom)')
+          .eq('session_id', params.id).eq('organization_id', orgId)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as any[] }),
+    voirOngletFormateur
+      ? supabase.from('factures_formateur')
+          .select('id, numero, reference_externe, formateur_id, montant_ht, montant_ttc, status, date_emission, date_paiement')
+          .eq('session_id', params.id).eq('organization_id', orgId)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as any[] }),
+    // Colonnes nommées : ni jetons Google ni notes internes ne partent au navigateur
+    voirOngletFormateur && formateurId
+      ? supabase.from('formateurs')
+          .select('id, civilite, prenom, nom, email, telephone, whatsapp, type_contrat, siret, numero_da, taux_tva, tarif_journalier, tarif_horaire, zone_intervention, domaines_expertise, is_active, a_verifier, photo_url')
+          .eq('id', formateurId).eq('organization_id', orgId).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+    voirOngletFormateur && proposePar
+      ? supabase.from('users').select('first_name, last_name').eq('id', proposePar).eq('organization_id', orgId).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+  ])
   // Le bilan transmis prime sur un brouillon, quel que soit son auteur
   const rapports = ((rapportRes as any) || []) as any[]
   // Audits hygiène de l'établissement autour de la session (onglet Bilan)
@@ -425,6 +466,12 @@ export default async function SessionDetailPage({ params, searchParams }: { para
           exemplaire_archive: !!signature_document_path,
         }))}
         contratFormateur={contratFormateur as any}
+        formateurFiche={formateurFiche as any}
+        contratsSession={(contratsSession || []) as any[]}
+        facturesFormateur={(facturesFormateurSession || []) as any[]}
+        missionProposeePar={proposeParUser ? [(proposeParUser as any).first_name, (proposeParUser as any).last_name].filter(Boolean).join(' ') || null : null}
+        peutGererFormateur={peutGererSessions(session, 'update')}
+        peutVoirFicheFormateur={checkDashboardAccess('/dashboard/formateurs', session.user.role as any, session.permissions).allowed}
         formationsRef={(formationsRef || []) as any[]}
         formateursRef={(formateursRef || []) as any[]}
         clientsRef={(clientsRef || []) as any[]}

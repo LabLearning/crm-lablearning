@@ -51,31 +51,36 @@ async function loadContrat(supabase: any, contratId: string) {
  *
  * Un contrat déjà signé est conservé tel quel (pièce contractuelle exécutée),
  * seul son statut passe à « annulé ».
+ *
+ * Renvoie les contrats annulés. Lève une erreur si l'annulation échoue : le
+ * contrat resterait sinon proposé à la signature.
  */
 export async function cancelContratOnFormateurChange(
   supabase: any,
   sessionId: string,
-  ancienFormateurId: string | null,
-): Promise<void> {
-  const { data: contrats } = await supabase
+  _ancienFormateurId: string | null,
+): Promise<{ id: string; numero: string | null; signe: boolean }[]> {
+  const { data: contrats, error: erreurLecture } = await supabase
     .from('contrats_formateur')
-    .select('id, status, signature_formateur_date')
+    .select('id, numero, status, signature_formateur_date')
     .eq('session_id', sessionId)
     .neq('status', 'annule')
-  if (!contrats?.length) return
+  if (erreurLecture) throw new Error(`Contrats de la session illisibles : ${erreurLecture.message}`)
+  if (!contrats?.length) return []
 
-  for (const c of contrats) {
-    await supabase
-      .from('contrats_formateur')
-      .update({
-        status: 'annule',
-        // Le lien de signature doit mourir immédiatement
-        signature_token: null,
-        signature_token_expires_at: null,
-        notes: `Annulé : changement de formateur sur la session${ancienFormateurId ? '' : ''}.`,
-      })
-      .eq('id', c.id)
-  }
+  const { error } = await supabase
+    .from('contrats_formateur')
+    .update({
+      status: 'annule',
+      // Le lien de signature doit mourir immédiatement
+      signature_token: null,
+      signature_token_expires_at: null,
+      notes: 'Annulé : changement de formateur sur la session.',
+    })
+    .in('id', contrats.map((c: any) => c.id))
+  if (error) throw new Error(`Annulation des contrats impossible : ${error.message}`)
+
+  return contrats.map((c: any) => ({ id: c.id, numero: c.numero || null, signe: !!c.signature_formateur_date }))
 }
 
 /**

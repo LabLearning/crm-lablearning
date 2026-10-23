@@ -24,7 +24,7 @@ interface Convention {
 interface Contrat {
   id: string; numero: string | null; status: string | null
   sent_at: string | null; signature_formateur_date: string | null; signature_formateur_nom: string | null
-  montant_ht: number | null; signature_token: string | null
+  montant_ht: number | null
 }
 
 /** Envoi tracé dans email_logs, rattaché à une pièce précise du dossier. */
@@ -53,6 +53,8 @@ interface Props {
   participants?: { id: string; prenom: string | null; nom: string | null; email: string | null; client_id?: string | null }[]
   clientsApprenants?: { id: string; type: string | null; raison_sociale: string | null; nom_commercial: string | null }[]
   conventionsSession?: { id: string; numero: string; client_id: string | null; sent_at: string | null; signature_client_date: string | null; signature_client_signed_at?: string | null; certificat_signature?: boolean; exemplaire_archive?: boolean; participants_snapshot: { apprenant_id?: string }[] | null }[]
+  /** 'contrat' : le seul contrat de prestation du formateur (onglet Formateur) */
+  pieces?: 'tout' | 'contrat'
 }
 
 const INFO_EXEMPLAIRE_ARCHIVE = "Fichier figé à l'instant de la signature, tel quel : c'est son empreinte qui figure sur le certificat. Figé avant le 21/10/2026, il porte encore la date de signature imprimée à l'époque (la veille de la formation pour une signature tardive)."
@@ -140,6 +142,7 @@ export function SessionDocuments(props: Props) {
     sessionId, hasClient, hasFormateur, formateurId, formateurNom, formateurEmail,
     clientNom, clientEmail, formationNom, dates, convention, contrat, docEmailLogs = [],
   } = props
+  const contratSeul = props.pieces === 'contrat'
   const { toast } = useToast()
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -408,11 +411,11 @@ export function SessionDocuments(props: Props) {
     <div className="card overflow-hidden">
       <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
         <FileSignature className="h-4 w-4 text-brand-500" />
-        <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Contractualisation</span>
+        <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">{contratSeul ? 'Contrat de prestation' : 'Contractualisation'}</span>
       </div>
 
       {/* Session inter : une ligne par partie (entreprise → convention, particulier → contrat) */}
-      {props.typeSession === 'inter' && (props.participants || []).length > 0 && (() => {
+      {!contratSeul && props.typeSession === 'inter' && (props.participants || []).length > 0 && (() => {
         const clients = new Map((props.clientsApprenants || []).map((c) => [c.id, c]))
         const convs = props.conventionsSession || []
         // Regroupe : entreprises (clé client_id) / particuliers & non rattachés (individuel)
@@ -549,7 +552,7 @@ export function SessionDocuments(props: Props) {
       })()}
 
       <div className="divide-y divide-surface-100">
-        {props.typeSession !== 'inter' && <DocRow
+        {!contratSeul && props.typeSession !== 'inter' && <DocRow
           icon={<FileSignature className="h-4 w-4 text-brand-600" />}
           titre="Convention de formation"
           sousTitre={clientNom ? `Client : ${clientNom}${convention?.numero ? ` · ${convention.numero}` : ''}` : 'Aucun client rattaché'}
@@ -568,8 +571,12 @@ export function SessionDocuments(props: Props) {
         />}
         <DocRow
           icon={<FileText className="h-4 w-4 text-blue-600" />}
-          titre="Contrat de prestation formateur"
-          sousTitre={formateurNom ? `Formateur : ${formateurNom}${contrat?.numero ? ` · ${contrat.numero}` : ''}` : 'Aucun formateur rattaché'}
+          titre={contratSeul && formateurNom ? `Contrat de ${formateurNom}` : 'Contrat de prestation formateur'}
+          sousTitre={contratSeul
+            ? (contrat
+                ? [contrat.numero, contrat.montant_ht != null ? `${Number(contrat.montant_ht).toLocaleString('fr-FR')} € HT` : null].filter(Boolean).join(' · ') || 'Contrat sans numéro'
+                : 'Pas encore de contrat : il est préparé à l’envoi, au montant de la rémunération')
+            : formateurNom ? `Formateur : ${formateurNom}${contrat?.numero ? ` · ${contrat.numero}` : ''}` : 'Aucun formateur rattaché'}
           etat={contratEtat} date={contratDate}
           onPreview={() => openPreview('contrat')}
           onSend={doSendContrat}

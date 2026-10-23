@@ -4,29 +4,14 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createSessionSchema } from '@/lib/validations/formation'
 import { logAudit } from '@/lib/audit'
-import { getSession, type SessionContext } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 import { refusFormationPoei } from '@/lib/poei-garde'
 import { datesDuParcours } from '@/lib/certificat-poei'
-import { checkDashboardAccess } from '@/lib/dashboard-guard'
-import { hasPermission, isAdmin } from '@/lib/permissions'
-
-/**
- * Ce module est aussi chargé hors du tableau de bord (/mon-espace l'importe
- * pour les missions du formateur) : là, le contrôle central de rôle ne joue
- * pas et chaque action exportée peut être appelée directement. Les actions de
- * gestion vérifient donc elles-mêmes que le compte fait partie du personnel
- * (checkDashboardAccess écarte formateur, apprenant, apporteur et franchise)
- * et qu'il a le droit voulu sur les sessions. Le refus des comptes externes
- * compte : le formateur a « sessions : modifier » en base.
- */
-function peutGererSessions(session: SessionContext, droit: 'create' | 'update' | 'delete'): boolean {
-  if (!checkDashboardAccess('/dashboard/sessions', session.user.role as any, session.permissions).allowed) return false
-  // Le directeur commercial gère les sessions dans le reste du module (fiche
-  // session, pièces, factures OPCO) : il crée et modifie, il ne supprime pas
-  if (session.user.role === 'directeur_commercial' && droit !== 'delete') return true
-  return isAdmin(session.user.role) || hasPermission(session.permissions, 'sessions', droit)
-}
+// Ce module est aussi chargé hors du tableau de bord (/mon-espace l'importe pour
+// les missions du formateur) : chaque action de gestion vérifie elle-même le
+// rôle et le droit sur les sessions (voir lib/sessions-acces)
+import { peutGererSessions } from '@/lib/sessions-acces'
 
 /** Statuts admis en base (type session_status) */
 const STATUTS_SESSION = ['planifiee', 'confirmee', 'en_attente_signatures', 'validee', 'en_cours', 'terminee', 'annulee']
@@ -243,8 +228,11 @@ function safeParseJson(s: string): any[] {
  * Exporté, donc joignable de l'extérieur : le client et la session reçus en
  * paramètres ne sont pas pris en compte, seul le compte de la requête compte,
  * et il doit pouvoir gérer les sessions.
+ *
+ * Renvoie l'adresse à laquelle l'e-mail est réellement parti (null sans
+ * adresse ou si l'envoi a échoué).
  */
-export async function notifyFormateurOfMission(formateurId: string, sessionId: string, _supabase?: any, _session?: any) {
+export async function notifyFormateurOfMission(formateurId: string, sessionId: string, _supabase?: any, _session?: any): Promise<{ emailEnvoye: string | null } | undefined> {
   const session = await getSession()
   if (!peutGererSessions(session, 'create') && !peutGererSessions(session, 'update')) return
   const supabase: any = await createServiceRoleClient()
@@ -285,7 +273,7 @@ export async function notifyFormateurOfMission(formateurId: string, sessionId: s
     const { data: org } = await supabase
       .from('organizations').select('name, email, email_contact, logo_url, is_qualiopi')
       .eq('id', session.organization.id).single()
-    await sendDocumentEmail({
+    const envoi = await sendDocumentEmail({
       to: formateur.email,
       orgName: org?.name || 'Lab Learning',
       orgEmail: org?.email_contact || org?.email,
@@ -310,7 +298,9 @@ export async function notifyFormateurOfMission(formateurId: string, sessionId: s
       entityId: sessionId,
       triggeredBy: session.user.id,
     })
+    return { emailEnvoye: (envoi as any)?.success ? formateur.email : null }
   }
+  return { emailEnvoye: null }
 }
 
 // ============================================================
@@ -664,11 +654,15 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
   // Nouveau formateur assigné → notification + email de proposition de mission
   if (formateurChanged && newFormateurId) {
     // Le contrat de l'ancien formateur devient caduc : on l'annule avant tout,
-    // sinon il serait réutilisé tel quel pour le nouveau formateur
+    // sinon il serait réutilisé tel quel pour le nouveau formateur. Ses tâches
+    // de fin de session encore ouvertes passent au nouveau.
     try {
-      const { cancelContratOnFormateurChange } = await import('@/lib/contrat-formateur')
-      await cancelContratOnFormateurChange(supabase, id, before?.formateur_id || null)
-    } catch (e) { console.error('[annulation contrat ancien formateur]', e) }
+      const { suitesChangementFormateur } = await import('@/lib/changement-formateur')
+      await suitesChangementFormateur(supabase, {
+        sessionId: id, organizationId: session.organization.id,
+        ancienFormateurId: before?.formateur_id || null, nouveauFormateurId: newFormateurId,
+      })
+    } catch (e) { console.error('[changement de formateur]', e) }
 
     try { await notifyFormateurOfMission(newFormateurId, id, supabase, session) }
     catch (e) { console.error('[notify mission update]', e) }
