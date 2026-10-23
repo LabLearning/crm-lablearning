@@ -72,10 +72,14 @@ export async function enregistrerReponses(
       // Une réponse ouverte ne se note pas automatiquement.
       texteLibre = reponse || null
     } else {
-      // Échelles et NPS : une satisfaction n'est ni juste ni fausse.
-      note = reponse ? parseInt(reponse, 10) : null
+      // Échelles et NPS : une satisfaction n'est ni juste ni fausse. Une note
+      // hors de l'échelle (envoyée hors du formulaire, qui ne propose que
+      // plancher..plafond) est ignorée : elle fausserait toutes les moyennes.
       const plafond = q.type === 'note_1_5' ? 5 : 10
-      if (note != null && !Number.isNaN(note)) { notesCumul += note; notesNombre++; notesMax += plafond }
+      const plancher = q.type === 'nps' ? 0 : 1
+      const lue = reponse ? parseInt(reponse, 10) : NaN
+      note = Number.isInteger(lue) && lue >= plancher && lue <= plafond ? lue : null
+      if (note != null) { notesCumul += note; notesNombre++; notesMax += plafond }
     }
 
     details.push({

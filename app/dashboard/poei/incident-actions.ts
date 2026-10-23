@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
-import { ROLES_INCIDENTS_POEI } from '@/lib/rapport-france-travail'
+import { ROLES_INCIDENTS_POEI, TYPES_INCIDENT, GRAVITES_INCIDENT } from '@/lib/rapport-france-travail'
 import { checkDashboardAccess } from '@/lib/dashboard-guard'
 
 /** L'équipe qui traite les incidents : le rôle, et l'accès au module POEI comme pour les rapports. */
@@ -23,12 +23,15 @@ const aujourdhuiParis = () => new Date().toLocaleDateString('sv-SE', { timeZone:
 
 /**
  * Résout le formateur du compte connecté, et vérifie qu'il intervient bien sur
- * ce dossier POEI. L'équipe interne n'a pas cette contrainte.
+ * ce dossier POEI. L'équipe interne n'a pas cette contrainte, mais il lui faut
+ * le rôle et l'accès au module, comme pour la suite du circuit : ce module est
+ * embarqué dans /mon-espace/poei, où le garde central ne joue pas.
  */
-async function autoriser(supabase: any, poeiId: string, orgId: string, user: { id: string; role: string }) {
-  if (ROLES_INCIDENTS_POEI.includes(user.role)) {
+async function autoriser(supabase: any, poeiId: string, orgId: string, session: Awaited<ReturnType<typeof getSession>>) {
+  if (traiteLesIncidents(session)) {
     return { formateurId: null as string | null }
   }
+  const user = session.user
   if (user.role !== 'formateur') return null
 
   const { data: f } = await supabase.from('formateurs').select('id').eq('user_id', user.id).maybeSingle()
@@ -52,7 +55,7 @@ export async function declarerIncidentPoeiAction(poeiId: string, formData: FormD
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 
-  const droit = await autoriser(supabase, poeiId, orgId, session.user as any)
+  const droit = await autoriser(supabase, poeiId, orgId, session)
   if (!droit) return { success: false, error: 'Ce dossier ne vous est pas rattaché' }
 
   const titre = String(formData.get('titre') || '').trim()
@@ -60,6 +63,21 @@ export async function declarerIncidentPoeiAction(poeiId: string, formData: FormD
 
   const { data: poei } = await supabase
     .from('poei').select('client_id, session_id').eq('id', poeiId).eq('organization_id', orgId).maybeSingle()
+  if (!poei) return { success: false, error: 'Dossier introuvable' }
+
+  // Le stagiaire concerné est un candidat du dossier, comme à la correction : le
+  // rapport transmis à France Travail imprime son nom.
+  const apprenantId = String(formData.get('apprenant_id') || '').trim() || null
+  if (apprenantId) {
+    const { data: candidat } = await supabase.from('poei_candidats').select('id')
+      .eq('poei_id', poeiId).eq('organization_id', orgId).eq('apprenant_id', apprenantId).limit(1)
+    if (!candidat || candidat.length === 0) return { success: false, error: 'Ce stagiaire ne fait pas partie du dossier' }
+  }
+  // Type et gravité pris dans les listes du rapport, sinon les valeurs par défaut
+  const typeDemande = String(formData.get('type') || '')
+  const graviteDemandee = String(formData.get('gravite') || '')
+  const type = TYPES_INCIDENT.some((t) => t.value === typeDemande) ? typeDemande : 'autre'
+  const gravite = GRAVITES_INCIDENT.some((g) => g.value === graviteDemandee) ? graviteDemandee : 'mineur'
 
   let franchiseId: string | null = null
   if (poei?.client_id) {
@@ -70,14 +88,14 @@ export async function declarerIncidentPoeiAction(poeiId: string, formData: FormD
   const { data, error } = await supabase.from('incidents').insert({
     organization_id: orgId,
     poei_id: poeiId,
-    client_id: poei?.client_id || null,
-    session_id: poei?.session_id || null,
+    client_id: poei.client_id || null,
+    session_id: poei.session_id || null,
     franchise_id: franchiseId,
     formateur_id: droit.formateurId,
-    apprenant_id: String(formData.get('apprenant_id') || '') || null,
+    apprenant_id: apprenantId,
     date_incident: String(formData.get('date_incident') || '') || aujourdhuiParis(),
-    type: String(formData.get('type') || 'autre'),
-    gravite: String(formData.get('gravite') || 'mineur'),
+    type,
+    gravite,
     titre,
     // Un texte fait de blancs n'est pas une description : le rapport et la relecture le tiennent pour absent
     description: String(formData.get('description') || '').trim() || null,

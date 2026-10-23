@@ -4,6 +4,9 @@ import { getPortalContext } from '@/lib/portal-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { enregistrerReponses } from '@/lib/qcm-notation'
 
+/** Questionnaires que la grille propose (page.tsx) : la satisfaction à froid, à J+90, revient au stagiaire seul. */
+const TYPES_GRILLE = ['positionnement', 'entree', 'sortie', 'satisfaction_chaud']
+
 /**
  * Enregistre les réponses d'une grille (un questionnaire × plusieurs
  * stagiaires) saisie par le formateur depuis son portail. Chaque stagiaire
@@ -26,9 +29,21 @@ export async function enregistrerGrillePortailAction(
     .eq('formateur_id', (context as any).formateur.id).maybeSingle()
   if (!sess) return { success: false, error: 'Session introuvable' }
 
+  // Le questionnaire doit être rattaché à cette session et figurer dans la
+  // grille ; les réponses ne vont qu'à ses inscrits.
+  const [{ data: lien }, { data: qcmInfo }, { data: inscriptions }] = await Promise.all([
+    supabase.from('qcm_sessions').select('id').eq('session_id', sessionId).eq('qcm_id', qcmId).limit(1).maybeSingle(),
+    supabase.from('qcm').select('type').eq('id', qcmId).maybeSingle(),
+    supabase.from('inscriptions').select('apprenant_id').eq('session_id', sessionId),
+  ])
+  if (!lien || !qcmInfo) return { success: false, error: 'Questionnaire introuvable pour cette session' }
+  if (!TYPES_GRILLE.includes((qcmInfo as any).type)) {
+    return { success: false, error: 'Ce questionnaire ne se remplit pas depuis la grille.' }
+  }
+  const inscrits = new Set(((inscriptions || []) as any[]).map((i) => i.apprenant_id).filter(Boolean))
+
   // Chaque questionnaire à son heure : pas de saisie prématurée, même par
   // l'API — le dossier doit rester chronologiquement cohérent.
-  const { data: qcmInfo } = await supabase.from('qcm').select('type').eq('id', qcmId).maybeSingle()
   const aujourdHui = new Date().toISOString().slice(0, 10)
   const commencee = (sess as any).date_debut && String((sess as any).date_debut).slice(0, 10) <= aujourdHui
   const finie = (sess as any).date_fin ? String((sess as any).date_fin).slice(0, 10) < aujourdHui : commencee
@@ -41,8 +56,9 @@ export async function enregistrerGrillePortailAction(
   }
 
   const faits: string[] = []
-  for (const [apprenantId, reponses] of Object.entries(parApprenant)) {
-    const remplies = Object.values(reponses).filter((v) => String(v || '').trim() !== '').length
+  for (const [apprenantId, reponses] of Object.entries(parApprenant || {})) {
+    if (!inscrits.has(apprenantId)) continue
+    const remplies = Object.values(reponses || {}).filter((v) => String(v || '').trim() !== '').length
     if (!remplies) continue
 
     // Ligne de réponse en attente (créée si absente — inscription tardive).

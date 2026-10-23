@@ -48,6 +48,15 @@ export async function submitFactureFormateurAction(formData: FormData): Promise<
   const objet = ((formData.get('objet') as string) || '').trim() || null
   const referenceExterne = ((formData.get('reference_externe') as string) || '').trim() || null
 
+  // Une facture rattachée à une session compte aussitôt comme coût formateur de
+  // cette session (rentabilité, commission franchise) : seulement les siennes,
+  // comme le propose l'écran Facturation
+  if (sessionId) {
+    const { data: sienne } = await supabase.from('sessions').select('id')
+      .eq('id', sessionId).eq('formateur_id', formateurId).eq('organization_id', orgId).maybeSingle()
+    if (!sienne) return { success: false, error: 'Cette session ne vous est pas confiée : facture non envoyée' }
+  }
+
   // Fichier (PDF de la facture du formateur) — optionnel
   let fichierUrl: string | null = null
   let fichierNom: string | null = null

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
+import { hasPermission } from '@/lib/permissions'
 import type { ActionResult } from '@/lib/types'
 import { sendDocumentToApprenantAction, envoyerDocumentSessionAction } from './actions'
 
@@ -273,7 +274,11 @@ export async function envoyerDocumentsAuReferentAction(
   opts?: { preview?: boolean },
 ): Promise<ActionResult<{ html?: string; subject?: string; email?: string | null }>> {
   const session = await getSession()
-  if (session.user.role === 'formateur') {
+  // Attestations, certificats et attestations d'hygiène de tout le groupe :
+  // personnel qui gère les sessions seulement (aucun compte externe)
+  const role = session.user.role
+  if (['formateur', 'apprenant', 'apporteur_affaires', 'franchise'].includes(role)
+    || !(['super_admin', 'gestionnaire', 'directeur_commercial'].includes(role) || hasPermission(session.permissions, 'sessions', 'update'))) {
     return { success: false, error: 'Action réservée aux gestionnaires' }
   }
   const supabase = await createServiceRoleClient()

@@ -51,6 +51,23 @@ export interface PortalApporteurContext {
 
 export type PortalContext = PortalApprenantContext | PortalFormateurContext | PortalClientContext | PortalApporteurContext
 
+/**
+ * Le lien de portail n'expire pas : il doit donc suivre l'état du compte CRM
+ * relié. Un compte suspendu est refusé ici comme il l'est par getSession,
+ * sinon le jeton (mail de bienvenue, pages de /mon-espace) survit à la
+ * suspension. Lu à chaque appel : une réactivation rend le lien sans le
+ * régénérer.
+ */
+async function compteSuspendu(supabase: any, userId: string | null | undefined): Promise<boolean> {
+  if (!userId) return false
+  const { data: compte } = await supabase
+    .from('users')
+    .select('status')
+    .eq('id', userId)
+    .maybeSingle()
+  return compte?.status === 'suspended'
+}
+
 export const getPortalContext = cache(async function getPortalContext(token: string): Promise<PortalContext | null> {
   const supabase = await createServiceRoleClient()
 
@@ -96,13 +113,19 @@ export const getPortalContext = cache(async function getPortalContext(token: str
   if (tokenData.type === 'formateur' && tokenData.formateur_id) {
     const { data: formateur } = await supabase
       .from('formateurs')
-      .select('id, prenom, nom, email, domaines_expertise, type_contrat')
+      .select('id, prenom, nom, email, domaines_expertise, type_contrat, is_active, user_id')
       .eq('id', tokenData.formateur_id)
       .single()
 
     if (!formateur) return null
 
-    return { type: 'formateur', formateur, organization: org, token }
+    // Fiche désactivée ou compte suspendu : le lien ne donne plus accès à
+    // rien (émargement, apprenants, documents, factures, questionnaires)
+    const { is_active, user_id, ...fiche } = formateur as any
+    if (is_active === false) return null
+    if (await compteSuspendu(supabase, user_id)) return null
+
+    return { type: 'formateur', formateur: fiche, organization: org, token }
   }
 
   if (tokenData.type === 'client') {
@@ -144,16 +167,20 @@ export const getPortalContext = cache(async function getPortalContext(token: str
   if (tokenData.type === 'apporteur') {
     const { data: apporteur } = await supabase
       .from('apporteurs_affaires')
-      .select('id, nom, prenom, email, telephone, taux_commission, mode_calcul, is_active, categorie, nom_enseigne, raison_sociale, nombre_points_vente, secteur, zone_geographique, objectif_annuel_ca, objectif_annuel_dossiers')
+      .select('id, nom, prenom, email, telephone, taux_commission, mode_calcul, is_active, categorie, nom_enseigne, raison_sociale, nombre_points_vente, secteur, zone_geographique, objectif_annuel_ca, objectif_annuel_dossiers, user_id')
       .eq('email', tokenData.email)
       .eq('organization_id', tokenData.organization_id)
       .single()
 
-    if (apporteur) {
-      return { type: 'apporteur', apporteur, organization: org, token }
-    }
+    if (!apporteur) return null
 
-    return null
+    // Apporteur désactivé ou compte suspendu : plus de dépôt de lead ni de
+    // consultation par le lien
+    const { user_id, ...fiche } = apporteur as any
+    if (fiche.is_active === false) return null
+    if (await compteSuspendu(supabase, user_id)) return null
+
+    return { type: 'apporteur', apporteur: fiche, organization: org, token }
   }
 
   return null

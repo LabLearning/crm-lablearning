@@ -33,15 +33,57 @@ function assainirStructure(x: any): any {
   return x
 }
 
-/** Orientation de la 1re page d'un PDF — pdf-lib d'abord, sinon vote
- *  majoritaire sur tous les MediaBox du fichier. */
-async function pdfEstPaysage(buf: Buffer): Promise<boolean | null> {
+/** Générations permises par formateur sur 24 heures glissantes : chacune est un appel à l'IA payé par l'organisme. */
+const GENERATIONS_PAR_JOUR = 10
+/** Pages de PDF sources par génération : au-delà, le document produit ne peut pas tout reprendre et le coût s'envole. */
+// Un PMS de franchise compte 46 pages : la limite reste au-dessus
+const PAGES_PDF_MAX = 80
+/** Taille décompressée annoncée d'un Word ou d'un Excel : au-delà, c'est une bombe de décompression. */
+const DECOMPRESSE_MAX = 100 * 1024 * 1024
+/** En-tête d'un ancien classeur Excel (.xls) : conteneur binaire OLE. */
+const SIGNATURE_XLS = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+const ACTION_JOURNAL = 'generation_studio_ia'
+
+/**
+ * Compte la génération dans le journal (audit_logs) AVANT de lire les fichiers
+ * et d'appeler l'IA, puis vérifie le plafond : la ligne est écrite d'abord,
+ * pour que des appels lancés en parallèle ne passent pas tous. Renvoie le motif
+ * du refus (la ligne est alors retirée), ou null si la génération est permise.
+ */
+async function reserverGeneration(supabase: any, orgId: string, userId: string, formateurId: string, details: Record<string, unknown>): Promise<string | null> {
+  const indisponible = 'Le studio est momentanément indisponible — réessayez dans un instant.'
+  const { data: ligne, error } = await supabase.from('audit_logs').insert({
+    organization_id: orgId,
+    user_id: userId,
+    action: ACTION_JOURNAL,
+    entity_type: 'formateur',
+    entity_id: formateurId,
+    details,
+  }).select('id').single()
+  if (error || !ligne) return indisponible
+  const { count, error: erreurCompte } = await supabase.from('audit_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('entity_type', 'formateur').eq('entity_id', formateurId).eq('action', ACTION_JOURNAL)
+    .gte('created_at', new Date(Date.now() - 24 * 3600_000).toISOString())
+  if (!erreurCompte && (count || 0) <= GENERATIONS_PAR_JOUR) return null
+  await supabase.from('audit_logs').delete().eq('id', ligne.id)
+  return erreurCompte
+    ? indisponible
+    : `Vous avez atteint la limite de ${GENERATIONS_PAR_JOUR} documents générés sur 24 heures : réessayez demain.`
+}
+
+/** Orientation de la 1re page et nombre de pages d'un PDF — pdf-lib d'abord,
+ *  sinon vote majoritaire sur tous les MediaBox et décompte des objets /Page. */
+async function lirePdf(buf: Buffer): Promise<{ paysage: boolean | null; pages: number | null }> {
   try {
     const { PDFDocument } = await import('pdf-lib')
     const docPdf = await PDFDocument.load(buf, { ignoreEncryption: true, updateMetadata: false })
     const page = docPdf.getPage(0)
     const { width, height } = page.getSize()
-    return page.getRotation().angle % 180 === 90 ? height > width : width > height
+    return {
+      paysage: page.getRotation().angle % 180 === 90 ? height > width : width > height,
+      pages: docPdf.getPageCount(),
+    }
   } catch { /* PDF exotique : heuristique octets ci-dessous */ }
   const texte = buf.toString('latin1')
   let larges = 0, hauts = 0
@@ -49,8 +91,76 @@ async function pdfEstPaysage(buf: Buffer): Promise<boolean | null> {
     if (parseFloat(m[3]) - parseFloat(m[1]) > parseFloat(m[4]) - parseFloat(m[2])) larges++
     else hauts++
   }
-  if (!larges && !hauts) return null
-  return larges >= hauts
+  const pages = (texte.match(/\/Type\s*\/Page(?![a-zA-Z])/g) || []).length
+  return { paysage: !larges && !hauts ? null : larges >= hauts, pages: pages || null }
+}
+
+/** Taille totale annoncée une fois décompressé, lue dans le répertoire central
+ *  du zip (un Word ou un Excel récent en est un) ; null si ce n'est pas un zip. */
+function tailleDecompresseeZip(buf: Buffer): number | null {
+  try {
+    if (buf.length < 22 || buf.readUInt32LE(0) !== 0x04034b50) return null
+    let fin = -1
+    for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+      if (buf.readUInt32LE(i) === 0x06054b50) { fin = i; break }
+    }
+    if (fin < 0) return null
+    let pos = buf.readUInt32LE(fin + 16)
+    let total = 0
+    for (let n = buf.readUInt16LE(fin + 10); n > 0; n--) {
+      if (buf.readUInt32LE(pos) !== 0x02014b50) return null
+      const taille = buf.readUInt32LE(pos + 24)
+      if (taille === 0xffffffff) return null // zip64 : jamais pour un document de quelques Mo
+      total += taille
+      pos += 46 + buf.readUInt16LE(pos + 28) + buf.readUInt16LE(pos + 30) + buf.readUInt16LE(pos + 32)
+    }
+    return total
+  } catch { return null }
+}
+
+/** Texte d'un CSV : UTF-8, sinon Windows-1252 (export Excel français). */
+function decoderTexte(buf: Buffer): string {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf) } catch { /* pas de l'UTF-8 */ }
+  try { return new TextDecoder('windows-1252').decode(buf) } catch { return buf.toString('latin1') }
+}
+
+/**
+ * La bibliothèque xlsx installée (0.18.5) est sujette à la pollution de
+ * prototype (CVE-2023-30533) tant qu'elle n'est pas mise à jour. Sa lecture
+ * étant synchrone, on relève les prototypes de base juste avant et on efface
+ * juste après tout ajout ou toute modification, avant qu'une autre requête ne
+ * s'exécute sur l'instance.
+ */
+function sansPollution<T>(lire: () => T): T {
+  // Outils de remise en état saisis avant la lecture, qui pourrait les remplacer
+  const cles = Reflect.ownKeys
+  const descripteur = Object.getOwnPropertyDescriptor
+  const definir = Object.defineProperty
+  const protos: any[] = [Object.prototype, Array.prototype, Function.prototype, String.prototype, Number.prototype, Boolean.prototype]
+  const releves = protos.map((p) => cles(p).map((k) => ({ k, d: descripteur(p, k) as PropertyDescriptor })))
+  try {
+    return lire()
+  } finally {
+    // Boucles indexées : les itérateurs d'Array.prototype ont pu être remplacés
+    for (let i = 0; i < protos.length; i++) {
+      const p = protos[i]
+      const releve = releves[i]
+      const actuelles = cles(p)
+      for (let j = 0; j < actuelles.length; j++) {
+        let connue = false
+        for (let r = 0; r < releve.length; r++) if (releve[r].k === actuelles[j]) { connue = true; break }
+        if (!connue) delete p[actuelles[j]]
+      }
+      for (let r = 0; r < releve.length; r++) {
+        const { k, d } = releve[r]
+        const actuel = descripteur(p, k)
+        if (!actuel || actuel.value !== d.value || actuel.get !== d.get || actuel.set !== d.set
+          || actuel.writable !== d.writable || actuel.enumerable !== d.enumerable || actuel.configurable !== d.configurable) {
+          definir(p, k, d)
+        }
+      }
+    }
+  }
 }
 
 /** Orientation d'une image PNG/JPEG : lit les dimensions dans les en-têtes. */
@@ -111,48 +221,92 @@ export async function genererDocumentBrandeAction(
   }
   const marqueNom = franchise?.nom || (sess as any).client?.nom_commercial || (sess as any).client?.raison_sociale || 'Établissement'
 
-  // Fichiers sources : photos (vision), PDF (natif API), Word/Excel (texte extrait)
+  // Clé IA vérifiée avant d'ouvrir le moindre fichier
+  const claudeKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!claudeKey && !apiKey) return { success: false, error: 'Clé IA non configurée' }
+
+  // Fichiers sources : photos (vision), PDF (natif API), Word/Excel/CSV (texte extrait).
+  // 1) Contrôles sans rien décoder : taille, format, en-tête
   const fichiers = formData.getAll('fichiers') as File[]
-  const images: string[] = []
-  const pdfs: Array<{ nom: string; b64: string }> = []
-  const textes: Array<{ nom: string; texte: string }> = []
-  // Orientation détectée dans les fichiers sources — prime sur l'avis de l'IA.
-  let sourcePaysage: boolean | null = null
+  const sources: Array<{ f: File; buf: Buffer; genre: 'image' | 'pdf' | 'docx' | 'tableur' | 'csv' }> = []
   for (const f of fichiers.slice(0, 5)) {
     if (!f || typeof f.arrayBuffer !== 'function' || f.size === 0) continue
     if (f.size > 4 * 1024 * 1024) return { success: false, error: `« ${f.name} » dépasse 4 Mo` }
     const buf = Buffer.from(await f.arrayBuffer())
     const nomBas = (f.name || '').toLowerCase()
     if (/^image\/(jpeg|png|webp)$/.test(f.type)) {
-      images.push(`data:${f.type};base64,${buf.toString('base64')}`)
-      if (sourcePaysage === null) sourcePaysage = imageEstPaysage(buf, f.type)
+      sources.push({ f, buf, genre: 'image' })
     } else if (f.type === 'application/pdf' || nomBas.endsWith('.pdf')) {
-      pdfs.push({ nom: f.name, b64: buf.toString('base64') })
-      if (sourcePaysage === null) sourcePaysage = await pdfEstPaysage(buf)
-    } else if (nomBas.endsWith('.docx')) {
-      try {
-        const mammoth = await import('mammoth')
-        const r = await mammoth.extractRawText({ buffer: buf })
-        textes.push({ nom: f.name, texte: (r.value || '').slice(0, 20000) })
-      } catch { return { success: false, error: `Lecture impossible : ${f.name}` } }
-    } else if (nomBas.endsWith('.xlsx') || nomBas.endsWith('.xls') || nomBas.endsWith('.csv')) {
-      try {
-        const XLSX = await import('xlsx')
-        const wb = XLSX.read(buf, { type: 'buffer' })
-        const morceaux: string[] = []
-        for (const sheet of wb.SheetNames.slice(0, 5)) {
-          morceaux.push(`--- Feuille « ${sheet} » ---\n${XLSX.utils.sheet_to_csv(wb.Sheets[sheet])}`)
-        }
-        textes.push({ nom: f.name, texte: morceaux.join('\n\n').slice(0, 20000) })
-      } catch { return { success: false, error: `Lecture impossible : ${f.name}` } }
+      sources.push({ f, buf, genre: 'pdf' })
+    } else if (nomBas.endsWith('.csv')) {
+      sources.push({ f, buf, genre: 'csv' })
+    } else if (nomBas.endsWith('.docx') || nomBas.endsWith('.xlsx')) {
+      // Un Word ou un Excel récent est un zip : ni faux fichier, ni bombe de décompression
+      const taille = tailleDecompresseeZip(buf)
+      if (taille === null || taille > DECOMPRESSE_MAX) return { success: false, error: `Lecture impossible : ${f.name}` }
+      sources.push({ f, buf, genre: nomBas.endsWith('.docx') ? 'docx' : 'tableur' })
+    } else if (nomBas.endsWith('.xls')) {
+      // Ancien format Excel : seulement le vrai conteneur binaire, pas du HTML ou du XML renommé
+      if (!buf.subarray(0, 8).equals(SIGNATURE_XLS)) {
+        return { success: false, error: `Lecture impossible : ${f.name} (enregistrez-le au format .xlsx, ou exportez-le en PDF)` }
+      }
+      sources.push({ f, buf, genre: 'tableur' })
     } else {
       return { success: false, error: `Format non géré : ${f.name} (photos, PDF, Word, Excel)` }
     }
   }
 
-  const claudeKey = process.env.ANTHROPIC_API_KEY
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!claudeKey && !apiKey) return { success: false, error: 'Clé IA non configurée' }
+  // 2) Plafond journalier, avant toute lecture du contenu et tout appel payant
+  const refus = await reserverGeneration(supabase, orgId, session.user.id, context.formateur.id, {
+    session_id: sessionId, fichiers: sources.length,
+  })
+  if (refus) return { success: false, error: refus }
+
+  // 3) Lecture du contenu
+  const images: string[] = []
+  const pdfs: Array<{ nom: string; b64: string }> = []
+  const textes: Array<{ nom: string; texte: string }> = []
+  // Orientation détectée dans les fichiers sources — prime sur l'avis de l'IA.
+  let sourcePaysage: boolean | null = null
+  let pagesPdf = 0
+  for (const { f, buf, genre } of sources) {
+    if (genre === 'image') {
+      images.push(`data:${f.type};base64,${buf.toString('base64')}`)
+      if (sourcePaysage === null) sourcePaysage = imageEstPaysage(buf, f.type)
+    } else if (genre === 'pdf') {
+      pdfs.push({ nom: f.name, b64: buf.toString('base64') })
+      const { paysage, pages } = await lirePdf(buf)
+      if (sourcePaysage === null) sourcePaysage = paysage
+      pagesPdf += pages || 0
+      if (pagesPdf > PAGES_PDF_MAX) {
+        return { success: false, error: `Les PDF joints dépassent ${PAGES_PDF_MAX} pages : ne gardez que les pages utiles.` }
+      }
+    } else if (genre === 'docx') {
+      try {
+        const mammoth = await import('mammoth')
+        const r = await mammoth.extractRawText({ buffer: buf })
+        textes.push({ nom: f.name, texte: (r.value || '').slice(0, 20000) })
+      } catch { return { success: false, error: `Lecture impossible : ${f.name}` } }
+    } else if (genre === 'csv') {
+      // Un CSV est du texte : il n'a pas besoin de la bibliothèque des tableurs
+      textes.push({ nom: f.name, texte: decoderTexte(buf).slice(0, 20000) })
+    } else {
+      try {
+        const XLSX = await import('xlsx')
+        const texte = sansPollution(() => {
+          // Lecture réduite à ce que le CSV reprend : ni formules ni mise en forme
+          const wb = XLSX.read(buf, { type: 'buffer', sheetRows: 2000, cellFormula: false, cellHTML: false })
+          const morceaux: string[] = []
+          for (const sheet of wb.SheetNames.slice(0, 5)) {
+            morceaux.push(`--- Feuille « ${sheet} » ---\n${XLSX.utils.sheet_to_csv(wb.Sheets[sheet])}`)
+          }
+          return morceaux.join('\n\n')
+        })
+        textes.push({ nom: f.name, texte: texte.slice(0, 20000) })
+      } catch { return { success: false, error: `Lecture impossible : ${f.name}` } }
+    }
+  }
 
   const PROMPT_STUDIO = `Tu es le studio documentaire d'un organisme de formation haut de gamme (restaurants et métiers de bouche). Tu produis des documents en FRANÇAIS impeccables. Réponds UNIQUEMENT en JSON : {"titre": string, "sous_titre": string|null, "orientation": "portrait"|"paysage", "etiquettes": string[], "couleur_primaire": "#RRGGBB"|null, "couleur_secondaire": "#RRGGBB"|null, "sections": [{"titre": string, "icone": "temperature"|"controle"|"alerte"|"cuisson"|"froid"|"temps"|"nettoyage"|"securite"|"stockage"|"produit"|"personnel"|"document"|"reception"|"service", "ton": "normal"|"attention"|"critique", "paragraphes": string[]|null, "items": string[]|null, "colonnes": string[]|null, "lignes": string[][]|null, "etapes": [{"numero": number, "titre": string, "details": string[], "ccp": string|null}]|null}]}. RÈGLES ABSOLUES : (1) tu REPRODUIS le document source INTÉGRALEMENT : même ordre, mêmes sections, chaque étape, chaque valeur, chaque consigne, chaque ligne de liste — tu ne résumes JAMAIS, tu ne condenses JAMAIS, tu ne fusionnes pas des sections ; un document de 15 pages donne un JSON long, c'est normal ; (2) un PROCESSUS séquentiel (réception -> stockage -> cuisson…) devient une section "etapes" : une étape par carte avec ses détails, et son point de contrôle critique dans "ccp" s'il y en a un ; s'il y a plusieurs filières, une section d'étapes PAR filière ; (3) les caractéristiques produits, plannings, fréquences deviennent des TABLEAUX ; les consignes et points de contrôle des LISTES ; (4) le TITRE est un vrai titre humain, jamais un nom de fichier ni des underscores ; (5) écris >= et <= (jamais les symboles), pas de caractères spéciaux décoratifs ; (6) titres de sections actifs et courts ; (7) "etiquettes" : 2-3 mots-clés de couverture (ex. HACCP, Hygiène, Service) ; "icone" : la plus proche du sujet de la section ; "ton" : "critique" pour les sections de points de contrôle critiques ou dangers, "attention" pour les vigilances, "normal" sinon ; (8) "orientation" reprend celle du document source (une page large type organigramme ou planning -> "paysage", sinon "portrait"). ; (9) travaille PAGE PAR PAGE : chaque page, chaque bloc, chaque fiche produit du source doit se retrouver dans le JSON — une fiche produit (ingrédients, nutrition, références, EAN…) devient un TABLEAU à 2 colonnes Champ/Valeur, une par produit ; (10) une coche ou une puce du source = UN item distinct de "items", jamais deux consignes fusionnées, et les consignes ne vont JAMAIS dans "paragraphes" ; avant de répondre, relis le source page par page et vérifie que rien ne manque. Autant de sections que le document source en contient — aucune limite.`
 

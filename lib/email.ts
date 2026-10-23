@@ -440,6 +440,14 @@ export function blocDocumentsAccueil(org?: { livret_accueil_url?: string | null 
   return `<br><br>Avant votre entrée en formation, nous vous invitons à consulter ${liens.join(' et ')}. Ces documents restent disponibles à tout moment sur votre portail apprenant.`
 }
 
+/**
+ * Valeur saisie insérée en texte dans le gabarit (nom du destinataire, valeurs
+ * du tableau) : < > " deviennent des entités, aucune balise ne passe. « & »
+ * reste tel quel pour ne pas échapper deux fois ce que l'appelant a déjà
+ * échappé (formulaires publics du site).
+ */
+const sansBalise = (v: unknown) => String(v).replace(/[<>"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+
 export function buildDocumentEmailHtml(params: {
   orgName: string
   orgEmail?: string
@@ -456,13 +464,13 @@ export function buildDocumentEmailHtml(params: {
 }): string {
   const fileExt = (params.pdfFilename?.split('.').pop() || 'DOC').toUpperCase().slice(0, 4)
   const metaRows = (params.metadata || [])
-    .map(([k, v]) => `<tr><td style="padding:6px 0;color:#71717a;font-size:12px;width:130px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">${k}</td><td style="padding:6px 0;color:#18181b;font-size:14px;">${v}</td></tr>`)
+    .map(([k, v]) => `<tr><td style="padding:6px 0;color:#71717a;font-size:12px;width:130px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">${k}</td><td style="padding:6px 0;color:#18181b;font-size:14px;">${sansBalise(v)}</td></tr>`)
     .join('')
 
   const body = `
     <h1 style="margin:0 0 6px;color:#18181b;font-size:22px;font-weight:700;">${params.docTitle}</h1>
     <p style="margin:0 0 24px;color:#71717a;font-size:15px;line-height:1.6;">
-      Bonjour <strong style="color:#18181b;">${params.recipientName}</strong>,<br>
+      Bonjour <strong style="color:#18181b;">${sansBalise(params.recipientName)}</strong>,<br>
       ${params.intro}
     </p>
     ${metaRows ? `

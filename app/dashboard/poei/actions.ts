@@ -4,12 +4,24 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
 import type { ActionResult } from '@/lib/types'
 import { ligneFactureCandidat, montantTotalPoei, periodeCandidat, MESSAGE_MIGRATION_PERIODE, type LigneFactureCandidat } from '@/lib/poei-candidat'
 import { facturesReglables, reglementDossier } from '@/lib/poei-reglement'
 
 function canManage(role: string) {
   return ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'].includes(role)
+}
+
+/**
+ * L'équipe POEI : le rôle, et l'accès au module (/dashboard/poei relève des
+ * conventions). Ce module est aussi embarqué dans /mon-espace (missions des
+ * formateurs) et appelé par la route d'envoi groupé : là, le garde central du
+ * tableau de bord ne joue pas, chaque action le refait donc elle-même.
+ */
+function peutGererPoei(session: Awaited<ReturnType<typeof getSession>>): boolean {
+  return canManage(session.user.role)
+    && checkDashboardAccess('/dashboard/poei', session.user.role as any, session.permissions).allowed
 }
 
 function str(fd: FormData, key: string): string | null {
@@ -119,7 +131,7 @@ const FACTURE_DEJA_EMISE = 'La facture de ce candidat est déjà émise : prévo
 
 export async function createPoeiAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
 
   const client_id = str(formData, 'client_id')
   const formation_id = str(formData, 'formation_id')
@@ -201,7 +213,7 @@ export async function createPoeiAction(formData: FormData): Promise<ActionResult
 
 export async function updatePoeiStatutAction(id: string, statut: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
 
   const supabase = await createServiceRoleClient()
   const updateData: Record<string, unknown> = { statut }
@@ -221,7 +233,7 @@ export async function updatePoeiStatutAction(id: string, statut: string): Promis
 
 export async function updatePoeiAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
 
   const supabase = await createServiceRoleClient()
 
@@ -301,7 +313,7 @@ export async function deletePoeiAction(id: string): Promise<ActionResult> {
 
 export async function addPoeiCandidatAction(poeiId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
 
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
@@ -390,7 +402,7 @@ export async function addPoeiCandidatAction(poeiId: string, formData: FormData):
 
 export async function updateCandidatStatutAction(candidatId: string, poeiId: string, statut: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const maj: Record<string, unknown> = { statut }
   // Embauché : sans date sur la fiche, l'embauche est datée du lendemain de la POEI
@@ -417,7 +429,7 @@ export async function updateCandidatStatutAction(candidatId: string, poeiId: str
 // Modifie les infos d'un candidat : identité (fiche apprenant) + champs POEI
 export async function updatePoeiCandidatAction(candidatId: string, poeiId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: cand } = await supabase
@@ -480,7 +492,7 @@ export async function sendAttestationsEntreeAction(
   custom?: { subject?: string; message?: string },
 ): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   // Contexte et textes partagés avec l'aperçu (lib/poei-emails) : ce qui est
@@ -549,7 +561,7 @@ export async function sendAttestationsEntreeAction(
 
 export async function removePoeiCandidatAction(candidatId: string, poeiId: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
 
   const supabase = await createServiceRoleClient()
   const { data: cand } = await supabase
@@ -579,7 +591,7 @@ export async function removePoeiCandidatAction(candidatId: string, poeiId: strin
  */
 export async function generateDevisPerCandidatAction(poeiId: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -687,6 +699,7 @@ export async function generateDevisPerCandidatAction(poeiId: string): Promise<Ac
 
 export async function listAgencesFtAction(): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const { data } = await supabase.from('agences_france_travail')
     .select('*').eq('organization_id', session.organization.id).eq('is_active', true).order('nom')
@@ -695,7 +708,7 @@ export async function listAgencesFtAction(): Promise<ActionResult> {
 
 export async function createAgenceFtAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const nom = ((formData.get('nom') as string) || '').trim()
   if (!nom) return { success: false, error: 'Nom de l’agence requis' }
@@ -717,7 +730,7 @@ export async function createAgenceFtAction(formData: FormData): Promise<ActionRe
 
 export async function setPoeiAgenceFtAction(poeiId: string, agenceId: string | null): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const { error } = await supabase.from('poei')
     .update({ agence_ft_id: agenceId || null })
@@ -733,7 +746,7 @@ export async function setPoeiAgenceFtAction(poeiId: string, agenceId: string | n
  */
 export async function setCandidatNumeroEngagementAction(candidatId: string, numero: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const valeur = numero.trim() || null
 
@@ -781,7 +794,7 @@ export async function setAffacturageFacturesPoeiAction(
   candidatId?: string,
 ): Promise<ActionResult & { data?: { modifiees: number; cedees: number } }> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -849,7 +862,7 @@ export async function generateFacturesPerCandidatPoeiAction(
   },
 ): Promise<ActionResult & { data?: { created: number; updated: number; skipped: number; supprimees?: number; orphelinesEmises?: number } }> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -1023,7 +1036,7 @@ export async function generateDevisPrevisionnelPoeiAction(
   nbCandidats = 1,
 ): Promise<ActionResult & { data?: { devisId: string } }> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -1118,7 +1131,7 @@ export async function sendGroupEmailToCandidatsAction(
   },
 ): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   if (!payload.subject?.trim()) return { success: false, error: 'Objet requis' }
   if (!payload.message?.trim()) return { success: false, error: 'Message requis' }
   const orgId = session.organization.id
@@ -1199,6 +1212,7 @@ export async function sendGroupEmailToCandidatsAction(
 
 export async function getPoeiEmailTemplatesAction(): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const { data } = await supabase
     .from('email_templates')
@@ -1214,7 +1228,7 @@ export async function savePoeiEmailTemplateAction(
   nom: string, sujet: string, corps: string, slug?: string,
 ): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   if (!nom.trim() || !sujet.trim() || !corps.trim()) return { success: false, error: 'Nom, objet et message requis' }
   const supabase = await createServiceRoleClient()
 
@@ -1239,7 +1253,7 @@ export async function savePoeiEmailTemplateAction(
 
 export async function addPoeiInterventionAction(poeiId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -1291,7 +1305,7 @@ export async function addPoeiInterventionAction(poeiId: string, formData: FormDa
 
 export async function updatePoeiInterventionAction(id: string, poeiId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: before } = await supabase.from('poei_interventions')
@@ -1340,7 +1354,7 @@ export async function updatePoeiInterventionAction(id: string, poeiId: string, f
 
 export async function removePoeiInterventionAction(id: string, poeiId: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   // La session de l'intervention est supprimée en cascade : on refuse tant
   // qu'elle porte des émargements signés, qui sont des pièces justificatives
@@ -1585,7 +1599,7 @@ export async function declarerAbandonCandidatAction(
   formData: FormData,
 ): Promise<ActionResult & { warning?: string }> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -1680,12 +1694,8 @@ export async function declarerAbandonCandidatAction(
  */
 export async function enregistrerMotifAbandonAction(candidatId: string, motif: string): Promise<ActionResult> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   // Même règle que le rapport qu'il alimente : le rôle et l'accès au module
-  const { checkDashboardAccess } = await import('@/lib/dashboard-guard')
-  if (!checkDashboardAccess('/dashboard/poei', session.user.role as any, session.permissions).allowed) {
-    return { success: false, error: 'Accès non autorisé' }
-  }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   const supabase = await createServiceRoleClient()
 
@@ -1726,7 +1736,7 @@ export async function enregistrerMotifAbandonAction(candidatId: string, motif: s
  */
 export async function definirHeuresEffectueesAction(candidatId: string, heures: number | null): Promise<ActionResult<{ heures: number | null }> & { warning?: string }> {
   const session = await getSession()
-  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!peutGererPoei(session)) return { success: false, error: 'Accès non autorisé' }
   const orgId = session.organization.id
   if (heures !== null && (!Number.isFinite(heures) || heures <= 0 || heures > 2000)) {
     return { success: false, error: 'Indiquez un nombre d’heures entre 0,5 et 2 000, ou laissez vide pour la durée du parcours.' }

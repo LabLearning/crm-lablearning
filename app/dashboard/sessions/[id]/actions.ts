@@ -4,10 +4,24 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
+import { hasPermission } from '@/lib/permissions'
 import type { ActionResult } from '@/lib/types'
+
+/** Rôles externes : jamais de gestion de session, quel que soit le chemin d'appel. */
+const ROLES_EXTERNES = ['formateur', 'apprenant', 'apporteur_affaires', 'franchise']
+const STATUTS_SESSION = ['planifiee', 'confirmee', 'en_attente_signatures', 'validee', 'en_cours', 'terminee', 'annulee']
 
 export async function updateSessionStatusAction(sessionId: string, newStatus: string, coutFormateur?: number | null): Promise<ActionResult> {
   const session = await getSession()
+  // « Terminée » déclenche l'envoi des attestations : réservé au personnel qui
+  // gère les sessions (même règle que la liste des sessions), jamais un compte
+  // externe ni un rôle en lecture seule
+  const role = session.user.role
+  if (ROLES_EXTERNES.includes(role)
+    || !(['super_admin', 'gestionnaire', 'directeur_commercial'].includes(role) || hasPermission(session.permissions, 'sessions', 'update'))) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  if (!STATUTS_SESSION.includes(newStatus)) return { success: false, error: 'Statut inconnu' }
   const supabase = await createServiceRoleClient()
 
   // À la validation de la session, le montant formateur négocié est figé sur la session

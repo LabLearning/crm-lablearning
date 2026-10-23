@@ -7,6 +7,8 @@ import { refusSignature } from '@/lib/signature-image'
 
 type Creneau = 'matin' | 'apres_midi' | 'journee'
 
+const CRENEAUX: string[] = ['matin', 'apres_midi', 'journee']
+
 /**
  * Le sessionId vient du client (URL ou props) : on ne s'y fie jamais sans
  * vérifier qu'il s'agit bien d'une session du formateur porteur du token.
@@ -25,6 +27,129 @@ async function getOwnedSession(supabase: any, token: string, sessionId: string) 
   return { session, context }
 }
 
+/**
+ * La date et le créneau viennent du navigateur : la feuille visée doit être
+ * une demi-journée réelle de la session, c'est-à-dire porter au moins une
+ * ligne d'émargement (créées par ensureEmargements depuis le planning).
+ * Sinon on fabriquerait des feuilles pour des créneaux qui n'ont pas eu lieu.
+ */
+async function creneauAuPlanning(supabase: any, sessionId: string, date: unknown, creneau: unknown): Promise<boolean> {
+  if (typeof creneau !== 'string' || !CRENEAUX.includes(creneau)) return false
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false
+  const { count } = await supabase
+    .from('emargements')
+    .select('id', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('date', date)
+    .eq('creneau', creneau)
+  return (count || 0) > 0
+}
+
+/** Délai pendant lequel un fichier tout juste téléversé peut être rattaché à une feuille. */
+const DELAI_RATTACHEMENT_SCAN_MS = 2 * 60 * 60 * 1000
+
+/**
+ * Le chemin du scan vient du navigateur. Il doit être celui d'un dépôt fait à
+ * l'instant par /api/documents/upload dans l'organisation de la session
+ * (« <organisation>/<horodatage>-<aléa>-<nom> », sans sous-dossier), ou le
+ * scan déjà enregistré sur la feuille. Sinon un formateur ferait pointer sa
+ * feuille vers n'importe quel fichier du bucket (convention signée, CV,
+ * justificatif) et en obtiendrait l'adresse signée.
+ */
+function cheminScanAccepte(chemin: unknown, organizationId: string, dejaEnregistre?: string | null): boolean {
+  if (typeof chemin !== 'string') return false
+  if (dejaEnregistre && chemin === dejaEnregistre) return true
+  const prefixe = `${organizationId}/`
+  if (!chemin.startsWith(prefixe)) return false
+  const m = /^(\d{13})-\d{1,7}-[\w.\-]{1,120}$/.exec(chemin.slice(prefixe.length))
+  if (!m) return false
+  const age = Date.now() - Number(m[1])
+  return age > -5 * 60 * 1000 && age < DELAI_RATTACHEMENT_SCAN_MS
+}
+
+/** Remplacements archivés au plus par ligne : au-delà, l'équipe reprend la main (le journal ne grossit pas sans fin). */
+const ARCHIVES_MAX_PAR_LIGNE = 10
+const ACTIONS_ARCHIVE = ['signature_emargement_remplacee', 'signature_emargement_effacee'] as const
+
+/**
+ * Une signature recueillie est la preuve de présence du stagiaire : avant de
+ * la remplacer ou de l'effacer, on en garde une copie dans le journal
+ * (audit_logs). Les émargements ne passent pas par le journal d'activité
+ * (migration 155) : sans cette ligne, la preuve d'origine disparaîtrait.
+ * Renvoie le motif du refus si la copie n'est pas écrite : on ne touche alors à rien.
+ */
+async function conserverSignature(
+  supabase: any,
+  owned: { session: { id: string; organization_id: string }; context: { formateur: { id: string } } },
+  em: any,
+  action: (typeof ACTIONS_ARCHIVE)[number],
+): Promise<string | null> {
+  if (!em?.signature_data) return null
+  const [{ count }, { data: fiche }] = await Promise.all([
+    supabase
+      .from('audit_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('entity_type', 'session')
+      .eq('entity_id', owned.session.id)
+      .in('action', [...ACTIONS_ARCHIVE])
+      .eq('details->>emargement_id', em.id),
+    supabase
+      .from('formateurs')
+      .select('user_id')
+      .eq('id', owned.context.formateur.id)
+      .maybeSingle(),
+  ])
+  if ((count || 0) >= ARCHIVES_MAX_PAR_LIGNE) {
+    return 'Cette signature a déjà été modifiée plusieurs fois : adressez-vous à l\'équipe'
+  }
+  // L'image de la signature va dans le stockage privé, pas dans le journal :
+  // le journal d'activité ne recopie jamais une signature (migration 155) et
+  // /dashboard/activite affiche le détail des lignes d'audit
+  const brut = String(em.signature_data)
+  const m = /^data:(image\/(?:png|jpeg|webp|svg\+xml));base64,(.+)$/.exec(brut)
+  const octets = m ? Buffer.from(m[2], 'base64') : Buffer.from(brut, 'utf8')
+  const extension = m ? ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg' } as Record<string, string>)[m[1]] : 'txt'
+  const cheminArchive = `${owned.session.organization_id}/emargements/archives/${em.id}-${Date.now()}.${extension}`
+  const { error: errDepot } = await supabase.storage.from('documents')
+    .upload(cheminArchive, octets, { contentType: m ? m[1] : 'text/plain', upsert: false })
+  if (errDepot) {
+    console.error('[émargement] archive de la signature', errDepot.message)
+    return 'La signature déjà posée n\'a pas pu être archivée : réessayez'
+  }
+  const { createHash } = await import('crypto')
+  const { error } = await supabase.from('audit_logs').insert({
+    organization_id: owned.session.organization_id,
+    user_id: fiche?.user_id || null,
+    action,
+    entity_type: 'session',
+    entity_id: owned.session.id,
+    details: {
+      emargement_id: em.id,
+      apprenant_id: em.apprenant_id,
+      date: em.date,
+      creneau: em.creneau,
+      formateur_id: owned.context.formateur.id,
+      via: 'portail_formateur',
+      ancienne_signature: {
+        // Image archivée dans le bucket privé documents, avec son empreinte
+        archive_path: cheminArchive,
+        sha256: createHash('sha256').update(brut).digest('hex'),
+        signed_at: em.signed_at ?? null,
+        signed_via: em.signed_via ?? null,
+        est_present: em.est_present ?? null,
+        motif_absence: em.motif_absence ?? null,
+      },
+    },
+  })
+  if (error) {
+    console.error('[émargement] copie de la signature', error.message)
+    // Sans ligne au journal, l'image déposée ne serait reliée à rien
+    await supabase.storage.from('documents').remove([cheminArchive])
+    return 'La signature déjà posée n\'a pas pu être archivée : réessayez'
+  }
+  return null
+}
+
 function revalidateEmargement(token: string, sessionId?: string) {
   revalidatePath(`/portail/${token}/emargement`)
   // L'espace formateur connecté partage les mêmes vues : on rafraîchit aussi
@@ -41,6 +166,7 @@ function revalidateEmargement(token: string, sessionId?: string) {
  * Signature d'un apprenant sur le device du formateur.
  * → enregistre signature_data, est_present=true, signed_at, signed_via.
  * → bloqué si la feuille (session+date+creneau) est déjà validée par le formateur.
+ * → une signature déjà posée (« Signer à nouveau ») est d'abord archivée.
  */
 export async function signApprenantPresenceAction(
   token: string,
@@ -62,7 +188,7 @@ export async function signApprenantPresenceAction(
   // Récupérer l'émargement + check feuille verrouillée
   const { data: em } = await supabase
     .from('emargements')
-    .select('id, session_id, date, creneau')
+    .select('id, session_id, apprenant_id, date, creneau, est_present, signature_data, signed_at, signed_via, motif_absence')
     .eq('id', emargementId)
     .single()
 
@@ -82,6 +208,9 @@ export async function signApprenantPresenceAction(
   if (feuille?.validated_at) {
     return { success: false, error: 'La feuille est déjà validée et verrouillée' }
   }
+
+  const refusArchive = await conserverSignature(supabase, owned, em, 'signature_emargement_remplacee')
+  if (refusArchive) return { success: false, error: refusArchive }
 
   const { error } = await supabase
     .from('emargements')
@@ -102,7 +231,7 @@ export async function signApprenantPresenceAction(
 
 /**
  * Marque un apprenant absent (avec motif optionnel).
- * → est_present=false, signature_data effacée.
+ * → est_present=false, signature_data effacée (archivée au journal avant).
  */
 export async function markAbsentAction(
   token: string,
@@ -118,7 +247,7 @@ export async function markAbsentAction(
 
   const { data: em } = await supabase
     .from('emargements')
-    .select('id, session_id, date, creneau')
+    .select('id, session_id, apprenant_id, date, creneau, est_present, signature_data, signed_at, signed_via, motif_absence')
     .eq('id', emargementId)
     .single()
 
@@ -139,13 +268,16 @@ export async function markAbsentAction(
     return { success: false, error: 'La feuille est déjà validée et verrouillée' }
   }
 
+  const refusArchive = await conserverSignature(supabase, owned, em, 'signature_emargement_effacee')
+  if (refusArchive) return { success: false, error: refusArchive }
+
   const { error } = await supabase
     .from('emargements')
     .update({
       est_present: false,
       signature_data: null,
       signed_at: null,
-      motif_absence: motif?.trim() || null,
+      motif_absence: (typeof motif === 'string' ? motif.trim() : '') || null,
     })
     .eq('id', emargementId)
 
@@ -188,6 +320,10 @@ export async function validerFeuilleByFormateurAction(
 
   if (!session || session.formateur_id !== context.formateur.id) {
     return { success: false, error: 'Session non autorisée' }
+  }
+
+  if (!(await creneauAuPlanning(supabase, sessionId, date, creneau))) {
+    return { success: false, error: 'Ce créneau ne figure pas au planning de la session' }
   }
 
   // Upsert : create ou update si déjà existante
@@ -251,6 +387,7 @@ export async function setSessionEmargementModeAction(
   sessionId: string,
   mode: 'numerique' | 'papier',
 ): Promise<{ success: boolean; error?: string }> {
+  if (mode !== 'numerique' && mode !== 'papier') return { success: false, error: 'Mode inconnu' }
   const supabase = await createServiceRoleClient()
   const owned = await getOwnedSession(supabase, token, sessionId)
   if (!owned) return { success: false, error: 'Session non autorisée' }
@@ -285,6 +422,10 @@ export async function saveScanSessionAction(
   const owned = await getOwnedSession(supabase, token, sessionId)
   if (!owned) return { success: false, error: 'Session non autorisée' }
   if (!storagePath) return { success: false, error: 'Fichier manquant' }
+  // Seul un fichier qu'on vient de téléverser pour cette organisation est accepté
+  if (!cheminScanAccepte(storagePath, owned.session.organization_id)) {
+    return { success: false, error: 'Fichier non reconnu : téléversez à nouveau la feuille' }
+  }
 
   const { error } = await supabase
     .from('sessions')
@@ -306,9 +447,13 @@ export async function setFeuilleModeAction(
   creneau: Creneau,
   mode: 'numerique' | 'papier',
 ): Promise<{ success: boolean; error?: string }> {
+  if (mode !== 'numerique' && mode !== 'papier') return { success: false, error: 'Mode inconnu' }
   const supabase = await createServiceRoleClient()
   const owned = await getOwnedSession(supabase, token, sessionId)
   if (!owned) return { success: false, error: 'Session non autorisée' }
+  if (!(await creneauAuPlanning(supabase, sessionId, date, creneau))) {
+    return { success: false, error: 'Ce créneau ne figure pas au planning de la session' }
+  }
 
   const { data: existing } = await supabase
     .from('emargement_feuilles')
@@ -344,6 +489,8 @@ export async function setFeuilleModeAction(
 /**
  * Pointage d'une présence sans signature à l'écran : la signature manuscrite
  * est sur la feuille papier, le formateur ne fait que la reporter.
+ * Une signature numérique déjà recueillie reste en place (même règle que
+ * « Tous présents ») : la présence est déjà prouvée.
  */
 export async function markPresentPapierAction(
   token: string,
@@ -358,7 +505,7 @@ export async function markPresentPapierAction(
 
   const { data: em } = await supabase
     .from('emargements')
-    .select('id, session_id, date, creneau')
+    .select('id, session_id, date, creneau, signature_data')
     .eq('id', emargementId)
     .single()
 
@@ -379,6 +526,9 @@ export async function markPresentPapierAction(
     return { success: false, error: 'La feuille est déjà validée et verrouillée' }
   }
 
+  // Déjà signé à l'écran : la signature ne se remplace pas par un pointage
+  if (em.signature_data) return { success: true }
+
   const { error } = await supabase
     .from('emargements')
     .update({
@@ -392,6 +542,8 @@ export async function markPresentPapierAction(
       motif_absence: null,
     })
     .eq('id', emargementId)
+    // Une signature arrivée entre-temps ne s'efface pas
+    .is('signature_data', null)
 
   if (error) return { success: false, error: error.message }
 
@@ -413,20 +565,32 @@ export async function saveScanFeuilleAction(
   const supabase = await createServiceRoleClient()
   const owned = await getOwnedSession(supabase, token, sessionId)
   if (!owned) return { success: false, error: 'Session non autorisée' }
+  if (!(await creneauAuPlanning(supabase, sessionId, date, creneau))) {
+    return { success: false, error: 'Ce créneau ne figure pas au planning de la session' }
+  }
 
   const { data: existing } = await supabase
     .from('emargement_feuilles')
-    .select('id')
+    .select('id, validated_at, scan_storage_path')
     .eq('session_id', sessionId)
     .eq('date', date)
     .eq('creneau', creneau)
     .maybeSingle()
 
+  // Feuille attestée : le scan qui fait foi ne se remplace ni ne s'efface
+  if (existing?.validated_at) {
+    return { success: false, error: 'La feuille est déjà validée et verrouillée' }
+  }
+  if (storagePath && !cheminScanAccepte(storagePath, owned.session.organization_id, existing?.scan_storage_path)) {
+    return { success: false, error: 'Fichier non reconnu : téléversez à nouveau le scan' }
+  }
+  const chemin = storagePath || null
+
   const error = existing
     ? (
         await supabase
           .from('emargement_feuilles')
-          .update({ scan_storage_path: storagePath })
+          .update({ scan_storage_path: chemin })
           .eq('id', existing.id)
       ).error
     : (
@@ -437,7 +601,7 @@ export async function saveScanFeuilleAction(
           creneau,
           formateur_id: owned.context.formateur.id,
           mode: 'papier',
-          scan_storage_path: storagePath,
+          scan_storage_path: chemin,
         })
       ).error
 
@@ -467,6 +631,9 @@ export async function attesterFeuillePapierAction(
   const supabase = await createServiceRoleClient()
   const owned = await getOwnedSession(supabase, token, sessionId)
   if (!owned) return { success: false, error: 'Session non autorisée' }
+  if (!(await creneauAuPlanning(supabase, sessionId, date, creneau))) {
+    return { success: false, error: 'Ce créneau ne figure pas au planning de la session' }
+  }
 
   const { data: existing } = await supabase
     .from('emargement_feuilles')
@@ -478,6 +645,10 @@ export async function attesterFeuillePapierAction(
 
   if (existing?.validated_at) {
     return { success: false, error: 'Cette feuille est déjà validée' }
+  }
+  // L'écran renvoie le scan déjà enregistré ; un autre chemin doit venir d'un dépôt récent
+  if (scanStoragePath && !cheminScanAccepte(scanStoragePath, owned.session.organization_id, existing?.scan_storage_path)) {
+    return { success: false, error: 'Fichier non reconnu : téléversez à nouveau le scan' }
   }
 
   const payload = {
@@ -500,92 +671,6 @@ export async function attesterFeuillePapierAction(
 
   revalidateEmargement(token, sessionId)
   return { success: true }
-}
-
-/**
- * Création d'une feuille d'émargement vide (un row par apprenant inscrit).
- */
-export async function createEmargementAction(
-  token: string,
-  sessionId: string,
-  date: string,
-  creneau: 'matin' | 'apres_midi' | 'journee'
-): Promise<{ success: boolean; error?: string }> {
-  const context = await getPortalContext(token)
-  if (!context || context.type !== 'formateur') {
-    return { success: false, error: 'Accès non autorisé' }
-  }
-
-  const supabase = await createServiceRoleClient()
-
-  const owned = await getOwnedSession(supabase, token, sessionId)
-  if (!owned) return { success: false, error: 'Session non autorisée' }
-
-  const { data: inscriptions, error: inscriptionsError } = await supabase
-    .from('inscriptions')
-    .select('apprenant_id')
-    .eq('session_id', sessionId)
-    .not('status', 'in', '("annule","abandonne")')
-
-  if (inscriptionsError) {
-    return { success: false, error: inscriptionsError.message }
-  }
-
-  if (!inscriptions || inscriptions.length === 0) {
-    return { success: false, error: 'Aucun apprenant inscrit à cette session' }
-  }
-
-  const organizationId = context.organization.id
-  const apprenantIds = inscriptions.map((i) => i.apprenant_id)
-
-  const { data: existing } = await supabase
-    .from('emargements')
-    .select('apprenant_id')
-    .eq('session_id', sessionId)
-    .eq('date', date)
-    .eq('creneau', creneau)
-    .in('apprenant_id', apprenantIds)
-
-  const existingApprenantIds = new Set((existing || []).map((e: any) => e.apprenant_id))
-
-  const toInsert = inscriptions
-    .filter((i) => !existingApprenantIds.has(i.apprenant_id))
-    .map((i) => ({
-      session_id: sessionId,
-      apprenant_id: i.apprenant_id,
-      date,
-      creneau,
-      est_present: false,
-      organization_id: organizationId,
-    }))
-
-  if (toInsert.length === 0) {
-    return { success: false, error: 'La feuille d\'émargement existe déjà pour cette date et ce créneau' }
-  }
-
-  const { error: insertError } = await supabase.from('emargements').insert(toInsert)
-
-  if (insertError) {
-    return { success: false, error: insertError.message }
-  }
-
-  revalidateEmargement(token, sessionId)
-  return { success: true }
-}
-
-/**
- * Conservé pour compat. : toggle simple présent/absent (sans signature).
- * Utilisable seulement si la feuille n'est pas verrouillée.
- */
-export async function togglePresenceAction(
-  token: string,
-  emargementId: string,
-  estPresent: boolean
-): Promise<{ success: boolean; error?: string }> {
-  if (estPresent) {
-    return { success: false, error: 'Utilisez la signature pour valider une présence' }
-  }
-  return markAbsentAction(token, emargementId, null)
 }
 
 /**

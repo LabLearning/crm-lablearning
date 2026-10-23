@@ -10,6 +10,16 @@ import QRCode from 'qrcode'
 
 export const dynamic = 'force-dynamic'
 
+/** Noms, adresses et intitulés viennent d'autres saisies : rien n'entre brut dans la page. */
+function esc(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const supabase = await createServiceRoleClient()
 
@@ -31,6 +41,25 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const { getSession } = await import('@/lib/auth')
     const session = await getSession()
     orgId = session.organization.id
+    if (session.user.role === 'formateur') {
+      // Espace connecté du formateur (/mon-espace, sans token dans l'URL) :
+      // mêmes droits que par son lien de portail, ses sessions seulement
+      const { data: fiche } = await supabase
+        .from('formateurs')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+      if (!fiche) return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+      formateurId = fiche.id
+    } else {
+      // La planche donne l'accès permanent au portail de chaque stagiaire :
+      // les autres comptes externes (apprenant, apporteur, franchise) n'y ont
+      // pas droit, l'équipe garde la règle de la fiche session
+      const { checkDashboardAccess } = await import('@/lib/dashboard-guard')
+      if (!checkDashboardAccess('/dashboard/sessions', session.user.role as any, session.permissions).allowed) {
+        return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
+      }
+    }
   }
 
   let query = supabase
@@ -89,7 +118,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   // HTML imprimable (browser print to PDF)
   const formationName = (sess as any).formation?.intitule || 'Formation'
   const html = `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"><title>QR codes — ${formationName}</title>
+<html lang="fr"><head><meta charset="UTF-8"><title>QR codes — ${esc(formationName)}</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; }
   h1 { font-size: 18px; margin: 0 0 4px 0; }
@@ -103,20 +132,30 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   @media print { body { padding: 0; } .no-print { display: none; } }
 </style>
 </head><body>
-<h1>${formationName}</h1>
-<div class="subtitle">${sess.reference || ''} — Du ${new Date(sess.date_debut).toLocaleDateString('fr-FR')} au ${new Date(sess.date_fin).toLocaleDateString('fr-FR')}</div>
+<h1>${esc(formationName)}</h1>
+<div class="subtitle">${esc(sess.reference || '')} — Du ${esc(new Date(sess.date_debut).toLocaleDateString('fr-FR'))} au ${esc(new Date(sess.date_fin).toLocaleDateString('fr-FR'))}</div>
 <div class="no-print" style="margin-bottom:16px;font-size:12px;color:#888;">Imprimez cette page (Ctrl+P / Cmd+P) ou enregistrez en PDF pour distribuer aux apprenants.</div>
 <div class="grid">
 ${items.map(it => `
   <div class="card">
-    <div class="name">${it.apprenant.prenom} ${it.apprenant.nom}</div>
-    ${it.apprenant.email ? `<div class="email">${it.apprenant.email}</div>` : ''}
-    <img src="${it.qrDataUrl}" alt="QR code" width="200" height="200" />
-    <div class="url">${it.url}</div>
+    <div class="name">${esc(it.apprenant.prenom)} ${esc(it.apprenant.nom)}</div>
+    ${it.apprenant.email ? `<div class="email">${esc(it.apprenant.email)}</div>` : ''}
+    <img src="${esc(it.qrDataUrl)}" alt="QR code" width="200" height="200" />
+    <div class="url">${esc(it.url)}</div>
   </div>
 `).join('')}
 </div>
 </body></html>`
 
-  return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+  return new NextResponse(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      // La page porte des accès permanents aux portails : ni cache, ni
+      // référent transmis, ni script exécutable
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+      'X-Robots-Tag': 'noindex, nofollow',
+      'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+    },
+  })
 }

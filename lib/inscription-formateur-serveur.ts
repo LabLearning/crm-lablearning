@@ -3,6 +3,7 @@
 // public (/recrutement). Module serveur uniquement : il lit les en-têtes de la
 // requête, écrit avec la clé de service et envoie des mails.
 
+import { isIP } from 'net'
 import { headers } from 'next/headers'
 import {
   PREFIXE_CV, CV_TAILLE_MAX, CV_TYPES, DOMAINES_FORMATEUR, CERTIFICATIONS_FORMATEUR, STATUTS_FORMATEUR,
@@ -12,10 +13,14 @@ import { ageHorodatage } from '@/lib/inscription-formateur-garde'
 
 export type Resultat<T = undefined> = { success: boolean; error?: string; data?: T }
 
+/** Type des lignes d'audit_logs qui consignent chaque dépôt de CV ouvert : le compteur des limites, et la trace des CV jamais rattachés à une fiche. */
+const JOURNAL_CV = 'cv_formateur'
+
 /**
  * Prépare le dépôt du CV : le navigateur l'envoie ensuite directement au
  * stockage par une URL signée, sans passer par le serveur (pas de limite de
  * taille de requête, pas de fichier en mémoire côté fonction).
+ * Un jeton de page vaut un jour : sans limite, il ouvrirait des dépôts sans fin.
  */
 export async function preparerDepotCv(supabase: any, org: any, cleGarde: string, jetonPage: string, nomFichier: string, taille: number, type: string): Promise<Resultat<{ path: string; jeton: string }>> {
   // Seule une page servie par nous depuis moins d'un jour peut demander un dépôt
@@ -24,8 +29,25 @@ export async function preparerDepotCv(supabase: any, org: any, cleGarde: string,
   if (!(taille > 0) || taille > CV_TAILLE_MAX) return { success: false, error: 'Le CV ne doit pas dépasser 8 Mo.' }
   const propre = String(nomFichier || 'cv').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80)
   const path = `${PREFIXE_CV}/${org.id}/${crypto.randomUUID()}/${propre}`
+
+  // Limites par heure, comme pour l'envoi de la fiche : 10 dépôts par connexion, 40 pour tout l'organisme
+  const h = headers()
+  const brute = String(h.get('x-forwarded-for') || h.get('x-real-ip') || '').split(',')[0].trim()
+  const ip = isIP(brute) ? brute : null
+  const ilYAUneHeure = new Date(Date.now() - 3600000).toISOString()
+  const depots = () => supabase.from('audit_logs').select('id', { count: 'exact', head: true })
+    .eq('organization_id', org.id).eq('entity_type', JOURNAL_CV).gte('created_at', ilYAUneHeure)
+  const [parConnexion, auTotal] = await Promise.all([ip ? depots().eq('ip_address', ip) : Promise.resolve({ count: 0 }), depots()])
+  if ((parConnexion.count || 0) >= 10 || (auTotal.count || 0) >= 40) return { success: false, error: 'Trop de dépôts de CV en peu de temps. Réessayez dans une heure.' }
+
   const { data, error } = await supabase.storage.from('documents').createSignedUploadUrl(path)
   if (error || !data) return { success: false, error: 'Le dépôt du CV est indisponible. Réessayez dans un instant.' }
+  // Trace du dépôt ouvert : c'est elle que comptent les limites ci-dessus
+  const { error: trace } = await supabase.from('audit_logs').insert({
+    organization_id: org.id, user_id: null, action: 'depot_cv_formulaire', entity_type: JOURNAL_CV,
+    details: { path }, ip_address: ip, user_agent: nettoyer(h.get('user-agent'), 300) || null,
+  })
+  if (trace) console.error('[inscription formateur] trace du dépôt de CV', trace)
   return { success: true, data: { path, jeton: data.token } }
 }
 

@@ -4,6 +4,18 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getPortalContext } from '@/lib/portal-auth'
 import { sendNewLeadFromApporteurEmail } from '@/lib/email'
 
+/** Leads qu'un apporteur peut transmettre sur 24 heures glissantes : chacun part en mail et en notifications à l'équipe. */
+const LEADS_PAR_JOUR = 20
+
+/**
+ * Le gabarit du mail à l'équipe n'échappe pas le HTML : toute valeur saisie
+ * par l'apporteur passe par ici, et aucune balise ne passe. Comme dans
+ * lib/email.ts, « & » et l'apostrophe restent tels quels : sans balise ni
+ * guillemet ils ne peuvent rien injecter, et l'objet du mail, qui reprend le
+ * nom de l'apporteur, ne montre pas d'entités.
+ */
+const esc = (v: unknown) => String(v ?? '').replace(/[<>"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+
 export async function submitLeadFromPortalAction(
   token: string,
   formData: FormData
@@ -38,6 +50,22 @@ export async function submitLeadFromPortalAction(
   const nombre_stagiaires = nombre_stagiaires_raw ? parseInt(nombre_stagiaires_raw, 10) : null
 
   const supabase = await createServiceRoleClient()
+
+  // Plafond de dépôts : le lien n'expire pas, et chaque lead déclenche un mail
+  // et des notifications à toute l'équipe
+  const { count: deposes, error: erreurCompte } = await supabase
+    .from('leads')
+    .select('id', { count: 'exact', head: true })
+    .eq('apporteur_id', context.apporteur.id)
+    .eq('source', 'apporteur_affaires')
+    .gte('created_at', new Date(Date.now() - 24 * 3600_000).toISOString())
+  if (erreurCompte) {
+    console.error('[submitLeadFromPortalAction] Count error:', erreurCompte)
+    return { success: false, error: 'Erreur lors de la création du lead. Veuillez réessayer.' }
+  }
+  if ((deposes || 0) >= LEADS_PAR_JOUR) {
+    return { success: false, error: `Vous avez déjà transmis ${LEADS_PAR_JOUR} leads ces dernières 24 heures. Réessayez demain, ou écrivez directement à l'équipe ${context.organization.name}.` }
+  }
 
   // Franchise : on ne fait confiance à aucun id venant du formulaire, on vérifie
   // qu'il appartient bien à l'organisation de l'apporteur avant de l'enregistrer
@@ -119,21 +147,22 @@ export async function submitLeadFromPortalAction(
 
   if (org) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
+    // Valeurs échappées pour le mail seulement : le lead garde la saisie d'origine
     await sendNewLeadFromApporteurEmail({
       adminEmail,
       orgName: (org as any).name || context.organization.name,
-      apporteurName: apporteurFullName,
-      apporteurEmail: context.apporteur.email || '',
+      apporteurName: esc(apporteurFullName),
+      apporteurEmail: esc(context.apporteur.email || ''),
       lead: {
-        contact_prenom,
-        contact_nom,
-        contact_email,
-        contact_telephone,
-        entreprise,
-        formation_souhaitee,
-        nombre_stagiaires: nombre_stagiaires_raw,
-        date_souhaitee,
-        commentaire,
+        contact_prenom: esc(contact_prenom),
+        contact_nom: esc(contact_nom),
+        contact_email: esc(contact_email),
+        contact_telephone: esc(contact_telephone),
+        entreprise: esc(entreprise),
+        formation_souhaitee: esc(formation_souhaitee),
+        nombre_stagiaires: esc(nombre_stagiaires_raw),
+        date_souhaitee: esc(date_souhaitee),
+        commentaire: esc(commentaire),
       },
       dashboardUrl: `${appUrl}/dashboard/leads${newLead ? `/${newLead.id}` : ''}`,
     })

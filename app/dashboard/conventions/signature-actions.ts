@@ -4,13 +4,28 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
 import { randomBytes, createHash } from 'crypto'
-import type { ActionResult } from '@/lib/types'
+import type { ActionResult, Permission } from '@/lib/types'
 import { refusSignature } from '@/lib/signature-image'
+
+/**
+ * Préparer un lien de signature ou noter le suivi AKTO : les droits de la page
+ * Conventions, ou les rôles qui peuvent déjà annuler une demande (plus bas).
+ * Ce module est embarqué par la page publique de signature, hors du contrôle
+ * central du tableau de bord : sans ce contrôle, un compte externe connecté
+ * (franchise, formateur, apporteur) relançait le lien d'une convention
+ * retirée et pouvait la signer à la place du client.
+ */
+function gereConventions(session: { user: { role: string }; permissions: Permission[] }): boolean {
+  if (['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) return true
+  return checkDashboardAccess('/dashboard/conventions', session.user.role as any, session.permissions).allowed
+}
 
 /** Génère un token de signature unique pour une convention et retourne le lien public */
 export async function generateSignatureLinkAction(conventionId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!gereConventions(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: conv } = await supabase
@@ -249,7 +264,7 @@ export async function signConventionPublicAction(
     .from('conventions')
     .select(`id, organization_id, signature_token_expires_at, status, session_id, client_id, formation_id,
       numero, objet, duree_heures, dates_formation, lieu, nombre_stagiaires, montant_ht, taux_tva, montant_ttc,
-      client:client_id(type), formation:formation_id(intitule), session:session_id(reference)`)
+      client:client_id(type), formation:formation_id(intitule), session:session_id(reference, status)`)
     .eq('signature_token', token)
     .single()
   if (!conv) return { success: false, error: 'Lien invalide' }
@@ -258,6 +273,17 @@ export async function signConventionPublicAction(
   }
   if (['signee_client', 'signee_complete'].includes(conv.status)) {
     return { success: false, error: 'Convention déjà signée' }
+  }
+  // Une convention annulée garde son jeton (le changement de statut ne l'efface
+  // pas) : son lien ne signe plus rien. Un brouillon, lui, reste signable : les
+  // renvois inter et particulier posent un lien valide sans changer le statut
+  if (conv.status === 'annulee') {
+    return { success: false, error: 'Cette convention n’est plus ouverte à la signature. Contactez l’organisme de formation pour recevoir un nouveau lien.' }
+  }
+  // Une session annulée n'a plus de convention à signer : la signature
+  // engageait l'organisme et pouvait remettre la session « validée »
+  if ((conv as any).session?.status === 'annulee') {
+    return { success: false, error: 'La session de cette convention est annulée : la signature n’est plus possible. Contactez l’organisme de formation.' }
   }
 
   const now = new Date().toISOString()
@@ -316,6 +342,8 @@ export async function signConventionPublicAction(
       akto_dossier_status: conv.client_id ? 'pret_a_envoyer' : 'non_envoye',
     })
     .eq('id', conv.id)
+    // Toujours ouverte au moment d'écrire (pas annulée entre-temps)
+    .neq('status', 'annulee')
     // Deux validations simultanées : seule la première est retenue
     .not('status', 'in', '("signee_client","signee_complete")')
     // Une signature déjà enregistrée ne s'écrase jamais : elle s'annule d'abord
@@ -477,6 +505,12 @@ export async function updateAktoStatusAction(
   numero?: string,
 ): Promise<ActionResult> {
   const session = await getSession()
+  if (!gereConventions(session)) return { success: false, error: 'Accès non autorisé' }
+  // Statut et numéro viennent du navigateur : seules les étapes de la demande
+  if (!['envoye', 'accord_recu', 'refuse'].includes(status)) return { success: false, error: 'Statut AKTO invalide' }
+  if (numero != null && (typeof numero !== 'string' || numero.length > 100)) {
+    return { success: false, error: 'Numéro de dossier AKTO invalide' }
+  }
   const supabase = await createServiceRoleClient()
 
   const update: Record<string, unknown> = { akto_dossier_status: status }

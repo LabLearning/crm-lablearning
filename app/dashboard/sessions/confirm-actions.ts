@@ -3,14 +3,40 @@
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
-import { getSession } from '@/lib/auth'
+import { getSession, type SessionContext } from '@/lib/auth'
 import { randomBytes, createHash } from 'crypto'
 import type { ActionResult } from '@/lib/types'
 import { emailShell, ctaButton } from '@/lib/email'
 import { refusSignature } from '@/lib/signature-image'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
+import { hasPermission, isAdmin } from '@/lib/permissions'
 
 function newToken() {
   return createHash('sha256').update(randomBytes(32)).digest('hex')
+}
+
+/**
+ * Confirmer une session engage l'organisme : la convention part au client, le
+ * contrat au formateur. Réservé au personnel qui peut modifier les sessions.
+ * Ce module est aussi chargé par la page publique de signature du contrat, où
+ * le contrôle central du tableau de bord ne joue pas : un formateur ou un
+ * franchisé connecté pouvait y appeler la confirmation.
+ */
+function peutConfirmerSession(session: SessionContext): boolean {
+  if (!checkDashboardAccess('/dashboard/sessions', session.user.role as any, session.permissions).allowed) return false
+  // Le directeur commercial confirme les sessions, comme dans la fiche session
+  return isAdmin(session.user.role) || session.user.role === 'directeur_commercial' || hasPermission(session.permissions, 'sessions', 'update')
+}
+
+/**
+ * Un client de base créé côté serveur est une instance de classe munie de
+ * from() ; rien de ce qu'un navigateur peut transmettre à une action (objets
+ * simples, tableaux, dates, Map, FormData, références d'actions) n'a les deux.
+ */
+function estClientServeur(supabase: any): boolean {
+  return !!supabase && typeof supabase === 'object'
+    && Object.getPrototypeOf(supabase) !== Object.prototype
+    && typeof supabase.from === 'function'
 }
 
 /**
@@ -22,6 +48,9 @@ function newToken() {
  */
 export async function confirmSessionAction(sessionId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutConfirmerSession(session)) {
+    return { success: false, error: "Vous n'avez pas le droit de confirmer une session" }
+  }
   const supabase = await createServiceRoleClient()
 
   // Charger la session avec ses relations
@@ -45,6 +74,10 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
   if (sess.status === 'en_attente_signatures' || sess.status === 'validee') {
     return { success: false, error: 'Session déjà confirmée' }
   }
+  // Une session annulée ou terminée ne repart pas en signature
+  if (sess.status === 'annulee' || sess.status === 'terminee') {
+    return { success: false, error: 'Une session annulée ou terminée ne peut pas être confirmée' }
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 
@@ -57,6 +90,7 @@ export async function confirmSessionAction(sessionId: string): Promise<ActionRes
       confirmed_by: session.user.id,
     })
     .eq('id', sessionId)
+    .eq('organization_id', session.organization.id)
 
   // ── Seed des tâches formateur (check-list de fin de session) ──
   if (sess.formateur_id) {
@@ -338,17 +372,23 @@ function emailContratFormateurHtml(p: { orgName: string; formateurName: string; 
 export async function signContratFormateurPublicAction(
   token: string,
   data: { nom: string; signatureDataUrl: string },
-  meta: { ip?: string; userAgent?: string },
+  // Ignoré : l'adresse IP et le navigateur se lisent dans la requête, pas dans ce que la page déclare
+  _meta?: { ip?: string; userAgent?: string },
 ): Promise<ActionResult> {
-  if (!data.nom?.trim()) return { success: false, error: 'Nom requis' }
+  const nom = typeof data?.nom === 'string' ? data.nom.trim() : ''
+  if (!nom) return { success: false, error: 'Nom requis' }
+  if (nom.length > 200) return { success: false, error: 'Nom trop long' }
+  // Le nom est repris dans le courriel de copie du contrat : aucune balise
+  if (/[<>]/.test(nom)) return { success: false, error: 'Le nom ne peut pas contenir les caractères < et >' }
   // Un cadre validé sans tracé, ou une image qui ne se lit pas, n'est pas une signature
   const refus = refusSignature(data.signatureDataUrl)
   if (refus) return { success: false, error: refus }
+  if (typeof token !== 'string' || !token) return { success: false, error: 'Lien invalide' }
 
   const supabase = await createServiceRoleClient()
   const { data: contrat } = await supabase
     .from('contrats_formateur')
-    .select('id, organization_id, session_id, signature_token_expires_at, status, created_by')
+    .select('id, organization_id, session_id, poei_intervention_id, formateur_id, signature_token_expires_at, status, created_by')
     .eq('signature_token', token)
     .single()
   if (!contrat) return { success: false, error: 'Lien invalide' }
@@ -358,19 +398,41 @@ export async function signContratFormateurPublicAction(
   if (['signe_formateur', 'signe_complete'].includes(contrat.status)) {
     return { success: false, error: 'Contrat déjà signé' }
   }
+  // Seul un contrat envoyé se signe : un contrat annulé garde parfois son lien
+  if (contrat.status !== 'envoye') {
+    return { success: false, error: "Ce contrat n'est plus à signer" }
+  }
 
+  // Le contrat ne vaut que pour le formateur en place sur la mission : l'ancien
+  // formateur d'une session réattribuée ne signe plus avec son ancien lien
+  const { data: mission } = contrat.session_id
+    ? await supabase.from('sessions').select('formateur_id')
+      .eq('id', contrat.session_id).eq('organization_id', contrat.organization_id).maybeSingle()
+    : await supabase.from('poei_interventions').select('formateur_id')
+      .eq('id', contrat.poei_intervention_id).eq('organization_id', contrat.organization_id).maybeSingle()
+  if (!mission || mission.formateur_id !== contrat.formateur_id) {
+    return { success: false, error: "Ce contrat n'est plus valable : la mission a été confiée à un autre formateur" }
+  }
+
+  const { origineRequete } = await import('@/lib/preuve-signature-convention')
+  const origine = await origineRequete()
   const now = new Date().toISOString()
-  await supabase
+  const { data: signe, error: erreurSignature } = await supabase
     .from('contrats_formateur')
     .update({
       status: 'signe_formateur',
       signature_formateur_date: now,
-      signature_formateur_nom: data.nom.trim(),
+      signature_formateur_nom: nom,
       signature_formateur_signature_data: data.signatureDataUrl,
-      signature_formateur_ip: meta.ip || null,
-      signature_formateur_user_agent: meta.userAgent || null,
+      signature_formateur_ip: origine.ip,
+      signature_formateur_user_agent: origine.userAgent,
     })
     .eq('id', contrat.id)
+    // Deux envois simultanés : seul le premier signe
+    .eq('status', 'envoye')
+    .select('id')
+  if (erreurSignature) return { success: false, error: "La signature n'a pas pu être enregistrée" }
+  if (!signe?.length) return { success: false, error: 'Contrat déjà signé' }
 
   // Un contrat d'intervention POEI n'a pas de session : rien à faire valider
   if (contrat.session_id) {
@@ -391,7 +453,7 @@ export async function signContratFormateurPublicAction(
       organizationId: contrat.organization_id,
       userId: contrat.created_by,
       titre: 'Contrat formateur signé',
-      message: `${data.nom.trim()} a signé le contrat de prestation.`,
+      message: `${nom} a signé le contrat de prestation.`,
       type: 'session',
       // Le contrat peut porter sur une intervention POEI : pas de session à ouvrir
       lienUrl: contrat.session_id ? `/dashboard/sessions/${contrat.session_id}` : '/dashboard/contrats',
@@ -401,19 +463,31 @@ export async function signContratFormateurPublicAction(
     })
   }
 
-  await logAudit({ action: 'sign_contrat_formateur', entity_type: 'contrat_formateur', entity_id: contrat.id, details: { signataire: data.nom } })
+  await logAudit({ action: 'sign_contrat_formateur', entity_type: 'contrat_formateur', entity_id: contrat.id, details: { signataire: nom } })
   return { success: true, data: { contratId: contrat.id } }
 }
 
-/** Si convention signee_client ET contrat signe_formateur → session 'validee' + dossier OPCO auto */
+/**
+ * Si convention signee_client ET contrat signe_formateur → session 'validee' + dossier OPCO auto.
+ * Exportée pour la signature des conventions, donc joignable de l'extérieur :
+ * un appel légitime transmet le client de base du serveur, jamais imitable.
+ */
 export async function maybeValidateSession(supabase: any, sessionId: string, organizationId: string) {
-  const { data: conv } = await supabase
-    .from('conventions').select('status').eq('session_id', sessionId).maybeSingle()
+  if (!estClientServeur(supabase) || typeof sessionId !== 'string' || typeof organizationId !== 'string') {
+    console.error('[maybeValidateSession] appel refusé : paramètres invalides')
+    return
+  }
+  const [{ data: sess }, { data: conv }] = await Promise.all([
+    supabase.from('sessions').select('formateur_id')
+      .eq('id', sessionId).eq('organization_id', organizationId).maybeSingle(),
+    supabase.from('conventions').select('status').eq('session_id', sessionId).maybeSingle(),
+  ])
+  if (!sess?.formateur_id) return
   // Plusieurs contrats peuvent coexister si le formateur a changé :
-  // seul le contrat en vigueur (non annulé) compte
+  // seul le contrat en vigueur (non annulé, au nom du formateur en place) compte
   const { data: contrat } = await supabase
     .from('contrats_formateur').select('status')
-    .eq('session_id', sessionId).neq('status', 'annule')
+    .eq('session_id', sessionId).eq('formateur_id', sess.formateur_id).neq('status', 'annule')
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
 
   const convOK = conv && ['signee_client', 'signee_complete'].includes(conv.status)
@@ -453,6 +527,7 @@ async function maybeCreateDossierOpco(supabase: any, sessionId: string, organiza
       formation:formation_id(intitule, tarif_inter_ht, tarif_intra_ht, taux_tva)
     `)
     .eq('id', sessionId)
+    .eq('organization_id', organizationId)
     .maybeSingle()
   if (!sess) return
 

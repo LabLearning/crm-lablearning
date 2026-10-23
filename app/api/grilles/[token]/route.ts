@@ -120,9 +120,32 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const supabase = await createServiceRoleClient()
   const { data: sess } = await supabase.from('sessions')
-    .select('id, organization_id').eq('id', session_id)
+    .select('id, organization_id, date_debut, date_fin').eq('id', session_id)
     .eq('formateur_id', (context as any).formateur.id).maybeSingle()
   if (!sess) return NextResponse.json({ error: 'Session introuvable ou hors de votre périmètre' }, { status: 404 })
+
+  // Mêmes règles que la grille du portail (enregistrerGrillePortailAction) :
+  // questionnaire rattaché à la session, d'un type que la grille propose (la
+  // satisfaction à froid revient au stagiaire seul), et rempli à son heure
+  const TYPES_GRILLE = ['positionnement', 'entree', 'sortie', 'satisfaction_chaud']
+  const [{ data: lien }, { data: qcmInfo }] = await Promise.all([
+    supabase.from('qcm_sessions').select('id').eq('session_id', session_id).eq('qcm_id', qcm_id).limit(1).maybeSingle(),
+    supabase.from('qcm').select('type').eq('id', qcm_id).maybeSingle(),
+  ])
+  if (!lien || !qcmInfo) return NextResponse.json({ error: 'Questionnaire introuvable pour cette session' }, { status: 404 })
+  const typeQcm = String((qcmInfo as any).type || '')
+  if (!TYPES_GRILLE.includes(typeQcm)) {
+    return NextResponse.json({ error: 'Ce questionnaire ne se remplit pas depuis la grille.' }, { status: 422 })
+  }
+  const aujourdHui = new Date().toISOString().slice(0, 10)
+  const commencee = !!(sess as any).date_debut && String((sess as any).date_debut).slice(0, 10) <= aujourdHui
+  const finie = (sess as any).date_fin ? String((sess as any).date_fin).slice(0, 10) < aujourdHui : commencee
+  if (['positionnement', 'entree'].includes(typeQcm) && !commencee) {
+    return NextResponse.json({ error: 'Le positionnement se remplit à partir du premier jour de la session.' }, { status: 422 })
+  }
+  if (['sortie', 'satisfaction_chaud'].includes(typeQcm) && !finie) {
+    return NextResponse.json({ error: "L'évaluation des acquis et la satisfaction se remplissent une fois la session terminée." }, { status: 422 })
+  }
 
   const faits: string[] = []
   const refus: { apprenant_id: string; raison: string }[] = []

@@ -4,10 +4,60 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createSessionSchema } from '@/lib/validations/formation'
 import { logAudit } from '@/lib/audit'
-import { getSession } from '@/lib/auth'
+import { getSession, type SessionContext } from '@/lib/auth'
 import type { ActionResult } from '@/lib/types'
 import { refusFormationPoei } from '@/lib/poei-garde'
 import { datesDuParcours } from '@/lib/certificat-poei'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
+import { hasPermission, isAdmin } from '@/lib/permissions'
+
+/**
+ * Ce module est aussi chargé hors du tableau de bord (/mon-espace l'importe
+ * pour les missions du formateur) : là, le contrôle central de rôle ne joue
+ * pas et chaque action exportée peut être appelée directement. Les actions de
+ * gestion vérifient donc elles-mêmes que le compte fait partie du personnel
+ * (checkDashboardAccess écarte formateur, apprenant, apporteur et franchise)
+ * et qu'il a le droit voulu sur les sessions. Le refus des comptes externes
+ * compte : le formateur a « sessions : modifier » en base.
+ */
+function peutGererSessions(session: SessionContext, droit: 'create' | 'update' | 'delete'): boolean {
+  if (!checkDashboardAccess('/dashboard/sessions', session.user.role as any, session.permissions).allowed) return false
+  // Le directeur commercial gère les sessions dans le reste du module (fiche
+  // session, pièces, factures OPCO) : il crée et modifie, il ne supprime pas
+  if (session.user.role === 'directeur_commercial' && droit !== 'delete') return true
+  return isAdmin(session.user.role) || hasPermission(session.permissions, 'sessions', droit)
+}
+
+/** Statuts admis en base (type session_status) */
+const STATUTS_SESSION = ['planifiee', 'confirmee', 'en_attente_signatures', 'validee', 'en_cours', 'terminee', 'annulee']
+
+/**
+ * Formateur, client et stagiaires reçus du formulaire doivent appartenir à
+ * l'organisme : sans ce contrôle, un identifiant venu d'ailleurs serait
+ * enregistré tel quel (client de service, sans RLS). Renvoie le motif du refus.
+ */
+async function refusHorsOrganisation(
+  supabase: any,
+  orgId: string,
+  cibles: { formateurId?: string | null; clientId?: string | null; apprenantIds?: string[] },
+): Promise<string | null> {
+  const apprenantIds = Array.from(new Set(cibles.apprenantIds || []))
+  const [formateur, client, apprenants] = await Promise.all([
+    cibles.formateurId
+      ? supabase.from('formateurs').select('id').eq('id', cibles.formateurId).eq('organization_id', orgId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    cibles.clientId
+      ? supabase.from('clients').select('id').eq('id', cibles.clientId).eq('organization_id', orgId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    apprenantIds.length
+      ? supabase.from('apprenants').select('id').in('id', apprenantIds).eq('organization_id', orgId)
+      : Promise.resolve({ data: [] }),
+  ])
+  if (cibles.formateurId && !formateur.data) return 'Formateur introuvable'
+  if (cibles.clientId && !client.data) return 'Client introuvable'
+  if ((apprenants.data || []).length !== apprenantIds.length) return 'Stagiaire introuvable dans votre organisme'
+  return null
+}
 
 /**
  * Apprenants d'un client, chargés à la volée quand on le sélectionne dans le
@@ -38,6 +88,10 @@ async function syncConventionPrix(
 
 export async function getApprenantsForClientAction(clientId: string): Promise<ActionResult> {
   const session = await getSession()
+  // Sert le formulaire de session : mêmes droits que la création ou la modification
+  if (!peutGererSessions(session, 'create') && !peutGererSessions(session, 'update')) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
   if (!clientId) return { success: true, data: [] }
   const supabase = await createServiceRoleClient()
   const { data } = await supabase
@@ -51,6 +105,9 @@ export async function getApprenantsForClientAction(clientId: string): Promise<Ac
 
 export async function createSessionAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutGererSessions(session, 'create')) {
+    return { success: false, error: "Vous n'avez pas le droit de créer une session" }
+  }
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) { raw[key] = value }
 
@@ -77,6 +134,11 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
   const hasFormateur = !!parsed.data.formateur_id
   const horairesJours = parsed.data.horaires_jours ? safeParseJson(parsed.data.horaires_jours) : []
   const apprenantIds = (parsed.data.apprenant_ids || '').split(',').filter(Boolean)
+
+  const horsOrganisation = await refusHorsOrganisation(supabase, session.organization.id, {
+    formateurId: parsed.data.formateur_id || null, clientId: parsed.data.client_id || null, apprenantIds,
+  })
+  if (horsOrganisation) return { success: false, error: horsOrganisation }
 
   const { data, error } = await supabase
     .from('sessions')
@@ -176,17 +238,27 @@ function safeParseJson(s: string): any[] {
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : [] } catch { return [] }
 }
 
-/** Helper : notif in-app + email "mission proposée" pour le formateur (aussi utilisé par Starkk) */
-export async function notifyFormateurOfMission(formateurId: string, sessionId: string, supabase: any, session: any) {
+/**
+ * Helper : notif in-app + email "mission proposée" pour le formateur (aussi utilisé par Starkk).
+ * Exporté, donc joignable de l'extérieur : le client et la session reçus en
+ * paramètres ne sont pas pris en compte, seul le compte de la requête compte,
+ * et il doit pouvoir gérer les sessions.
+ */
+export async function notifyFormateurOfMission(formateurId: string, sessionId: string, _supabase?: any, _session?: any) {
+  const session = await getSession()
+  if (!peutGererSessions(session, 'create') && !peutGererSessions(session, 'update')) return
+  const supabase: any = await createServiceRoleClient()
   const { createNotification, sendDocumentEmail } = await import('@/lib/email')
   const { data: formateur } = await supabase
-    .from('formateurs').select('user_id, prenom, nom, email').eq('id', formateurId).single()
+    .from('formateurs').select('user_id, prenom, nom, email').eq('id', formateurId)
+    .eq('organization_id', session.organization.id).single()
   if (!formateur) return
 
   const { data: sessionData } = await supabase
     .from('sessions')
     .select('reference, date_debut, date_fin, lieu, horaires, formation:formation_id(intitule)')
-    .eq('id', sessionId).single()
+    .eq('id', sessionId).eq('organization_id', session.organization.id).single()
+  if (!sessionData) return
 
   const intitule = sessionData?.formation?.intitule || 'Formation'
   const fmtFr = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR') : '—'
@@ -243,6 +315,8 @@ export async function notifyFormateurOfMission(formateurId: string, sessionId: s
 
 // ============================================================
 // Workflow mission formateur : accepter / refuser
+// Seules actions du module ouvertes au formateur (/mon-espace) : chacune
+// vérifie que la session lui est bien adressée.
 // ============================================================
 
 export async function acceptMissionAction(sessionId: string): Promise<ActionResult> {
@@ -484,6 +558,9 @@ export async function refuseMissionAction(sessionId: string, comment: string): P
 
 export async function updateSessionAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutGererSessions(session, 'update')) {
+    return { success: false, error: "Vous n'avez pas le droit de modifier cette session" }
+  }
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) { raw[key] = value }
 
@@ -515,10 +592,18 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
     .eq('id', id)
     .eq('organization_id', session.organization.id)
     .single()
+  // Session d'un autre organisme ou inexistante : rien ne doit suivre (formations, inscriptions, conventions)
+  if (!before) return { success: false, error: 'Session introuvable' }
   const newFormateurId = parsed.data.formateur_id || null
   const formateurChanged = !!newFormateurId && newFormateurId !== before?.formateur_id
+  const newApprenantIds = (parsed.data.apprenant_ids || '').split(',').filter(Boolean)
 
-  const { error } = await supabase
+  const horsOrganisation = await refusHorsOrganisation(supabase, session.organization.id, {
+    formateurId: newFormateurId, clientId: parsed.data.client_id || null, apprenantIds: newApprenantIds,
+  })
+  if (horsOrganisation) return { success: false, error: horsOrganisation }
+
+  const { data: majSession, error } = await supabase
     .from('sessions')
     .update({
       // Nouveau formateur assigné → mission à proposer
@@ -554,8 +639,10 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
     })
     .eq('id', id)
     .eq('organization_id', session.organization.id)
+    .select('id')
 
   if (error) return { success: false, error: 'Erreur lors de la mise à jour' }
+  if (!majSession?.length) return { success: false, error: 'Session introuvable' }
 
   // Le prix modifié sur la session se répercute sur la convention liée
   await syncConventionPrix(supabase, id, session.organization.id, parsed.data.prix_ht)
@@ -597,7 +684,6 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
   }
 
   // Synchroniser les inscriptions apprenants : ajoute les nouveaux, garde les existants
-  const newApprenantIds = (parsed.data.apprenant_ids || '').split(',').filter(Boolean)
   if (newApprenantIds.length > 0) {
     const { data: existing } = await supabase
       .from('inscriptions').select('apprenant_id').eq('session_id', id)
@@ -665,15 +751,22 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
 
 export async function updateSessionStatusAction(id: string, status: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutGererSessions(session, 'update')) {
+    return { success: false, error: "Vous n'avez pas le droit de modifier cette session" }
+  }
+  if (!STATUTS_SESSION.includes(status)) return { success: false, error: 'Statut inconnu' }
   const supabase = await createServiceRoleClient()
 
-  const { error } = await supabase
+  const { data: majSession, error } = await supabase
     .from('sessions')
     .update({ status })
     .eq('id', id)
     .eq('organization_id', session.organization.id)
+    .select('id')
 
   if (error) return { success: false, error: 'Erreur' }
+  // Session hors organisme : pas de QCM semés ni de commissions recalculées
+  if (!majSession?.length) return { success: false, error: 'Session introuvable' }
 
   // À la fin de la session → seed QCM sortie + satisfaction à chaud
   if (status === 'terminee') {
@@ -700,15 +793,21 @@ export async function updateSessionStatusAction(id: string, status: string): Pro
 
 export async function deleteSessionAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  // La suppression emporte inscriptions, émargements et signatures : droit de suppression exigé
+  if (!peutGererSessions(session, 'delete')) {
+    return { success: false, error: "Vous n'avez pas le droit de supprimer une session" }
+  }
   const supabase = await createServiceRoleClient()
 
-  const { error } = await supabase
+  const { data: supprimee, error } = await supabase
     .from('sessions')
     .delete()
     .eq('id', id)
     .eq('organization_id', session.organization.id)
+    .select('id')
 
   if (error) return { success: false, error: 'Impossible de supprimer (inscriptions liées)' }
+  if (!supprimee?.length) return { success: false, error: 'Session introuvable' }
 
   await logAudit({ action: 'delete', entity_type: 'session', entity_id: id })
   revalidatePath('/dashboard/sessions')
@@ -733,7 +832,9 @@ export async function sendDocumentToApprenantAction(
   opts?: { preview?: boolean },
 ): Promise<ActionResult<{ html?: string; subject?: string; email?: string | null }> & { whatsapp?: string }> {
   const session = await getSession()
-  if (session.user.role === 'formateur') {
+  // Document officiel émis au nom de l'organisme : personnel ayant le droit de modifier les sessions
+  // (tout compte externe était admis, seul le formateur était refusé)
+  if (!peutGererSessions(session, 'update')) {
     return { success: false, error: 'Action réservée aux gestionnaires' }
   }
   const supabase = await createServiceRoleClient()
@@ -744,11 +845,24 @@ export async function sendDocumentToApprenantAction(
     return { success: false, error: 'Apprenant hors organisation' }
   }
 
-  const { data: sess } = await supabase
-    .from('sessions')
-    .select('*, formateur:formateurs(prenom, nom), client:client_id(raison_sociale, nom_commercial)')
-    .eq('id', sessionId).single()
+  // La session est celle de l'organisme, et le stagiaire y est inscrit (comme dans la liste de la fiche session)
+  const [{ data: sess }, { data: inscription }] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('*, formateur:formateurs(prenom, nom), client:client_id(raison_sociale, nom_commercial)')
+      .eq('id', sessionId).eq('organization_id', session.organization.id).single(),
+    supabase
+      .from('inscriptions')
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('apprenant_id', apprenantId)
+      .eq('organization_id', session.organization.id)
+      .not('status', 'in', '("annule","abandonne")')
+      .limit(1)
+      .maybeSingle(),
+  ])
   if (!sess) return { success: false, error: 'Session introuvable' }
+  if (!inscription) return { success: false, error: "Ce stagiaire n'est pas inscrit à cette session" }
 
   const { data: formation } = await supabase.from('formations').select('*').eq('id', sess.formation_id).single()
   const { data: org } = await supabase.from('organizations').select('*').eq('id', apprenant.organization_id).single()
@@ -988,7 +1102,8 @@ export async function envoyerDocumentSessionAction(
   docType: 'attestation' | 'certificat' | 'hygiene',
 ): Promise<ActionResult & { data?: { envoyes: number; sansEmail: number; echecs: number } }> {
   const session = await getSession()
-  if (session.user.role === 'formateur') {
+  // Mêmes droits que l'envoi à un stagiaire (rejoués pour chacun ci-dessous)
+  if (!peutGererSessions(session, 'update')) {
     return { success: false, error: 'Action réservée aux gestionnaires' }
   }
   const supabase = await createServiceRoleClient()
@@ -997,6 +1112,7 @@ export async function envoyerDocumentSessionAction(
     .from('inscriptions')
     .select('apprenant_id, apprenant:apprenants(email)')
     .eq('session_id', sessionId)
+    .eq('organization_id', session.organization.id)
     .not('status', 'in', '("annule","abandonne")')
 
   const cibles = (inscriptions || []).filter((i: any) => i.apprenant_id)

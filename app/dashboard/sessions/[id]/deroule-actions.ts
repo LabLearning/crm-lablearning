@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
 import { logAudit } from '@/lib/audit'
 import { ETAPES_PAR_CLE, DPO_VERSION } from '@/lib/dpo'
 import { refusSignature } from '@/lib/signature-image'
@@ -21,9 +22,18 @@ export async function validerEtapeDerouleAction(
   commentaire?: string,
 ): Promise<ActionResult> {
   const session = await getSession()
+  // Le formateur de la session, ou le personnel qui ouvre les sessions du
+  // tableau de bord. Ce module est embarqué dans /mon-espace/deroule, où le
+  // garde central ne joue pas : un franchisé, un apporteur ou un stagiaire
+  // connecté n'a pas la main sur le déroulé.
+  const estFormateur = session.user.role === 'formateur'
+  if (!estFormateur && !checkDashboardAccess('/dashboard/sessions', session.user.role as any, session.permissions).allowed) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
   const supabase = await createServiceRoleClient()
 
-  if (!ETAPES_PAR_CLE[etapeCle]) return { success: false, error: 'Étape inconnue' }
+  // Clé propre du référentiel seulement (« constructor » ou « toString » n'en sont pas)
+  if (!Object.prototype.hasOwnProperty.call(ETAPES_PAR_CLE, etapeCle)) return { success: false, error: 'Étape inconnue' }
   if (!STATUTS.includes(statut)) return { success: false, error: 'Statut invalide' }
 
   const { data: sess } = await supabase
@@ -36,7 +46,7 @@ export async function validerEtapeDerouleAction(
   }
 
   // Un formateur ne valide que ses propres sessions.
-  if (session.user.role === 'formateur') {
+  if (estFormateur) {
     const { data: f } = await supabase.from('formateurs').select('id').eq('user_id', session.user.id).maybeSingle()
     if (!f || f.id !== sess.formateur_id) return { success: false, error: 'Cette session ne vous est pas rattachée' }
   }
@@ -46,7 +56,8 @@ export async function validerEtapeDerouleAction(
     session_id: sessionId,
     etape_cle: etapeCle,
     statut,
-    commentaire: commentaire?.trim() || null,
+    // Un commentaire reste une note : longueur bornée
+    commentaire: (typeof commentaire === 'string' ? commentaire.trim().slice(0, 2000) : '') || null,
     validated_by: session.user.id,
     validated_at: statut === 'a_faire' ? null : new Date().toISOString(),
     updated_at: new Date().toISOString(),

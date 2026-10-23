@@ -5,7 +5,28 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createDevisSchema } from '@/lib/validations/dossier'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import type { SessionContext } from '@/lib/auth'
+import { hasPermission, isAdmin } from '@/lib/permissions'
 import type { ActionResult } from '@/lib/types'
+
+const ROLES_EXTERNES = ['formateur', 'apprenant', 'apporteur_affaires', 'franchise']
+
+/** Retirer une ligne d'un devis : l'équipe qui peut modifier les devis, jamais un compte externe */
+function peutModifierDevis(session: SessionContext): boolean {
+  if (ROLES_EXTERNES.includes(session.user.role)) return false
+  return isAdmin(session.user.role) || hasPermission(session.permissions, 'devis', 'update')
+}
+
+/** Le devis appartient-il à l'organisme ? Ses lignes ne se touchent pas d'ailleurs. */
+async function devisDeLOrganisme(supabase: any, devisId: string, organizationId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('devis')
+    .select('id')
+    .eq('id', devisId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+  return !!data
+}
 
 export async function createDevisAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
@@ -56,6 +77,9 @@ export async function addDevisLigneAction(devisId: string, formData: FormData): 
   const description = formData.get('description') as string
 
   if (!designation) return { success: false, error: 'Désignation requise' }
+  if (!(await devisDeLOrganisme(supabase, devisId, session.organization.id))) {
+    return { success: false, error: 'Devis introuvable' }
+  }
 
   const montant_ht = quantite * prix_unitaire_ht
 
@@ -85,35 +109,48 @@ export async function addDevisLigneAction(devisId: string, formData: FormData): 
   if (error) return { success: false, error: 'Erreur lors de l\'ajout de la ligne' }
 
   // Recalculate totals
-  await recalculateDevisTotals(devisId)
+  await recalculateDevisTotals(devisId, session.organization.id)
 
   revalidatePath('/dashboard/devis')
   return { success: true }
 }
 
 export async function removeDevisLigneAction(ligneId: string, devisId: string): Promise<ActionResult> {
+  // Sans session ni droit, tout compte connecté (même suspendu ou externe)
+  // retirait une ligne de n'importe quel devis et en faussait les totaux
+  const session = await getSession()
+  if (!peutModifierDevis(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
+  if (!(await devisDeLOrganisme(supabase, devisId, session.organization.id))) {
+    return { success: false, error: 'Devis introuvable' }
+  }
+
+  // La ligne retirée est une ligne de CE devis
   const { error } = await supabase
     .from('devis_lignes')
     .delete()
     .eq('id', ligneId)
+    .eq('devis_id', devisId)
 
   if (error) return { success: false, error: 'Erreur' }
 
-  await recalculateDevisTotals(devisId)
+  await recalculateDevisTotals(devisId, session.organization.id)
   revalidatePath('/dashboard/devis')
   return { success: true }
 }
 
-async function recalculateDevisTotals(devisId: string) {
+async function recalculateDevisTotals(devisId: string, organizationId: string) {
   const supabase = await createServiceRoleClient()
 
   const { data: devis } = await supabase
     .from('devis')
     .select('remise_pourcent, taux_tva')
     .eq('id', devisId)
+    .eq('organization_id', organizationId)
     .single()
+  // Devis d'un autre organisme : rien à recalculer
+  if (!devis) return
 
   const { data: lignes } = await supabase
     .from('devis_lignes')
@@ -135,6 +172,7 @@ async function recalculateDevisTotals(devisId: string) {
       remise_montant: Math.round(remise * 100) / 100,
     })
     .eq('id', devisId)
+    .eq('organization_id', organizationId)
 }
 
 export async function updateDevisStatusAction(id: string, status: string): Promise<ActionResult> {

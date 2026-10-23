@@ -3,6 +3,42 @@
 import { getPortalContext } from '@/lib/portal-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { STATUTS_ACTIFS, JOURS_APRES_FIN } from '@/lib/formateur-sessions'
+
+/**
+ * Bornes de l'ajout direct : chaque ajout peut déclencher une convocation par
+ * mail à l'adresse saisie et un avenant de convention. Au-delà, le formateur
+ * passe par une déclaration de changement, que l'équipe valide.
+ */
+const AJOUTS_DIRECTS_PAR_SESSION = 20
+const AJOUTS_DIRECTS_PAR_24H = 25
+
+/** Champs du formulaire d'ajout : libellé et longueur maximale. */
+const CHAMPS_AJOUT: Array<[string, string, number]> = [
+  ['nom', 'Nom', 100],
+  ['prenom', 'Prénom', 100],
+  ['email', 'Adresse e-mail', 254],
+  ['sexe', 'Sexe', 10],
+  ['date_naissance', 'Date de naissance', 10],
+  ['adresse', 'Adresse', 200],
+  ['code_postal', 'Code postal', 10],
+  ['ville', 'Ville', 100],
+  ['type_contrat', 'Type de contrat', 60],
+  ['numero_securite_sociale', 'N° de sécurité sociale', 30],
+]
+
+/**
+ * Même périmètre que la liste « Mes apprenants » (lib/formateur-sessions) :
+ * une session en cours ou à venir, ou terminée depuis moins de
+ * JOURS_APRES_FIN jours. Jamais une session annulée.
+ */
+function sessionOuverteAuFormateur(sess: { status?: string | null; date_fin?: string | null }): boolean {
+  if (sess.status && STATUTS_ACTIFS.includes(sess.status)) return true
+  if (sess.status !== 'terminee' || !sess.date_fin) return false
+  const limite = new Date()
+  limite.setDate(limite.getDate() - JOURS_APRES_FIN)
+  return String(sess.date_fin).slice(0, 10) >= limite.toISOString().slice(0, 10)
+}
 
 /**
  * Le formateur déclare un changement de participant (ajout / retrait / remplacement).
@@ -107,7 +143,8 @@ export async function declareParticipantChangeAction(
  * Contrairement à declareParticipantChangeAction (ticket à valider), c'est un
  * ajout immédiat : l'apprenant est créé (ou réutilisé si déjà présent chez le
  * client) puis inscrit. Autorisé uniquement sur une session dont le formateur
- * du token est bien le formateur.
+ * du token est bien le formateur, que son espace lui montre, et dans la
+ * limite des plafonds ci-dessus. Chaque ajout est tracé dans le journal.
  */
 export async function addApprenantBySessionFormateurAction(
   token: string,
@@ -118,25 +155,63 @@ export async function addApprenantBySessionFormateurAction(
   if (!context || context.type !== 'formateur') {
     return { success: false, error: 'Accès non autorisé' }
   }
+  if (typeof (formData as any)?.get !== 'function') return { success: false, error: 'Informations manquantes' }
   const supabase = await createServiceRoleClient()
 
   // La session doit être animée par ce formateur
   const { data: sess } = await supabase
     .from('sessions')
-    .select('id, organization_id, client_id, formateur_id')
+    .select('id, organization_id, client_id, formateur_id, status, date_fin')
     .eq('id', sessionId)
     .maybeSingle()
   if (!sess || sess.formateur_id !== context.formateur.id) {
     return { success: false, error: 'Session non autorisée' }
   }
+  if (!sessionOuverteAuFormateur(sess)) {
+    return { success: false, error: 'Cette session n\'accepte plus d\'ajout : adressez-vous à l\'équipe' }
+  }
 
-  const str = (k: string) => (formData.get(k) as string || '').trim() || null
+  const str = (k: string) => {
+    const v = formData.get(k)
+    return typeof v === 'string' ? v.trim() || null : null
+  }
   const nom = str('nom')
   const prenom = str('prenom')
   if (!nom) return { success: false, error: 'Le nom est requis' }
 
+  // Ces valeurs repartent dans les convocations, les feuilles et les avenants
+  for (const [cle, libelle, max] of CHAMPS_AJOUT) {
+    const v = str(cle)
+    if (!v) continue
+    if (v.length > max) return { success: false, error: `Champ « ${libelle} » trop long (${max} caractères au plus)` }
+    if (/[<>]/.test(v)) return { success: false, error: `Champ « ${libelle} » : les caractères < et > ne sont pas acceptés` }
+  }
+  const email = str('email')
+  if (email && !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]{2,}$/.test(email)) {
+    return { success: false, error: 'L\'adresse e-mail n\'est pas valide' }
+  }
+
   const orgId = sess.organization_id
   const clientId = sess.client_id
+
+  // Plafonds, comptés sur le journal des ajouts directs de ce formateur
+  const depuis = new Date(Date.now() - 24 * 3600_000).toISOString()
+  const ajoutsDuFormateur = () => supabase
+    .from('audit_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('action', 'inscription')
+    .eq('details->>formateur_id', context.formateur.id)
+  const [{ count: surSession }, { count: surJour }] = await Promise.all([
+    ajoutsDuFormateur().eq('entity_type', 'session').eq('entity_id', sessionId),
+    ajoutsDuFormateur().gte('created_at', depuis),
+  ])
+  if ((surSession || 0) >= AJOUTS_DIRECTS_PAR_SESSION) {
+    return { success: false, error: `Vous avez déjà ajouté ${AJOUTS_DIRECTS_PAR_SESSION} stagiaires à cette session : pour les suivants, déclarez un changement ou contactez l'équipe` }
+  }
+  if ((surJour || 0) >= AJOUTS_DIRECTS_PAR_24H) {
+    return { success: false, error: `Vous avez ajouté ${AJOUTS_DIRECTS_PAR_24H} stagiaires en 24 heures : pour les suivants, déclarez un changement ou contactez l'équipe` }
+  }
 
   // Déduplication : même prénom + nom déjà rattaché au client → on réutilise
   let apprenantId: string | null = null
@@ -184,12 +259,40 @@ export async function addApprenantBySessionFormateurAction(
     .eq('apprenant_id', apprenantId)
     .maybeSingle()
   if (!dejaInscrit) {
-    await supabase.from('inscriptions').insert({
+    const { data: inscription, error: iErr } = await supabase
+      .from('inscriptions')
+      .insert({
+        organization_id: orgId,
+        session_id: sessionId,
+        apprenant_id: apprenantId,
+        status: 'inscrit',
+      })
+      .select('id')
+      .single()
+    if (iErr || !inscription) return { success: false, error: 'Impossible d\'inscrire l\'apprenant' }
+
+    // Trace de l'ajout, au nom du formateur (sert aussi aux plafonds ci-dessus)
+    const { data: fiche } = await supabase
+      .from('formateurs')
+      .select('user_id')
+      .eq('id', context.formateur.id)
+      .maybeSingle()
+    const { error: jErr } = await supabase.from('audit_logs').insert({
       organization_id: orgId,
-      session_id: sessionId,
-      apprenant_id: apprenantId,
-      status: 'inscrit',
+      user_id: fiche?.user_id || null,
+      action: 'inscription',
+      entity_type: 'session',
+      entity_id: sessionId,
+      details: {
+        apprenant_id: apprenantId,
+        session_id: sessionId,
+        inscription_id: inscription.id,
+        formateur_id: context.formateur.id,
+        via: 'ajout_formateur',
+      },
     })
+    if (jErr) console.error('[ajout formateur] journal', jErr.message)
+
     // Convention déjà envoyée/signée ? → avenant automatique
     try {
       const { syncConventionAvenant } = await import('@/lib/convention-avenants')

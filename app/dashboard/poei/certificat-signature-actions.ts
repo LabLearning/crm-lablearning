@@ -4,11 +4,26 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
 import type { ActionResult } from '@/lib/types'
 import { ensureCertificatSignature, paramsCertificatSignature, urlSignatureCertificat } from '@/lib/poei-emails'
 
 const APP = () => process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 const VALIDITE_LIEN_JOURS = 60
+
+// L'équipe POEI : les rôles de canManage (./actions), avec l'accès au module
+const EQUIPE_POEI = ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial']
+
+/**
+ * Un lien de signature permet de signer à la place du stagiaire ou de
+ * l'employeur : seule l'équipe POEI le remet ou l'envoie, jamais un compte
+ * externe (formateur, franchise, apporteur, stagiaire). Ce module est embarqué
+ * dans /mon-espace/poei, où le garde central du tableau de bord ne joue pas.
+ */
+function equipePoei(session: Awaited<ReturnType<typeof getSession>>): boolean {
+  return EQUIPE_POEI.includes(session.user.role)
+    && checkDashboardAccess('/dashboard/poei', session.user.role as any, session.permissions).allowed
+}
 
 // Un lien remis ou envoyé aujourd'hui vaut 60 jours à partir d'aujourd'hui :
 // sans cela, une relance tardive transmettrait un lien déjà expiré.
@@ -19,7 +34,7 @@ const prolongerLien = (supabase: any, sigId: string) => supabase.from('certifica
 /** Envoie au candidat, par email, le lien de signature de son certificat. */
 export async function sendCertificatSignatureAction(poeiId: string, apprenantId: string): Promise<ActionResult & { data?: { email: string } }> {
   const session = await getSession()
-  if (['apprenant'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!equipePoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const r = await ensureCertificatSignature(supabase, session.organization.id, poeiId, apprenantId, session.user.id)
@@ -59,7 +74,7 @@ export async function sendCertificatSignatureAction(poeiId: string, apprenantId:
 /** Envoie le lien à TOUS les candidats de la POEI qui ont un email et n'ont pas signé. */
 export async function sendAllCertificatSignaturesAction(poeiId: string): Promise<ActionResult & { data?: { sent: number; skipped: number } }> {
   const session = await getSession()
-  if (['apprenant'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!equipePoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: cands } = await supabase
@@ -77,7 +92,7 @@ export async function sendAllCertificatSignaturesAction(poeiId: string): Promise
 /** Génère le lien sans envoyer d'email (copier/coller manuel). */
 export async function getCertificatSignatureLinkAction(poeiId: string, apprenantId: string): Promise<ActionResult & { data?: { url: string } }> {
   const session = await getSession()
-  if (['apprenant'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!equipePoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const r = await ensureCertificatSignature(supabase, session.organization.id, poeiId, apprenantId, session.user.id)
   if ('error' in r) return { success: false, error: r.error }
@@ -106,9 +121,7 @@ export async function sendSignatureEmployeurAction(
   opts?: { preview?: boolean; lienSeul?: boolean },
 ): Promise<ActionResult & { data?: { email: string | null; html?: string; subject?: string; url?: string } }> {
   const session = await getSession()
-  if (['apprenant', 'formateur'].includes(session.user.role)) {
-    return { success: false, error: 'Accès non autorisé' }
-  }
+  if (!equipePoei(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { data: poei } = await supabase
