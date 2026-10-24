@@ -10,21 +10,38 @@ export const EVT_GERER_COOKIES = 'll-gerer-cookies'
 export const EVT_COOKIES_CHOISIS = 'll-cookies-choisis'
 /** Clé du choix mémorisé. */
 export const CLE_COOKIES = 'll_cookies_choix'
+/** Date du choix : il est redemandé au bout de six mois (recommandation de la CNIL). */
+const CLE_DATE = 'll_cookies_le'
+const VALIDITE_CHOIX_MS = 182 * 86400000
+
+/** Le choix du visiteur s'il date de moins de six mois, sinon null (le bandeau revient). */
+export function choixCookiesValide(): 'accepte' | 'refuse' | null {
+  try {
+    const choix = localStorage.getItem(CLE)
+    if (choix !== 'accepte' && choix !== 'refuse') return null
+    const le = Number(localStorage.getItem(CLE_DATE) || 0)
+    // Choix fait avant le 24/10/2026 (sans date) : le bandeau annonçait alors une mesure
+    // « anonyme à venir », pas Google Analytics. Cet accord ne vaut pas : on redemande.
+    if (!le) return null
+    return Date.now() - le > VALIDITE_CHOIX_MS ? null : choix
+  } catch {
+    return null
+  }
+}
 
 /**
- * Bandeau cookies RGPD : le choix est mémorisé en localStorage et le bandeau
+ * Bandeau cookies RGPD : le choix est mémorisé en localStorage pour six mois et le bandeau
  * ne revient plus — sauf demande explicite via l'événement EVT_GERER_COOKIES,
  * qui permet de retirer ou modifier son consentement à tout moment (exigence
- * RGPD). Le site n'embarque aujourd'hui que des cookies strictement
- * nécessaires — le consentement stocké servira de porte d'entrée si des
- * outils de mesure d'audience sont ajoutés plus tard.
+ * RGPD). Accepter autorise la mesure d'audience de Google Analytics
+ * (MesureAudience), qui n'est pas chargée sans cet accord.
  */
 export function CookieBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     try {
-      if (!localStorage.getItem(CLE)) setVisible(true)
+      if (!choixCookiesValide()) setVisible(true)
     } catch { /* stockage indisponible : pas de bandeau en boucle */ }
     const rouvrir = () => setVisible(true)
     window.addEventListener(EVT_GERER_COOKIES, rouvrir)
@@ -32,7 +49,7 @@ export function CookieBanner() {
   }, [])
 
   function choisir(valeur: 'accepte' | 'refuse') {
-    try { localStorage.setItem(CLE, valeur) } catch { /* ignore */ }
+    try { localStorage.setItem(CLE, valeur); localStorage.setItem(CLE_DATE, String(Date.now())) } catch { /* ignore */ }
     setVisible(false)
     // La bulle Starkk attend ce choix sur téléphone : le bandeau occupe sa place
     window.dispatchEvent(new Event(EVT_COOKIES_CHOISIS))
@@ -45,8 +62,8 @@ export function CookieBanner() {
       className="fixed left-4 bottom-4 z-50 max-w-sm">
       <div className="rounded-2xl bg-[#14110F] text-white shadow-2xl shadow-black/30 ring-1 ring-white/10 p-5">
         <p className="text-sm text-white/80 leading-relaxed">
-          Ce site n&apos;utilise que des cookies strictement nécessaires à son fonctionnement.
-          Votre choix ci-dessous vaudra pour d&apos;éventuelles mesures d&apos;audience anonymes à venir.{' '}
+          Avec votre accord, nous mesurons l&apos;audience du site avec Google Analytics, pour savoir quelles pages vous sont utiles.
+          Aucun cookie publicitaire. Sans accord, seuls les cookies nécessaires au site sont utilisés.{' '}
           <Link href="/cookies" className="underline underline-offset-2 text-white hover:text-white/80">
             En savoir plus
           </Link>

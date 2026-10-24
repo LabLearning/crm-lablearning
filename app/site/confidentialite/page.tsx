@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function Confidentialite() {
   return (
-    <LegalPage title="Politique de confidentialité" updated="août 2026">
+    <LegalPage title="Politique de confidentialité" updated="octobre 2026">
       <p>
         Lab Learning accorde une grande importance à la protection de vos données personnelles. La présente politique
         décrit comment nous collectons, utilisons et protégeons vos données, conformément au Règlement Général sur la
@@ -26,7 +26,7 @@ export default function Confidentialite() {
       <ul>
         <li>Identité et coordonnées (nom, prénom, email, téléphone, entreprise) ;</li>
         <li>Informations relatives à votre demande de formation ou de financement ;</li>
-        <li>Données de navigation (via les cookies ; voir notre <a href="/cookies">politique cookies</a>).</li>
+        <li>Données de navigation, avec votre accord (Google Analytics ; voir notre <a href="/cookies">politique cookies</a>).</li>
       </ul>
 
       <h2>Finalités &amp; bases légales</h2>
@@ -36,7 +36,7 @@ export default function Confidentialite() {
         <li><strong>Répondre à vos questions par notre assistant Starkk</strong> (bulle de discussion du site) : intérêt légitime. Vos messages sont transmis à un modèle d&apos;intelligence artificielle, hébergé par notre sous-traitant Anthropic, uniquement pour produire la réponse. Ils sont conservés douze mois, avec votre adresse IP, pour améliorer les réponses et prévenir les abus. N&apos;y indiquez aucune information sensible ;</li>
         <li><strong>Gérer les inscriptions et le suivi des formations</strong> : exécution du contrat ;</li>
         <li><strong>Respecter nos obligations</strong> (Qualiopi, comptables, légales) : obligation légale ;</li>
-        <li><strong>Amélioration du site et statistiques</strong> : consentement / intérêt légitime.</li>
+        <li><strong>Mesure d&apos;audience du site</strong> (Google Analytics) : consentement, que vous pouvez retirer à tout moment.</li>
       </ul>
 
       <h2>Durée de conservation</h2>
@@ -60,6 +60,7 @@ export default function Confidentialite() {
         <li><strong>Supabase</strong> : base de données, hébergée dans l&apos;Union européenne (région Paris) ;</li>
         <li><strong>Resend</strong> : envoi des emails transactionnels (convocations, attestations) ;</li>
         <li><strong>Meta (WhatsApp Business)</strong> : notifications WhatsApp, uniquement avec votre consentement ;</li>
+        <li><strong>Google (Google Analytics)</strong> : mesure d&apos;audience du site, uniquement avec votre accord ; transferts vers les États-Unis encadrés par le cadre de protection des données entre l&apos;Union européenne et les États-Unis ;</li>
         <li><strong>Anthropic</strong> : modèle d&apos;intelligence artificielle de l&apos;assistant Starkk ; ce traitement peut avoir lieu hors de l&apos;Union européenne ;</li>
         <li><strong>Google Workspace</strong> : messagerie et documents internes.</li>
       </ul>

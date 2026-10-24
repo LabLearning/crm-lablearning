@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { X, Loader2, CheckCircle2, PhoneCall, Recommencer, Envoyer, ArrowLeft } from './icons'
 import { STARKK_SITE } from '@/lib/fonctionnalites'
-import { CLE_COOKIES, EVT_COOKIES_CHOISIS } from './CookieBanner'
+import { EVT_COOKIES_CHOISIS, choixCookiesValide } from './CookieBanner'
 import { demanderRappelStarkkAction } from './starkk-rappel'
 
 /**
@@ -112,7 +112,7 @@ export function StarkkBulle() {
         setDiscussion(garde.discussion)
         setMessages(garde.messages.filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string').slice(-40))
       } else setDiscussion(identifiant())
-      setCookiesRepondus(!!window.localStorage.getItem(CLE_COOKIES))
+      setCookiesRepondus(!!choixCookiesValide())
     } catch {
       setDiscussion(identifiant())
     }

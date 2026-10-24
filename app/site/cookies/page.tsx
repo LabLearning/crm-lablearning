@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function Cookies() {
   return (
-    <LegalPage title="Politique de gestion des cookies" updated="août 2026">
+    <LegalPage title="Politique de gestion des cookies" updated="octobre 2026">
       <p>
         Un cookie est un petit fichier déposé sur votre terminal lors de la visite d’un site. Cette politique explique
         quels cookies nous utilisons et comment les gérer.
@@ -19,15 +19,22 @@ export default function Cookies() {
       <ul>
         <li><strong>Cookies strictement nécessaires</strong> : indispensables au fonctionnement du site (navigation,
           sécurité). Ils ne requièrent pas votre consentement.</li>
-        <li><strong>Cookies de mesure d’audience</strong> : nous aideraient à comprendre l’utilisation du site pour
-          l’améliorer. <strong>Aucun outil de mesure d’audience n’est déployé à ce jour</strong> ; s’il l’était, il ne
-          serait activé qu’avec votre consentement.</li>
+        <li><strong>Cookies de mesure d’audience</strong>, déposés <strong>seulement si vous les acceptez</strong> :
+          Google Analytics (Google Ireland Limited) mesure les pages vues, la durée des visites, le type d’appareil et
+          la ville approximative, pour savoir quelles pages vous sont utiles. Cookies <code>_ga</code> (distingue les
+          visiteurs) et <code>_ga_LJ1SBNWZJV</code> (suit la visite en cours), conservés 13 mois au plus. Google
+          Analytics ne garde pas votre adresse IP. Aucune donnée n’est utilisée pour de la publicité. Les données
+          peuvent être traitées aux États-Unis par Google LLC, certifiée au cadre de protection des données entre
+          l’Union européenne et les États-Unis.</li>
+        <li><strong>Aucun cookie publicitaire</strong> n’est déposé par ce site.</li>
       </ul>
 
       <h2>Consentement</h2>
       <p>
-        Lors de votre première visite, un bandeau vous permet d’accepter ou de refuser les cookies non essentiels.
-        Votre choix est mémorisé sur votre appareil. Vous pouvez le modifier ou le retirer à tout moment :
+        Lors de votre première visite, un bandeau vous permet d’accepter ou de refuser les cookies de mesure
+        d’audience. Refuser est aussi simple qu’accepter, et le site fonctionne de la même façon. Votre choix est
+        mémorisé sur votre appareil pendant six mois, puis vous est redemandé. Vous pouvez le modifier ou le retirer
+        à tout moment ; si vous le retirez, la mesure s’arrête et ses cookies sont effacés :
       </p>
       <p><GererCookies /></p>
 

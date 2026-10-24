@@ -4,6 +4,7 @@ import { SiteBandeau } from './SiteBandeau'
 import { StarkkBulle } from './StarkkBulle'
 import { SiteFooter } from './SiteFooter'
 import { CookieBanner } from './CookieBanner'
+import { MesureAudience } from './MesureAudience'
 
 /**
  * Métadonnées du site vitrine.
@@ -109,6 +110,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <SiteFooter />
       <CookieBanner />
       <StarkkBulle />
+      <MesureAudience />
     </div>
   )
 }
