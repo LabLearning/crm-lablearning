@@ -2,8 +2,8 @@ import { calculerAudience, nettoyerFiltres } from './audience'
 import { envoyerEmailBrevo, envoyerSmsBrevo, ErreurBrevo } from './brevo'
 import { configCampagnes, manquesPourEnvoyer } from './config'
 import { jetonDesinscription, lienDesabonnementUnClic, lienDesinscription } from './desinscription'
-import { cleOpposition, oppositionsParmi } from './oppositions'
-import { composerSms, compterSms, dansFenetreSms, MAX_PARTIES_SMS, personnaliser, type CanalCampagne } from './regles'
+import { cleOpposition, oppositionsParmi, refusDesFormulaires } from './oppositions'
+import { composerSms, compterSms, dansFenetreSms, MAX_PARTIES_SMS, smsPour, type CanalCampagne } from './regles'
 import { rendreEmailCampagne } from './rendu'
 
 /**
@@ -33,7 +33,15 @@ export interface Campagne {
   bouton_url: string | null
   audience: any
   programmee_le: string | null
+  updated_at?: string | null
+  created_by?: string | null
 }
+
+/**
+ * La campagne ne part pas et il n'y a rien à signaler à son auteur : déjà
+ * lancée, changée depuis sa lecture, ou arrêtée pendant son lancement.
+ */
+export class LancementNonReserve extends Error {}
 
 /** Ce qui empêche d'envoyer cette campagne (phrases à afficher), ou rien. */
 export function refusCampagne(c: Pick<Campagne, 'canal' | 'objet' | 'contenu' | 'bouton_libelle' | 'bouton_url'>): string[] {
@@ -55,7 +63,9 @@ export function refusCampagne(c: Pick<Campagne, 'canal' | 'objet' | 'contenu' | 
  * maintenant », « programmee » pour la tâche planifiée) :
  * 1. la campagne est réservée (en_cours, sans date de lancement) sous
  *    condition : un seul lancement, et jamais une campagne déprogrammée
- *    entre-temps ;
+ *    entre-temps ; pour la tâche, seulement la campagne telle qu'elle a été
+ *    lue (déprogrammée, modifiée puis reprogrammée, elle attend le passage
+ *    suivant, avec sa nouvelle audience) ;
  * 2. les restes d'un lancement interrompu sont effacés, l'audience est
  *    calculée et figée ;
  * 3. la date de lancement est posée : la tâche n'envoie qu'une campagne
@@ -65,10 +75,15 @@ export function refusCampagne(c: Pick<Campagne, 'canal' | 'objet' | 'contenu' | 
  */
 export async function lancerCampagne(supabase: any, c: Campagne, depuis: 'brouillon' | 'programmee'): Promise<{ destinataires: number }> {
   const maintenant = () => new Date().toISOString()
-  const { data: prise, error: ePrise } = await supabase.from('campagnes').update({ statut: 'en_cours', lancee_le: null, updated_at: maintenant() })
-    .eq('id', c.id).eq('statut', depuis).select('id')
+  let reservation = supabase.from('campagnes').update({ statut: 'en_cours', lancee_le: null, updated_at: maintenant() })
+    .eq('id', c.id).eq('statut', depuis)
+  if (depuis === 'programmee') {
+    if (c.programmee_le) reservation = reservation.eq('programmee_le', c.programmee_le)
+    if (c.updated_at) reservation = reservation.eq('updated_at', c.updated_at)
+  }
+  const { data: prise, error: ePrise } = await reservation.select('id')
   if (ePrise) throw new Error(`Lancement impossible : ${ePrise.message}`)
-  if (!prise?.length) throw new Error(depuis === 'programmee' ? 'Campagne déprogrammée ou déjà lancée' : 'Cette campagne est déjà lancée')
+  if (!prise?.length) throw new LancementNonReserve(depuis === 'programmee' ? 'Campagne déprogrammée, modifiée ou déjà lancée' : 'Cette campagne est déjà lancée')
   const effacerPreparation = () => supabase.from('campagne_envois').delete().eq('campagne_id', c.id).eq('statut', 'a_envoyer')
   try {
     await effacerPreparation()
@@ -90,7 +105,7 @@ export async function lancerCampagne(supabase: any, c: Campagne, depuis: 'brouil
       .eq('id', c.id).eq('statut', 'en_cours').is('lancee_le', null).select('id')
     if (!lancee?.length) {
       await effacerPreparation()
-      throw new Error('La campagne a été arrêtée pendant son lancement')
+      throw new LancementNonReserve('La campagne a été arrêtée pendant son lancement')
     }
     return { destinataires: destinataires.length }
   } catch (e) {
@@ -127,9 +142,7 @@ export async function envoyerLot(
   if (manquesPourEnvoyer(c.canal, config).length) return 0
   if (c.canal === 'sms' && !dansFenetreSms()) return 0
 
-  // Envois perdus (passage coupé pendant l'envoi) : classés en échec, sans renvoi
-  await supabase.from('campagne_envois').update({ statut: 'echec', erreur: 'Envoi interrompu : état inconnu, non renvoyé' })
-    .eq('campagne_id', c.id).eq('statut', 'en_cours').lt('envoye_le', new Date(Date.now() - DELAI_ENVOI_PERDU_MS).toISOString())
+  await classerEnvoisPerdus(supabase, c.id)
 
   // Réservation du lot : seules les lignes encore « à envoyer » passent « en cours », pour ce passage seulement
   const { data: candidats, error: eLecture } = await supabase.from('campagne_envois').select('id')
@@ -149,15 +162,25 @@ export async function envoyerLot(
   if (!lot?.length) return 0
 
   const lignes = lot as any[]
-  // Lignes pas encore tentées : rendues aussitôt (restées « en cours », elles passeraient en échec dans 15 minutes)
-  const rendre = (ids: string[], erreur?: string) => ids.length
-    ? supabase.from('campagne_envois').update({ statut: 'a_envoyer', envoye_le: null, ...(erreur ? { erreur } : {}) }).in('id', ids).eq('statut', 'en_cours')
-    : Promise.resolve()
+  // Lignes pas encore tentées : rendues aussitôt (restées « en cours », elles passeraient en échec dans 15 minutes) ;
+  // celles d'une campagne arrêtée entre-temps sont écartées, puisqu'elles ne partiront plus
+  const rendre = async (ids: string[], erreur?: string) => {
+    if (!ids.length) return
+    const { data: etat } = await supabase.from('campagnes').select('statut').eq('id', c.id).maybeSingle()
+    const arretee = !!etat && etat.statut !== 'en_cours'
+    await supabase.from('campagne_envois')
+      .update(arretee ? { statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi' } : { statut: 'a_envoyer', envoye_le: null, ...(erreur ? { erreur } : {}) })
+      .in('id', ids).eq('statut', 'en_cours')
+  }
   let oppositions: Set<string>
   let personnes: Map<string, { prenom: string | null; etablissement: string | null }>
   try {
-    // Désinscriptions relues juste avant l'envoi, pour les destinataires du lot seulement
-    oppositions = await oppositionsParmi(supabase, c.organization_id, c.canal, lignes.map((e) => e.destination))
+    // Désinscriptions relues juste avant l'envoi (pour les destinataires du lot), et cases « pas d'actualités » des formulaires
+    const [opposes, refus] = await Promise.all([
+      oppositionsParmi(supabase, c.organization_id, c.canal, lignes.map((e) => e.destination)),
+      refusDesFormulaires(supabase, c.organization_id, c.canal),
+    ])
+    oppositions = new Set([...opposes, ...refus])
     personnes = await personnesDuLot(supabase, c.organization_id, lignes)
   } catch (err) {
     await rendre(lignes.map((e) => e.id))
@@ -186,7 +209,7 @@ export async function envoyerLot(
     let sms: string | null = null
     if (c.canal === 'sms') {
       // Longueur vérifiée sur le message de chacun (un nom d'établissement long peut ajouter une partie)
-      sms = composerSms(personnaliser(c.contenu, personne), config.numeroStop)
+      sms = smsPour(c.contenu, personne, config.numeroStop)
       if (compterSms(sms).sms > MAX_PARTIES_SMS) {
         await supabase.from('campagne_envois').update({ statut: 'exclu', erreur: `Message trop long pour ce destinataire (plus de ${MAX_PARTIES_SMS} SMS)` }).eq('id', e.id)
         continue
@@ -245,6 +268,19 @@ export async function envoyerLot(
   return traites
 }
 
+/**
+ * Envois restés « en cours » plus de 15 minutes (passage coupé pendant l'envoi) :
+ * échec, état inconnu, jamais renvoyés. Sans campagne : toutes, y compris
+ * celles arrêtées depuis. Renvoie les campagnes touchées.
+ */
+async function classerEnvoisPerdus(supabase: any, campagneId?: string): Promise<string[]> {
+  let q = supabase.from('campagne_envois').update({ statut: 'echec', erreur: 'Envoi interrompu : état inconnu, non renvoyé' })
+    .eq('statut', 'en_cours').lt('envoye_le', new Date(Date.now() - DELAI_ENVOI_PERDU_MS).toISOString())
+  if (campagneId) q = q.eq('campagne_id', campagneId)
+  const { data } = await q.select('campagne_id')
+  return Array.from(new Set(((data || []) as any[]).map((e) => e.campagne_id as string)))
+}
+
 /** Compteurs de la campagne, relus sur ses envois. */
 export async function recompter(supabase: any, campagneId: string) {
   const compter = (statut: string) => supabase.from('campagne_envois').select('id', { count: 'exact', head: true }).eq('campagne_id', campagneId).eq('statut', statut)
@@ -264,6 +300,18 @@ async function terminerSiFini(supabase: any, campagneId: string) {
   }
 }
 
+/** L'auteur d'une campagne qui n'est pas partie est prévenu dans le CRM (au mieux : l'erreur reste au bilan de la tâche). */
+async function prevenirAuteur(c: { id: string; nom: string; organization_id: string; created_by?: string | null }, message: string) {
+  if (!c.created_by) return
+  try {
+    const { createNotification } = await import('@/lib/email')
+    await createNotification({
+      organizationId: c.organization_id, userId: c.created_by, type: 'info', titre: 'Campagne non partie', message,
+      lienUrl: `/dashboard/campagnes/${c.id}`, lienLabel: 'Voir la campagne', entityType: 'campagne', entityId: c.id,
+    })
+  } catch { /* sans gravité */ }
+}
+
 /**
  * Passage de la tâche planifiée : lance les campagnes programmées dont l'heure
  * est venue, puis envoie un lot de chaque campagne en cours.
@@ -271,32 +319,28 @@ async function terminerSiFini(supabase: any, campagneId: string) {
 export async function traiterCampagnes(supabase: any): Promise<{ lancees: number; envois: number; erreurs: string[] }> {
   const bilan = { lancees: 0, envois: 0, erreurs: [] as string[] }
   const finAvant = Date.now() + 240000
+  // Envois perdus de toute campagne, arrêtée ou non : leurs compteurs sont repris
+  for (const id of await classerEnvoisPerdus(supabase)) await recompter(supabase, id)
   // Lancement coupé en route (réservée, jamais datée) depuis plus de 10 minutes : retour au brouillon, préparation effacée
-  const { data: coupees } = await supabase.from('campagnes').select('id, nom')
+  const { data: coupees } = await supabase.from('campagnes').select('id, nom, organization_id, created_by')
     .eq('statut', 'en_cours').is('lancee_le', null).lt('updated_at', new Date(Date.now() - 10 * 60000).toISOString()).limit(20)
   for (const c of (coupees || []) as any[]) {
     await supabase.from('campagne_envois').delete().eq('campagne_id', c.id).eq('statut', 'a_envoyer')
-    await supabase.from('campagnes').update({ statut: 'brouillon', programmee_le: null, updated_at: new Date().toISOString() })
-      .eq('id', c.id).eq('statut', 'en_cours').is('lancee_le', null)
+    const { data: remise } = await supabase.from('campagnes').update({ statut: 'brouillon', programmee_le: null, updated_at: new Date().toISOString() })
+      .eq('id', c.id).eq('statut', 'en_cours').is('lancee_le', null).select('id')
+    if (!remise?.length) continue
     bilan.erreurs.push(`${c.nom} : lancement interrompu, revenue en brouillon`)
+    await prevenirAuteur(c, `Le lancement de la campagne « ${c.nom} » a été interrompu : rien n'est parti. Elle est revenue en brouillon, à relancer.`)
   }
   const { data: programmees } = await supabase.from('campagnes').select('*')
     .eq('statut', 'programmee').lte('programmee_le', new Date().toISOString()).limit(20)
-  for (const c of (programmees || []) as (Campagne & { created_by?: string | null })[]) {
-    // En cas d'échec (plus d'audience…), lancerCampagne a remis la campagne en brouillon : son auteur est prévenu
+  for (const c of (programmees || []) as Campagne[]) {
     try { await lancerCampagne(supabase, c, 'programmee'); bilan.lancees++ } catch (e: any) {
+      // Déjà lancée par un autre passage, ou changée depuis sa lecture : rien n'a été touché, rien à signaler
+      if (e instanceof LancementNonReserve) continue
+      // Sinon (plus d'audience…), lancerCampagne a remis la campagne en brouillon : son auteur est prévenu
       bilan.erreurs.push(`${c.nom} : ${e?.message || e}`)
-      if (c.created_by) {
-        try {
-          const { createNotification } = await import('@/lib/email')
-          await createNotification({
-            organizationId: c.organization_id, userId: c.created_by, type: 'info',
-            titre: 'Campagne non partie',
-            message: `La campagne « ${c.nom} » programmée n'est pas partie : ${String(e?.message || e).slice(0, 200)}. Elle est revenue en brouillon.`,
-            lienUrl: `/dashboard/campagnes/${c.id}`, lienLabel: 'Voir la campagne', entityType: 'campagne', entityId: c.id,
-          })
-        } catch { /* l'erreur reste au bilan de la tâche */ }
-      }
+      await prevenirAuteur(c, `La campagne « ${c.nom} » programmée n'est pas partie : ${String(e?.message || e).slice(0, 200)}. Elle est revenue en brouillon.`)
     }
   }
   // Seulement les campagnes lancées (datées) : une campagne en cours de préparation n'a pas encore tous ses envois

@@ -28,6 +28,9 @@ export default async function CampagnePage({ params }: { params: { id: string } 
     supabase.from('campagne_envois').select('erreur').eq('campagne_id', params.id).eq('statut', 'a_envoyer').not('erreur', 'is', null).limit(1),
   ])
   const config = configCampagnes()
+  // Campagne arrêtée : ce qui attendait ne partira plus (compté avec les écartés) ; seuls les envois déjà en vol au
+  // moment de l'arrêt peuvent encore partir (au-delà de 15 minutes, ils passent en échec, état inconnu)
+  const active = (campagne as any).statut === 'programmee' || (campagne as any).statut === 'en_cours'
 
   return (
     <div className="animate-fade-in">
@@ -38,7 +41,11 @@ export default async function CampagnePage({ params }: { params: { id: string } 
         numeroStop={config.numeroStop}
         expediteurSms={config.expediteurSms}
         expediteurEmail={config.expediteurEmail}
-        envois={{ aEnvoyer: (aEnvoyer.count || 0) + (enCours.count || 0), envoyes: envoyes.count || 0, echecs: echecs.count || 0, exclus: exclus.count || 0 }}
+        envois={{
+          aEnvoyer: (enCours.count || 0) + (active ? (aEnvoyer.count || 0) : 0),
+          envoyes: envoyes.count || 0, echecs: echecs.count || 0,
+          exclus: (exclus.count || 0) + (active ? 0 : (aEnvoyer.count || 0)),
+        }}
         derniersEchecs={((derniersEchecs || []) as any[]).map((e) => ({ nom: e.nom, erreur: e.erreur }))}
         derniereErreur={((enAttente || []) as any[])[0]?.erreur || null}
         aMonMobile={!!(session.user as any).phone}

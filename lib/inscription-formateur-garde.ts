@@ -14,6 +14,15 @@ export function emettreHorodatage(token: string, ms: number = Date.now()): strin
   return `${ms}.${signer(token, ms)}`
 }
 
+/**
+ * Empreinte d'une donnée de visiteur (adresse IP) pour les plafonds des
+ * formulaires : HMAC avec le secret du serveur, qu'on ne retrouve pas par force
+ * brute sans lui (une empreinte simple d'adresse IPv4 se retrouve en minutes).
+ */
+export function empreinteSecrete(etiquette: string, valeur: string): string {
+  return createHmac('sha256', secret()).update(`${etiquette}:${valeur}`).digest('hex')
+}
+
 /** Âge en millisecondes de la page qui a émis le jeton ; null si le jeton est faux ou périmé (plus de 24 h). */
 export function ageHorodatage(token: string, jeton: unknown): number | null {
   const m = /^(\d{13})\.([a-f0-9]{40})$/.exec(String(jeton || ''))

@@ -118,10 +118,12 @@ const GSM7 = new Set(Array.from(
 ))
 /** Caractères GSM qui en comptent deux (table d'extension) */
 const GSM7_EXTENSION = new Set(Array.from('^{}\\[~]|€'))
+const estGsm = (c: string) => GSM7.has(c) || GSM7_EXTENSION.has(c)
 
 /** Le message complet d'un SMS : « Lab Learning : » devant, la mention STOP à la fin. */
 export function composerSms(contenu: string, numeroStop: string | null | undefined): string {
-  let texte = String(contenu || '').replace(/\r\n?/g, '\n').trim()
+  // Accents composés : un texte collé avec des accents décomposés passerait en Unicode
+  let texte = String(contenu || '').normalize('NFC').replace(/\r\n?/g, '\n').trim()
     // Une mention STOP écrite à la main est remplacée par la bonne
     .replace(/\s*stop au (\d{5}|\[numéro brevo\])\s*$/i, '')
   if (!texte.toLowerCase().startsWith(PREFIXE_SMS.trim().toLowerCase())) texte = `${PREFIXE_SMS}${texte}`
@@ -131,8 +133,9 @@ export function composerSms(contenu: string, numeroStop: string | null | undefin
 /** Nombre de SMS facturés et encodage, pour le compteur de l'écran. */
 export function compterSms(texte: string): { caracteres: number; sms: number; unicode: boolean } {
   const lettres = Array.from(texte)
-  const unicode = lettres.some((c) => !GSM7.has(c) && !GSM7_EXTENSION.has(c))
-  const caracteres = unicode ? lettres.length : lettres.reduce((n, c) => n + (GSM7_EXTENSION.has(c) ? 2 : 1), 0)
+  const unicode = lettres.some((c) => !estGsm(c))
+  // En Unicode, le compte se fait en unités de 16 bits : un emoji en prend deux
+  const caracteres = unicode ? texte.length : lettres.reduce((n, c) => n + (GSM7_EXTENSION.has(c) ? 2 : 1), 0)
   const [seul, partie] = unicode ? [70, 67] : [160, 153]
   return { caracteres, unicode, sms: caracteres <= seul ? 1 : Math.ceil(caracteres / partie) }
 }
@@ -149,10 +152,14 @@ export const MAX_PARTIES_SMS = 4
  * espaces réduits, longueur bornée. Sinon null : le texte de repli s'applique.
  */
 export function valeurSure(v: string | null | undefined, max: number): string | null {
-  const t = String(v || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
+  // Forme normalisée (accents composés, points et lettres « de compatibilité » ramenés au point et aux lettres
+  // ordinaires), sans les caractères invisibles (trait d'union conditionnel, espace sans chasse…) : sinon
+  // « aide-opco​.pro » ou un accent décomposé avant le point échapperaient au contrôle
+  const t = String(v || '').normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ').trim()
   if (!t || t.length > max) return null
-  // Tout ce qui ressemble à une adresse : schéma, www, @, ou « mot.extension » (aide-opco.pro, bit.ly…)
-  if (/:\/\/|www\.|@|[a-z0-9-]{2,}\.[a-z]{2,}\b/i.test(t)) return null
+  // Tout ce qui ressemble à une adresse : schéma, www, @, ou « nom.extension » dans toute écriture (aide-opco.pro,
+  // x.co, opcö.fr, point pleine chasse…). Les sigles « S.A.R.L. » passent ; « Ste.Anne » prend le texte de repli
+  if (/:\/\/|www\.|@|[\p{L}\p{N}\p{M}-][.。．｡]\p{L}{2,}/iu.test(t)) return null
   return t
 }
 
@@ -170,5 +177,39 @@ export function personnaliser(texte: string, personne: { prenom?: string | null;
   const etablissement = echapper(valeurSure(personne.etablissement, 80) || 'votre établissement')
   return String(texte || '')
     .replace(/ ?\{prenom\}/g, (m) => (prenom ? `${m.startsWith(' ') ? ' ' : ''}${prenom}` : ''))
-    .replace(/\{etablissement\}/g, etablissement)
+    // Fonction de remplacement : un « $' » ou un « $& » dans un nom d'établissement reste du texte
+    .replace(/\{etablissement\}/g, () => etablissement)
+}
+
+/** Signes hors GSM sans équivalent par simple retrait de l'accent */
+const VERS_GSM: Record<string, string> = {
+  'œ': 'oe', 'Œ': 'OE', 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D', 'ı': 'i',
+  '’': "'", '‘': "'", 'ʼ': "'", '‚': "'", '“': '"', '”': '"', '„': '"', '«': '"', '»': '"',
+  '–': '-', '—': '-', '‐': '-', '‑': '-', '…': '...', ' ': ' ', ' ': ' ', ' ': ' ',
+}
+
+/**
+ * Valeur insérée dans un SMS (prénom, établissement) ramenée à l'alphabet GSM :
+ * sans cela, « Jérôme » ou « Pâtisserie » font passer tout le message en
+ * Unicode (70 caractères par SMS au lieu de 160). Les accents hors GSM perdent
+ * leur signe (ô devient o, ç devient c) ; é, è, à, ù restent.
+ */
+export function versGsm(v: string): string {
+  // Accents composés d'abord : « e » suivi d'un accent combinant ferait passer le SMS en Unicode
+  return Array.from(v.normalize('NFC')).map((c) => {
+    if (estGsm(c)) return c
+    if (VERS_GSM[c]) return VERS_GSM[c]
+    const sansSigne = c.normalize('NFD').replace(/\p{M}/gu, '')
+    return sansSigne && Array.from(sansSigne).every(estGsm) ? sansSigne : c
+  }).join('')
+}
+
+/**
+ * Le SMS d'un destinataire, tel qu'il part : le modèle personnalisé, « Lab
+ * Learning : » devant, la mention STOP à la fin. Un modèle écrit dans
+ * l'alphabet GSM y reste : les valeurs insérées y sont ramenées (versGsm).
+ */
+export function smsPour(contenu: string, personne: { prenom?: string | null; etablissement?: string | null }, numeroStop: string | null | undefined): string {
+  const gsm = !compterSms(composerSms(contenu, numeroStop)).unicode
+  return composerSms(personnaliser(contenu, personne, gsm ? versGsm : undefined), numeroStop)
 }

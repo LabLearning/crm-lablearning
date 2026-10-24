@@ -12,7 +12,7 @@ import { configCampagnes, manquesPourEnvoyer } from '@/lib/campagnes/config'
 import { jetonDesinscription, lienDesinscription } from '@/lib/campagnes/desinscription'
 import { lancerCampagne, refusCampagne, type Campagne } from '@/lib/campagnes/envoi'
 import { oppositionsParmi } from '@/lib/campagnes/oppositions'
-import { composerSms, compterSms, dansFenetreSms, numeroSmsFrance, personnaliser, type CanalCampagne } from '@/lib/campagnes/regles'
+import { compterSms, dansFenetreSms, numeroSmsFrance, smsPour, type CanalCampagne } from '@/lib/campagnes/regles'
 import { rendreEmailCampagne } from '@/lib/campagnes/rendu'
 import type { ActionResult } from '@/lib/types'
 
@@ -168,7 +168,7 @@ export async function envoyerEssaiAction(id: string): Promise<ActionResult<{ a: 
       })
       return { success: true, data: { a: session.user.email } }
     }
-    const texte = composerSms(personnaliser(c.contenu, moi), config.numeroStop)
+    const texte = smsPour(c.contenu, moi, config.numeroStop)
     await envoyerSmsBrevo(config.cleApi!, { expediteur: config.expediteurSms, numero: destination, texte, unicode: compterSms(texte).unicode, etiquette: 'campagne-essai' })
     return { success: true, data: { a: `+${destination}` } }
   } catch (e: any) {
@@ -215,30 +215,43 @@ export async function programmerCampagneAction(id: string, quand: string | null)
   }
 }
 
-/** Déprogrammer (retour au brouillon) ou arrêter une campagne en cours (ce qui n'est pas parti ne partira pas). */
-export async function arreterCampagneAction(id: string): Promise<ActionResult> {
+/**
+ * Déprogrammer (retour au brouillon) ou arrêter une campagne en cours (ce qui
+ * n'est pas parti ne partira pas). `attendu` : l'état que montrait l'écran. La
+ * tâche planifiée a pu lancer ou finir la campagne entre-temps : rien n'est
+ * fait alors, et la personne voit le nouvel état avant de décider.
+ */
+export async function arreterCampagneAction(id: string, attendu?: string): Promise<ActionResult<{ fait: 'deprogrammee' | 'arretee' }>> {
   const session = await getSession()
   if (!peut(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const c = await campagneDeLOrganisme(supabase, session, id)
   if (!c) return { success: false, error: 'Campagne introuvable' }
-  // Chaque changement est conditionnel : la tâche planifiée a pu lancer ou finir la campagne entre-temps
+  const PARTIE = 'La campagne vient de partir : la page se met à jour, « Arrêter l’envoi » reste possible'
+  const FINIE = 'La campagne vient de se terminer : il n’y a plus rien à arrêter'
+  if (attendu && c.statut !== attendu) {
+    return { success: false, error: c.statut === 'en_cours' ? PARTIE : c.statut === 'envoyee' ? FINIE : 'La campagne a changé entre-temps : la page se met à jour' }
+  }
+  // Chaque changement est conditionnel, pour la même raison
+  let fait: 'deprogrammee' | 'arretee'
   if (c.statut === 'programmee') {
     const { data } = await supabase.from('campagnes').update({ statut: 'brouillon', programmee_le: null, updated_at: new Date().toISOString() })
       .eq('id', id).eq('statut', 'programmee').select('id')
-    if (!data?.length) return { success: false, error: 'La campagne vient de partir : utilisez « Arrêter l’envoi »' }
+    if (!data?.length) return { success: false, error: PARTIE }
+    fait = 'deprogrammee'
   } else if (c.statut === 'en_cours') {
     const { data } = await supabase.from('campagnes').update({ statut: 'annulee', terminee_le: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', id).eq('statut', 'en_cours').select('id')
-    if (!data?.length) return { success: false, error: 'La campagne vient de se terminer : il n’y a plus rien à arrêter' }
+    if (!data?.length) return { success: false, error: FINIE }
     await supabase.from('campagne_envois').update({ statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi' }).eq('campagne_id', id).eq('statut', 'a_envoyer')
+    fait = 'arretee'
   } else {
     return { success: false, error: 'Rien à arrêter' }
   }
   await logAudit({ action: 'arreter', entity_type: 'campagne', entity_id: id, details: { statut: c.statut } })
   revalidatePath('/dashboard/campagnes')
   revalidatePath(`/dashboard/campagnes/${id}`)
-  return { success: true }
+  return { success: true, data: { fait } }
 }
 
 /** Copie d'une campagne (contenu et audience), en brouillon. */

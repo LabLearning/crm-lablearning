@@ -50,9 +50,13 @@ export async function POST(req: Request) {
       if (!envoi && /unsubscribe/.test(nom)) {
         const numero = numeroSmsFrance(String(ev?.to || ev?.from || ev?.number || ''))
         if (numero) {
-          const { data } = await supabase.from('campagne_envois').select('id, organization_id, campagne_id, destination')
-            .eq('destination', numero).order('envoye_le', { ascending: false }).limit(1)
-          envoi = data?.[0] || null
+          // Un SMS parti d'abord, sinon un SMS peut-être parti (délai dépassé, passage coupé : sans identifiant) ;
+          // jamais une ligne en attente ou écartée, qui n'a pas pu recevoir de réponse
+          const dernier = (statuts: string[]) => supabase.from('campagne_envois').select('id, organization_id, campagne_id, destination')
+            .eq('destination', numero).in('statut', statuts).not('envoye_le', 'is', null)
+            .order('envoye_le', { ascending: false, nullsFirst: false }).limit(1)
+          const { data: parti } = await dernier(['envoye'])
+          envoi = parti?.[0] || (await dernier(['echec', 'en_cours'])).data?.[0] || null
         }
       }
       if (!envoi) continue

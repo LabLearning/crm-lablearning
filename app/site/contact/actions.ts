@@ -4,7 +4,7 @@ import { createHash } from 'crypto'
 import { headers } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { isPlaceholderEmail } from '@/lib/utils'
-import { ageHorodatage } from '@/lib/inscription-formateur-garde'
+import { ageHorodatage, empreinteSecrete } from '@/lib/inscription-formateur-garde'
 import { CLE_GARDE_CONTACT, ORG_SITE_CONTACT } from './garde'
 
 const CONTACT_TO = 'digital@lab-learning.fr'
@@ -53,7 +53,7 @@ export async function sendContactMessageAction(formData: FormData): Promise<Cont
       organization_id: ORG,
       formulaire: 'contact',
       empreinte_jeton: empreinte(String(formData.get('jeton'))),
-      empreinte_ip: ip ? empreinte(ip) : null,
+      empreinte_ip: ip ? empreinteSecrete('contact-site', ip) : null,
     }).select('id').single()
     if (eRes?.code === '23505') return { success: false, error: 'Ce message est déjà parti. Pour en écrire un autre, rechargez la page.' }
     if (!eRes && ligne) {
@@ -62,9 +62,14 @@ export async function sendContactMessageAction(formData: FormData): Promise<Cont
         .eq('organization_id', ORG).eq('formulaire', 'contact').gte('cree_le', new Date(Date.now() - depuisMs).toISOString())
       const [parHeure, parJour, parIp] = await Promise.all([
         compter(3600000), compter(24 * 3600000),
-        ip ? compter(3600000).eq('empreinte_ip', empreinte(ip)) : Promise.resolve({ count: 0 }),
+        ip ? compter(3600000).eq('empreinte_ip', empreinteSecrete('contact-site', ip)) : Promise.resolve({ count: 0 }),
       ])
-      if ((parHeure.count || 0) > 15 || (parJour.count || 0) > 60 || (parIp.count || 0) > 5) return { success: false, error: TROP }
+      // Un envoi refusé rend sa ligne : il ne compte pas, et un robot ne peut pas fermer le formulaire à tout le monde
+      // en multipliant les refus
+      if ((parHeure.count || 0) > 15 || (parJour.count || 0) > 60 || (parIp.count || 0) > 5) {
+        await supabase.from('envois_formulaires_site').delete().eq('id', ligne.id)
+        return { success: false, error: TROP }
+      }
       // Au-delà de 48 h, les lignes ne servent plus aux plafonds
       await supabase.from('envois_formulaires_site').delete().eq('formulaire', 'contact').lt('cree_le', new Date(Date.now() - 48 * 3600000).toISOString())
     }

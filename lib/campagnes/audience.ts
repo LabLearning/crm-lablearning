@@ -1,6 +1,6 @@
 import { dateDemande, etapeDuLead, origineDuLead, type EtapeLead, type OrigineLead } from '@/lib/leads-entrants'
 import { isPlaceholderEmail } from '@/lib/utils'
-import { oppositionsDuCanal, cleOpposition } from './oppositions'
+import { oppositionsDuCanal, cleOpposition, refusDesFormulaires, ETIQUETTE_SANS_ACTUALITES } from './oppositions'
 import { cleEmail, numeroSmsFrance, type CanalCampagne } from './regles'
 
 /**
@@ -105,7 +105,9 @@ export async function calculerAudience(supabase: any, orgId: string, canal: Cana
   const exclus = { sansCoordonnee: 0, opposition: 0, doublon: 0, particulier: 0, ancien: 0 }
   const vus = new Set<string>()
   const destinataires: Destinataire[] = []
-  const oppositions = await oppositionsDuCanal(supabase, orgId, canal)
+  // Oppositions, et case « Je ne souhaite pas recevoir les actualités » cochée par un lead (sous toutes ses fiches)
+  const [opposes, refus] = await Promise.all([oppositionsDuCanal(supabase, orgId, canal), refusDesFormulaires(supabase, orgId, canal)])
+  const oppositions = new Set([...opposes, ...refus])
 
   const retenir = (d: Omit<Destinataire, 'destination'>, coordonnees: (string | null | undefined)[]) => {
     // E-mail : la première adresse exploitable ; SMS : le premier mobile français
@@ -134,7 +136,7 @@ export async function calculerAudience(supabase: any, orgId: string, canal: Cana
       // Un particulier n'est pas prospecté sans son accord : type « particulier », pas d'établissement, ou financement personnel
       if (l.type === 'particulier' || !String(l.entreprise || '').trim() || ['cpf', 'france_travail'].includes(l.financeur_type)) { exclus.particulier++; continue }
       // Case « Je ne souhaite pas recevoir les actualités » gardée aussi sur le lead
-      if ((l.tags || []).includes('sans-actualites')) { exclus.opposition++; continue }
+      if ((l.tags || []).includes(ETIQUETTE_SANS_ACTUALITES)) { exclus.opposition++; continue }
       retenir(
         { personne_type: 'lead', personne_id: l.id, nom: [l.contact_prenom, l.contact_nom].filter(Boolean).join(' ') || l.entreprise || 'Prospect', prenom: l.contact_prenom || null, etablissement: l.entreprise || null },
         canal === 'email' ? [l.contact_email] : [l.contact_telephone],

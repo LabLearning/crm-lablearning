@@ -9,7 +9,7 @@ import {
 import { Button, Modal, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { ETAPES, ORIGINES, type EtapeLead, type OrigineLead } from '@/lib/leads-entrants'
-import { STATUTS_CAMPAGNE, composerSms, compterSms, MAX_PARTIES_SMS, prochaineFenetreSms, type StatutCampagne } from '@/lib/campagnes/regles'
+import { STATUTS_CAMPAGNE, composerSms, compterSms, dansFenetreSms, MAX_PARTIES_SMS, prochaineFenetreSms, type StatutCampagne } from '@/lib/campagnes/regles'
 import {
   apercuEmailAction, arreterCampagneAction, calculerAudienceAction, dupliquerCampagneAction, enregistrerCampagneAction,
   envoyerEssaiAction, programmerCampagneAction, supprimerCampagneAction,
@@ -107,6 +107,19 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Programmée ou en cours : la fiche suit la tâche planifiée (départ, lots, fin) sans recharger la page. Rien tant
+  // que l'onglet est caché, qu'un départ programmé est loin, ou que les SMS attendent leur fenêtre d'envoi
+  useEffect(() => {
+    if (statut !== 'programmee' && statut !== 'en_cours') return
+    const t = window.setInterval(() => {
+      if (document.hidden) return
+      if (statut === 'programmee' && campagne.programmee_le && Date.parse(campagne.programmee_le) - Date.now() > 10 * 60000) return
+      if (statut === 'en_cours' && !email && !dansFenetreSms()) return
+      router.refresh()
+    }, 30000)
+    return () => window.clearInterval(t)
+  }, [statut, email, campagne.programmee_le, router])
+
   const champs = () => ({ nom, objet, contenu, bouton_libelle: boutonLibelle || null, bouton_url: boutonUrl || null, audience: audienceEnvoyee })
 
   async function enregistrer(silencieux = false): Promise<boolean> {
@@ -157,9 +170,11 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
   function arreter() {
     if (!confirm(statut === 'programmee' ? 'Déprogrammer cette campagne ? Elle redevient un brouillon.' : 'Arrêter l’envoi ? Ce qui attend ne partira pas ; seuls les quelques messages déjà en cours d’envoi peuvent encore partir.')) return
     startTransition(async () => {
-      const r = await arreterCampagneAction(campagne.id)
-      if (r?.success) { toast('success', statut === 'programmee' ? 'Campagne déprogrammée' : 'Envoi arrêté'); router.refresh() }
+      // L'état vu à l'écran : si la tâche a lancé ou fini la campagne entre-temps, rien n'est fait et la page se met à jour
+      const r = await arreterCampagneAction(campagne.id, statut)
+      if (r?.success) toast('success', r.data?.fait === 'deprogrammee' ? 'Campagne déprogrammée : elle redevient un brouillon' : 'Envoi arrêté')
       else toast('error', r?.error || 'Pas de réponse du serveur : réessayez')
+      router.refresh()
     })
   }
   function dupliquer() {
@@ -361,7 +376,7 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
           <>
             <fieldset disabled={!brouillon}>
               <label className="block">
-                <span className="mb-1 block text-xs text-surface-500">Message : « Lab Learning : » est ajouté devant et la mention STOP à la fin ; {'{prenom}'} est remplacé pour chacun</span>
+                <span className="mb-1 block text-xs text-surface-500">Message : « Lab Learning : » est ajouté devant et la mention STOP à la fin ; {'{prenom}'} et {'{etablissement}'} sont remplacés pour chacun</span>
                 <textarea value={contenu} onChange={(e) => setContenu(e.target.value)} rows={4} className="input-base w-full" placeholder="Ex. formation hygiène HACCP le 12/11 dans votre ville, prise en charge OPCO possible. Infos : lab-learning.fr" />
               </label>
             </fieldset>
@@ -374,6 +389,9 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
                 <div className={cn('text-xs', sms.sms > MAX_PARTIES_SMS ? 'font-semibold text-danger-600' : 'text-surface-500')}>
                   {sms.caracteres} caractères · {sms.sms} SMS par personne{sms.unicode ? ' · lettres accentuées (ç, â, ê…) : 70 caractères par SMS' : ''}
                   {sms.sms > MAX_PARTIES_SMS && <div>{MAX_PARTIES_SMS} SMS au plus : raccourcissez le message.</div>}
+                  {sms.sms <= MAX_PARTIES_SMS && /\{(prenom|etablissement)\}/.test(contenu) && (
+                    <div className="mt-1 max-w-xs">Le prénom et l’établissement de chacun allongent un peu le message ; au-delà de {MAX_PARTIES_SMS} SMS, la personne est écartée.</div>
+                  )}
                 </div>
               </div>
             )}

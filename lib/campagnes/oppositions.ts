@@ -26,6 +26,30 @@ export async function oppositionsDuCanal(supabase: any, orgId: string, canal: Ca
   return valeurs
 }
 
+/** Étiquette posée sur le lead quand la case est cochée : le refus reste connu même si l'opposition n'a pas pu s'écrire */
+export const ETIQUETTE_SANS_ACTUALITES = 'sans-actualites'
+
+/**
+ * Coordonnées (clés du canal) des leads qui ont coché « Je ne souhaite pas
+ * recevoir les actualités » : elles ne reçoivent rien, même sous une autre
+ * fiche (le contact d'un client), y compris si l'opposition n'a pas pu
+ * s'écrire. Relues au lancement et avant chaque lot.
+ */
+export async function refusDesFormulaires(supabase: any, orgId: string, canal: CanalCampagne): Promise<Set<string>> {
+  const cles = new Set<string>()
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase.from('leads').select('contact_email, contact_telephone')
+      .eq('organization_id', orgId).contains('tags', [ETIQUETTE_SANS_ACTUALITES]).order('id').range(de, de + 999)
+    if (error) throw new Error(`Lecture des refus des formulaires : ${error.message}`)
+    for (const l of (data || []) as any[]) {
+      const cle = cleOpposition(canal, canal === 'email' ? l.contact_email : l.contact_telephone)
+      if (cle) cles.add(cle)
+    }
+    if (!data || data.length < 1000) break
+  }
+  return cles
+}
+
 /** Oppositions parmi ces destinations seulement (lecture ciblée sur l'index unique) : pour un lot d'envoi ou un essai. */
 export async function oppositionsParmi(supabase: any, orgId: string, canal: CanalCampagne, destinations: string[]): Promise<Set<string>> {
   const cles = Array.from(new Set(destinations.map((d) => cleOpposition(canal, d)).filter((c): c is string => !!c)))
@@ -63,9 +87,6 @@ export async function noterRefusDuFormulaire(supabase: any, orgId: string, coord
   const echec = essais.find((e) => e.status === 'rejected') as PromiseRejectedResult | undefined
   if (echec) throw echec.reason
 }
-
-/** Étiquette posée sur le lead quand la case est cochée : le refus reste connu même si l'opposition n'a pas pu s'écrire */
-export const ETIQUETTE_SANS_ACTUALITES = 'sans-actualites'
 
 /**
  * Désinscription par le lien d'une campagne (page du site ou un clic depuis

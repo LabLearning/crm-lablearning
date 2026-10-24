@@ -1,14 +1,17 @@
 'use server'
 
+import { createHash } from 'crypto'
+import { headers } from 'next/headers'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { isPlaceholderEmail } from '@/lib/utils'
-import { ageHorodatage } from '@/lib/inscription-formateur-garde'
+import { ageHorodatage, empreinteSecrete } from '@/lib/inscription-formateur-garde'
 import { STARKK_SITE } from '@/lib/fonctionnalites'
 import { CLE_GARDE_STARKK, ORG_SITE_STARKK } from '@/lib/starkk-site'
 import { attributionUtile, canalPublicitaire, colonneAbsente, nettoyerAttributionSite } from '@/lib/prospects/attribution'
 import { equipeAPrevenir } from '@/lib/prospects/equipe'
 
 const ETIQUETTE = 'starkk-site'
+const FORMULAIRE = 'starkk-rappel'
 
 const nettoyer = (s: unknown, max = 200) => String(s ?? '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max)
 /** Lettres, espaces, apostrophes, traits d'union, points : un nom, jamais une adresse web. */
@@ -63,11 +66,51 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
   const org = await organisme(supabase)
   if (!org) return { success: false, error: 'L’envoi est indisponible pour le moment. Appelez-nous au 04 51 330 330.' }
 
-  // Limite : 20 demandes de rappel par heure pour tout le site
-  const ilYAUneHeure = new Date(Date.now() - 3600000).toISOString()
-  const { count } = await supabase.from('leads').select('id', { count: 'exact', head: true })
-    .eq('organization_id', org.id).contains('tags', [ETIQUETTE]).gte('updated_at', ilYAUneHeure)
-  if ((count || 0) >= 20) return { success: false, error: 'Beaucoup de demandes en ce moment. Appelez-nous au 04 51 330 330.' }
+  // Chaque demande est notée AVANT d'être traitée (table envois_formulaires_site, migration 167), comme sur la
+  // page Contact : les plafonds comptent les demandes, pas les leads (la même adresse renvoyée cent fois compte
+  // cent fois). Trois demandes à la suite par jeton de la bulle, 20 par heure et 60 par jour pour tout le site,
+  // 5 par heure et par adresse IP. Une demande refusée rend sa ligne : elle ne compte pas, et un robot ne peut pas
+  // fermer le rappel à tout le monde en multipliant les refus
+  const TROP = 'Beaucoup de demandes en ce moment. Appelez-nous au 04 51 330 330.'
+  const empreinte = (v: string) => createHash('sha256').update(`starkk-rappel:${v}`).digest('hex')
+  const ip = (headers().get('x-forwarded-for') || '').split(',')[0].trim()
+  let reservation: string | null = null
+  let dejaEnvoyees = false
+  try {
+    for (let essai = 1; essai <= 3; essai++) {
+      const { data: ligne, error } = await supabase.from('envois_formulaires_site').insert({
+        organization_id: org.id, formulaire: FORMULAIRE, empreinte_jeton: empreinte(`${garde.jeton}:${essai}`),
+        empreinte_ip: ip ? empreinteSecrete(FORMULAIRE, ip) : null,
+      }).select('id').single()
+      if (!error && ligne) { reservation = ligne.id; break }
+      // Table absente ou autre erreur : la limite de secours ci-dessous s'applique
+      if (error?.code !== '23505') break
+      if (essai === 3) dejaEnvoyees = true
+    }
+  } catch (e) {
+    console.error('[starkk site] réservation', e)
+  }
+  // Rien n'a été enregistré : la réservation est rendue, le visiteur peut renvoyer
+  const rendre = async () => {
+    if (reservation) await supabase.from('envois_formulaires_site').delete().eq('id', reservation)
+  }
+  if (dejaEnvoyees) return { success: false, error: 'Trois demandes de rappel au plus à la suite : pour autre chose, appelez-nous au 04 51 330 330.' }
+  if (reservation) {
+    const compter = (depuisMs: number) => supabase.from('envois_formulaires_site').select('id', { count: 'exact', head: true })
+      .eq('organization_id', org.id).eq('formulaire', FORMULAIRE).gte('cree_le', new Date(Date.now() - depuisMs).toISOString())
+    const [parHeure, parJour, parIp] = await Promise.all([
+      compter(3600000), compter(24 * 3600000),
+      ip ? compter(3600000).eq('empreinte_ip', empreinteSecrete(FORMULAIRE, ip)) : Promise.resolve({ count: 0 }),
+    ])
+    if ((parHeure.count || 0) > 20 || (parJour.count || 0) > 60 || (parIp.count || 0) > 5) { await rendre(); return { success: false, error: TROP } }
+    // Au-delà de 48 h, les lignes ne servent plus aux plafonds
+    await supabase.from('envois_formulaires_site').delete().eq('formulaire', FORMULAIRE).lt('cree_le', new Date(Date.now() - 48 * 3600000).toISOString())
+  } else {
+    // Limite de secours : 20 demandes de rappel par heure pour tout le site, comptées sur les leads
+    const { count } = await supabase.from('leads').select('id', { count: 'exact', head: true })
+      .eq('organization_id', org.id).contains('tags', [ETIQUETTE]).gte('updated_at', new Date(Date.now() - 3600000).toISOString())
+    if ((count || 0) >= 20) return { success: false, error: TROP }
+  }
 
   // Case « Je ne souhaite pas recevoir les actualités », notée une fois la limite passée : aucune campagne vers
   // ces coordonnées (migration 168)
@@ -153,6 +196,7 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
     if (attribution && colonneAbsente(error)) ({ data: cree, error } = await supabase.from('leads').insert(ligneLead).select('id').single())
     if (error || !cree) {
       console.error('[starkk site] rappel', error)
+      await rendre()
       return { success: false, error: 'L’envoi a échoué. Appelez-nous au 04 51 330 330.' }
     }
     leadId = cree.id
