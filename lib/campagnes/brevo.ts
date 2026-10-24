@@ -36,7 +36,14 @@ async function appeler<T>(cleApi: string, chemin: string, corps: unknown): Promi
     if (e?.name === 'TimeoutError') throw new ErreurBrevo('Brevo n’a pas répondu à temps : envoi peut-être parti, non renvoyé', undefined, 'inconnue')
     throw new ErreurBrevo('Brevo ne répond pas (réseau) : nouvel essai au passage suivant', undefined, 'compte')
   }
-  const texte = await reponse.text()
+  let texte = ''
+  try {
+    texte = await reponse.text()
+  } catch {
+    // Coupure pendant la lecture de la réponse : acceptée (2xx), le message est parti ; sinon, état inconnu, jamais renvoyé
+    if (reponse.ok) return {} as T
+    throw new ErreurBrevo('Réponse de Brevo illisible : envoi peut-être parti, non renvoyé', reponse.status, 'inconnue')
+  }
   let donnees: any = null
   try { donnees = texte ? JSON.parse(texte) : null } catch { /* réponse non JSON */ }
   if (!reponse.ok) {

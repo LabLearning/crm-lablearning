@@ -168,8 +168,8 @@ export async function envoyerLot(
     const e = lignes[i]
     // Plus de temps : la suite attend le passage suivant
     if (Date.now() > finAvant) { await rendre(lignes.slice(i).map((x) => x.id)); break }
-    // Arrêtée pendant l'envoi (bouton « Arrêter l'envoi ») : la suite du lot ne part pas
-    if (i > 0 && i % 10 === 0) {
+    // Arrêtée pendant l'envoi (bouton « Arrêter l'envoi ») : la suite du lot ne part pas (contrôle tous les 5 envois)
+    if (i > 0 && i % 5 === 0) {
       const { data: etat } = await supabase.from('campagnes').select('statut').eq('id', c.id).maybeSingle()
       if (etat && etat.statut !== 'en_cours') {
         await supabase.from('campagne_envois').update({ statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi' })

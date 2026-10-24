@@ -151,7 +151,8 @@ export const MAX_PARTIES_SMS = 4
 export function valeurSure(v: string | null | undefined, max: number): string | null {
   const t = String(v || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()
   if (!t || t.length > max) return null
-  if (/:\/\/|www\.|@|[a-z0-9-]\.(fr|com|net|org|io|co|info|biz|eu|be|ch|xyz|app|site|online|shop|link|ly)\b/i.test(t)) return null
+  // Tout ce qui ressemble à une adresse : schéma, www, @, ou « mot.extension » (aide-opco.pro, bit.ly…)
+  if (/:\/\/|www\.|@|[a-z0-9-]{2,}\.[a-z]{2,}\b/i.test(t)) return null
   return t
 }
 

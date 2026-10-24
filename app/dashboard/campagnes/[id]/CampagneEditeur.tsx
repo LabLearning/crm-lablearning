@@ -155,7 +155,7 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
     })
   }
   function arreter() {
-    if (!confirm(statut === 'programmee' ? 'Déprogrammer cette campagne ? Elle redevient un brouillon.' : 'Arrêter l’envoi ? Ce qui n’est pas encore parti ne partira pas.')) return
+    if (!confirm(statut === 'programmee' ? 'Déprogrammer cette campagne ? Elle redevient un brouillon.' : 'Arrêter l’envoi ? Ce qui attend ne partira pas ; seuls les quelques messages déjà en cours d’envoi peuvent encore partir.')) return
     startTransition(async () => {
       const r = await arreterCampagneAction(campagne.id)
       if (r?.success) { toast('success', statut === 'programmee' ? 'Campagne déprogrammée' : 'Envoi arrêté'); router.refresh() }
