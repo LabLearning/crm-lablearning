@@ -5,6 +5,8 @@ import { isPlaceholderEmail } from '@/lib/utils'
 import { ageHorodatage } from '@/lib/inscription-formateur-garde'
 import { STARKK_SITE } from '@/lib/fonctionnalites'
 import { CLE_GARDE_STARKK, ORG_SITE_STARKK } from '@/lib/starkk-site'
+import { attributionUtile, canalPublicitaire, colonneAbsente, nettoyerAttributionSite } from '@/lib/prospects/attribution'
+import { equipeAPrevenir } from '@/lib/prospects/equipe'
 
 const ETIQUETTE = 'starkk-site'
 
@@ -30,9 +32,10 @@ async function organisme(supabase: any) {
  * prénom, un établissement et un téléphone ou une adresse : un lead « Site
  * web » est créé (ou complété s'il existe), avec les dernières questions
  * posées à Starkk pour que le commercial sache de quoi parler. L'équipe
- * commerciale est prévenue dans le CRM.
+ * commerciale est prévenue dans le CRM. `attributionBrute` : la publicité qui a
+ * amené le visiteur (app/site/attribution), filtrée avant d'être gardée.
  */
-export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: { jeton: string; pot: string }, discussion: string): Promise<{ success: boolean; error?: string }> {
+export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: { jeton: string; pot: string }, discussion: string, attributionBrute?: unknown): Promise<{ success: boolean; error?: string }> {
   if (STARKK_SITE === 'coupe') return { success: false, error: 'Ce service n’est pas disponible.' }
   // Anti-robots : champ piège rempli (on répond « envoyé » sans rien faire), page non servie par nous
   if (garde?.pot) return { success: true }
@@ -80,6 +83,11 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
     questions.length ? `Questions posées : ${questions.map((q) => `« ${q} »`).join(' ; ')}` : '',
   ].filter(Boolean).join(' ')
 
+  // Venu d'une publicité ? L'origine est gardée sur le lead (colonne de la migration 167)
+  const attribution = nettoyerAttributionSite(attributionBrute)
+  const viaPub = canalPublicitaire(attribution)
+  const etiquettePub = viaPub ? [viaPub === 'meta' ? 'via-meta' : 'via-google-ads'] : []
+
   // Déjà connu par son adresse ? Un client ou un contact d'abord, puis un lead
   let leadId: string | null = null
   let clientId: string | null = null
@@ -88,22 +96,33 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
     const [{ data: contacts }, { data: clients }, { data: leads }] = await Promise.all([
       supabase.from('contacts').select('client_id, email').eq('organization_id', org.id).ilike('email', motif).limit(5),
       supabase.from('clients').select('id, email').eq('organization_id', org.id).ilike('email', motif).limit(5),
-      supabase.from('leads').select('id, tags, commentaire, contact_email, contact_telephone, converted_client_id').eq('organization_id', org.id).ilike('contact_email', motif).order('created_at', { ascending: false }).limit(5),
+      // « * » : l'attribution n'existe qu'après la migration 167 (une colonne nommée absente ferait échouer la recherche)
+      supabase.from('leads').select('*').eq('organization_id', org.id).ilike('contact_email', motif).order('created_at', { ascending: false }).limit(5),
     ])
     const meme = (v: unknown) => String(v || '').trim().toLowerCase() === s.email
     const lead = ((leads || []) as any[]).find((l) => meme(l.contact_email))
     clientId = ((contacts || []) as any[]).find((c) => meme(c.email))?.client_id || ((clients || []) as any[]).find((c) => meme(c.email))?.id || lead?.converted_client_id || null
     if (lead) {
       leadId = lead.id
-      await supabase.from('leads').update({
-        tags: [...new Set([...((lead.tags || []) as string[]), ETIQUETTE])],
-        commentaire: [lead.commentaire, ligne].filter(Boolean).join('\n').slice(0, 5000),
+      // Une demande de rappel rouvre un lead perdu, comme les formulaires publicitaires ; pas celui d'un client
+      // déjà connu (contact, fiche client ou lead converti) : c'est un client qui demande à être rappelé
+      const rouvrir = lead.status === 'perdu' && !clientId
+      const maj = {
+        tags: [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, ...etiquettePub])],
+        commentaire: [lead.commentaire, rouvrir ? `${ligne} Lead rouvert : nouvelle demande.` : ligne].filter(Boolean).join('\n').slice(0, 5000),
         ...(!lead.contact_telephone && telOk ? { contact_telephone: s.telephone } : {}),
-      }).eq('id', lead.id).eq('organization_id', org.id)
+        ...(rouvrir ? { status: 'nouveau' } : {}),
+        // Une attribution vide (sans publicité) laisse la place à celle de cette visite
+        ...('attribution' in lead && !attributionUtile(lead.attribution) && attributionUtile(attribution) ? { attribution: { canal: 'site', ...attribution } } : {}),
+      }
+      // Date de la dernière demande (migration 167) : le lead remonte en tête de la page Leads (pas pour un client connu)
+      const { error: eMaj } = await supabase.from('leads').update(clientId ? maj : { ...maj, derniere_demande_le: new Date().toISOString() })
+        .eq('id', lead.id).eq('organization_id', org.id)
+      if (colonneAbsente(eMaj)) await supabase.from('leads').update(maj).eq('id', lead.id).eq('organization_id', org.id)
     }
   }
   if (!leadId && !clientId) {
-    const { data: cree, error } = await supabase.from('leads').insert({
+    const ligneLead = {
       organization_id: org.id,
       type: 'entreprise',
       entreprise: s.etablissement,
@@ -114,9 +133,13 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
       source: 'site_web',
       status: 'nouveau',
       opco_compte_status: 'aucun',
-      tags: [ETIQUETTE],
+      tags: [ETIQUETTE, ...etiquettePub],
       commentaire: ligne,
-    }).select('id').single()
+    }
+    let { data: cree, error } = await supabase.from('leads')
+      .insert(attribution ? { ...ligneLead, attribution: { canal: 'site', ...attribution } } : ligneLead).select('id').single()
+    // Avant la migration 167, la colonne n'existe pas : le lead passe sans son origine
+    if (attribution && colonneAbsente(error)) ({ data: cree, error } = await supabase.from('leads').insert(ligneLead).select('id').single())
     if (error || !cree) {
       console.error('[starkk site] rappel', error)
       return { success: false, error: 'L’envoi a échoué. Appelez-nous au 04 51 330 330.' }
@@ -127,12 +150,12 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
   // Prévenir l'équipe commerciale dans le CRM : au mieux, la demande reste enregistrée
   try {
     const { createNotifications } = await import('@/lib/email')
-    const { data: equipe } = await supabase.from('users').select('id')
-      .eq('organization_id', org.id).eq('status', 'active').in('role', ['super_admin', 'directeur_commercial', 'commercial'])
+    // Un client connu n'est montré qu'aux responsables et au commercial qui le suit (portefeuille)
+    const equipe = await equipeAPrevenir(supabase, org.id, clientId)
     const joindre = [telOk ? s.telephone : '', mailOk ? s.email : ''].filter(Boolean).join(' · ')
-    if ((equipe || []).length) {
-      await createNotifications(((equipe || []) as any[]).map((u) => ({
-        organizationId: org.id, userId: u.id, type: 'info',
+    if (equipe.length) {
+      await createNotifications(equipe.map((userId) => ({
+        organizationId: org.id, userId, type: 'info',
         titre: clientId && !leadId ? 'Un client demande à être rappelé' : 'Demande de rappel depuis le site',
         message: `${s.prenom} (${s.etablissement}) demande à être rappelé : ${joindre}.${questions.length ? ` Sa dernière question à Starkk : « ${questions[questions.length - 1]} »` : ''}`,
         ...(leadId

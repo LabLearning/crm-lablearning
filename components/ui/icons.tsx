@@ -195,6 +195,12 @@ import {
   WebhookIcon,
   WheelchairIcon,
   WrenchIcon,
+  Facebook01Icon,
+  InstagramIcon,
+  GoogleIcon,
+  MetaIcon,
+  WhatsappIcon,
+  Megaphone01Icon,
 } from '@hugeicons/core-free-icons'
 
 export type LucideIcon = React.ComponentType<{
@@ -413,3 +419,11 @@ export const Wrench = hugeify(WrenchIcon)
 export const X = hugeify(Cancel01Icon)
 export const XCircle = hugeify(CancelCircleIcon)
 export const Zap = hugeify(FlashIcon)
+
+// Canaux de prospects et messageries : logos des marques (page Leads, canaux, campagnes)
+export const Meta = hugeify(MetaIcon)
+export const Facebook = hugeify(Facebook01Icon)
+export const Instagram = hugeify(InstagramIcon)
+export const Google = hugeify(GoogleIcon)
+export const Whatsapp = hugeify(WhatsappIcon)
+export const Megaphone = hugeify(Megaphone01Icon)

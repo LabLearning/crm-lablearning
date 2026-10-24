@@ -6,6 +6,8 @@ import { isPlaceholderEmail } from '@/lib/utils'
 import { ageHorodatage } from '@/lib/inscription-formateur-garde'
 import { rendreModele, signerTelechargement, VALIDITE_LIEN_JOURS } from '@/lib/modeles-acces'
 import { CLE_GARDE_MODELES, EFFECTIFS, ORG_SITE_MODELES, modeleParSlug, nomModele, formatModele, type DemandeModele, type ResultatModele } from '@/lib/modeles'
+import { attributionUtile, canalPublicitaire, colonneAbsente, nettoyerAttributionSite } from '@/lib/prospects/attribution'
+import { equipeAPrevenir } from '@/lib/prospects/equipe'
 
 const SITE = 'https://www.lab-learning.fr'
 const GABARIT = 'modele_site'
@@ -41,8 +43,10 @@ async function organisme(supabase: any) {
  * - adresse inconnue : un lead « Site web » est créé au statut « Nouveau ».
  * Garde-fous : champ piège, page servie par nous depuis plus de 3 secondes,
  * limites par heure et par adresse.
+ * `attributionBrute` : la publicité qui a amené le visiteur (app/site/attribution),
+ * filtrée champ par champ avant d'être gardée sur le lead.
  */
-export async function demanderModeleAction(slug: string, saisie: DemandeModele, garde: { jeton: string; pot: string }): Promise<ResultatModele> {
+export async function demanderModeleAction(slug: string, saisie: DemandeModele, garde: { jeton: string; pot: string }, attributionBrute?: unknown): Promise<ResultatModele> {
   const modele = modeleParSlug(String(slug || ''))
   if (!modele) return { success: false, error: 'Ce modèle n’existe plus. Rechargez la page.' }
 
@@ -93,7 +97,8 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
   const [{ data: contacts }, { data: clients }, { data: leads }] = await Promise.all([
     supabase.from('contacts').select('id, client_id, email').eq('organization_id', org.id).ilike('email', motif).limit(5),
     supabase.from('clients').select('id, raison_sociale, email').eq('organization_id', org.id).ilike('email', motif).limit(5),
-    supabase.from('leads').select('id, tags, commentaire, contact_email, contact_telephone, effectif_libelle, converted_client_id').eq('organization_id', org.id).ilike('contact_email', motif).order('created_at', { ascending: false }).limit(5),
+    // « * » : l'attribution n'existe qu'après la migration 167 (une colonne nommée absente ferait échouer la recherche)
+    supabase.from('leads').select('*').eq('organization_id', org.id).ilike('contact_email', motif).order('created_at', { ascending: false }).limit(5),
   ])
   const meme = (v: unknown) => String(v || '').trim().toLowerCase() === s.email
   const contact = ((contacts || []) as any[]).find((c) => meme(c.email))
@@ -101,23 +106,35 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
   const lead = ((leads || []) as any[]).find((l) => meme(l.contact_email))
   const clientId: string | null = contact?.client_id || client?.id || lead?.converted_client_id || null
 
+  // Venu d'une publicité ? L'origine est gardée sur le lead (colonne de la migration 167)
+  const attribution = nettoyerAttributionSite(attributionBrute)
+  const viaPub = canalPublicitaire(attribution)
+  const etiquettePub = viaPub ? [viaPub === 'meta' ? 'via-meta' : 'via-google-ads'] : []
+
   let leadId: string | null = null
   let cas: 'client' | 'lead_connu' | 'nouveau' = 'nouveau'
   if (lead) {
     // Lead connu : on garde tout ce qui est saisi, on ajoute seulement la trace et ce qui manquait
     cas = clientId ? 'client' : 'lead_connu'
     leadId = lead.id
-    const tags = [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, modele.slug])]
-    await supabase.from('leads').update({
+    const tags = [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, modele.slug, ...etiquettePub])]
+    const maj = {
       tags,
       commentaire: [lead.commentaire, ligne].filter(Boolean).join('\n').slice(0, 5000),
       ...(!lead.contact_telephone && s.telephone ? { contact_telephone: s.telephone } : {}),
       ...(!lead.effectif_libelle && s.effectif ? { effectif_libelle: s.effectif } : {}),
-    }).eq('id', lead.id).eq('organization_id', org.id)
+      // Une attribution vide (sans publicité) laisse la place à celle de cette visite
+      ...('attribution' in lead && !attributionUtile(lead.attribution) && attributionUtile(attribution) ? { attribution: { canal: 'site', ...attribution } } : {}),
+    }
+    // Date de la dernière demande (migration 167) : le lead remonte en tête de la page Leads.
+    // Pas pour un client déjà connu : c'est un client qui répond, pas une nouvelle demande de prospect
+    const { error: eMaj } = await supabase.from('leads').update(clientId ? maj : { ...maj, derniere_demande_le: maintenant.toISOString() })
+      .eq('id', lead.id).eq('organization_id', org.id)
+    if (colonneAbsente(eMaj)) await supabase.from('leads').update(maj).eq('id', lead.id).eq('organization_id', org.id)
   } else if (clientId) {
     cas = 'client'
   } else {
-    const { data: cree, error } = await supabase.from('leads').insert({
+    const ligneLead = {
       organization_id: org.id,
       type: 'entreprise',
       entreprise: s.etablissement,
@@ -130,9 +147,13 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
       source: 'site_web',
       status: 'nouveau',
       opco_compte_status: 'aucun',
-      tags: [ETIQUETTE, modele.slug],
+      tags: [ETIQUETTE, modele.slug, ...etiquettePub],
       commentaire: ligne,
-    }).select('id').single()
+    }
+    let { data: cree, error } = await supabase.from('leads')
+      .insert(attribution ? { ...ligneLead, attribution: { canal: 'site', ...attribution } } : ligneLead).select('id').single()
+    // Avant la migration 167, la colonne n'existe pas : le lead passe sans son origine
+    if (attribution && colonneAbsente(error)) ({ data: cree, error } = await supabase.from('leads').insert(ligneLead).select('id').single())
     if (error || !cree) {
       console.error('[modele site] lead', error)
       return { success: false, error: 'L’envoi a échoué. Réessayez dans un instant.' }
@@ -147,16 +168,16 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
   let envoye = false
   try {
     const { createNotifications, sendDocumentEmail } = await import('@/lib/email')
-    const { data: equipe } = await supabase.from('users').select('id')
-      .eq('organization_id', org.id).eq('status', 'active').in('role', ['super_admin', 'directeur_commercial', 'commercial'])
+    // Un client connu n'est montré qu'aux responsables et au commercial qui le suit (portefeuille)
+    const equipe = await equipeAPrevenir(supabase, org.id, cas === 'client' ? clientId : null)
     const sujet = nomModele(modele).toLowerCase()
     const titre = cas === 'client' ? 'Un client a téléchargé un modèle' : cas === 'lead_connu' ? 'Un lead a téléchargé un modèle' : 'Nouveau contact du site'
     const message = cas === 'nouveau'
       ? `${nomComplet} (${s.etablissement}) a demandé le modèle « ${sujet} ». Un lead « Site web » est créé : à rappeler.`
       : `${nomComplet} (${s.etablissement}) a demandé le modèle « ${sujet} ».`
-    if ((equipe || []).length) {
-      await createNotifications(((equipe || []) as any[]).map((u) => ({
-        organizationId: org.id, userId: u.id, titre, message, type: 'info',
+    if (equipe.length) {
+      await createNotifications(equipe.map((userId) => ({
+        organizationId: org.id, userId, titre, message, type: 'info',
         ...(clientId && cas === 'client'
           ? { lienUrl: `/dashboard/clients/${clientId}`, lienLabel: 'Voir le client', entityType: 'client', entityId: clientId }
           : { lienUrl: `/dashboard/leads?lead=${leadId}`, lienLabel: 'Voir le lead', entityType: 'lead', entityId: leadId as string }),

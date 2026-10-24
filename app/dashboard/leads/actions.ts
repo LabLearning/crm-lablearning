@@ -5,12 +5,41 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createLeadSchema, updateLeadStatusSchema, createInteractionSchema } from '@/lib/validations/crm'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
-import { extractParticipantsFromText, type ExtractedParticipant } from '@/lib/ai'
+import type { ExtractedParticipant } from '@/lib/ai'
 import type { ActionResult } from '@/lib/types'
 import { refusFormationPoei } from '@/lib/poei-garde'
+import { estResponsableLeads, peutRelierLeadAuClient, peutSuivreLeads, purgerTracesLead, refusAttribution } from '@/lib/leads-acces'
+import { checkDashboardAccess } from '@/lib/dashboard-guard'
+import type { SessionContext } from '@/lib/auth'
+
+/*
+ * Ancien pipeline des leads (LeadsPipeline, LeadDetail et leurs cartes) : plus monté depuis la page Leads du
+ * 24/10/2026, mais chaque action exportée reste un point d'entrée public. Toutes passent donc par les règles de
+ * la page Leads (lib/leads-acces) : personnel du module, et un commercial n'agit que sur un lead à lui ou que
+ * personne ne suit.
+ */
+const REFUS = { success: false, error: 'Accès non autorisé' } as const
+
+/** Lecture : toute personne qui a accès à la page Leads. */
+function peutVoirLeads(session: SessionContext): boolean {
+  return checkDashboardAccess('/dashboard/leads', session.user.role as any, session.permissions).allowed
+}
+
+/** Lead de l'organisme, modifiable par cette personne (responsable, ou lead à elle ou sans suivi). */
+async function leadAccessible(session: SessionContext, leadId: unknown): Promise<boolean> {
+  if (!peutSuivreLeads(session) || typeof leadId !== 'string' || !leadId) return false
+  const supabase = await createServiceRoleClient()
+  const { data } = await supabase.from('leads').select('assigned_to')
+    .eq('id', leadId).eq('organization_id', session.organization.id).maybeSingle()
+  if (!data) return false
+  return estResponsableLeads(session.user.role) || !data.assigned_to || data.assigned_to === session.user.id
+}
 
 export async function createLeadAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  // Action exportée, joignable hors du tableau de bord : personnel du module Leads seulement. Les apporteurs
+  // déposent leurs leads par leur portail (submitLeadFromPortalAction), qui échappe, plafonne et fixe l'apporteur
+  if (!peutSuivreLeads(session)) return REFUS
 
   // Champs obligatoires qui doivent rester en string même vide
   const requiredFields = ['contact_nom', 'source']
@@ -213,7 +242,12 @@ function leadLabel(lead: any): string {
 
 export async function updateLeadAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  // Action exportée, donc joignable hors du tableau de bord : personnel du module Leads seulement
+  if (!peutSuivreLeads(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  const { data: actuel } = await supabase.from('leads').select('assigned_to, converted_client_id, status')
+    .eq('id', id).eq('organization_id', session.organization.id).maybeSingle()
+  if (!actuel) return { success: false, error: 'Lead introuvable' }
 
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) {
@@ -249,7 +283,11 @@ export async function updateLeadAction(id: string, formData: FormData): Promise<
     est_organisme_formation: parsed.data.est_organisme_formation === true,
     franchise_id: parsed.data.franchise_id || null,
     apporteur_id: parsed.data.apporteur_id || null,
-    assigned_to: parsed.data.assigned_to || null,
+    // Le suivi suit les règles de la page Leads (lib/leads-acces) : sinon il reste tel quel
+    assigned_to: (() => {
+      const voulu = parsed.data.assigned_to || null
+      return voulu === (actuel.assigned_to || null) || !refusAttribution(session, actuel, voulu) ? voulu : (actuel.assigned_to || null)
+    })(),
     formation_id: (() => { const f = formData.get('formation_id') as string; return f && f !== '__custom' ? f : null })(),
   }
 
@@ -274,6 +312,7 @@ export async function updateLeadStatusAction(
   lostReason?: string
 ): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const parsed = updateLeadStatusSchema.safeParse({ id, status, lost_reason: lostReason })
@@ -340,7 +379,13 @@ export async function updateLeadStatusAction(
 
 export async function deleteLeadAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  // Mêmes règles que la page Leads : responsables avec le droit de suppression, journal purgé
+  if (!peutSuivreLeads(session, 'delete') || !estResponsableLeads(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  if (typeof id !== 'string' || !id) return { success: false, error: 'Lead introuvable' }
+  const { data: lead } = await supabase.from('leads').select('id').eq('id', id).eq('organization_id', session.organization.id).maybeSingle()
+  if (!lead) return { success: false, error: 'Lead introuvable' }
+  await purgerTracesLead(supabase, session.organization.id, id)
 
   const { error } = await supabase
     .from('leads')
@@ -373,6 +418,7 @@ export async function convertLeadToClientAction(
   choix?: { clientId?: string; creerNouveau?: boolean },
 ): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
 
@@ -385,6 +431,11 @@ export async function convertLeadToClientAction(
 
   if (fetchError || !lead) {
     return { success: false, error: 'Lead introuvable' }
+  }
+  // Le client relié entre dans le portefeuille de qui suit le lead : un commercial ne convertit que
+  // son lead (ou un lead sans suivi), et seulement vers un client qu'il suit (contrôle plus bas)
+  if (!estResponsableLeads(session.user.role) && lead.assigned_to && lead.assigned_to !== session.user.id) {
+    return { success: false, error: 'Ce lead est suivi par une autre personne : elle, ou un responsable, le convertit' }
   }
 
   // Champs repris du lead, communs à la création et au complément
@@ -464,6 +515,10 @@ export async function convertLeadToClientAction(
         }
       }
     }
+  }
+
+  if (clientExistant && !(await peutRelierLeadAuClient(supabase, session, lead, clientExistant.id))) {
+    return { success: false, error: 'Ce client n’est pas dans votre portefeuille : un responsable peut convertir ce lead' }
   }
 
   let reutilise = false
@@ -574,6 +629,7 @@ export async function convertLeadToClientAction(
 
 export async function addInteractionAction(formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, formData.get('lead_id')))) return REFUS
 
   const raw: Record<string, unknown> = {}
   for (const [key, value] of formData.entries()) {
@@ -611,6 +667,7 @@ export async function addInteractionAction(formData: FormData): Promise<ActionRe
 
 export async function submitLeadForValidationAction(leadId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
 
   const { data: lead } = await supabase
@@ -672,6 +729,7 @@ export async function approveLeadAction(
   comment?: string,
 ): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   if (!['directeur_commercial', 'super_admin'].includes(session.user.role)) {
     return { success: false, error: 'Action réservée au directeur commercial' }
   }
@@ -740,6 +798,7 @@ export async function approveLeadAction(
 
 export async function rejectLeadAction(leadId: string, comment: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   if (!['directeur_commercial', 'super_admin'].includes(session.user.role)) {
     return { success: false, error: 'Action réservée au directeur commercial' }
   }
@@ -804,14 +863,21 @@ export async function rejectLeadAction(leadId: string, comment: string): Promise
  *  3. sinon on crée le client à partir des infos du lead.
  * Renseigne converted_client_id sur le lead pour réutilisation.
  */
-async function resolveLeadClient(supabase: any, orgId: string, lead: any, userId: string): Promise<string | null> {
-  if (lead.converted_client_id) return lead.converted_client_id
+async function resolveLeadClient(supabase: any, session: SessionContext, lead: any): Promise<string | null> {
+  const orgId = session.organization.id
+  const userId = session.user.id
+  // Un client existant n'est repris que s'il peut être relié à ce lead par cette personne (portefeuille du
+  // commercial) : sinon les apprenants restent sans client, plutôt que d'écrire chez le client d'un autre
+  if (lead.converted_client_id) {
+    return (await peutRelierLeadAuClient(supabase, session, lead, lead.converted_client_id)) ? lead.converted_client_id : null
+  }
 
   const siretNorm = (lead.siret || '').replace(/\D/g, '')
   if (siretNorm) {
     const { data: clients } = await supabase.from('clients').select('id, siret').eq('organization_id', orgId).not('siret', 'is', null)
     const match = (clients || []).find((c: any) => (c.siret || '').replace(/\D/g, '') === siretNorm)
     if (match) {
+      if (!(await peutRelierLeadAuClient(supabase, session, lead, match.id))) return null
       await supabase.from('leads').update({ converted_client_id: match.id }).eq('id', lead.id)
       return match.id
     }
@@ -875,6 +941,7 @@ async function createApprenantFromParticipant(supabase: any, orgId: string, clie
 
 export async function getLeadParticipantsAction(leadId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutVoirLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const { data } = await supabase
     .from('lead_participants')
@@ -887,6 +954,7 @@ export async function getLeadParticipantsAction(leadId: string): Promise<ActionR
 
 export async function addLeadParticipantAction(leadId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
   const orgId = session.organization.id
   const nom = (formData.get('nom') as string || '').trim()
@@ -911,7 +979,7 @@ export async function addLeadParticipantAction(leadId: string, formData: FormDat
 
   // Rattache l'apprenant au client établissement (créé/retrouvé)
   const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('organization_id', orgId).single()
-  const clientId = lead ? await resolveLeadClient(supabase, orgId, lead, session.user.id) : null
+  const clientId = lead ? await resolveLeadClient(supabase, session, lead) : null
   const apprenantId = await createApprenantFromParticipant(supabase, orgId, clientId, p)
 
   const { data, error } = await supabase
@@ -926,6 +994,7 @@ export async function addLeadParticipantAction(leadId: string, formData: FormDat
 
 export async function updateLeadParticipantAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const nom = (formData.get('nom') as string || '').trim()
   if (!nom) return { success: false, error: 'Nom requis' }
@@ -968,15 +1037,7 @@ export async function updateLeadParticipantAction(id: string, formData: FormData
   return { success: true, data }
 }
 
-// Étape 1 de l'import en masse : l'IA lit le texte, rien n'est enregistré.
-export async function extractParticipantsFromTextAction(rawText: string): Promise<ActionResult> {
-  await getSession()
-  const result = await extractParticipantsFromText(rawText)
-  if (!result.success) return { success: false, error: result.error || 'Extraction impossible' }
-  // `error` peut accompagner un succès partiel (liste tronquée) : on remonte
-  // les participants lus ET l'avertissement
-  return { success: true, data: result.participants, error: result.error }
-}
+// Étape 1 de l'import en masse (lecture du texte par l'IA) : components/participants/actions.ts
 
 // Étape 2 : enregistrement des lignes validées par l'utilisateur dans la prévisualisation.
 export async function bulkCreateLeadParticipantsAction(
@@ -984,6 +1045,7 @@ export async function bulkCreateLeadParticipantsAction(
   participants: ExtractedParticipant[],
 ): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
 
   const orgId = session.organization.id
@@ -992,7 +1054,7 @@ export async function bulkCreateLeadParticipantsAction(
 
   // Client établissement (créé/retrouvé une seule fois)
   const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('organization_id', orgId).single()
-  const clientId = lead ? await resolveLeadClient(supabase, orgId, lead, session.user.id) : null
+  const clientId = lead ? await resolveLeadClient(supabase, session, lead) : null
 
   const rows: any[] = []
   for (const p of clean) {
@@ -1018,6 +1080,7 @@ export async function bulkCreateLeadParticipantsAction(
 
 export async function deleteLeadParticipantAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const { error } = await supabase
     .from('lead_participants')
@@ -1032,6 +1095,7 @@ export async function deleteLeadParticipantAction(id: string): Promise<ActionRes
 // Confirme la date proposée, désigne le formateur et CRÉE la session de formation
 export async function confirmLeadDateAction(leadId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
 
   const date = (formData.get('date') as string) || ''
@@ -1132,6 +1196,7 @@ export async function confirmLeadDateAction(leadId: string, formData: FormData):
 // Propose une autre date que celle souhaitée (renvoie la balle au commercial)
 export async function proposeLeadDateAction(leadId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
 
   const date = (formData.get('date') as string) || ''
@@ -1176,6 +1241,7 @@ export async function proposeLeadDateAction(leadId: string, formData: FormData):
 //   au client, les inscrit dans la session, et crée la convention prête à envoyer.
 export async function generateConventionFromLeadAction(leadId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
 
   const { data: lead } = await supabase
@@ -1345,6 +1411,7 @@ export async function generateConventionFromLeadAction(leadId: string): Promise<
 
 export async function getLeadFormationsAction(leadId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutVoirLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const { data } = await supabase
     .from('lead_formations')
@@ -1357,6 +1424,7 @@ export async function getLeadFormationsAction(leadId: string): Promise<ActionRes
 
 export async function addLeadFormationAction(leadId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!(await leadAccessible(session, leadId))) return REFUS
   const supabase = await createServiceRoleClient()
   const formationId = (formData.get('formation_id') as string) || ''
   if (!formationId) return { success: false, error: 'Formation requise' }
@@ -1378,6 +1446,7 @@ export async function addLeadFormationAction(leadId: string, formData: FormData)
 
 export async function deleteLeadFormationAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const { error } = await supabase.from('lead_formations').delete().eq('id', id).eq('organization_id', session.organization.id)
   if (error) return { success: false, error: 'Erreur' }
@@ -1387,6 +1456,7 @@ export async function deleteLeadFormationAction(id: string): Promise<ActionResul
 
 export async function setLeadFormationParticipantsAction(leadFormationId: string, participantIds: string[]): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   // Remplace les affectations
   await supabase.from('lead_formation_participants').delete().eq('lead_formation_id', leadFormationId).eq('organization_id', session.organization.id)
@@ -1406,6 +1476,7 @@ export async function setLeadFormationParticipantsAction(leadFormationId: string
 // Confirme la date d'UNE formation → crée sa session
 export async function confirmLeadFormationDateAction(leadFormationId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const date = (formData.get('date') as string) || ''
   const formateurId = (formData.get('formateur_id') as string) || ''
@@ -1475,6 +1546,7 @@ export async function confirmLeadFormationDateAction(leadFormationId: string, fo
 
 export async function proposeLeadFormationDateAction(leadFormationId: string, formData: FormData): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   const date = (formData.get('date') as string) || ''
   if (!date) return { success: false, error: 'Date requise' }
@@ -1486,6 +1558,7 @@ export async function proposeLeadFormationDateAction(leadFormationId: string, fo
 /** Modifie la date de formation SOUHAITÉE d'une ligne (le commercial peut l'ajuster). */
 export async function updateLeadFormationSouhaiteeAction(leadFormationId: string, date: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
   await supabase.from('lead_formations')
     .update({ date_souhaitee: date || null })
@@ -1498,6 +1571,7 @@ export async function updateLeadFormationSouhaiteeAction(leadFormationId: string
 // crée les apprenants des participants AFFECTÉS, les inscrit dans SA session, crée SA convention.
 export async function generateConventionForFormationAction(leadFormationId: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
 
   const { data: lf } = await supabase.from('lead_formations').select('*').eq('id', leadFormationId).eq('organization_id', session.organization.id).single()
@@ -1626,6 +1700,7 @@ export async function bulkImportLeadsAction(leads: Array<{
   contact_telephone?: string; entreprise?: string; source?: string
 }>): Promise<ActionResult> {
   const session = await getSession()
+  if (!peutSuivreLeads(session)) return REFUS
   const supabase = await createServiceRoleClient()
 
   const toInsert = leads.map(l => ({

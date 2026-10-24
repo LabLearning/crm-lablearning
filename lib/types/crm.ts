@@ -24,6 +24,8 @@ export const LEAD_VALIDATION_STATUS_LABELS: Record<LeadValidationStatus, string>
 
 export type LeadSource =
   | 'site_web'
+  | 'meta_ads'
+  | 'google_ads'
   | 'apporteur_affaires'
   | 'phoning'
   | 'salon'
@@ -279,6 +281,8 @@ export const LEAD_STATUS_COLORS: Record<LeadStatus, BadgeVariant> = {
 
 export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
   site_web: 'Site web',
+  meta_ads: 'Meta (Facebook, Instagram)',
+  google_ads: 'Google Ads',
   apporteur_affaires: 'Apporteur d\'affaires',
   phoning: 'Phoning',
   salon: 'Salon / Événement',

@@ -24,6 +24,12 @@ function collerDateNative(e: React.ClipboardEvent<HTMLInputElement>) {
 interface ClientRef { id: string; raison_sociale: string | null; nom_commercial: string | null; siret: string | null; ville: string | null }
 interface FormationRef { id: string; intitule: string; duree_heures: number | null; duree_jours: number | null }
 interface FormateurRef { id: string; prenom: string | null; nom: string | null }
+/** Lead d'origine (page Leads) : ses coordonnées préremplissent le client et le contact */
+interface LeadOrigine {
+  id: string; entreprise: string | null; siret: string | null; contact_prenom: string | null; contact_nom: string | null
+  contact_email: string | null; contact_telephone: string | null; adresse: string | null; code_postal: string | null; ville: string | null
+  converted_client_id: string | null; source: string | null; created_at: string
+}
 interface ApprenantLigne {
   prenom: string; nom: string; email: string; poste: string
   civilite: string; sexe: string; telephone: string
@@ -51,10 +57,19 @@ const ETAPES = [
  * préremplie) → apprenants → formation + dates → session créée avec ses
  * inscriptions, direction la fiche session.
  */
-export function NouveauDossierWizard({ clients, formations, formateurs }: {
+export function NouveauDossierWizard({ clients, formations, formateurs, depuisLead = null, clientDuLead = null, candidatsSiren = [], leadRefuse = false, sessionDuLead = null }: {
   clients: ClientRef[]
   formations: FormationRef[]
   formateurs: FormateurRef[]
+  depuisLead?: LeadOrigine | null
+  /** Client trouvé pour le lead : déjà relié, ou même SIRET. lienPossible : le lead lui sera relié */
+  clientDuLead?: { id: string; motif: 'relie' | 'siret'; lienPossible: boolean } | null
+  /** Établissements de la même société (même SIREN), à choisir ou non */
+  candidatsSiren?: string[]
+  /** Lead suivi par une autre personne : l'assistant s'ouvre sans lui */
+  leadRefuse?: boolean
+  /** Lead qui a déjà son dossier : sa session */
+  sessionDuLead?: string | null
 }) {
   const { toast } = useToast()
   const router = useRouter()
@@ -62,13 +77,22 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
   const [envoi, setEnvoi] = useState(false)
 
   // Étape 1 — client
-  const [modeClient, setModeClient] = useState<'existant' | 'nouveau'>('existant')
+  // Client du lead trouvé (déjà relié ou même SIRET) : on part de lui. Même société sous un autre SIRET :
+  // les établissements sont proposés en tête, sans choix d'office. Sinon : un nouveau client prérempli
+  const idClientDuLead = clientDuLead && clients.some((c) => c.id === clientDuLead.id) ? clientDuLead.id : null
+  const [modeClient, setModeClient] = useState<'existant' | 'nouveau'>(depuisLead && !idClientDuLead && !candidatsSiren.length ? 'nouveau' : 'existant')
   const [recherche, setRecherche] = useState('')
-  const [clientId, setClientId] = useState<string | null>(null)
-  const [siret, setSiret] = useState('')
+  const [clientId, setClientId] = useState<string | null>(idClientDuLead)
+  const [siret, setSiret] = useState(depuisLead?.siret || '')
   const [chargeSiret, setChargeSiret] = useState(false)
-  const [nc, setNc] = useState({ raison: '', email: '', telephone: '', adresse: '', code_postal: '', ville: '' })
-  const [contact, setContact] = useState({ prenom: '', nom: '', email: '', telephone: '' })
+  const [nc, setNc] = useState({
+    raison: depuisLead?.entreprise || '', email: depuisLead?.contact_email || '', telephone: depuisLead?.contact_telephone || '',
+    adresse: depuisLead?.adresse || '', code_postal: depuisLead?.code_postal || '', ville: depuisLead?.ville || '',
+  })
+  const [contact, setContact] = useState({
+    prenom: depuisLead?.contact_prenom || '', nom: depuisLead?.contact_nom || '',
+    email: depuisLead?.contact_email || '', telephone: depuisLead?.contact_telephone || '',
+  })
 
   // Étape 2 — apprenants (fiche complète dépliable par ligne)
   const [apprenants, setApprenants] = useState<ApprenantLigne[]>([{ ...LIGNE_VIDE }])
@@ -89,9 +113,15 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
 
   const clientsFiltres = useMemo(() => {
     const q = recherche.trim().toLowerCase()
-    if (!q) return clients.slice(0, 8)
+    if (!q) {
+      // Sans recherche : le client du lead et ceux de la même société d'abord, puis l'ordre alphabétique.
+      // La tête de liste ne bouge pas quand on choisit : la ligne cliquée reste sous le pointeur
+      const enTete = [idClientDuLead, ...candidatsSiren].filter((id, i, t): id is string => !!id && t.indexOf(id) === i)
+      const premiers = enTete.map((id) => clients.find((c) => c.id === id)).filter((c): c is ClientRef => !!c)
+      return [...premiers, ...clients.filter((c) => !enTete.includes(c.id))].slice(0, Math.max(8, premiers.length))
+    }
     return clients.filter((c) => `${c.raison_sociale || ''} ${c.nom_commercial || ''} ${c.siret || ''}`.toLowerCase().includes(q)).slice(0, 8)
-  }, [clients, recherche])
+  }, [clients, recherche, idClientDuLead, candidatsSiren])
 
   const formationsFiltrees = useMemo(() => {
     const q = rechercheFormation.trim().toLowerCase()
@@ -102,6 +132,8 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
   const clientChoisi = clients.find((c) => c.id === clientId)
   const formationChoisie = formations.find((f) => f.id === formationId)
   const apprenantsValides = apprenants.filter((a) => (a.nom || a.prenom).trim())
+  // Prénom et nom sont obligatoires sur la fiche d'un apprenant
+  const apprenantIncomplet = apprenantsValides.some((a) => !a.prenom.trim() || !a.nom.trim())
 
   async function chercherSiret() {
     const s = siret.replace(/\s/g, '')
@@ -120,7 +152,7 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
   }
 
   const etape1Ok = modeClient === 'existant' ? !!clientId : !!nc.raison.trim()
-  const etape2Ok = apprenantsValides.length > 0
+  const etape2Ok = apprenantsValides.length > 0 && !apprenantIncomplet
   const etape3Ok = !!formationId && !!dateDebut
 
   async function creer() {
@@ -147,10 +179,12 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
     fd.set('date_fin', dateFin || dateDebut)
     fd.set('formateur_id', formateurId)
     fd.set('financement', financement)
+    if (depuisLead) fd.set('lead_id', depuisLead.id)
     const r = await creerDossierCompletAction(fd)
     setEnvoi(false)
     if (r.success && r.data?.sessionId) {
       toast('success', 'Dossier créé — session prête')
+      if ((r as any).warning) toast('warning', (r as any).warning)
       router.push(`/dashboard/sessions/${r.data.sessionId}`)
     } else toast('error', r.error || 'Erreur')
   }
@@ -162,6 +196,41 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
         <p className="text-sm text-surface-500 mt-1">
           Client, apprenants, formation : la session se crée en un geste avec ses inscriptions.
         </p>
+        {sessionDuLead && (
+          <p className="mt-3 rounded-xl border border-warning-100 bg-warning-50 px-3 py-2 text-sm text-warning-700">
+            Ce lead a déjà son dossier : <a href={`/dashboard/sessions/${sessionDuLead}`} className="font-semibold underline underline-offset-2">ouvrir sa session</a>. L’assistant s’ouvre sans le lead.
+          </p>
+        )}
+        {leadRefuse && (
+          <p className="mt-3 rounded-xl border border-warning-100 bg-warning-50 px-3 py-2 text-sm text-warning-700">
+            Ce lead est suivi par une autre personne : elle, ou un responsable, monte son dossier. L’assistant s’ouvre sans le lead.
+          </p>
+        )}
+        {depuisLead && (
+          <div className="mt-3 space-y-1.5 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2 text-sm text-surface-700">
+            <p>
+              Dossier du lead <span className="font-medium text-surface-900">{[depuisLead.contact_prenom, depuisLead.contact_nom].filter(Boolean).join(' ') || depuisLead.entreprise}</span>
+              {depuisLead.entreprise ? <> ({depuisLead.entreprise})</> : null} : ses coordonnées sont reprises. À la création, le lead passe à « Gagné ».
+            </p>
+            {idClientDuLead && (() => {
+              const c = clients.find((x) => x.id === idClientDuLead)
+              return (
+                <p>
+                  {clientDuLead?.motif === 'relie' ? 'Client déjà relié au lead' : 'Client existant, même SIRET'} :{' '}
+                  <span className="font-medium text-surface-900">{c?.nom_commercial || c?.raison_sociale}</span>
+                  {c?.ville ? <> ({c.ville})</> : null}. Il est choisi ci-dessous ; changez-le si besoin.
+                  {!clientDuLead?.lienPossible && <> Ce client n’est pas dans votre portefeuille : le dossier se crée, mais le lead ne lui sera pas relié (un responsable peut le faire).</>}
+                </p>
+              )
+            })()}
+            {!idClientDuLead && candidatsSiren.length > 0 && (
+              <p>
+                La même société (même SIREN) a déjà {candidatsSiren.length > 1 ? `${candidatsSiren.length} établissements` : 'un établissement'} dans le CRM, en tête de la liste ci-dessous.
+                Choisissez-le si le dossier le concerne, ou « Nouveau client » pour un autre établissement.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Étapes */}
@@ -328,6 +397,7 @@ export function NouveauDossierWizard({ clients, formations, formateurs }: {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
             <Plus className="h-4 w-4" /> Ajouter un apprenant
           </button>
+          {apprenantIncomplet && <p className="text-xs text-warning-700">Indiquez le prénom et le nom de chaque apprenant.</p>}
           <div className="flex items-center justify-between pt-2">
             <button onClick={() => setEtape(1)} className="inline-flex items-center gap-1.5 text-sm text-surface-500 hover:text-surface-800"><ArrowLeft className="h-4 w-4" /> Retour</button>
             <button onClick={() => setEtape(3)} disabled={!etape2Ok}

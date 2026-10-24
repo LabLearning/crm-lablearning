@@ -43,7 +43,7 @@ export const createLeadSchema = z.object({
   site_web: z.string().optional().or(z.literal('')),
   // Source
   source: z.enum([
-    'site_web', 'apporteur_affaires', 'phoning', 'salon',
+    'site_web', 'meta_ads', 'google_ads', 'apporteur_affaires', 'phoning', 'salon',
     'bouche_a_oreille', 'reseaux_sociaux', 'email_entrant',
     'partenaire', 'ancien_client', 'autre',
   ]).optional().default('autre'),

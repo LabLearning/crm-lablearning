@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CheckCircle2, Download, Loader2 } from '../icons'
 import { EFFECTIFS, type DemandeModele } from '@/lib/modeles'
 import { demanderModeleAction } from './actions'
+import { lireAttribution } from '../attribution'
 
 const champ = 'w-full min-h-12 rounded-xl border border-black/10 bg-white px-4 py-3 text-[15px] text-[#14110F] placeholder:text-[#A8A29E] focus:border-[#205040] focus:outline-none focus:ring-[3px] focus:ring-[#5CD9A0]/40'
 const etiquette = 'block text-sm font-semibold text-[#14110F] mb-1.5'
@@ -45,7 +46,7 @@ export function ModeleForm({ slug, jetonPage }: { slug: string; jetonPage: strin
     setErreur(null)
     let r
     try {
-      r = await demanderModeleAction(slug, f, { jeton: jetonPage, pot })
+      r = await demanderModeleAction(slug, f, { jeton: jetonPage, pot }, lireAttribution())
     } catch {
       r = { success: false, error: 'La connexion a été interrompue. Réessayez.' }
     }

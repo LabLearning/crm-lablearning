@@ -4,6 +4,7 @@ import { SiteBandeau } from './SiteBandeau'
 import { StarkkBulle } from './StarkkBulle'
 import { SiteFooter } from './SiteFooter'
 import { CookieBanner } from './CookieBanner'
+import { AttributionCapteur } from './AttributionCapteur'
 import { MesureAudience } from './MesureAudience'
 
 /**
@@ -110,6 +111,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <SiteFooter />
       <CookieBanner />
       <StarkkBulle />
+      <AttributionCapteur />
       <MesureAudience />
     </div>
   )

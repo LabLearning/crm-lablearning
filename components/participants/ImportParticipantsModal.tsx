@@ -5,7 +5,7 @@ import { Sparkles, AlertTriangle, Loader2, CheckCircle2, ArrowLeft } from '@/com
 import { Button, Modal, useToast } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import type { ExtractedParticipant } from '@/lib/ai'
-import { extractParticipantsFromTextAction } from '@/app/dashboard/leads/actions'
+import { extractParticipantsFromTextAction } from './actions'
 import { communesDuCodePostal, estCodePostal, nettoyerCodePostal } from '@/lib/adresse'
 
 export interface ImportRow extends ExtractedParticipant {

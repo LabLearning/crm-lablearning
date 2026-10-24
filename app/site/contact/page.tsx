@@ -1,7 +1,12 @@
 import { Mail, PhoneCall, ShieldCheck, Banknote, Clock, Whatsapp } from '../icons'
 import { lienWhatsapp, WHATSAPP_AFFICHE } from '../whatsapp'
+import { emettreHorodatage } from '@/lib/inscription-formateur-garde'
 import { ContactForm } from './ContactForm'
+import { CLE_GARDE_CONTACT } from './garde'
 import { Kicker } from '../Kicker'
+
+// Rendue à chaque visite : l'horodatage signé du formulaire date de l'affichage (garde anti-robots)
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Contact et devis de formation',
@@ -23,7 +28,7 @@ export default function SiteContact() {
       <div className="mt-12 grid lg:grid-cols-5 gap-10">
         <div className="lg:col-span-3">
           <div className="rounded-3xl border border-[#205040]/10 bg-white p-6 md:p-8">
-            <ContactForm />
+            <ContactForm jetonPage={emettreHorodatage(CLE_GARDE_CONTACT)} />
           </div>
         </div>
         <div className="lg:col-span-2 space-y-4">

@@ -21,6 +21,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/cron') ||
     // Téléchargements du site public : un lien signé, pas de session
     pathname.startsWith('/api/site') ||
+    // Prospects envoyés par Meta et Google Ads : signature ou clé vérifiée par la route
+    pathname.startsWith('/api/webhooks') ||
     // Données publiques sans session (aide à la saisie des adresses, fiche
     // entreprise du simulateur) : appelées à chaque frappe, elles ne doivent
     // pas attendre la vérification de la session

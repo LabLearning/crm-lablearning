@@ -26,15 +26,20 @@ export default function Cookies() {
           Analytics ne garde pas votre adresse IP. Aucune donnée n’est utilisée pour de la publicité. Les données
           peuvent être traitées aux États-Unis par Google LLC, certifiée au cadre de protection des données entre
           l’Union européenne et les États-Unis.</li>
-        <li><strong>Aucun cookie publicitaire</strong> n’est déposé par ce site.</li>
+        <li><strong>Aucun cookie publicitaire</strong> n’est déposé par ce site. Avec votre accord seulement, si vous
+          arrivez par une publicité ou par un lien suivi (publication, lettre d’information), les paramètres présents
+          dans l’adresse de la page (source, campagne, identifiant de clic Google ou Meta) sont joints à votre demande
+          si vous remplissez un formulaire pendant cette visite, pour savoir ce qui vous a amené. Ils ne sont
+          enregistrés sur votre appareil ni par un cookie ni autrement.</li>
       </ul>
 
       <h2>Consentement</h2>
       <p>
-        Lors de votre première visite, un bandeau vous permet d’accepter ou de refuser les cookies de mesure
-        d’audience. Refuser est aussi simple qu’accepter, et le site fonctionne de la même façon. Votre choix est
-        mémorisé sur votre appareil pendant six mois, puis vous est redemandé. Vous pouvez le modifier ou le retirer
-        à tout moment ; si vous le retirez, la mesure s’arrête et ses cookies sont effacés :
+        Lors de votre première visite, un bandeau vous permet d’accepter ou de refuser, ensemble ou séparément (bouton
+        « Choisir »), la mesure d’audience et la prise en compte de la publicité qui vous a amené. Refuser est aussi
+        simple qu’accepter, et le site fonctionne de la même façon. Votre choix est mémorisé sur votre appareil pendant
+        six mois, puis vous est redemandé. Vous pouvez le modifier ou le retirer à tout moment ; si vous retirez votre
+        accord à la mesure d’audience, elle s’arrête et ses cookies sont effacés :
       </p>
       <p><GererCookies /></p>
 

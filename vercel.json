@@ -42,6 +42,10 @@
     {
       "path": "/api/cron/brief-starkk",
       "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/prospects-meta",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

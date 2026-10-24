@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Script from 'next/script'
-import { CLE_COOKIES, EVT_COOKIES_CHOISIS, choixCookiesValide } from './CookieBanner'
+import { CLE_COOKIES, EVT_COOKIES_CHOISIS, accordCookies } from './CookieBanner'
 
 /** Google Analytics 4 du site public (propriété fournie par Brahim le 24/10/2026). */
 export const ID_GA4 = process.env.NEXT_PUBLIC_GA_ID || 'G-LJ1SBNWZJV'
@@ -18,9 +18,9 @@ function effacerCookiesGa() {
 }
 
 /**
- * Mesure d'audience du site (Google Analytics 4), chargée seulement après
- * « Accepter » dans le bandeau cookies : sans accord, aucun script Google
- * n'est chargé et aucun cookie n'est posé.
+ * Mesure d'audience du site (Google Analytics 4), chargée seulement avec
+ * l'accord du visiteur pour cette finalité dans le bandeau cookies : sans
+ * accord, aucun script Google n'est chargé et aucun cookie n'est posé.
  * Réglages : cookies limités à 13 mois (recommandation CNIL), pas de signaux
  * Google ni de personnalisation publicitaire, stockage publicitaire refusé
  * (mode consentement de Google). Retirer son accord coupe la mesure et efface
@@ -31,7 +31,7 @@ export function MesureAudience() {
 
   useEffect(() => {
     const lire = () => {
-      const oui = choixCookiesValide() === 'accepte'
+      const oui = accordCookies('mesure')
       ;(window as any)[`ga-disable-${ID_GA4}`] = !oui
       if (!oui) {
         const gtag = (window as any).gtag

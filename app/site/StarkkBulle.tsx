@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { X, Loader2, CheckCircle2, PhoneCall, Recommencer, Envoyer, ArrowLeft } from './icons'
 import { STARKK_SITE } from '@/lib/fonctionnalites'
-import { EVT_COOKIES_CHOISIS, choixCookiesValide } from './CookieBanner'
+import { EVT_COOKIES_CHOISIS, choixCookies } from './CookieBanner'
 import { demanderRappelStarkkAction } from './starkk-rappel'
+import { lireAttribution } from './attribution'
 
 /**
  * Starkk sur le site public : une bulle en bas à droite, qui ouvre une
@@ -112,7 +113,7 @@ export function StarkkBulle() {
         setDiscussion(garde.discussion)
         setMessages(garde.messages.filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string').slice(-40))
       } else setDiscussion(identifiant())
-      setCookiesRepondus(!!choixCookiesValide())
+      setCookiesRepondus(!!choixCookies())
     } catch {
       setDiscussion(identifiant())
     }
@@ -229,7 +230,7 @@ export function StarkkBulle() {
     let r: { success: boolean; error?: string }
     try {
       const j = await obtenirJeton()
-      r = await demanderRappelStarkkAction(rappel, { jeton: j || '', pot }, discussion)
+      r = await demanderRappelStarkkAction(rappel, { jeton: j || '', pot }, discussion, lireAttribution())
     } catch {
       r = { success: false, error: 'La connexion a été interrompue. Réessayez.' }
     }

@@ -125,7 +125,11 @@ export async function submitLeadFromPortalAction(
       user_id: u.id,
       titre: 'Nouveau lead apporté',
       message: `Lead de ${contact_prenom} ${contact_nom}${entreprise ? ` (${entreprise})` : ''} soumis par ${apporteurFullName}`,
-      lien_url: '/dashboard/leads',
+      // La page Leads ouvre la fiche du lead (?lead=)
+      lien_url: newLead ? `/dashboard/leads?lead=${newLead.id}` : '/dashboard/leads',
+      lien_label: 'Voir le lead',
+      entity_type: newLead ? 'lead' : null,
+      entity_id: newLead ? newLead.id : null,
       type: 'info',
     }))
 
@@ -164,7 +168,7 @@ export async function submitLeadFromPortalAction(
         date_souhaitee: esc(date_souhaitee),
         commentaire: esc(commentaire),
       },
-      dashboardUrl: `${appUrl}/dashboard/leads${newLead ? `/${newLead.id}` : ''}`,
+      dashboardUrl: `${appUrl}/dashboard/leads${newLead ? `?lead=${newLead.id}` : ''}`,
     })
   }
 
