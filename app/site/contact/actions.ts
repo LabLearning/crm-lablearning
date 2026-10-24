@@ -104,6 +104,16 @@ export async function sendContactMessageAction(formData: FormData): Promise<Cont
   // La demande devient un lead « Site web » (ou complète le lead, ou prévient
   // l'équipe pour un client connu) : elle figure dans la page Leads même si
   // l'e-mail ne part pas. Avant la migration 167, seul l'e-mail part.
+  // Case « Je ne souhaite pas recevoir les actualités » : aucune campagne vers ces coordonnées (migration 168)
+  if (String(formData.get('sans_actualites') || '') === 'oui') {
+    try {
+      const { noterRefusDuFormulaire } = await import('@/lib/campagnes/oppositions')
+      await noterRefusDuFormulaire(await createServiceRoleClient(), ORG, { email, telephone }, 'page Contact')
+    } catch (e) {
+      console.error('[contact site] refus des actualités', e)
+    }
+  }
+
   let enregistree = false
   // Le lead de la demande : l'e-mail à l'équipe lui est rattaché (effacé avec lui s'il est supprimé)
   let leadId: string | null = null
@@ -123,7 +133,9 @@ export async function sendContactMessageAction(formData: FormData): Promise<Cont
       ],
       attribution,
       evenement: `Message envoyé depuis la page Contact du site${sujet ? ` : « ${sujet} »` : ''}.`,
-      etiquettes: ['contact', ...(viaPub ? [viaPub === 'meta' ? 'via-meta' : 'via-google-ads'] : [])],
+      etiquettes: ['contact', ...(viaPub ? [viaPub === 'meta' ? 'via-meta' : 'via-google-ads'] : []),
+        // Case « Je ne souhaite pas recevoir les actualités » : gardée aussi sur le lead
+        ...(String(formData.get('sans_actualites') || '') === 'oui' ? ['sans-actualites'] : [])],
     })
     enregistree = r.statut !== 'erreur'
     leadId = r.leadId

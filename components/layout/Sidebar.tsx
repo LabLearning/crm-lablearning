@@ -11,6 +11,7 @@ import {
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers,
   ChevronDown, PanelLeftClose, PanelLeft, MapPin, Clock, CheckSquare,
   Briefcase, UserCog, Banknote, Store, AlertTriangle, Compass, ReceiptText, ReceiptEuro, LifeBuoy, FolderCheck, History, Wallet, Landmark,
+  Megaphone,
 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { hasAnyPermission } from '@/lib/permissions'
@@ -25,7 +26,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   ShieldCheck, MessageSquareWarning, BarChart3, Shield, Settings, Globe,
   Calculator, ClipboardList, Send, CalendarDays, Mails, PieChart, Layers, MapPin, Clock,
   CheckSquare, Briefcase, UserCog, Banknote, Store, AlertTriangle, Compass, ReceiptText, ReceiptEuro, LifeBuoy,
-  FolderCheck, Wallet, Landmark,
+  FolderCheck, Wallet, Landmark, Megaphone,
 }
 
 // Couleurs Lab Learning uniformes pour toutes les sections

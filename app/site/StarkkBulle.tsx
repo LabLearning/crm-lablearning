@@ -19,7 +19,7 @@ import { lireAttribution } from './attribution'
  */
 
 type Message = { role: 'user' | 'assistant'; content: string }
-type DemandeRappel = { prenom: string; telephone: string; email: string; etablissement: string; message: string }
+type DemandeRappel = { prenom: string; telephone: string; email: string; etablissement: string; message: string; sansActualites?: boolean }
 const MEMOIRE = 'll_starkk_site'
 const APERCU = 'll_starkk_apercu'
 const ACCROCHE_VUE = 'll_starkk_accroche'
@@ -382,13 +382,17 @@ export function StarkkBulle() {
               <label htmlFor="r-msg" className="mb-1 block text-sm font-semibold text-[#14110F]">Un mot sur votre projet <span className="font-normal text-[#A8A29E]">(facultatif)</span></label>
               <textarea id="r-msg" rows={2} className={`${champ} resize-none`} value={rappel.message} onChange={(e) => majRappel({ message: e.target.value })} maxLength={500} />
             </div>
+            <label className="flex items-start gap-2.5 text-sm text-[#57534E]">
+              <input type="checkbox" checked={!!rappel.sansActualites} onChange={(e) => majRappel({ sansActualites: e.target.checked })} className="mt-0.5 h-4 w-4 shrink-0 accent-[#205040]" />
+              Je ne souhaite pas recevoir les actualités et offres de Lab Learning
+            </label>
           </div>
           {erreurRappel && <p className="mt-3 rounded-xl bg-[#FEF2F2] px-3.5 py-2.5 text-sm text-[#B91C1C]" role="alert">{erreurRappel}</p>}
           <button type="submit" disabled={envoiRappel} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#205040] px-6 text-sm font-semibold text-white hover:bg-[#1a4335] disabled:opacity-60 transition-colors">
             {envoiRappel ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneCall className="h-4 w-4" />} Demander à être rappelé
           </button>
           <p className="mt-3 text-xs leading-relaxed text-[#78716C]">
-            Lab Learning enregistre ces coordonnées pour vous recontacter au sujet de la formation de votre équipe. Voir notre <Link href="/confidentialite" className="font-semibold text-[#205040] underline underline-offset-2">politique de confidentialité</Link>.
+            Lab Learning enregistre ces coordonnées pour vous recontacter au sujet de la formation de votre équipe. Vous pourrez aussi recevoir nos actualités et offres (formations, financements) : vous pouvez vous y opposer ici ou depuis chaque message. Voir notre <Link href="/confidentialite" className="font-semibold text-[#205040] underline underline-offset-2">politique de confidentialité</Link>.
           </p>
         </form>
       )}

@@ -15,7 +15,7 @@ const nettoyer = (s: unknown, max = 200) => String(s ?? '').replace(/[<>]/g, '')
 const NOM_VALIDE = /^[\p{L}][\p{L}\p{M}' ’.-]{0,79}$/u
 const jokers = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`)
 
-type DemandeRappel = { prenom: string; telephone: string; email: string; etablissement: string; message: string }
+type DemandeRappel = { prenom: string; telephone: string; email: string; etablissement: string; message: string; sansActualites?: boolean }
 
 /**
  * L'organisme du site public : Lab Learning. Hors production, CANDIDATURE_ORG_TEST
@@ -69,6 +69,17 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
     .eq('organization_id', org.id).contains('tags', [ETIQUETTE]).gte('updated_at', ilYAUneHeure)
   if ((count || 0) >= 20) return { success: false, error: 'Beaucoup de demandes en ce moment. Appelez-nous au 04 51 330 330.' }
 
+  // Case « Je ne souhaite pas recevoir les actualités », notée une fois la limite passée : aucune campagne vers
+  // ces coordonnées (migration 168)
+  if (saisie?.sansActualites === true) {
+    try {
+      const { noterRefusDuFormulaire } = await import('@/lib/campagnes/oppositions')
+      await noterRefusDuFormulaire(supabase, org.id, { email: mailOk ? s.email : null, telephone: telOk ? s.telephone : null }, 'rappel Starkk')
+    } catch (e) {
+      console.error('[starkk site] refus des actualités', e)
+    }
+  }
+
   // Les dernières questions posées à Starkk, relues dans le journal (jamais dans ce qu'envoie le navigateur)
   let questions: string[] = []
   if (/^[0-9a-f-]{36}$/i.test(String(discussion || ''))) {
@@ -108,7 +119,7 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
       // déjà connu (contact, fiche client ou lead converti) : c'est un client qui demande à être rappelé
       const rouvrir = lead.status === 'perdu' && !clientId
       const maj = {
-        tags: [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, ...etiquettePub])],
+        tags: [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, ...etiquettePub, ...(saisie?.sansActualites === true ? ['sans-actualites'] : [])])],
         commentaire: [lead.commentaire, rouvrir ? `${ligne} Lead rouvert : nouvelle demande.` : ligne].filter(Boolean).join('\n').slice(0, 5000),
         ...(!lead.contact_telephone && telOk ? { contact_telephone: s.telephone } : {}),
         ...(rouvrir ? { status: 'nouveau' } : {}),
@@ -133,7 +144,7 @@ export async function demanderRappelStarkkAction(saisie: DemandeRappel, garde: {
       source: 'site_web',
       status: 'nouveau',
       opco_compte_status: 'aucun',
-      tags: [ETIQUETTE, ...etiquettePub],
+      tags: [ETIQUETTE, ...etiquettePub, ...(saisie?.sansActualites === true ? ['sans-actualites'] : [])],
       commentaire: ligne,
     }
     let { data: cree, error } = await supabase.from('leads')

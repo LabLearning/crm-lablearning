@@ -83,6 +83,17 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
   if ((parAdresse.count || 0) >= 5) return { success: false, error: 'Plusieurs modèles viennent déjà d’être envoyés à cette adresse. Réessayez dans une heure.' }
   if ((auTotal.count || 0) >= 60) return { success: false, error: 'Beaucoup de demandes en ce moment. Réessayez dans une heure.' }
 
+  // Case « Je ne souhaite pas recevoir les actualités », notée une fois les limites passées : aucune campagne vers
+  // ces coordonnées (migration 168)
+  if (saisie?.sansActualites === true) {
+    try {
+      const { noterRefusDuFormulaire } = await import('@/lib/campagnes/oppositions')
+      await noterRefusDuFormulaire(supabase, org.id, { email: s.email, telephone: s.telephone || null }, 'modèle gratuit')
+    } catch (e) {
+      console.error('[modele site] refus des actualités', e)
+    }
+  }
+
   // Le PDF d'abord : si sa fabrication échoue, on ne crée rien dans le CRM
   const pdf = await rendreModele(modele.slug).catch((e) => { console.error('[modele site] pdf', e); return null })
   if (!pdf) return { success: false, error: 'Le modèle est indisponible pour le moment. Réessayez dans un instant.' }
@@ -117,7 +128,7 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
     // Lead connu : on garde tout ce qui est saisi, on ajoute seulement la trace et ce qui manquait
     cas = clientId ? 'client' : 'lead_connu'
     leadId = lead.id
-    const tags = [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, modele.slug, ...etiquettePub])]
+    const tags = [...new Set([...((lead.tags || []) as string[]), ETIQUETTE, modele.slug, ...etiquettePub, ...(saisie?.sansActualites === true ? ['sans-actualites'] : [])])]
     const maj = {
       tags,
       commentaire: [lead.commentaire, ligne].filter(Boolean).join('\n').slice(0, 5000),
@@ -147,7 +158,7 @@ export async function demanderModeleAction(slug: string, saisie: DemandeModele, 
       source: 'site_web',
       status: 'nouveau',
       opco_compte_status: 'aucun',
-      tags: [ETIQUETTE, modele.slug, ...etiquettePub],
+      tags: [ETIQUETTE, modele.slug, ...etiquettePub, ...(saisie?.sansActualites === true ? ['sans-actualites'] : [])],
       commentaire: ligne,
     }
     let { data: cree, error } = await supabase.from('leads')

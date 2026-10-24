@@ -12,7 +12,7 @@ const facultatif = <span className="font-normal text-[#A8A29E]">(facultatif)</sp
 
 /** Coordonnées gardées sur l'appareil du visiteur : demander un second modèle ne redemande pas tout. */
 const MEMOIRE = 'll_modele_contact'
-const VIDE: DemandeModele = { prenom: '', nom: '', email: '', etablissement: '', telephone: '', effectif: '' }
+const VIDE: DemandeModele = { prenom: '', nom: '', email: '', etablissement: '', telephone: '', effectif: '', sansActualites: false }
 
 /**
  * Demande d'un modèle gratuit : quelques coordonnées, puis le PDF tout de
@@ -120,6 +120,11 @@ export function ModeleForm({ slug, jetonPage }: { slug: string; jetonPage: strin
         </div>
       </div>
 
+      <label className="mt-5 flex items-start gap-2.5 text-sm text-[#57534E]">
+        <input type="checkbox" checked={!!f.sansActualites} onChange={(e) => setF((x) => ({ ...x, sansActualites: e.target.checked }))} className="mt-0.5 h-4 w-4 shrink-0 accent-[#205040]" />
+        Je ne souhaite pas recevoir les actualités et offres de Lab Learning
+      </label>
+
       {erreur && <p className="mt-5 rounded-xl bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]" role="alert">{erreur}</p>}
 
       <button type="submit" disabled={envoi} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#205040] px-6 text-sm font-semibold text-white hover:bg-[#1a4335] disabled:opacity-60 transition-colors">
@@ -128,7 +133,7 @@ export function ModeleForm({ slug, jetonPage }: { slug: string; jetonPage: strin
       </button>
 
       <p className="mt-4 text-xs leading-relaxed text-[#78716C]">
-        Lab Learning enregistre ces coordonnées pour vous envoyer le modèle et pourra vous recontacter au sujet de la formation de votre équipe. Vous pouvez demander leur suppression à tout moment. Voir notre <a href="/confidentialite" target="_blank" className="font-semibold text-[#205040] underline underline-offset-2">politique de confidentialité</a>.
+        Lab Learning enregistre ces coordonnées pour vous envoyer le modèle et pourra vous recontacter au sujet de la formation de votre équipe. Vous pourrez aussi recevoir nos actualités et offres (formations, financements) : vous pouvez vous y opposer ici ou depuis chaque message. Vous pouvez demander leur suppression à tout moment. Voir notre <a href="/confidentialite" target="_blank" className="font-semibold text-[#205040] underline underline-offset-2">politique de confidentialité</a>.
       </p>
     </form>
   )

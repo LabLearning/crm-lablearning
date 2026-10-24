@@ -31,6 +31,7 @@ const nextConfig = {
       'financements', 'contact', 'recrutement', 'reclamation',
       'reglement-interieur', 'mentions-legales', 'cgv', 'confidentialite', 'cookies', 'faq',
       'audit-plus', 'starkk', 'guides', 'formation-restauration-rapide', 'modeles', 'e-learning', 'blog',
+      'desinscription',
     ]
     // base vide : même domaine ; sinon le domaine public
     const regles = (h, base) => [
@@ -61,6 +62,7 @@ const nextConfig = {
       'financements', 'contact', 'recrutement', 'reclamation',
       'reglement-interieur', 'mentions-legales', 'cgv', 'confidentialite', 'cookies', 'faq',
       'audit-plus', 'starkk', 'guides', 'formation-restauration-rapide', 'modeles', 'e-learning', 'blog',
+      'desinscription',
     ]
     const pages = (condition) => sections.flatMap((s) => [
       { source: `/${s}`, ...condition, destination: `/site/${s}` },

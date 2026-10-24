@@ -216,8 +216,8 @@ export function emailShell(opts: {
     ? 'Organisme de formation'
     : 'Formation professionnelle certifiée Qualiopi'
   const footerSuffix = opts.qualiopiCertified === false
-    ? ' &mdash; Organisme de formation'
-    : ' &mdash; Organisme de formation certifié Qualiopi'
+    ? ' · Organisme de formation'
+    : ' · Organisme de formation certifié Qualiopi'
   const orgEmail = opts.orgEmail || ''
 
   return `<!DOCTYPE html>

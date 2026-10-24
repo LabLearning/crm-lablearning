@@ -82,4 +82,6 @@ export async function purgerTracesLead(supabase: any, orgId: string, leadId: str
   // Adresse et objet obligatoires dans le journal des e-mails : remplacés, la ligne reste pour les comptes
   await supabase.from('email_logs').update({ to_email: 'efface@lead-supprime.invalid', to_name: null, subject: 'E-mail d’un lead supprimé', variables: null })
     .eq('organization_id', orgId).in('entity_type', ['lead', 'contact_site']).eq('entity_id', leadId)
+  // Ses envois de campagne (nom, adresse ou mobile) ; son opposition éventuelle reste, pour ne plus jamais lui écrire
+  await supabase.from('campagne_envois').delete().eq('organization_id', orgId).eq('personne_type', 'lead').eq('personne_id', leadId)
 }

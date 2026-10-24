@@ -57,6 +57,11 @@ export function ContactForm({ jetonPage }: { jetonPage: string }) {
       <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Sujet</label><input name="sujet" className={input} placeholder="Ex : formation hygiène pour mon équipe" /></div>
       <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Message *</label><textarea name="message" required rows={5} className={input + ' resize-none'} placeholder="Décrivez votre besoin…" /></div>
 
+      <label className="flex items-start gap-2.5 text-sm text-[#57534E]">
+        <input type="checkbox" name="sans_actualites" value="oui" className="mt-0.5 h-4 w-4 shrink-0 accent-[#205040]" />
+        Je ne souhaite pas recevoir les actualités et offres de Lab Learning
+      </label>
+
       {error && <div className="text-sm text-danger-600 bg-danger-50 border border-danger-200 rounded-xl px-4 py-2.5">{error}</div>}
 
       <button type="submit" disabled={pending}
@@ -65,7 +70,7 @@ export function ContactForm({ jetonPage }: { jetonPage: string }) {
       </button>
 
       <p className="text-xs leading-relaxed text-[#78716C]">
-        Lab Learning enregistre ces informations pour répondre à votre demande et vous recontacter au sujet de la formation de votre équipe. Vous pouvez demander leur suppression à tout moment. Voir notre <a href="/confidentialite" target="_blank" className="font-semibold text-[#205040] underline underline-offset-2">politique de confidentialité</a>.
+        Lab Learning enregistre ces informations pour répondre à votre demande et vous recontacter au sujet de la formation de votre équipe. Vous pourrez aussi recevoir nos actualités et offres (formations, financements) : vous pouvez vous y opposer ici ou depuis chaque message. Vous pouvez demander leur suppression à tout moment. Voir notre <a href="/confidentialite" target="_blank" className="font-semibold text-[#205040] underline underline-offset-2">politique de confidentialité</a>.
       </p>
     </form>
   )

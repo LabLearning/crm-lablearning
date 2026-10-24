@@ -1,5 +1,5 @@
 import type { NavSection } from '@/lib/types'
-import { ROLES_FINANCES_RESERVEES, ROLES_SYSTEME } from '@/lib/acces-reserves'
+import { ROLES_CAMPAGNES, ROLES_FINANCES_RESERVEES, ROLES_SYSTEME } from '@/lib/acces-reserves'
 
 export const navigation: NavSection[] = [
   // ── GÉNÉRAL ──────────────────────────────────────────────
@@ -25,6 +25,7 @@ export const navigation: NavSection[] = [
     items: [
       { label: 'Leads', href: '/dashboard/leads', icon: 'UserPlus', module: 'leads' },
       { label: 'Clients', href: '/dashboard/clients', icon: 'Building2', module: 'clients' },
+      { label: 'Campagnes', href: '/dashboard/campagnes', icon: 'Megaphone', module: 'leads', onlyRoles: ROLES_CAMPAGNES },
     ],
   },
   // ── MON ÉQUIPE ──────────────────────────────────────────

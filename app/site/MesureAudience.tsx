@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Script from 'next/script'
+import { usePathname } from 'next/navigation'
 import { CLE_COOKIES, EVT_COOKIES_CHOISIS, accordCookies } from './CookieBanner'
 
 /** Google Analytics 4 du site public (propriété fournie par Brahim le 24/10/2026). */
@@ -28,6 +29,9 @@ function effacerCookiesGa() {
  */
 export function MesureAudience() {
   const [accepte, setAccepte] = useState(false)
+  // Jamais sur la page de désinscription : son adresse porte le jeton d'un destinataire
+  const chemin = usePathname() || ''
+  const exclue = /^\/(site\/)?desinscription(\/|$)/.test(chemin)
 
   useEffect(() => {
     const lire = () => {
@@ -51,7 +55,7 @@ export function MesureAudience() {
     }
   }, [])
 
-  if (!accepte) return null
+  if (!accepte || exclue) return null
   return (
     <>
       <Script id="ga4-reglages" strategy="afterInteractive">

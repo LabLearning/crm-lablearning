@@ -18,6 +18,8 @@ export const ROLES_SYSTEME: string[] = ['super_admin']
 export const ROLES_FINANCES_RESERVEES: string[] = ['super_admin', 'comptable']
 /** Le chiffre d'affaires de l'organisme (tableaux de bord, rapports, totaux) : l'admin seul. */
 export const ROLES_CHIFFRE_AFFAIRES: string[] = ['super_admin']
+/** Campagnes marketing (e-mails et SMS en nombre, demande du 24/10/2026) : les responsables. */
+export const ROLES_CAMPAGNES: string[] = ['super_admin', 'gestionnaire', 'directeur_commercial']
 
 export const ROUTES_RESERVEES: Array<[string, string[]]> = [
   ['/dashboard/users', ROLES_SYSTEME],
@@ -29,6 +31,7 @@ export const ROUTES_RESERVEES: Array<[string, string[]]> = [
   ['/dashboard/tresorerie', ROLES_FINANCES_RESERVEES],
   ['/dashboard/reporting', ROLES_CHIFFRE_AFFAIRES],
   ['/dashboard/manager', ROLES_CHIFFRE_AFFAIRES],
+  ['/dashboard/campagnes', ROLES_CAMPAGNES],
   // L'accueil du directeur commercial reste le sien (sinon il tournerait en rond)
   ['/dashboard/dirco-home', ['super_admin', 'directeur_commercial']],
 ]
@@ -43,3 +46,4 @@ export function rolesDeLaRoute(pathname: string): string[] | null {
 export const peutAdministrer = (role: string | null | undefined) => !!role && ROLES_SYSTEME.includes(role)
 export const peutVoirFinancesReservees = (role: string | null | undefined) => !!role && ROLES_FINANCES_RESERVEES.includes(role)
 export const peutVoirChiffreAffaires = (role: string | null | undefined) => !!role && ROLES_CHIFFRE_AFFAIRES.includes(role)
+export const peutGererCampagnes = (role: string | null | undefined) => !!role && ROLES_CAMPAGNES.includes(role)

@@ -46,6 +46,10 @@
     {
       "path": "/api/cron/prospects-meta",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/campagnes",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

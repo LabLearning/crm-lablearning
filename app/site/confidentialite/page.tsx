@@ -39,6 +39,11 @@ export default function Confidentialite() {
           que vous y avez saisies, avec la publicité d&apos;origine ;</li>
         <li><strong>Vous répondre par téléphone, par e-mail ou par WhatsApp</strong>, aux coordonnées que vous nous avez
           données avec votre demande : mesures précontractuelles ;</li>
+        <li><strong>Vous envoyer nos actualités et offres</strong> (formations, financements) par e-mail ou par SMS, en tant
+          que professionnel et au sujet de la formation de votre équipe : intérêt légitime. Vous pouvez vous y opposer au
+          moment où vous nous écrivez (case du formulaire) puis à tout moment, depuis chaque message (lien « Ne plus
+          recevoir nos e-mails », envoi du mot STOP au numéro indiqué à la fin du SMS). Nous n&apos;en envoyons pas aux
+          particuliers ;</li>
         <li><strong>Vous envoyer un modèle gratuit et vous recontacter</strong> au sujet de la formation de votre équipe (demande d&apos;un modèle sur le site) : intérêt légitime ; vous pouvez vous y opposer à tout moment en nous écrivant ;</li>
         <li><strong>Répondre à vos questions par notre assistant Starkk</strong> (bulle de discussion du site) : intérêt légitime. Vos messages sont transmis à un modèle d&apos;intelligence artificielle, hébergé par notre sous-traitant Anthropic, uniquement pour produire la réponse. Ils sont conservés douze mois, avec votre adresse IP, pour améliorer les réponses et prévenir les abus. N&apos;y indiquez aucune information sensible ;</li>
         <li><strong>Gérer les inscriptions et le suivi des formations</strong> : exécution du contrat ;</li>
@@ -61,6 +66,8 @@ export default function Confidentialite() {
           la demande, 3 ans après le dernier échange ;</li>
         <li><strong>Empreinte de votre adresse IP</strong> à l&apos;envoi du formulaire de contact : 48 heures, pour
           limiter les envois abusifs ;</li>
+        <li><strong>Votre opposition à nos actualités</strong> (adresse e-mail ou numéro) : conservée pour ne plus jamais
+          vous en écrire ;</li>
         <li><strong>Données de navigation</strong> (Google Analytics) : 13 mois au maximum.</li>
       </ul>
 
@@ -74,6 +81,7 @@ export default function Confidentialite() {
         <li><strong>Vercel</strong> : hébergement du site (clauses contractuelles types pour les transferts hors UE) ;</li>
         <li><strong>Supabase</strong> : base de données, hébergée dans l&apos;Union européenne (région Paris) ;</li>
         <li><strong>Resend</strong> : envoi des emails transactionnels (convocations, attestations) ;</li>
+        <li><strong>Brevo</strong> : envoi de nos e-mails et SMS d&apos;actualités et d&apos;offres ;</li>
         <li><strong>Meta (formulaires publicitaires Facebook et Instagram)</strong> : recueil des demandes faites dans nos
           publicités, qui nous sont ensuite transmises ; transferts vers les États-Unis encadrés par le cadre de
           protection des données entre l&apos;Union européenne et les États-Unis et par les clauses contractuelles types ;</li>

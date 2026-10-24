@@ -97,6 +97,8 @@ export async function deleteContactAction(id: string): Promise<ActionResult> {
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Erreur lors de la suppression' }
+  // Ses envois de campagne partent avec lui (son opposition éventuelle reste, pour ne plus jamais lui écrire)
+  await supabase.from('campagne_envois').delete().eq('organization_id', session.organization.id).eq('personne_type', 'contact').eq('personne_id', id)
 
   await logAudit({ action: 'delete', entity_type: 'contact', entity_id: id })
   revalidatePath('/dashboard/contacts')

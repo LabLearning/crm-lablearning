@@ -364,6 +364,8 @@ export interface DemandeModele {
   etablissement: string
   telephone: string
   effectif: string
+  /** Case « Je ne souhaite pas recevoir les actualités » */
+  sansActualites?: boolean
 }
 
 export type ResultatModele = {
