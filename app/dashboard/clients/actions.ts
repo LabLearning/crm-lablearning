@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createClientSchema } from '@/lib/validations/crm'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { hasPermission, isAdmin } from '@/lib/permissions'
 import type { ActionResult } from '@/lib/types'
 
 export async function createClientAction(formData: FormData): Promise<ActionResult> {
@@ -239,7 +240,10 @@ export async function updateClientNotesAction(id: string, notes: string): Promis
  */
 export async function deleteClientAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!isAdmin(session.user.role as any) && !hasPermission(session.permissions, 'clients', 'delete')) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
+  // Un commercial ne supprime que les clients qu'il suit
+  if (!(await clientDuCommercial(supabase, session, id))) return { success: false, error: 'Accès non autorisé' }
 
   const { count: signees, error: eSignees } = await supabase
     .from('conventions')
@@ -266,6 +270,8 @@ export async function deleteClientAction(id: string): Promise<ActionResult> {
   if (error) {
     return { success: false, error: 'Impossible de supprimer ce client (données liées existantes)' }
   }
+  // Traces des campagnes écrites à la fiche du client (ses contacts restent, détachés : les leurs aussi)
+  await supabase.from('campagne_envois').delete().eq('organization_id', session.organization.id).eq('personne_type', 'client').eq('personne_id', id)
 
   await logAudit({ action: 'delete', entity_type: 'client', entity_id: id })
   revalidatePath('/dashboard/clients')

@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createApporteurSchema } from '@/lib/validations/crm'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { hasPermission, isAdmin } from '@/lib/permissions'
 import type { ActionResult } from '@/lib/types'
 
 export async function createApporteurAction(formData: FormData): Promise<ActionResult> {
@@ -188,6 +189,7 @@ export async function toggleApporteurAction(id: string, isActive: boolean): Prom
 
 export async function deleteApporteurAction(id: string): Promise<ActionResult> {
   const session = await getSession()
+  if (!isAdmin(session.user.role as any) && !hasPermission(session.permissions, 'apporteurs', 'delete')) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
   const { error } = await supabase
@@ -197,6 +199,8 @@ export async function deleteApporteurAction(id: string): Promise<ActionResult> {
     .eq('organization_id', session.organization.id)
 
   if (error) return { success: false, error: 'Impossible de supprimer (leads liés existants)' }
+  // Traces des campagnes écrites à l'apporteur
+  await supabase.from('campagne_envois').delete().eq('organization_id', session.organization.id).eq('personne_type', 'apporteur').eq('personne_id', id)
 
   await logAudit({ action: 'delete', entity_type: 'apporteur', entity_id: id })
   revalidatePath('/dashboard/apporteurs')

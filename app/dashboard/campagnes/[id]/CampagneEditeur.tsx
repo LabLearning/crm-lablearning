@@ -1,53 +1,25 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Mail, MessageSquare, Users, Eye, Send, CalendarClock, Copy, Trash2, Ban, AlertTriangle, Info, Save, RefreshCw,
+  ArrowLeft, Mail, MessageSquare, Eye, Send, CalendarClock, Copy, Trash2, Ban, AlertTriangle, Info, Save,
 } from '@/components/ui/icons'
 import { Button, Modal, useToast } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
-import { ETAPES, ORIGINES, type EtapeLead, type OrigineLead } from '@/lib/leads-entrants'
+import { nettoyerFiltres, type FiltresAudience } from '@/lib/campagnes/publics'
+import type { OptionsAudience } from '@/lib/campagnes/audience'
 import { STATUTS_CAMPAGNE, composerSms, compterSms, dansFenetreSms, MAX_PARTIES_SMS, prochaineFenetreSms, type StatutCampagne } from '@/lib/campagnes/regles'
 import {
   apercuEmailAction, arreterCampagneAction, calculerAudienceAction, dupliquerCampagneAction, enregistrerCampagneAction,
   envoyerEssaiAction, programmerCampagneAction, supprimerCampagneAction,
 } from '../actions'
 import { STYLE_STATUT } from '../CampagnesListe'
-
-interface Audience {
-  leads: { actif: boolean; origines: OrigineLead[]; etapes: EtapeLead[]; depuisJours: number | null }
-  contacts: { actif: boolean; departements: string[]; franchiseId: string | null; principalSeulement: boolean }
-}
-
-/** Jamais au-delà de 3 ans : la durée de conservation des prospects annoncée sur le site */
-const PERIODES: { jours: number; label: string }[] = [
-  { jours: 30, label: '30 derniers jours' }, { jours: 90, label: '3 derniers mois' }, { jours: 180, label: '6 derniers mois' },
-  { jours: 365, label: '12 derniers mois' }, { jours: 1095, label: '3 dernières années' },
-]
+import { AudienceEditeur, type CalculAudience } from './AudienceEditeur'
 
 const section = 'card p-5 space-y-4'
 const titre = 'flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-surface-500'
-const puce = (actif: boolean) => cn('rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-  actif ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-surface-200 bg-white text-surface-600 hover:border-surface-300')
-
-function audienceDe(brut: any): Audience {
-  return {
-    leads: {
-      actif: brut?.leads?.actif === true,
-      origines: Array.isArray(brut?.leads?.origines) ? brut.leads.origines : [],
-      etapes: Array.isArray(brut?.leads?.etapes) ? brut.leads.etapes : [],
-      depuisJours: typeof brut?.leads?.depuisJours === 'number' ? brut.leads.depuisJours : 1095,
-    },
-    contacts: {
-      actif: brut?.contacts?.actif === true,
-      departements: Array.isArray(brut?.contacts?.departements) ? brut.contacts.departements : [],
-      franchiseId: brut?.contacts?.franchiseId || null,
-      principalSeulement: brut?.contacts?.principalSeulement === true,
-    },
-  }
-}
 
 /** Date et heure locales (« 2026-10-27T09:30 ») pour le champ de programmation */
 const versChampDate = (iso: string) => {
@@ -56,9 +28,11 @@ const versChampDate = (iso: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-export function CampagneEditeur({ campagne, franchises, manques, numeroStop, expediteurSms, expediteurEmail, envois, derniersEchecs, derniereErreur, aMonMobile }: {
+export function CampagneEditeur({ campagne, options, optionsIndisponibles, manques, numeroStop, expediteurSms, expediteurEmail, envois, derniersEchecs, derniereErreur, aMonMobile }: {
   campagne: any
-  franchises: { id: string; nom: string }[]
+  /** Réseaux, villes, secteurs et formations proposés dans l'audience */
+  options: OptionsAudience
+  optionsIndisponibles: boolean
   manques: string[]
   numeroStop: string | null
   expediteurSms: string
@@ -81,9 +55,17 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
   const [contenu, setContenu] = useState<string>(campagne.contenu || '')
   const [boutonLibelle, setBoutonLibelle] = useState<string>(campagne.bouton_libelle || '')
   const [boutonUrl, setBoutonUrl] = useState<string>(campagne.bouton_url || '')
-  const [audience, setAudience] = useState<Audience>(() => audienceDe(campagne.audience))
-  const [departements, setDepartements] = useState<string>(audienceDe(campagne.audience).contacts.departements.join(', '))
-  const [calcul, setCalcul] = useState<{ total: number; exemples: string[]; exclus: { sansCoordonnee: number; opposition: number; doublon: number; particulier: number; ancien: number } } | null>(null)
+  const [audience, setAudience] = useState<FiltresAudience>(() => nettoyerFiltres(campagne.audience))
+  const [calcul, setCalcul] = useState<CalculAudience | null>(null)
+  const [calculEnCours, setCalculEnCours] = useState(false)
+  const [erreurCalcul, setErreurCalcul] = useState<string | null>(null)
+  // Décompte : un seul calcul à la fois (les actions serveur passent une par une), sur les derniers choix
+  const enVol = useRef(false)
+  const aRefaire = useRef(false)
+  const audienceCourante = useRef(audience)
+  audienceCourante.current = audience
+  // Brouillon, ou campagne programmée (une estimation : son audience sera recalculée au départ)
+  const estimable = brouillon || statut === 'programmee'
   const [apercu, setApercu] = useState<{ objet: string; html: string } | null>(null)
   const [quand, setQuand] = useState<string>('')
   const [confirmer, setConfirmer] = useState<'maintenant' | 'programmer' | null>(null)
@@ -92,12 +74,17 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
   useEffect(() => { setMinimum(versChampDate(new Date().toISOString())) }, [])
 
   const sms = useMemo(() => (email ? null : compterSms(composerSms(contenu, numeroStop))), [email, contenu, numeroStop])
-  const audienceEnvoyee = useMemo(() => ({
-    ...audience,
-    contacts: { ...audience.contacts, departements: departements.split(/[\s,;]+/).map((d) => d.trim().toUpperCase()).filter(Boolean) },
-  }), [audience, departements])
-  // Un filtre change : le décompte affiché ne vaut plus (la fenêtre de confirmation le reprendrait sinon)
-  useEffect(() => { setCalcul(null) }, [audienceEnvoyee, campagne.canal])
+  // Un choix change : le décompte d'avant ne vaut plus, ni à l'écran ni dans la fenêtre d'envoi ; il est refait une
+  // fois les choix posés (une campagne partie garde l'audience figée à son lancement)
+  useEffect(() => {
+    setCalcul(null)
+    setErreurCalcul(null)
+    setCalculEnCours(estimable)
+    if (!estimable) return
+    const t = window.setTimeout(() => { calculer() }, 700)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audience, campagne.canal, estimable])
   /** SMS : premier départ possible (lundi-samedi, 8 h - 21 h 30, hors fériés) à partir d'une date */
   const departSms = (depuis: Date) => (email ? null : prochaineFenetreSms(depuis))
 
@@ -120,7 +107,7 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
     return () => window.clearInterval(t)
   }, [statut, email, campagne.programmee_le, router])
 
-  const champs = () => ({ nom, objet, contenu, bouton_libelle: boutonLibelle || null, bouton_url: boutonUrl || null, audience: audienceEnvoyee })
+  const champs = () => ({ nom, objet, contenu, bouton_libelle: boutonLibelle || null, bouton_url: boutonUrl || null, audience })
 
   async function enregistrer(silencieux = false): Promise<boolean> {
     const r = await enregistrerCampagneAction(campagne.id, champs())
@@ -128,12 +115,27 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
     if (!silencieux) toast('success', 'Brouillon enregistré')
     return true
   }
-  function calculer() {
-    startTransition(async () => {
-      const r = await calculerAudienceAction(campagne.canal, audienceEnvoyee)
+  /** Décompte de l'audience. Un calcul déjà parti : on en refera un seul à son retour, sur les derniers choix */
+  async function calculer() {
+    if (enVol.current) { aRefaire.current = true; return }
+    enVol.current = true
+    aRefaire.current = false
+    const demandee = audienceCourante.current
+    setCalculEnCours(true)
+    setErreurCalcul(null)
+    try {
+      const r = await calculerAudienceAction(campagne.canal, demandee)
+      // Les choix ont changé pendant le calcul : ce résultat ne vaut plus, le suivant s'en charge
+      if (demandee !== audienceCourante.current) return
       if (r?.success && r.data) setCalcul(r.data)
-      else toast('error', r?.error || 'Calcul impossible')
-    })
+      else { setCalcul(null); setErreurCalcul(r?.error || 'Calcul impossible') }
+    } catch {
+      if (demandee === audienceCourante.current) setErreurCalcul('Pas de réponse du serveur : réessayez')
+    } finally {
+      enVol.current = false
+      if (aRefaire.current) calculer()
+      else if (demandee === audienceCourante.current) setCalculEnCours(false)
+    }
   }
   function voirApercu() {
     startTransition(async () => {
@@ -192,10 +194,6 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
       else toast('error', r?.error || 'Suppression impossible')
     })
   }
-
-  const basculer = <T,>(liste: T[], v: T) => (liste.includes(v) ? liste.filter((x) => x !== v) : [...liste, v])
-  const majLeads = (p: Partial<Audience['leads']>) => setAudience((a) => ({ ...a, leads: { ...a.leads, ...p } }))
-  const majContacts = (p: Partial<Audience['contacts']>) => setAudience((a) => ({ ...a, contacts: { ...a.contacts, ...p } }))
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
@@ -265,75 +263,11 @@ export function CampagneEditeur({ campagne, franchises, manques, numeroStop, exp
         </div>
       )}
 
-      {/* Audience */}
-      <div className={section}>
-        <div className={titre}><Users className="h-3.5 w-3.5" /> Audience</div>
-        <fieldset disabled={!brouillon} className="space-y-4">
-          <label className="flex items-center gap-2 text-sm font-medium text-surface-800">
-            <input type="checkbox" checked={audience.leads.actif} onChange={(e) => majLeads({ actif: e.target.checked })} className="h-4 w-4 accent-brand-500" />
-            Leads
-          </label>
-          {audience.leads.actif && (
-            <div className="ml-6 space-y-3">
-              <div>
-                <div className="mb-1.5 text-xs text-surface-500">Origine (aucune choisie : toutes)</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ORIGINES.map((o) => <button key={o.id} type="button" onClick={() => majLeads({ origines: basculer(audience.leads.origines, o.id) })} className={puce(audience.leads.origines.includes(o.id))}>{o.court}</button>)}
-                </div>
-              </div>
-              <div>
-                <div className="mb-1.5 text-xs text-surface-500">Étape (aucune choisie : toutes)</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ETAPES.map((e) => <button key={e.id} type="button" onClick={() => majLeads({ etapes: basculer(audience.leads.etapes, e.id) })} className={puce(audience.leads.etapes.includes(e.id))}>{e.label}</button>)}
-                </div>
-              </div>
-              <label className="block max-w-xs">
-                <span className="mb-1 block text-xs text-surface-500">Demande reçue</span>
-                <select value={audience.leads.depuisJours ?? 1095} onChange={(e) => majLeads({ depuisJours: Number(e.target.value) })} className="input-base w-full">
-                  {PERIODES.map((p) => <option key={p.jours} value={p.jours}>{p.label}</option>)}
-                </select>
-              </label>
-            </div>
-          )}
-          <label className="flex items-center gap-2 text-sm font-medium text-surface-800">
-            <input type="checkbox" checked={audience.contacts.actif} onChange={(e) => majContacts({ actif: e.target.checked })} className="h-4 w-4 accent-brand-500" />
-            Contacts des clients
-          </label>
-          {audience.contacts.actif && (
-            <div className="ml-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1 block text-xs text-surface-500">Départements (vide : tous), ex. 34, 13, 69</span>
-                <input value={departements} onChange={(e) => setDepartements(e.target.value)} className="input-base w-full" placeholder="Tous" />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-surface-500">Réseau de franchise</span>
-                <select value={audience.contacts.franchiseId || ''} onChange={(e) => majContacts({ franchiseId: e.target.value || null })} className="input-base w-full">
-                  <option value="">Tous les clients</option>
-                  {franchises.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-surface-700 sm:col-span-2">
-                <input type="checkbox" checked={audience.contacts.principalSeulement} onChange={(e) => majContacts({ principalSeulement: e.target.checked })} className="h-4 w-4 accent-brand-500" />
-                Seulement le contact principal de chaque client
-              </label>
-            </div>
-          )}
-        </fieldset>
-        <div className="flex flex-wrap items-center gap-3 border-t border-surface-100 pt-3">
-          <Button size="sm" variant="secondary" onClick={calculer} isLoading={pending && !calcul} icon={<RefreshCw className="h-3.5 w-3.5" />}>Calculer l’audience</Button>
-          {calcul && (
-            <span className="text-sm text-surface-700">
-              <span className="font-semibold text-surface-900 tabular-nums">{calcul.total}</span> destinataire{calcul.total > 1 ? 's' : ''}
-              <span className="text-xs text-surface-500"> · écartés : {calcul.exclus.sansCoordonnee} sans {email ? 'e-mail' : 'mobile'}, {calcul.exclus.opposition} opposés (désinscription, STOP, rebond, case du site), {calcul.exclus.doublon} en double, {calcul.exclus.particulier} particuliers ou sans établissement, {calcul.exclus.ancien} clients sans relation depuis 3 ans</span>
-            </span>
-          )}
-        </div>
-        {calcul && calcul.exemples.length > 0 && <p className="text-xs text-surface-500">Par exemple : {calcul.exemples.join(' ; ')}</p>}
-        <p className="text-xs text-surface-400">
-          Professionnels seulement : les particuliers ne sont jamais écrits. Les personnes opposées (lien, STOP, rebond, case du site) sont écartées, au lancement comme à l’envoi.
-          Les anciens leads (salons, phoning, demandes d’avant le 24/10/2026) n’ont pas été informés de ces envois quand leurs coordonnées ont été prises : à n’inclure qu’en connaissance de cause.
-        </p>
-      </div>
+      <AudienceEditeur
+        audience={audience} onChange={setAudience} options={options} optionsIndisponibles={optionsIndisponibles}
+        modifiable={brouillon} calculable={estimable} figee={estimable ? null : Number(campagne.nb_destinataires) || 0}
+        email={email} calcul={calcul} calculEnCours={calculEnCours} erreurCalcul={erreurCalcul} onCalculer={calculer}
+      />
 
       {/* Message */}
       <div className={section}>

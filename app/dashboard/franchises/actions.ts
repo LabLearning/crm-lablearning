@@ -134,6 +134,8 @@ export async function deleteFranchiseAction(id: string): Promise<Result> {
     .eq('id', id)
     .eq('organization_id', session.organization.id)
   if (error) return { success: false, error: error.message }
+  // Traces des campagnes écrites au référent de la franchise
+  await supabase.from('campagne_envois').delete().eq('organization_id', session.organization.id).eq('personne_type', 'franchise').eq('personne_id', id)
 
   revalidatePath('/dashboard/franchises')
   return { success: true }

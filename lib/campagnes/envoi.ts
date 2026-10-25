@@ -1,4 +1,5 @@
-import { calculerAudience, nettoyerFiltres } from './audience'
+import { calculerAudience } from './audience'
+import { nettoyerFiltres } from './publics'
 import { envoyerEmailBrevo, envoyerSmsBrevo, ErreurBrevo } from './brevo'
 import { configCampagnes, manquesPourEnvoyer } from './config'
 import { jetonDesinscription, lienDesabonnementUnClic, lienDesinscription } from './desinscription'
@@ -99,6 +100,10 @@ export async function lancerCampagne(supabase: any, c: Campagne, depuis: 'brouil
         destination: d.destination,
         statut: 'a_envoyer',
       })), { onConflict: 'campagne_id,destination', ignoreDuplicates: true })
+      // Avant la migration 170, la base n'accepte que les leads et les contacts
+      if (error?.code === '23514' && /personne_type/.test(String(error.message || ''))) {
+        throw new Error('Migration 170 à appliquer dans Supabase : sans elle, les fiches clients sans contact, les têtes de réseau et les apporteurs ne peuvent pas être écrits')
+      }
       if (error) throw new Error(`Destinataires non enregistrés : ${error.message}`)
     }
     const { data: lancee } = await supabase.from('campagnes').update({ lancee_le: maintenant(), nb_destinataires: destinataires.length, updated_at: maintenant() })
@@ -117,16 +122,30 @@ export async function lancerCampagne(supabase: any, c: Campagne, depuis: 'brouil
   }
 }
 
+/** Clé d'une personne d'un lot : son type et son identifiant */
+const clePersonne = (type: string, id: string) => `${type}:${id}`
+
 /** Prénom et établissement des destinataires d'un lot, pour personnaliser le message. */
 async function personnesDuLot(supabase: any, orgId: string, envois: any[]) {
   const ids = (type: string) => envois.filter((e) => e.personne_type === type && e.personne_id).map((e) => e.personne_id)
-  const [leads, contacts] = await Promise.all([
-    ids('lead').length ? supabase.from('leads').select('id, contact_prenom, entreprise').eq('organization_id', orgId).in('id', ids('lead')) : { data: [] },
-    ids('contact').length ? supabase.from('contacts').select('id, prenom, client:client_id(raison_sociale, nom_commercial)').eq('organization_id', orgId).in('id', ids('contact')) : { data: [] },
+  const lire = (type: string, table: string, colonnes: string) => (ids(type).length
+    ? supabase.from(table).select(colonnes).eq('organization_id', orgId).in('id', ids(type))
+    : Promise.resolve({ data: [] }))
+  const [leads, contacts, clients, franchises, comptes, apporteurs] = await Promise.all([
+    lire('lead', 'leads', 'id, contact_prenom, entreprise'),
+    lire('contact', 'contacts', 'id, prenom, client:client_id(raison_sociale, nom_commercial)'),
+    lire('client', 'clients', 'id, raison_sociale, nom_commercial'),
+    lire('franchise', 'franchises', 'id, nom'),
+    lire('utilisateur', 'users', 'id, first_name, franchise:franchise_id(nom)'),
+    lire('apporteur', 'apporteurs_affaires', 'id, prenom, nom_enseigne, raison_sociale'),
   ])
   const personnes = new Map<string, { prenom: string | null; etablissement: string | null }>()
-  for (const l of (leads.data || []) as any[]) personnes.set(l.id, { prenom: l.contact_prenom || null, etablissement: l.entreprise || null })
-  for (const c of (contacts.data || []) as any[]) personnes.set(c.id, { prenom: c.prenom || null, etablissement: c.client?.nom_commercial || c.client?.raison_sociale || null })
+  for (const l of (leads.data || []) as any[]) personnes.set(clePersonne('lead', l.id), { prenom: l.contact_prenom || null, etablissement: l.entreprise || null })
+  for (const c of (contacts.data || []) as any[]) personnes.set(clePersonne('contact', c.id), { prenom: c.prenom || null, etablissement: c.client?.nom_commercial || c.client?.raison_sociale || null })
+  for (const c of (clients.data || []) as any[]) personnes.set(clePersonne('client', c.id), { prenom: null, etablissement: c.nom_commercial || c.raison_sociale || null })
+  for (const fr of (franchises.data || []) as any[]) personnes.set(clePersonne('franchise', fr.id), { prenom: null, etablissement: fr.nom || null })
+  for (const u of (comptes.data || []) as any[]) personnes.set(clePersonne('utilisateur', u.id), { prenom: u.first_name || null, etablissement: u.franchise?.nom || null })
+  for (const a of (apporteurs.data || []) as any[]) personnes.set(clePersonne('apporteur', a.id), { prenom: a.prenom || null, etablissement: a.nom_enseigne || a.raison_sociale || null })
   return personnes
 }
 
@@ -169,7 +188,7 @@ export async function envoyerLot(
     const { data: etat } = await supabase.from('campagnes').select('statut').eq('id', c.id).maybeSingle()
     const arretee = !!etat && etat.statut !== 'en_cours'
     await supabase.from('campagne_envois')
-      .update(arretee ? { statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi' } : { statut: 'a_envoyer', envoye_le: null, ...(erreur ? { erreur } : {}) })
+      .update(arretee ? { statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi', envoye_le: new Date().toISOString() } : { statut: 'a_envoyer', envoye_le: null, ...(erreur ? { erreur } : {}) })
       .in('id', ids).eq('statut', 'en_cours')
   }
   let oppositions: Set<string>
@@ -205,7 +224,7 @@ export async function envoyerLot(
       await supabase.from('campagne_envois').update({ statut: 'exclu', erreur: 'Désinscrit avant l’envoi' }).eq('id', e.id)
       continue
     }
-    const personne = personnes.get(e.personne_id) || { prenom: null, etablissement: null }
+    const personne = personnes.get(clePersonne(e.personne_type, e.personne_id)) || { prenom: null, etablissement: null }
     let sms: string | null = null
     if (c.canal === 'sms') {
       // Longueur vérifiée sur le message de chacun (un nom d'établissement long peut ajouter une partie)

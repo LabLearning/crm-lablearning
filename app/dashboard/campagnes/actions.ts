@@ -6,7 +6,8 @@ import { getSession, type SessionContext } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import { checkDashboardAccess } from '@/lib/dashboard-guard'
 import { peutGererCampagnes } from '@/lib/acces-reserves'
-import { calculerAudience, departementsInconnus, JOURS_CONSERVATION, nettoyerFiltres } from '@/lib/campagnes/audience'
+import { calculerAudience } from '@/lib/campagnes/audience'
+import { aUnPublic, audienceParDefaut, departementsInconnus, nettoyerFiltres, type PublicAudience } from '@/lib/campagnes/publics'
 import { envoyerEmailBrevo, envoyerSmsBrevo } from '@/lib/campagnes/brevo'
 import { configCampagnes, manquesPourEnvoyer } from '@/lib/campagnes/config'
 import { jetonDesinscription, lienDesinscription } from '@/lib/campagnes/desinscription'
@@ -51,7 +52,7 @@ export async function creerCampagneAction(canal: CanalCampagne): Promise<ActionR
     canal,
     contenu: '',
     // Par défaut : les demandes entrantes des 3 dernières années (pas les anciens leads de salons ou de phoning)
-    audience: { leads: { actif: true, origines: ['site', 'meta', 'google_ads', 'apporteur'], etapes: [], depuisJours: JOURS_CONSERVATION }, contacts: { actif: false } },
+    audience: audienceParDefaut(),
     created_by: session.user.id,
   }).select('id').single()
   if (error || !data) return { success: false, error: 'La campagne n’a pas été créée : la migration 168 est-elle appliquée ?' }
@@ -96,9 +97,13 @@ export async function enregistrerCampagneAction(id: string, champs: ChampsCampag
   return { success: true }
 }
 
-/** Taille de l'audience et ce qui en est exclu, avec quelques noms pour vérifier. */
+/** Taille de l'audience, par public, et ce qui en est exclu, avec quelques noms pour vérifier. */
 export async function calculerAudienceAction(canal: CanalCampagne, filtres: unknown): Promise<ActionResult<{
-  total: number; exemples: string[]; exclus: { sansCoordonnee: number; opposition: number; doublon: number; particulier: number; ancien: number }
+  total: number
+  exemples: string[]
+  exclus: { sansCoordonnee: number; opposition: number; doublon: number; particulier: number; ancien: number }
+  parPublic: Record<PublicAudience, number>
+  franchisesAtteints: number
 }>> {
   const session = await getSession()
   if (!peut(session)) return REFUS
@@ -108,7 +113,14 @@ export async function calculerAudienceAction(canal: CanalCampagne, filtres: unkn
   const supabase = await createServiceRoleClient()
   try {
     const r = await calculerAudience(supabase, session.organization.id, canal, nettoyerFiltres(filtres))
-    return { success: true, data: { total: r.destinataires.length, exemples: r.destinataires.slice(0, 8).map((d) => d.etablissement ? `${d.nom} (${d.etablissement})` : d.nom), exclus: r.exclus } }
+    // Un échantillon pris dans chaque public, pour vérifier d'un coup d'œil
+    const exemples: string[] = []
+    for (const pub of ['clients', 'reseaux', 'apporteurs', 'prospects'] as PublicAudience[]) {
+      for (const d of r.destinataires.filter((x) => x.public === pub).slice(0, 3)) {
+        exemples.push(d.etablissement && d.etablissement !== d.nom ? `${d.nom} (${d.etablissement})` : d.nom)
+      }
+    }
+    return { success: true, data: { total: r.destinataires.length, exemples: exemples.slice(0, 10), exclus: r.exclus, parPublic: r.parPublic, franchisesAtteints: r.franchisesAtteints } }
   } catch (e: any) {
     return { success: false, error: e?.message || 'Calcul impossible' }
   }
@@ -189,6 +201,7 @@ export async function programmerCampagneAction(id: string, quand: string | null)
   if (c.statut !== 'brouillon') return { success: false, error: 'Cette campagne n’est plus un brouillon' }
   const refus = refusCampagne(c)
   if (refus.length) return { success: false, error: refus.join(' · ') }
+  if (!aUnPublic(nettoyerFiltres(c.audience))) return { success: false, error: 'Choisissez au moins un public dans l’audience' }
   const manques = manquesPourEnvoyer(c.canal)
   if (manques.length) return { success: false, error: `Envoi pas encore branché : il manque ${manques.join(', ')}` }
 
@@ -243,7 +256,8 @@ export async function arreterCampagneAction(id: string, attendu?: string): Promi
     const { data } = await supabase.from('campagnes').update({ statut: 'annulee', terminee_le: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', id).eq('statut', 'en_cours').select('id')
     if (!data?.length) return { success: false, error: FINIE }
-    await supabase.from('campagne_envois').update({ statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi' }).eq('campagne_id', id).eq('statut', 'a_envoyer')
+    // Datées : effacées avec les autres envois au bout de 3 ans
+    await supabase.from('campagne_envois').update({ statut: 'exclu', erreur: 'Campagne arrêtée avant cet envoi', envoye_le: new Date().toISOString() }).eq('campagne_id', id).eq('statut', 'a_envoyer')
     fait = 'arretee'
   } else {
     return { success: false, error: 'Rien à arrêter' }

@@ -2,6 +2,8 @@ import { notFound, redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { peutGererCampagnes } from '@/lib/acces-reserves'
+import { optionsAudience, optionsFigees, type OptionsAudience } from '@/lib/campagnes/audience'
+import { nettoyerFiltres } from '@/lib/campagnes/publics'
 import { configCampagnes, manquesPourEnvoyer } from '@/lib/campagnes/config'
 import { CampagneEditeur } from './CampagneEditeur'
 
@@ -20,8 +22,12 @@ export default async function CampagnePage({ params }: { params: { id: string } 
   if (!campagne) notFound()
 
   const compter = (statut: string) => supabase.from('campagne_envois').select('id', { count: 'exact', head: true }).eq('campagne_id', params.id).eq('statut', statut)
-  const [{ data: franchises }, aEnvoyer, enCours, envoyes, echecs, exclus, { data: derniersEchecs }, { data: enAttente }] = await Promise.all([
-    supabase.from('franchises').select('id, nom').eq('organization_id', orgId).order('nom'),
+  // Choix de l'audience (réseaux, villes, secteurs, formations)
+  const VIDE: OptionsAudience = { reseaux: [], villes: [], departements: [], secteurs: [], formations: [] }
+  const [options, aEnvoyer, enCours, envoyes, echecs, exclus, { data: derniersEchecs }, { data: enAttente }] = await Promise.all([
+    // Brouillon : tous les choix ; ensuite, les seuls libellés de l'audience (la fiche se relit toutes les 30 s pendant l'envoi)
+    ((campagne as any).statut === 'brouillon' ? optionsAudience(supabase, orgId) : optionsFigees(supabase, orgId, nettoyerFiltres((campagne as any).audience)))
+      .catch((e) => { console.error('[campagnes] choix de l’audience', e); return null }),
     compter('a_envoyer'), compter('en_cours'), compter('envoye'), compter('echec'), compter('exclu'),
     supabase.from('campagne_envois').select('nom, destination, erreur').eq('campagne_id', params.id).eq('statut', 'echec').order('envoye_le', { ascending: false }).limit(10),
     // Erreur de compte de Brevo (crédits, clé, quota) qui retient des envois « à envoyer »
@@ -36,7 +42,8 @@ export default async function CampagnePage({ params }: { params: { id: string } 
     <div className="animate-fade-in">
       <CampagneEditeur
         campagne={campagne as any}
-        franchises={((franchises || []) as any[]).map((f) => ({ id: f.id, nom: f.nom }))}
+        options={options || VIDE}
+        optionsIndisponibles={!options}
         manques={manquesPourEnvoyer((campagne as any).canal, config)}
         numeroStop={config.numeroStop}
         expediteurSms={config.expediteurSms}
