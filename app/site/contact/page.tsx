@@ -15,7 +15,10 @@ export const metadata = {
   alternates: { canonical: '/contact' },
 }
 
-export default function SiteContact() {
+/** Sujet venu d'un lien (une campagne e-mail, par exemple) : une ligne de texte simple, courte */
+const sujetDuLien = (v: unknown) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) : '')
+
+export default function SiteContact({ searchParams }: { searchParams?: { sujet?: string | string[] } }) {
   return (
     <section className="relative overflow-hidden max-w-6xl mx-auto px-5 md:px-8 pt-16 md:pt-24 pb-20">
       <div className="absolute inset-0 -z-10 ll-grid-faint" />
@@ -28,7 +31,7 @@ export default function SiteContact() {
       <div className="mt-12 grid lg:grid-cols-5 gap-10">
         <div className="lg:col-span-3">
           <div className="rounded-3xl border border-[#205040]/10 bg-white p-6 md:p-8">
-            <ContactForm jetonPage={emettreHorodatage(CLE_GARDE_CONTACT)} />
+            <ContactForm jetonPage={emettreHorodatage(CLE_GARDE_CONTACT)} sujetInitial={sujetDuLien(searchParams?.sujet)} />
           </div>
         </div>
         <div className="lg:col-span-2 space-y-4">

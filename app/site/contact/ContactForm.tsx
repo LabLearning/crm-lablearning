@@ -6,7 +6,7 @@ import { sendContactMessageAction } from './actions'
 import { lireAttribution } from '../attribution'
 
 /** jetonPage : horodatage signé émis par la page (garde anti-robots, voir ./garde) */
-export function ContactForm({ jetonPage }: { jetonPage: string }) {
+export function ContactForm({ jetonPage, sujetInitial = '' }: { jetonPage: string; sujetInitial?: string }) {
   const [pending, start] = useTransition()
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +54,7 @@ export function ContactForm({ jetonPage }: { jetonPage: string }) {
         <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Entreprise</label><input name="entreprise" className={input} placeholder="Votre établissement" /></div>
         <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Téléphone</label><input name="telephone" className={input} placeholder="06 …" /></div>
       </div>
-      <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Sujet</label><input name="sujet" className={input} placeholder="Ex : formation hygiène pour mon équipe" /></div>
+      <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Sujet</label><input name="sujet" defaultValue={sujetInitial} className={input} placeholder="Ex : formation hygiène pour mon équipe" /></div>
       <div><label className="block text-xs font-semibold text-[#57534E] mb-1.5">Message *</label><textarea name="message" required rows={5} className={input + ' resize-none'} placeholder="Décrivez votre besoin…" /></div>
 
       <label className="flex items-start gap-2.5 text-sm text-[#57534E]">

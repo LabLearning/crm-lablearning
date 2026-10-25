@@ -16,6 +16,7 @@ import {
   envoyerEssaiAction, programmerCampagneAction, supprimerCampagneAction,
 } from '../actions'
 import { STYLE_STATUT } from '../CampagnesListe'
+import { AIDE_MISE_EN_PAGE } from '@/lib/campagnes/aide-mise-en-page'
 import { AudienceEditeur, type CalculAudience } from './AudienceEditeur'
 
 const section = 'card p-5 space-y-4'
@@ -280,9 +281,21 @@ export function CampagneEditeur({ campagne, options, optionsIndisponibles, manqu
                 <input value={objet} onChange={(e) => setObjet(e.target.value)} className="input-base w-full" placeholder="Ex. Formez votre équipe à l’hygiène avant l’été" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs text-surface-500">Texte : {'{prenom}'} et {'{etablissement}'} sont remplacés pour chacun, **gras**, les adresses web deviennent des liens</span>
-                <textarea value={contenu} onChange={(e) => setContenu(e.target.value)} rows={10} className="input-base w-full" placeholder={'Bonjour {prenom},\n\n…'} />
+                <span className="mb-1 block text-xs text-surface-500">Texte : {'{prenom}'} et {'{etablissement}'} sont remplacés pour chacun, les adresses web deviennent des liens</span>
+                <textarea value={contenu} onChange={(e) => setContenu(e.target.value)} rows={14} className="input-base w-full font-mono !text-[13px]" placeholder={'Bonjour {prenom},\n\n…'} />
               </label>
+              <details className="rounded-xl bg-surface-50 px-3 py-2 text-xs text-surface-600">
+                <summary className="cursor-pointer font-medium text-surface-700">Mise en page : image, titres, chiffres clés, listes, encadrés</summary>
+                <p className="mt-2">Un bloc par ligne, en début de ligne. « Aperçu » montre le résultat.</p>
+                <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[auto,1fr]">
+                  {AIDE_MISE_EN_PAGE.map((a) => (
+                    <div key={a.code} className="contents">
+                      <dt><code className="rounded bg-white px-1.5 py-0.5 text-[11px] text-surface-800">{a.code}</code></dt>
+                      <dd className="mb-1 sm:mb-0">{a.effet}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr,2fr]">
                 <label className="block">
                   <span className="mb-1 block text-xs text-surface-500">Bouton (facultatif)</span>
