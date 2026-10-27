@@ -19,7 +19,7 @@ export async function generateMetadata({ searchParams }: { searchParams: { aperc
     title: 'Blog : conseils aux restaurateurs',
     description:
       'Hygiène, chaîne du froid, allergènes, sécurité, financement de la formation : des conseils pratiques pour les restaurants et commerces de bouche, chaque semaine.',
-    alternates: { canonical: '/blog' },
+    alternates: { canonical: '/blog', types: { 'application/rss+xml': [{ url: '/blog/rss.xml', title: 'Le blog Lab Learning' }] } },
     // La file d'attente se relit en ligne mais reste hors des moteurs
     robots: searchParams?.apercu ? { index: false, follow: false } : { index: true, follow: true },
   }
