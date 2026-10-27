@@ -35,7 +35,8 @@ export interface GroupeProgramme {
 
 // Puces standard + puces de police Symbol/Wingdings collées depuis Word
 // (zone Private Use U+F000–U+F0FF, ex. U+F0B7 qui s'affiche « · »).
-const PUCES = '\\u2022\\u00b7\\u2219\\u25cf\\u25aa\\u25e6\\u2043\\u2013\\u2014\\uf000-\\uf0ff*\\-'
+// Les coches √ ✓ ✔ en tête de ligne servent aussi de puces (fiches reprises de Dendreo).
+const PUCES = '\\u2022\\u00b7\\u2219\\u25cf\\u25aa\\u25e6\\u2043\\u2013\\u2014\\u221a\\u2713\\u2714\\uf000-\\uf0ff*\\-'
 // Une seule classe répétée, sans quantificateurs imbriqués : une ligne de tirets
 // (séparateur) ne doit pas faire exploser le temps de calcul.
 const PUCE_EN_TETE = new RegExp(`^[\\s${PUCES}]*[${PUCES}]\\s*`)

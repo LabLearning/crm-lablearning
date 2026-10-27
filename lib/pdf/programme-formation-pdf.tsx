@@ -6,6 +6,7 @@ import {
 } from './components'
 import { structurerProgramme } from '@/lib/programme-structure'
 import { ProgrammeStructurePdf } from './programme-structure-pdf'
+import { textePdf } from './texte-pdf'
 
 interface ProgrammeFormationProps {
   formation: any; org: any; session?: any
@@ -40,7 +41,8 @@ function dureeCreneau(d?: string | null, f?: string | null): string {
 
 // Caractères de puce à retirer : puces standard + puces de police Symbol/Wingdings
 // collées depuis Word (zone Private Use U+F000–U+F0FF, ex. U+F0B7 qui s'affiche "·").
-const BULLET_CHARS = '\\u2022\\u00b7\\u2219\\u25cf\\u25aa\\u25e6\\u2043\\u2013\\u2014\\uf000-\\uf0ff*\\-'
+// Les coches √ ✓ ✔ en tête de ligne servent aussi de puces (fiches reprises de Dendreo).
+const BULLET_CHARS = '\\u2022\\u00b7\\u2219\\u25cf\\u25aa\\u25e6\\u2043\\u2013\\u2014\\u221a\\u2713\\u2714\\uf000-\\uf0ff*\\-'
 const LEADING_BULLETS = new RegExp(`^(?:\\s*[${BULLET_CHARS}]+)+\\s*`)
 
 // Retire toute puce en tête de ligne (même combinées comme "• ·") pour éviter
@@ -50,9 +52,9 @@ function stripBullet(s: string): string {
 }
 
 // Nettoie un champ texte multi-ligne : supprime les puces parasites de Word
-// (Private Use) partout, pour les sections rendues en texte brut.
+// (Private Use) partout, et ce que la police ne dessine pas (emoji, accents décomposés).
 function cleanText(s: string | null | undefined): string {
-  return (s || '').replace(/[-]/g, '').replace(/[ \t]{2,}/g, ' ')
+  return textePdf((s || '').replace(/[-]/g, ''))
 }
 
 // ── Champs HTML (import Dendreo / éditeur riche) ──
@@ -126,23 +128,47 @@ function fieldItems(s: string | null | undefined): string[] {
   return mergeContinuations(raw.split('\n').map((l) => stripBullet(cleanText(l)).trim()).filter(Boolean))
 }
 
-// Rendu d'un champ : liste à puces si plusieurs items, texte simple sinon
-function FieldText({ value, fallback }: { value: string | null | undefined; fallback?: string }) {
+const TEXTE = { fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }
+// Au-delà, un élément reste sécable : insécable, il pourrait ne pas tenir sur une page
+const COURT = 1200
+
+// Les éléments d'un champ, posés directement dans la section : un paragraphe, ou une puce par ligne
+function elementsDuChamp(value: string | null | undefined, fallback?: string): React.ReactElement[] {
   const items = fieldItems(value)
-  if (items.length === 0) {
-    return fallback ? <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{fallback}</Text> : null
-  }
-  if (items.length === 1) {
-    return <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{items[0]}</Text>
-  }
+  if (items.length === 0) return fallback ? [<Text key="0" style={TEXTE}>{fallback}</Text>] : []
+  if (items.length === 1) return [<Text key="0" style={TEXTE}>{items[0]}</Text>]
+  return items.map((item, i) => <Puce key={i} texte={item} />)
+}
+
+function Puce({ texte }: { texte: string }) {
   return (
-    <View>
-      {items.map((item, i) => (
-        <View key={i} style={{ flexDirection: 'row', gap: 5, marginBottom: 2 }}>
-          <Text style={{ fontSize: 8.5, color: BRAND_GREEN }}>•</Text>
-          <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{item}</Text>
-        </View>
-      ))}
+    <View wrap={texte.length > COURT} style={{ flexDirection: 'row', gap: 5, marginBottom: 2 }}>
+      <Text style={{ fontSize: 8.5, color: BRAND_GREEN }}>•</Text>
+      <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{texte}</Text>
+    </View>
+  )
+}
+
+const tropLong = (el: any) => [el?.props?.texte, el?.props?.children].some((t) => typeof t === 'string' && t.length > COURT)
+
+/**
+ * Une section : son titre tient avec ses `avec` premiers éléments, il ne reste jamais seul en bas
+ * de page. Ce bloc insécable est le premier enfant d'une section posée directement dans la page :
+ * s'il ne tient pas, toute la section passe à la page suivante. Pas de vue intermédiaire entre la
+ * section et ses éléments : react-pdf écrase le texte d'un bloc insécable premier enfant d'une vue
+ * elle-même premier enfant (voir programme-structure-pdf.tsx).
+ */
+function Section({ icon, titre, avec = 1, children }: { icon: string; titre: string; avec?: number; children: React.ReactNode }) {
+  const elements = React.Children.toArray(children)
+  let n = 0
+  while (n < Math.min(avec, elements.length) && !tropLong(elements[n])) n++
+  return (
+    <View style={SECTION}>
+      <View wrap={false}>
+        <PdfSectionTitle icon={icon}>{titre}</PdfSectionTitle>
+        {elements.slice(0, n)}
+      </View>
+      {elements.slice(n)}
     </View>
   )
 }
@@ -156,9 +182,10 @@ function Chip({ icon, children }: { icon: string; children: React.ReactNode }) {
   )
 }
 
-function CheckItem({ children }: { children: React.ReactNode }) {
+function CheckItem({ children }: { children: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 3.5 }}>
+    // Insécable : sinon l'icône peut rester en bas de page et sa phrase partir à la suivante
+    <View wrap={children.length > COURT} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 3.5 }}>
       <View style={{ marginTop: 1 }}><PdfIcon name="check" size={9} color={BRAND_GREEN} /></View>
       <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{children}</Text>
     </View>
@@ -172,6 +199,10 @@ function DureePill({ children }: { children: React.ReactNode }) {
     </View>
   )
 }
+
+// Espace sous chaque section : un rembourrage, pas une marge. react-pdf envoie à la page suivante
+// une section qui tient mais dont la marge basse dépasse le bas de page (demi-page blanche).
+const SECTION = { paddingBottom: 18 }
 
 const MODALITE = (m: string) => m === 'presentiel' ? 'Présentiel' : m === 'distanciel' ? 'Distanciel' : 'Mixte'
 
@@ -212,28 +243,27 @@ export function ProgrammeFormationPage({ formation, org, session, poei, annexe }
 
         {/* Titre + chips */}
         <View style={{ marginBottom: 18 }}>
-          <Text style={{ fontSize: 16, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, letterSpacing: -0.3 }}>{formation.intitule}</Text>
-          {formation.sous_titre ? <Text style={{ fontSize: 9.5, color: SURFACE_500, marginTop: 3 }}>{formation.sous_titre}</Text> : null}
+          <Text style={{ fontSize: 16, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900, letterSpacing: -0.3 }}>{textePdf(formation.intitule)}</Text>
+          {formation.sous_titre ? <Text style={{ fontSize: 9.5, color: SURFACE_500, marginTop: 3 }}>{textePdf(formation.sous_titre)}</Text> : null}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
             {formation.duree_heures ? <Chip icon="clock">{formation.duree_heures} h{formation.duree_jours ? ` · ${formation.duree_jours} j` : ''}</Chip> : null}
             {formation.modalite ? <Chip icon="monitor">{MODALITE(formation.modalite)}</Chip> : null}
-            {formation.categorie ? <Chip icon="list">{formation.categorie}</Chip> : null}
+            {formation.categorie ? <Chip icon="list">{textePdf(formation.categorie)}</Chip> : null}
           </View>
         </View>
 
         {/* Organisation du parcours POEI : dates, durée, entreprise, planning des interventions */}
         {poei ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="calendar">Organisation du parcours POEI</PdfSectionTitle>
+          <Section icon="calendar" titre="Organisation du parcours POEI">
             {poei.numero ? <View style={shared.row}><Text style={shared.label}>Parcours</Text><Text style={shared.value}>{poei.numero}</Text></View> : null}
             {poei.date_debut ? (
               <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>
                 {poei.date_fin && poei.date_fin !== poei.date_debut ? `du ${fmtLong(poei.date_debut)} au ${fmtLong(poei.date_fin)}` : `le ${fmtLong(poei.date_debut)}`}
               </Text></View>
             ) : null}
-            {poei.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée du parcours</Text><Text style={shared.value}>{Number(poei.duree_heures).toLocaleString('fr-FR')} heures</Text></View> : null}
+            {poei.duree_heures ? <View style={shared.row}><Text style={shared.label}>Durée du parcours</Text><Text style={shared.value}>{textePdf(Number(poei.duree_heures).toLocaleString('fr-FR'))} heures</Text></View> : null}
             {poei.client ? <View style={shared.row}><Text style={shared.label}>Entreprise</Text><Text style={shared.value}>{poei.client.nom_commercial || poei.client.raison_sociale}{poei.client.ville ? `, ${poei.client.ville}` : ''}</Text></View> : null}
-            {poei.poste_vise ? <View style={shared.row}><Text style={shared.label}>Poste visé</Text><Text style={shared.value}>{poei.poste_vise}</Text></View> : null}
+            {poei.poste_vise ? <View style={shared.row}><Text style={shared.label}>Poste visé</Text><Text style={shared.value}>{textePdf(poei.poste_vise)}</Text></View> : null}
             {(poei.interventions || []).length > 0 ? (
               <View style={{ ...shared.table, marginTop: 6 }}>
                 <View style={shared.tableHeader}>
@@ -247,15 +277,15 @@ export function ProgrammeFormationPage({ formation, org, session, poei, annexe }
                   const f = Array.isArray(iv.formateur) ? iv.formateur[0] : iv.formateur
                   const court = (d: string) => new Date(`${String(d).slice(0, 10)}T12:00:00Z`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
                   const dates = iv.date_debut ? (iv.date_fin && iv.date_fin !== iv.date_debut ? `${court(iv.date_debut)} au ${court(iv.date_fin)}` : court(iv.date_debut)) : 'À planifier'
-                  const lieu = [iv.lieu, iv.ville].filter(Boolean).join(', ')
+                  const lieu = textePdf([iv.lieu, iv.ville].filter(Boolean).join(', '))
                   return (
                     <View key={idx} wrap={false} style={{ ...shared.tableRow, ...(idx % 2 === 1 ? shared.tableRowAlt : {}) }}>
                       <View style={{ width: '30%' }}>
-                        <Text style={shared.tableCell}>{iv.libelle || `Module ${idx + 1}`}</Text>
-                        {iv.horaires ? <Text style={{ ...shared.tableCell, fontSize: 6.8, color: SURFACE_500 as any }}>{iv.horaires}</Text> : null}
+                        <Text style={shared.tableCell}>{textePdf(iv.libelle) || `Module ${idx + 1}`}</Text>
+                        {iv.horaires ? <Text style={{ ...shared.tableCell, fontSize: 6.8, color: SURFACE_500 as any }}>{textePdf(iv.horaires)}</Text> : null}
                       </View>
                       <Text style={{ ...shared.tableCell, width: '22%' }}>{dates}</Text>
-                      <Text style={{ ...shared.tableCell, width: '10%' }}>{iv.nb_heures ? `${Number(iv.nb_heures).toLocaleString('fr-FR')} h` : ''}</Text>
+                      <Text style={{ ...shared.tableCell, width: '10%' }}>{iv.nb_heures ? `${textePdf(Number(iv.nb_heures).toLocaleString('fr-FR'))} h` : ''}</Text>
                       <Text style={{ ...shared.tableCell, width: '20%' }}>{lieu}</Text>
                       <Text style={{ ...shared.tableCell, width: '18%' }}>{f ? `${f.prenom || ''} ${f.nom || ''}`.trim() : 'À affecter'}</Text>
                     </View>
@@ -263,13 +293,12 @@ export function ProgrammeFormationPage({ formation, org, session, poei, annexe }
                 })}
               </View>
             ) : null}
-          </View>
+          </Section>
         ) : null}
 
         {/* Organisation de la session (uniquement si programme tiré d'une session) */}
         {!poei && session ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="calendar">Organisation de la session</PdfSectionTitle>
+          <Section icon="calendar" titre="Organisation de la session">
             <View style={shared.row}><Text style={shared.label}>Dates</Text><Text style={shared.value}>du {fmtLong(session.date_debut)} au {fmtLong(session.date_fin)}</Text></View>
             {sessionLieu ? <View style={shared.row}><Text style={shared.label}>Lieu</Text><Text style={shared.value}>{sessionLieu}</Text></View> : null}
             {jours.length > 0 ? (
@@ -291,45 +320,35 @@ export function ProgrammeFormationPage({ formation, org, session, poei, annexe }
                 })}
               </View>
             ) : null}
-          </View>
+          </Section>
         ) : null}
 
         {/* Public visé */}
         {formation.public_vise ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="users">Public visé</PdfSectionTitle>
-            <FieldText value={formation.public_vise} />
-          </View>
+          <Section icon="users" titre="Public visé">{elementsDuChamp(formation.public_vise)}</Section>
         ) : null}
 
-        {/* Objectifs */}
+        {/* Objectifs : le titre tient avec la phrase d'introduction et le premier objectif */}
         {objectifs.length > 0 ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="target">Objectifs pédagogiques</PdfSectionTitle>
+          <Section icon="target" titre="Objectifs pédagogiques" avec={2}>
             <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 6 }}>À l'issue de la formation, le participant sera capable de :</Text>
             {objectifs.map((o, i) => <CheckItem key={i}>{o}</CheckItem>)}
-          </View>
+          </Section>
         ) : null}
 
         {/* Prérequis */}
         {formation.prerequis ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="clipboardCheck">Prérequis</PdfSectionTitle>
-            <FieldText value={formation.prerequis} />
-          </View>
+          <Section icon="clipboardCheck" titre="Prérequis">{elementsDuChamp(formation.prerequis)}</Section>
         ) : null}
 
         {/* Programme détaillé */}
         {weeks.length > 0 ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="list">Programme détaillé</PdfSectionTitle>
-            <ProgrammeStructurePdf groupes={weeks} />
+          <View style={SECTION}>
+            {/* Le titre de la section tient avec le premier jour ou la première semaine */}
+            <ProgrammeStructurePdf groupes={weeks} titre={<PdfSectionTitle icon="list">Programme détaillé</PdfSectionTitle>} />
           </View>
         ) : (formation.programme_detaille ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="list">Programme détaillé</PdfSectionTitle>
-            <FieldText value={formation.programme_detaille} />
-          </View>
+          <Section icon="list" titre="Programme détaillé">{elementsDuChamp(formation.programme_detaille)}</Section>
         ) : null)}
 
         {/* Méthodes & moyens — évite le doublon si les 2 champs se recouvrent */}
@@ -341,56 +360,39 @@ export function ProgrammeFormationPage({ formation, org, session, poei, annexe }
           const items = [...methItems, ...(showMoy ? moyItems : [])]
           if (items.length === 0) return null
           return (
-            <View style={shared.section}>
-              <PdfSectionTitle icon="monitor">Méthodes et moyens pédagogiques</PdfSectionTitle>
-              {items.length === 1 ? (
-                <Text style={{ fontSize: 8.5, color: SURFACE_700, lineHeight: 1.5 }}>{items[0]}</Text>
-              ) : (
-                <View>
-                  {items.map((item, i) => (
-                    <View key={i} style={{ flexDirection: 'row', gap: 5, marginBottom: 2 }}>
-                      <Text style={{ fontSize: 8.5, color: BRAND_GREEN }}>•</Text>
-                      <Text style={{ fontSize: 8.5, color: SURFACE_700, flex: 1, lineHeight: 1.45 }}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
+            <Section icon="monitor" titre="Méthodes et moyens pédagogiques">
+              {items.length === 1 ? <Text style={TEXTE}>{items[0]}</Text> : items.map((item, i) => <Puce key={i} texte={item} />)}
+            </Section>
           )
         })()}
 
         {/* Évaluation */}
-        <View style={shared.section}>
-          <PdfSectionTitle icon="award">Modalités d'évaluation et de suivi</PdfSectionTitle>
-          <FieldText value={formation.modalites_evaluation} fallback="Évaluation des acquis par QCM et mise en situation pratique. Évaluation de satisfaction en fin de formation." />
-        </View>
+        <Section icon="award" titre="Modalités d'évaluation et de suivi">
+          {elementsDuChamp(formation.modalites_evaluation, 'Évaluation des acquis par QCM et mise en situation pratique. Évaluation de satisfaction en fin de formation.')}
+        </Section>
 
         {/* Admission */}
         {formation.modalites_admission ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="userCheck">Modalités d'admission</PdfSectionTitle>
-            <FieldText value={formation.modalites_admission} />
-          </View>
+          <Section icon="userCheck" titre="Modalités d'admission">{elementsDuChamp(formation.modalites_admission)}</Section>
         ) : null}
 
         {/* Tarifs du catalogue : pas en annexe d'un contrat, qui fixe lui-même le prix */}
         {!annexe && (formation.tarif_inter_ht || formation.tarif_intra_ht) ? (
-          <View style={shared.section}>
-            <PdfSectionTitle icon="banknote">Tarifs</PdfSectionTitle>
+          <Section icon="banknote" titre="Tarifs">
             {formation.tarif_inter_ht ? <View style={shared.row}><Text style={shared.label}>Inter-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_inter_ht).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} € HT / personne</Text></View> : null}
             {formation.tarif_intra_ht ? <View style={shared.row}><Text style={shared.label}>Intra-entreprise</Text><Text style={shared.value}>{Number(formation.tarif_intra_ht).toLocaleString('fr-FR').replace(/[\u202F\u00A0]/g, " ")} € HT / groupe</Text></View> : null}
-          </View>
+          </Section>
         ) : null}
 
-        {/* Accessibilité & contact */}
-        <View style={{ ...shared.infoBox, marginTop: 4 }}>
+        {/* Accessibilité & contact : l'encadré ne se coupe pas entre deux pages */}
+        <View wrap={false} style={{ ...shared.infoBox, marginTop: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
             <PdfIcon name="accessibility" size={12} color={BRAND_GREEN} />
             <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Accessibilité & informations pratiques</Text>
           </View>
           <Text style={{ ...shared.infoBoxText, marginBottom: 2 }}>
             <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Délai d'accès : </Text>
-            {org?.delai_acces || "Inscription jusqu'à 7 jours ouvrés avant le démarrage, selon les places disponibles."}
+            {textePdf(org?.delai_acces) || "Inscription jusqu'à 7 jours ouvrés avant le démarrage, selon les places disponibles."}
           </Text>
           <Text style={{ ...shared.infoBoxText, marginBottom: 2 }}>
             <Text style={{ fontFamily: 'Satoshi', fontWeight: 700 }}>Situation de handicap : </Text>
