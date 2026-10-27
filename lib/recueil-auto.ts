@@ -215,9 +215,23 @@ function prerequisDe(brut: unknown): string {
   return premiere.charAt(0).toLowerCase() + premiere.slice(1)
 }
 
+/**
+ * Nom du client tel qu'on l'écrirait : sans les répétitions venues de la reprise
+ * des fiches (« AIMEN FOOD (AIMEN FOOD) », « X (Y) (Y) »). La fiche n'est pas touchée.
+ */
+export function nomLisible(v: string): string {
+  let t = net(v)
+  // Même parenthèse répétée à la suite
+  t = t.replace(/(\([^()]+\))(\s*\1)+/gi, '$1')
+  // Parenthèse qui redit le nom
+  const m = /^(.+?)\s*\(([^()]+)\)$/.exec(t)
+  if (m && m[1].trim().toLowerCase() === m[2].trim().toLowerCase()) t = m[1].trim()
+  return t
+}
+
 /** Les valeurs des balises, pour un dossier */
 export function balisesDe(f: FaitsRecueil, besoin: string): Record<string, string> {
-  const client = net(f.client?.nom_commercial || f.client?.raison_sociale) || 'le client'
+  const client = nomLisible(net(f.client?.nom_commercial || f.client?.raison_sociale)) || 'le client'
   const villeBrute = net(f.session.ville || f.client?.ville)
   const ville = villeBrute ? libelleVille(villeBrute) : ''
   const activite = activiteDe(net(f.client?.secteur_activite))
