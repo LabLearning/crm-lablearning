@@ -97,9 +97,16 @@ const SUJETS: { re: RegExp; sujet: SujetRecueil }[] = [
   { re: /incendie/i, sujet: 'incendie' },
   { re: /gestes|postures|\btms\b/i, sujet: 'gestes' },
   { re: /pr[ée]vention|risques|s[ée]curit/i, sujet: 'prevention' },
-  { re: /rentabilit|co[uû]ts|gestion/i, sujet: 'gestion' },
+  // L'IA seulement : « outils numériques » ne suffit pas à en faire une formation IA
+  { re: /\bia\b|intelligence artificielle/i, sujet: 'ia' },
+  // Logiciels (Excel, Odoo, Sellsy, MS Project, CRM) : avant « vente », que Sellsy cite
+  { re: /excel|odoo|sellsy|microsoft|\bcrm\b|\blms\b|logiciel|bureautique/i, sujet: 'outils' },
+  // Avant « gestion » : un « gestionnaire administratif » n'apprend pas la rentabilité
+  { re: /administrati|gestionnaire|financement|secr[ée]tariat|assistante? de direction/i, sujet: 'administratif' },
+  { re: /rentabilit|co[uû]ts|gestion|cr[ée]ation d['’]entreprise/i, sujet: 'gestion' },
   { re: /accueil|vente|commercial/i, sujet: 'vente' },
-  { re: /manag|encadr|[ée]quipe/i, sujet: 'management' },
+  // Pas « équipe » : « Équipements professionnels » n'est pas du management
+  { re: /manag|encadr/i, sujet: 'management' },
 ]
 const SUJET_PAR_THEME: Record<ThemeRecueil, SujetRecueil> = { hygiene: 'hygiene', prevention: 'prevention', management: 'management', metier: 'metier' }
 
@@ -195,6 +202,8 @@ function participantsDe(inscrits: FaitsRecueil['inscrits']): string {
   const postes = Array.from(groupes.values()).sort((a, b) => b.n - a.n).map((g) => `${g.n} ${g.n > 1 ? pluriel(g.libelle) : g.libelle}`)
   const connus = Array.from(groupes.values()).reduce((s, g) => s + g.n, 0)
   if (!postes.length) return personnes(total)
+  // « une personne (gérante) » plutôt que « une personne : 1 gérante »
+  if (total === 1) return `une personne (${groupes.values().next().value!.libelle})`
   return connus === total ? `${personnes(total)} : ${postes.join(', ')}` : `${personnes(total)}, dont ${postes.join(', ')}`
 }
 
@@ -263,17 +272,24 @@ export function balisesDe(f: FaitsRecueil, besoin: string): Record<string, strin
 /** Remplace les balises ; une balise inconnue resterait visible (les tests vérifient qu'il n'y en a aucune) */
 export const remplir = (modele: string, balises: Record<string, string>) => modele.replace(/\{([a-z_]+)\}/g, (m, cle) => balises[cle] ?? m)
 
+const PLUSIEURS = /chacun|chaque participant|groupe|tour de table|binôme|qui démarre|les participants|ils racontent|seuls\b/i
+
 /** Réponses automatiques, pour les questions connues du modèle (les autres restent vides). */
 export function reponsesAutomatiques(f: FaitsRecueil, theme: ThemeRecueil, questions: string[]): Record<string, string> {
   const graine = net(f.session.id) || net(f.session.reference) || 'recueil'
-  const t = <K>(liste: readonly K[], champ: string) => tirer(liste, `${graine}:${champ}`)
+  // Un seul inscrit : les variantes écrites pour plusieurs personnes (« chacun », « le groupe », « les participants »…) sont écartées
+  const seul = f.inscrits.length === 1
+  const t = <K>(liste: readonly K[], champ: string) => {
+    const possibles = seul ? liste.filter((x) => !PLUSIEURS.test(String(x))) : liste
+    return tirer(possibles.length ? possibles : liste, `${graine}:${champ}`)
+  }
   const intitule = net(f.formation?.intitule || f.session.intitule)
   const sujet = sujetDe(intitule, theme)
   const besoin = t(TEXTES.besoins[sujet], 'besoin')
   const b = balisesDe(f, besoin)
   const r: Record<string, string> = {
     contexte: remplir(t(TEXTES.contexte, 'contexte'), b),
-    participants: remplir(f.inscrits.length ? t(TEXTES.participants_avec, 'participants') : t(TEXTES.participants_sans, 'participants'), b),
+    participants: remplir(t(f.inscrits.length > 1 ? TEXTES.participants_avec : f.inscrits.length ? TEXTES.participants_un : TEXTES.participants_sans, 'participants'), b),
     niveau: remplir(t(TEXTES.niveau, 'niveau'), b),
     objectifs: remplir(t(TEXTES.objectifs_intro, 'objectifs'), b),
     contraintes: remplir(t(TEXTES.contraintes, 'contraintes'), b),

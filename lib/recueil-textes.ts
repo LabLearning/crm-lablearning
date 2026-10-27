@@ -15,11 +15,12 @@
 export type SujetRecueil =
   | 'nettoyage' | 'allergenes' | 'tracabilite' | 'pms' | 'hygiene' | 'duerp' | 'sst'
   | 'incendie' | 'gestes' | 'prevention' | 'gestion' | 'vente' | 'management' | 'metier'
+  | 'ia' | 'outils' | 'administratif'
 
 export const TEXTES = {
   contexte: [
     "Demande pour {qui} : {besoin}. Nous partons sur la formation « {formation} », {modalite}, {dates}.",
-    "Prévue {dates}, la formation « {formation} » répond à ce que veut {qui} : {besoin}.",
+    "La formation « {formation} » aura lieu {dates} pour {qui}. Elle doit servir à {besoin}.",
     "Formation demandée par {qui}, qui souhaite {besoin}. Programme retenu : {formation}, {dates}.",
     "Nous intervenons {dates} pour {qui}, sur la formation « {formation} ». Le but pour eux : {besoin}.",
     "Session {dates} sur « {formation} », {modalite}, pour {qui}. L’établissement veut {besoin}.",
@@ -27,36 +28,42 @@ export const TEXTES = {
   ],
   participants_avec: [
     "La liste des inscrits compte {participants}. Nous noterons l’ancienneté de chacun en début de formation.",
-    "À ce jour, la formation concerne {participants}. Les profils seront complétés le jour même, expérience et ancienneté comprises.",
+    "À ce jour, la formation concerne {participants}. Les profils seront complétés le premier jour, expérience et ancienneté comprises.",
     "Côté participants, nous avons {participants}. Pour l’ancienneté dans le poste, nous poserons la question à chacun.",
     "Formation suivie par {participants}. Chacun présentera son poste et son expérience en arrivant.",
     "Inscriptions reçues pour {participants}. Ancienneté et parcours : à voir avec chacun à l’ouverture.",
+  ],
+  // Un seul inscrit : « une personne (gérante) »
+  participants_un: [
+    "La formation concerne {participants}. Nous ferons le point sur son expérience dès le premier jour.",
+    "Une seule inscription à ce jour : {participants}. Son ancienneté et son parcours seront vus en début de formation.",
+    "Inscription reçue pour {participants}. Son expérience et son ancienneté seront notées à l’ouverture.",
   ],
   participants_sans: [
     "Pas encore d’inscrits. Nous attendons la liste des participants et leurs postes, que doit nous transmettre {client}.",
     "Personne n’est encore inscrit. Nous verrons avec {client} qui participe, et à quel poste.",
     "Inscriptions en attente chez {client}. Le profil du groupe sera complété dès que la liste arrivera.",
     "Aucun participant pour le moment. La composition du groupe reste à définir par {client}.",
-    "Liste vide pour l’instant. Dès que {client} aura donné les noms, nous compléterons les postes et les profils.",
+    "Liste vide pour l’instant. Nous compléterons les postes et les profils quand {client} aura donné les noms.",
   ],
   niveau: [
     "Pour cette formation, {prerequis}. Nous ferons un tour de table au démarrage pour voir où chacun en est.",
     "Niveau d’entrée demandé : {prerequis}. Pour le reste, le formateur posera quelques questions au début, sans note ni pression.",
-    "Le niveau de départ sera vu avec chacun (programme : {prerequis}). Si les écarts sont grands dans le groupe, le formateur fera travailler en binômes.",
-    "Sur le papier, {prerequis}. Dans les faits, nous verrons le niveau de chacun dès la première heure, avec un court questionnaire.",
+    "Le niveau de départ sera vu dès le début (programme : {prerequis}). Le formateur partira de ce qui est déjà acquis, sans dérouler un cours tout fait.",
+    "Sur la fiche programme, {prerequis}. Dans les faits, nous verrons le niveau réel dès la première heure, avec un court questionnaire.",
     "Le formateur verra vite qui a déjà de la pratique et qui démarre, et réglera le rythme en conséquence. Pour rappel, {prerequis}.",
   ],
   objectifs_intro: [
     "Ce que les participants doivent savoir faire en sortant, d’après le programme :\n{objectifs}",
     "Objectifs retenus pour cette session :\n{objectifs}",
     "À la fin de la formation, nous visons ceci :\n{objectifs}",
-    "Côté résultats, voici ce qui est attendu :\n{objectifs}",
+    "Nous reprenons les objectifs du programme :\n{objectifs}",
     "Pour savoir si la formation a servi, nous vérifierons ces points en fin de parcours :\n{objectifs}",
   ],
   contraintes: [
     "Formation {lieu}, {dates}, sur {duree}. Horaires : {horaires}.",
     "Tout se passe {lieu}, {dates}, sur {duree} ({horaires}). Prévoir de libérer les participants pendant ces heures.",
-    "Session prévue {dates}, {lieu}, sur {duree}. Horaires {horaires}, avec une feuille d’émargement par demi-journée.",
+    "Rendez-vous {dates}, {lieu}, pour {duree} de formation (horaires : {horaires}). Une feuille d’émargement sera à signer à chaque demi-journée.",
     "Côté organisation, la formation aura lieu {dates}, {lieu}, le tout sur {duree}. Pour les horaires, {horaires}. Les détails pratiques suivront avec la convocation.",
     "Sur {duree}, la formation se tient {lieu}, {dates}, horaires {horaires}. Une absence est à signaler dès que possible.",
   ],
@@ -71,8 +78,8 @@ export const TEXTES = {
     "Situation de handicap signalée pour {nb_handicap}. Notre référent handicap prendra contact pour voir ce qu’il faut adapter.",
     "Le groupe compte {nb_handicap} en situation de handicap. Les aménagements seront préparés avec notre référent handicap, en toute discrétion.",
     "Sur la liste des inscrits, {nb_handicap} en situation de handicap. Notre référent handicap organise les aménagements avant le premier jour.",
-    "Handicap déclaré : {nb_handicap}. Le référent handicap fera le point avec chaque personne concernée pour adapter ce qui doit l’être.",
-    "Aménagement à prévoir pour {nb_handicap}. Le référent handicap s’en charge, dans le respect de la confidentialité.",
+    "Handicap déclaré : {nb_handicap}. Le référent handicap prendra contact en amont pour adapter ce qui doit l’être.",
+    "Aménagement éventuel à voir pour {nb_handicap} en situation de handicap. Le référent handicap s’en charge, de façon confidentielle.",
   ],
   hy_process: [
     "Établissement concerné : {qui}. Nous suivrons le circuit des produits, du camion de livraison jusqu’à l’assiette ou au comptoir, sans oublier le nettoyage. Nous demanderons aussi à voir le PMS et les fiches d’enregistrement.",
@@ -97,11 +104,11 @@ export const TEXTES = {
   ],
   attentes: {
     hygiene: [
-      "Ce que veut {client} : {besoin}. Nous insisterons sur ce qui se fait tous les jours, lavage des mains, prise des températures, contrôle des dates, fiches à remplir.",
+      "Ce que veut {client} : {besoin}. Nous insisterons sur ce qui se refait chaque jour, les gestes comme les fiches à remplir.",
       "Pour {client}, la demande tient en une phrase : {besoin}. Les exemples seront pris dans leur activité, de la livraison jusqu’au client.",
       "Avec {client}, l’objectif est de {besoin}. Nous prendrons le temps sur les enregistrements, parce que sans eux rien ne prouve que le travail est bien fait.",
       "Il faut {besoin}, c’est la demande faite par {client}. Nous viserons des habitudes qui tiennent même en plein service.",
-      "Sur ce dossier, {client} veut {besoin}. Attention aux températures et aux dates : une petite erreur suffit pour rendre un client malade.",
+      "Sur ce dossier, {client} veut {besoin}. Une petite erreur d’hygiène suffit pour rendre un client malade, c’est ce que l’équipe doit garder en tête.",
     ],
     prevention: [
       "Nous travaillons avec {client}, qui veut {besoin}. Les exemples viendront de ce que l’équipe vit au travail.",
@@ -112,9 +119,9 @@ export const TEXTES = {
     ],
     management: [
       "Pour {client}, le but est de {besoin}. Nous travaillerons sur leurs situations réelles, à partir de ce qu’ils racontent en début de formation.",
-      "C’est pour {besoin} que {client} a choisi cette formation. Nous demanderons à chacun d’apporter ses questions du terrain, qui passeront en priorité.",
+      "Avec cette formation, {client} cherche à {besoin}. Nous demanderons à chacun d’apporter ses questions du terrain, qui passeront en priorité.",
       "L’idée, pour {client} : {besoin}. Le formateur donnera des outils faciles à reprendre dès le lendemain.",
-      "Nous retenons que {client} veut {besoin}. Le plus utile sera ce qu’ils pourront refaire seuls une fois la formation finie.",
+      "Chez {client}, ils veulent {besoin}. Le plus utile sera ce qu’ils pourront refaire seuls une fois la formation finie.",
       "Ce que veut {client}, c’est {besoin}. Le formateur adaptera les exemples à la taille et au rythme de l’établissement.",
     ],
     metier: [
@@ -122,7 +129,7 @@ export const TEXTES = {
       "Le but, pour {client}, est de {besoin}. Nous viserons la régularité, un résultat qui reste le même quel que soit celui qui est au poste.",
       "Objectif partagé avec {client} : {besoin}. L’équipe doit savoir refaire seule les gestes vus, une fois le formateur parti.",
       "La demande, chez {client}, c’est de {besoin}. Formation avec leurs produits et leur matériel quand c’est possible, pour rester au plus près du travail réel.",
-      "Côté terrain, {client} veut {besoin}. Tenir le rythme sans perdre en qualité, c’est ce que nous travaillerons en priorité.",
+      "Tenir le rythme sans perdre en qualité, voilà ce que nous travaillerons en priorité pour {client}, qui veut {besoin}.",
     ],
   },
   pv_risques: {
@@ -253,6 +260,27 @@ export const TEXTES = {
       "faire progresser les responsables dans l’encadrement de l’équipe",
       "savoir animer une équipe et la recadrer quand il le faut",
       "donner aux managers des outils simples pour encadrer l’équipe",
+    ],
+    ia: [
+      "découvrir ce que l’IA peut faire pour l’établissement",
+      "prendre en main des outils d’IA utiles au travail",
+      "gagner du temps sur les tâches de bureau grâce à l’IA",
+      "savoir utiliser l’IA sans se tromper ni perdre de temps",
+      "voir concrètement comment l’IA peut aider l’équipe",
+    ],
+    outils: [
+      "prendre en main l’outil et s’en servir au quotidien",
+      "gagner du temps grâce à l’outil",
+      "savoir se servir des fonctions utiles au travail de tous les jours",
+      "maîtriser l’outil, des bases jusqu’aux fonctions avancées",
+      "rendre l’équipe autonome sur l’outil",
+    ],
+    administratif: [
+      "mieux tenir le suivi administratif",
+      "prendre en main les démarches administratives et de financement",
+      "tenir les dossiers administratifs à jour",
+      "savoir monter et suivre un dossier de financement",
+      "gagner en méthode sur la partie administrative",
     ],
     metier: [
       "progresser sur les techniques du métier",
