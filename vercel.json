@@ -50,6 +50,10 @@
     {
       "path": "/api/cron/campagnes",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/recueils",
+      "schedule": "20 * * * *"
     }
   ]
 }

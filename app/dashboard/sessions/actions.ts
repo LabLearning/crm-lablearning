@@ -202,6 +202,12 @@ export async function createSessionAction(formData: FormData): Promise<ActionRes
     )
   }
 
+  // Recueil du besoin rempli d'office (indicateur 4) ; la tâche de chaque heure rattrape un échec
+  try {
+    const { assurerRecueils } = await import('@/lib/recueil-auto-serveur')
+    await assurerRecueils(supabase, session.organization.id, { sessionIds: [data.id] })
+  } catch (e) { console.error('[recueil auto] session', e) }
+
   // Rattacher automatiquement le QCM d'évaluation de la/des formation(s)
   const { autolinkFormationQcms } = await import('@/lib/qcm-autolink')
   await autolinkFormationQcms(supabase, {

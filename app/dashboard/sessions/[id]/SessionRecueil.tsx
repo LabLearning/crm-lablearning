@@ -2,11 +2,12 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Save, CheckCircle2, AlertTriangle, Download, Accessibility } from '@/components/ui/icons'
+import { ClipboardList, Save, CheckCircle2, AlertTriangle, Download, Accessibility, PenLine, Info } from '@/components/ui/icons'
 import { Button, Badge, Select, Modal, useToast } from '@/components/ui'
 import { themeOf } from '@/lib/branches'
 import { formatDate } from '@/lib/utils'
-import { saveRecueilAction } from './recueil-actions'
+import { reponsesAutoRecueilAction, saveRecueilAction } from './recueil-actions'
+import { lireTraceAuto } from '@/lib/recueil-auto'
 
 interface Question { id: string; label: string; type?: string }
 interface Template { id: string; theme: string; nom: string; questions: Question[] }
@@ -55,6 +56,23 @@ export function SessionRecueil({ sessionId, formationIntitule, templates, initia
   const filled = questions.filter((q) => (reponses[q.id] || '').trim()).length
   const pshActif = reponses.psh_actif === 'oui'
   const adaptations = (reponses.psh_adaptations || '').split(',').map((x) => x.trim()).filter(Boolean)
+
+  // Rempli par le CRM (à la création du dossier, puis chaque heure jusqu'au début de la session)
+  const trace = useMemo(() => lireTraceAuto(initial?.reponses), [initial?.reponses])
+  const [prerempli, setPrerempli] = useState(false)
+  async function preRemplir() {
+    setPrerempli(true)
+    const r = await reponsesAutoRecueilAction(sessionId, theme)
+    setPrerempli(false)
+    if (!r.success || !r.data) { toast('error', r.error || 'Pré-remplissage impossible'); return }
+    const auto = r.data.reponses
+    setReponses((prev) => {
+      const suivantes = { ...prev }
+      for (const [id, v] of Object.entries(auto)) if (!String(prev[id] || '').trim()) suivantes[id] = v
+      return suivantes
+    })
+    toast('success', 'Champs vides pré-remplis à partir de la formation, du client et des inscrits : relisez puis enregistrez')
+  }
 
   const setPsh = (cle: string, valeur: string) => setReponses((prev) => ({ ...prev, [cle]: valeur }))
   const toggleAdaptation = (a: string) => {
@@ -106,6 +124,16 @@ export function SessionRecueil({ sessionId, formationIntitule, templates, initia
         </div>
       </div>
 
+      {trace && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-surface-700">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+          <span>
+            Rempli automatiquement le {formatDate(trace.le, { day: 'numeric', month: 'long', year: 'numeric' })} à partir de la formation, du client et des inscrits.
+            Relisez et ajustez si besoin : vos modifications sont gardées, les autres champs suivent le dossier (inscrits, horaires) jusqu’au début de la session.
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Select
           id="theme" label="Modèle (thème détecté automatiquement)"
@@ -113,6 +141,11 @@ export function SessionRecueil({ sessionId, formationIntitule, templates, initia
           options={templates.map((t) => ({ value: t.theme, label: `${THEME_LABELS[t.theme] || t.theme}` }))}
         />
         <div className="text-xs text-surface-400 pt-6 whitespace-nowrap">{filled}/{questions.length} champs</div>
+        {filled < questions.length && (
+          <div className="pt-6">
+            <Button size="sm" variant="secondary" onClick={preRemplir} isLoading={prerempli} icon={<PenLine className="h-3.5 w-3.5" />}>Pré-remplir les champs vides</Button>
+          </div>
+        )}
       </div>
 
       {/* Public en situation de handicap : cocher ouvre l'analyse des besoins

@@ -273,6 +273,11 @@ export async function sendConventionForSignatureAction(
   // une convention partie avant le recueil produit un dossier dont les dates
   // se contredisent — c'est exactement l'écart relevé à l'audit blanc sur
   // 7 conventions. On bloque à la source plutôt que de réparer après coup.
+  // Session pas encore commencée : le recueil manquant est d'abord rempli d'office (daté du jour, avant la convention)
+  try {
+    const { assurerRecueils } = await import('@/lib/recueil-auto-serveur')
+    await assurerRecueils(supabase, session.organization.id, { sessionIds: [sessionId] })
+  } catch (e) { console.error('[recueil auto] convention', e) }
   const { data: recueil } = await supabase
     .from('recueils_besoin')
     .select('id, statut, date_recueil')

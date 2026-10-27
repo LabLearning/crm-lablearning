@@ -295,6 +295,13 @@ export async function creerDossierCompletAction(formData: FormData): Promise<Act
   }
   revalidatePath('/dashboard/sessions')
 
+  // Recueil du besoin rempli d'office à partir de la formation, du client et des inscrits (indicateur 4) :
+  // il conditionne l'envoi de la convention. Au mieux : la tâche de chaque heure rattrape un échec
+  try {
+    const { assurerRecueils } = await import('@/lib/recueil-auto-serveur')
+    await assurerRecueils(supabase, orgId, { sessionIds: [sess.id] })
+  } catch (e) { console.error('[recueil auto] dossier', e) }
+
   await logAudit({
     action: 'create', entity_type: 'session', entity_id: sess.id,
     details: { via: 'dossier_complet', client_id: clientId, apprenants: (crees || []).length, ...(leadId ? { lead_id: leadId } : {}) },

@@ -60,3 +60,19 @@ export async function saveRecueilAction(params: {
   revalidatePath('/dashboard/qualiopi')
   return { success: true }
 }
+
+/**
+ * Réponses automatiques de la session, sans rien enregistrer : l'onglet
+ * Recueil les place dans les champs vides, la personne relit puis enregistre
+ * (utile pour une session déjà commencée, que le CRM ne remplit pas seul).
+ */
+export async function reponsesAutoRecueilAction(sessionId: string, theme: string | null): Promise<ActionResult<{ theme: string; reponses: Record<string, string> }>> {
+  const session = await getSession()
+  if (['formateur', 'apprenant'].includes(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (typeof sessionId !== 'string' || !/^[0-9a-f-]{36}$/i.test(sessionId)) return { success: false, error: 'Session introuvable' }
+  const supabase = await createServiceRoleClient()
+  const { reponsesAutomatiquesDeSession } = await import('@/lib/recueil-auto-serveur')
+  const r = await reponsesAutomatiquesDeSession(supabase, session.organization.id, sessionId, typeof theme === 'string' ? theme : null)
+  if (!r) return { success: false, error: 'Session ou modèle de recueil introuvable' }
+  return { success: true, data: r }
+}
