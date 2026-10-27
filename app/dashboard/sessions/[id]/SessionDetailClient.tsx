@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ApprenantHoverCard } from '@/components/apprenants/ApprenantHoverCard'
+import { CopyButton } from '@/components/ui/CopyButton'
 import {
   ArrowLeft, Calendar, MapPin, Clock, Users, UserCheck, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, LogIn, LogOut, FileText, Plus, Loader2,
@@ -1079,10 +1080,17 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
           <SessionParticipants sessionId={session.id} clientId={session.client_id || null} clients={clientsRef as any} />
         )}
         <div className="card overflow-hidden">
-          <div className="px-4 py-3 border-b border-surface-100">
+          <div className="px-4 py-3 border-b border-surface-100 flex items-center justify-between gap-3">
             <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">
               {inscriptions.length} apprenant{inscriptions.length > 1 ? 's' : ''} inscrit{inscriptions.length > 1 ? 's' : ''}
             </span>
+            {/* Tous les noms, un par ligne : à coller dans un mail, un message ou un formulaire */}
+            {inscriptions.length > 1 && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-surface-500">
+                Copier la liste
+                <CopyButton valeur={inscriptions.map((i: any) => [i.apprenant?.prenom, i.apprenant?.nom].filter(Boolean).join(' ')).filter(Boolean).join('\n')} libelle="la liste des apprenants (prénom et nom)" />
+              </span>
+            )}
           </div>
           {inscriptions.length > 0 ? (
             <div className="divide-y divide-surface-100">
@@ -1105,9 +1113,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {a?.id
-                          ? <ApprenantHoverCard apprenant={a}><Link href={`/dashboard/apprenants/${a.id}`} className="text-sm font-medium text-surface-900 hover:text-brand-600 transition-colors">{a?.prenom} {a?.nom}</Link></ApprenantHoverCard>
-                          : <span className="text-sm font-medium text-surface-900">{a?.prenom} {a?.nom}</span>}
+                        <span className="inline-flex items-center gap-0.5 min-w-0">
+                          {a?.id
+                            ? <ApprenantHoverCard apprenant={a}><Link href={`/dashboard/apprenants/${a.id}`} className="text-sm font-medium text-surface-900 hover:text-brand-600 transition-colors">{a?.prenom} {a?.nom}</Link></ApprenantHoverCard>
+                            : <span className="text-sm font-medium text-surface-900">{a?.prenom} {a?.nom}</span>}
+                          <CopyButton valeur={[a?.prenom, a?.nom].filter(Boolean).join(' ')} libelle="le prénom et le nom" />
+                        </span>
                         <Badge variant={ins.status === 'confirme' ? 'success' : ins.status === 'inscrit' ? 'info' : 'default'}>
                           {ins.status === 'confirme' ? 'Confirmé' : ins.status === 'inscrit' ? 'Inscrit' : ins.status}
                         </Badge>

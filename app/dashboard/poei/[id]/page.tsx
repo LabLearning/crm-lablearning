@@ -61,7 +61,8 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   const [{ data: candidatsRaw }, { data: clients }, { data: formations }, { data: apprenants }, { data: emailLogs }] = await Promise.all([
     supabase
       .from('poei_candidats')
-      .select('*, apprenant:apprenants(id, nom, prenom, email, telephone, date_naissance)')
+      // Champs montrés par la fiche au survol (onglet Évaluations) : sans eux, elle les dirait « Manquant »
+      .select('*, apprenant:apprenants(id, civilite, nom, prenom, email, telephone, date_naissance, lieu_naissance, numero_securite_sociale, adresse, code_postal, ville, type_contrat, poste, entreprise, situation_handicap, type_handicap, besoins_adaptation)')
       .eq('poei_id', params.id)
       .order('created_at', { ascending: true }),
     supabase
@@ -634,6 +635,9 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
               return {
                 id: c.id, apprenant_id: aid,
                 nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat',
+                // Fiche au survol du nom : l'apprenant, et ce que la POEI sait du candidat
+                apprenant: c.apprenant || null,
+                fiche: { statut: c.statut || null, identifiantFt: c.identifiant_ft || null, posteVise: c.poste_vise || null, typeContrat: c.type_contrat || null, embauchePrevue: c.date_embauche_prevue || null },
                 duree: h ? { heures: h.heures, prevues: h.dureeTotale } : null,
                 bilanFt: construireBilanFt({
                   org: session.organization, poei: p, candidat: c, apprenant: c.apprenant,

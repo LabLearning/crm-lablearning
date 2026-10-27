@@ -10,6 +10,10 @@ import { grilleProgress } from '@/lib/poei-grille'
 import { SIGNATURE_BILAN, type BilanFt } from '@/lib/poei-bilan-ft'
 import { formatDate } from '@/lib/utils'
 import { PoeiSection, PoeiVide, PoeiDefilable } from './PoeiSection'
+import { ApprenantHoverCard, type ComplementFiche } from '@/components/apprenants/ApprenantHoverCard'
+import { CopyButton } from '@/components/ui/CopyButton'
+import { IdCard, Briefcase, UserCheck, CalendarClock } from '@/components/ui/icons'
+import { CANDIDAT_STATUT_LABELS, TYPE_CONTRAT_LABELS, type TypeContrat } from '@/lib/types/poei'
 
 interface Cand {
   id: string
@@ -19,6 +23,25 @@ interface Cand {
   duree?: { heures: number; prevues: number } | null
   /** Bilan de fin de formation France Travail tel que le CRM le remplit déjà */
   bilanFt?: BilanFt | null
+  /** Fiche au survol du nom : l'apprenant (coordonnées, naissance, adresse…) */
+  apprenant?: Record<string, any> | null
+  /** Ce que la POEI sait du candidat */
+  fiche?: { statut: string | null; identifiantFt: string | null; posteVise: string | null; typeContrat: string | null; embauchePrevue: string | null }
+}
+
+/** Lignes propres à la POEI dans la fiche au survol d'un candidat */
+function complementsPoei(c: Cand): ComplementFiche[] {
+  const f = c.fiche
+  const lignes: ComplementFiche[] = []
+  if (f?.statut) lignes.push({ icon: UserCheck, label: 'Statut dans la POEI', valeur: CANDIDAT_STATUT_LABELS[f.statut] || f.statut })
+  lignes.push({ icon: IdCard, label: 'Identifiant France Travail', valeur: f?.identifiantFt
+    ? <span className="inline-flex items-center gap-0.5">{f.identifiantFt}<CopyButton valeur={f.identifiantFt} format="chiffres" libelle="l’identifiant France Travail" /></span>
+    : <span className="font-medium text-red-500">Manquant</span> })
+  const poste = [f?.posteVise, f?.typeContrat ? TYPE_CONTRAT_LABELS[f.typeContrat as TypeContrat] || f.typeContrat : null].filter(Boolean).join(' · ')
+  if (poste) lignes.push({ icon: Briefcase, label: 'Poste visé', valeur: poste })
+  if (c.duree) lignes.push({ icon: Clock, label: 'Heures réalisées', valeur: `${c.duree.heures} h sur ${c.duree.prevues} h` })
+  if (f?.embauchePrevue) lignes.push({ icon: CalendarClock, label: 'Embauche prévue', valeur: formatDate(f.embauchePrevue) })
+  return lignes
 }
 interface Grille { id: string; apprenant_id: string; semaine: number | null; statut: string; date_evaluation: string; items: any; [k: string]: any }
 
@@ -228,7 +251,7 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
               {candidats.map((c) => {
                 if (!c.apprenant_id) return (
                   <tr key={c.id}>
-                    <td className="px-4 py-3 text-surface-800">{c.nom}</td>
+                    <td className="px-4 py-3 text-surface-800">{c.apprenant ? <ApprenantHoverCard apprenant={c.apprenant} complements={complementsPoei(c)}><span className="cursor-default border-b border-dotted border-surface-300">{c.nom}</span></ApprenantHoverCard> : c.nom}</td>
                     <td colSpan={semaines.length + 2} className="px-4 py-3 text-xs text-surface-400">Candidat non rattaché à une fiche apprenant</td>
                   </tr>
                 )
@@ -236,7 +259,14 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
                 const fin = gridOf(aid, null)
                 return (
                   <tr key={c.id} className="hover:bg-surface-50/60 transition-colors">
-                    <td className="px-4 py-2 font-medium text-surface-800 whitespace-nowrap">{c.nom}</td>
+                    <td className="px-4 py-2 font-medium text-surface-800 whitespace-nowrap">
+                      {/* Au survol : téléphone, e-mail, naissance, identifiant France Travail… (au clavier : Tab sur le nom) */}
+                      {c.apprenant
+                        ? <ApprenantHoverCard apprenant={c.apprenant} complements={complementsPoei(c)}>
+                            <a href={`/dashboard/apprenants/${aid}`} className="border-b border-dotted border-surface-300 hover:border-brand-400 hover:text-brand-600">{c.nom}</a>
+                          </ApprenantHoverCard>
+                        : c.nom}
+                    </td>
                     {semaines.map((s) => {
                       const g = gridOf(aid, s)
                       const p = g ? grilleProgress(g.items) : null
