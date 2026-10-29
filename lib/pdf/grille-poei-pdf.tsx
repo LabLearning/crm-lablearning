@@ -244,14 +244,16 @@ export function GrillePoeiPDF(p: Props) {
         ))}
       </View>
 
-      {p.sections.map((sec) => (
-        <View key={sec.key} style={shared.section} wrap={false}>
-          <PdfSectionTitle>{sec.titre}</PdfSectionTitle>
-          {sec.items.map((it, i) => {
+      {p.sections.map((sec) => {
+        // D'un seul tenant tant que la section tient sur une page ; au-delà (longues observations), elle se
+        // coupe entre deux items, le titre toujours avec le premier : insécable et plus haute qu'une page,
+        // react-pdf la comprimerait (page entière tassée). Hauteur estimée : titre, intitulés, observations.
+        const hauteur = 26 + sec.items.reduce((t, it) => t + 6 + 11.2 * Math.ceil(String(it.label || '').length / 100) + 9.8 * Math.ceil(String(p.items?.[it.id]?.o || '').length / 115), 0)
+        const item = (it: (typeof sec.items)[number], i: number) => {
             const v = p.items?.[it.id]
             const n = v?.n ? NIV[v.n] : null
             return (
-              <View key={it.id} style={{ flexDirection: 'row', gap: 6, paddingVertical: 2.5, borderBottomWidth: 0.4, borderBottomColor: '#efedea' }}>
+              <View key={it.id} wrap={false} style={{ flexDirection: 'row', gap: 6, paddingVertical: 2.5, borderBottomWidth: 0.4, borderBottomColor: '#efedea' }}>
                 <Text style={{ width: 14, fontSize: 7.5, color: SURFACE_500 }}>{i + 1}.</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 8, color: SURFACE_900, lineHeight: 1.4 }}>{it.label}</Text>
@@ -262,9 +264,17 @@ export function GrillePoeiPDF(p: Props) {
                 </Text>
               </View>
             )
-          })}
-        </View>
-      ))}
+        }
+        return (
+          <View key={sec.key} style={shared.section} wrap={hauteur > 560}>
+            <View wrap={false}>
+              <PdfSectionTitle>{sec.titre}</PdfSectionTitle>
+              {sec.items.slice(0, 1).map((it) => item(it, 0))}
+            </View>
+            {sec.items.slice(1).map((it, i) => item(it, i + 1))}
+          </View>
+        )
+      })}
 
       {isFinale && (
         <>
@@ -281,7 +291,8 @@ export function GrillePoeiPDF(p: Props) {
           )}
 
           {(p.pointsForts || p.aRenforcer || p.recommandations) && (
-            <View style={shared.section} wrap={false}>
+            // Texte libre : insécable seulement tant qu'il tient sur une page
+            <View style={shared.section} wrap={[p.pointsForts, p.aRenforcer, p.recommandations].join('').length > 2500}>
               <PdfSectionTitle>Synthèse</PdfSectionTitle>
               {([['Points forts', p.pointsForts], ['À renforcer', p.aRenforcer], ['Recommandations', p.recommandations]] as const)
                 .filter(([, v]) => v).map(([l, v]) => (
@@ -294,7 +305,7 @@ export function GrillePoeiPDF(p: Props) {
           )}
 
           {p.avisFinal && (
-            <View style={shared.section} wrap={false}>
+            <View style={shared.section} wrap={String(p.motivationAvis || '').length > 2500}>
               <PdfSectionTitle>Avis final du formateur</PdfSectionTitle>
               <Text style={{ fontSize: 10, fontFamily: 'Satoshi', fontWeight: 700, color: p.avisFinal.includes('DÉFAVORABLE') ? '#b4241f' : p.avisFinal.includes('RÉSERVES') ? '#b45309' : '#177245' }}>
                 {p.avisFinal}
@@ -304,7 +315,7 @@ export function GrillePoeiPDF(p: Props) {
           )}
 
           {p.conclusion && (
-            <View style={shared.section} wrap={false}>
+            <View style={shared.section} wrap={String(p.conclusion || '').length > 2500}>
               <PdfSectionTitle>Conclusion</PdfSectionTitle>
               <Text style={{ fontSize: 8.5, color: SURFACE_900, lineHeight: 1.6 }}>{p.conclusion}</Text>
             </View>

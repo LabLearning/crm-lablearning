@@ -185,16 +185,20 @@ export function QuestionnairePapierPDF({
             const depart = sections.slice(0, si).reduce((n, s) => n + s.questions.length, 0)
             return (
               <View key={si}>
-                {sec.titre && (
-                  <Text style={{
-                    fontSize: 9, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN,
-                    marginBottom: 7, marginTop: si > 0 ? 6 : 0,
-                  }}>
-                    {sec.titre}
-                  </Text>
-                )}
-                {sec.questions.map((q, qi) => (
-                  <Question key={qi} q={q} numero={depart + qi + 1} />
+                {/* Le titre de la partie tient avec sa première question : jamais seul en bas de page */}
+                <View wrap={false}>
+                  {sec.titre && (
+                    <Text style={{
+                      fontSize: 9, fontFamily: 'Helvetica-Bold', color: BRAND_GREEN,
+                      marginBottom: 7, marginTop: si > 0 ? 6 : 0,
+                    }}>
+                      {sec.titre}
+                    </Text>
+                  )}
+                  {sec.questions.slice(0, 1).map((q) => <Question key={0} q={q} numero={depart + 1} />)}
+                </View>
+                {sec.questions.slice(1).map((q, qi) => (
+                  <Question key={qi + 1} q={q} numero={depart + qi + 2} />
                 ))}
               </View>
             )

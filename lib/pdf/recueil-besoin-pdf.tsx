@@ -51,11 +51,14 @@ export function RecueilBesoinPDF({ org, session, formation, client, themeLabel, 
         </View>
 
         <View style={shared.section}>
-          <PdfSectionTitle>Analyse du besoin</PdfSectionTitle>
+          {questions.length === 0 && <PdfSectionTitle>Analyse du besoin</PdfSectionTitle>}
           {questions.map((q, i) => {
             const rep = (reponses?.[q.id] || '').trim()
-            return (
-              <View key={q.id} style={{ marginBottom: 10 }} wrap={false}>
+            // Une réponse très longue se coupe entre deux pages : insécable et plus haute qu'une page,
+            // elle serait comprimée par react-pdf (lignes superposées)
+            const longue = rep.length > 1200
+            const bloc = (
+              <View key={q.id} style={{ marginBottom: 10 }} wrap={longue}>
                 <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>
                   {i + 1}. {q.label}
                 </Text>
@@ -64,6 +67,11 @@ export function RecueilBesoinPDF({ org, session, formation, client, themeLabel, 
                 </Text>
               </View>
             )
+            if (i > 0) return bloc
+            // Le titre de la section tient avec la première question : jamais seul en bas de page
+            return longue
+              ? <React.Fragment key={q.id}><PdfSectionTitle>Analyse du besoin</PdfSectionTitle>{bloc}</React.Fragment>
+              : <View key={q.id} wrap={false}><PdfSectionTitle>Analyse du besoin</PdfSectionTitle>{bloc}</View>
           })}
         </View>
 

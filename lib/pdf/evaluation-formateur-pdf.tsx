@@ -70,7 +70,8 @@ export function EvaluationFormateurPDF({ formateur, evaluation, org, nbSessions 
           {COMPETENCES_FORMATEUR.map((c) => {
             const note = evaluation?.notes?.[c.cle]
             return (
-              <View key={c.cle} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 3, borderBottomWidth: 0.4, borderBottomColor: '#efedea' }}>
+              // Insécable : une ligne coupée laisserait ses cases de note à cheval sur le bas de page
+              <View key={c.cle} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 3, borderBottomWidth: 0.4, borderBottomColor: '#efedea' }}>
                 <Text style={{ flex: 1, fontSize: 8.5, color: SURFACE_900, lineHeight: 1.4 }}>{c.label}</Text>
                 <View style={{ flexDirection: 'row', gap: 3, width: 88, justifyContent: 'flex-end' }}>
                   {[1, 2, 3, 4, 5].map((n) => (
@@ -95,7 +96,9 @@ export function EvaluationFormateurPDF({ formateur, evaluation, org, nbSessions 
         </View>
 
         {evaluation?.synthese ? (
-          <View style={shared.section}>
+          // Le titre tient avec la synthèse (jamais seul en bas de page) ; une synthèse très longue reste
+          // sécable : insécable et plus haute qu'une page, elle serait comprimée
+          <View style={shared.section} wrap={String(evaluation.synthese).length > 2500}>
             <PdfSectionTitle>Synthèse</PdfSectionTitle>
             <Text style={{ fontSize: 8.5, color: SURFACE_900, lineHeight: 1.6 }}>{evaluation.synthese}</Text>
           </View>

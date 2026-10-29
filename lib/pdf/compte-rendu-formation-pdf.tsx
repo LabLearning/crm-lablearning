@@ -109,12 +109,14 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien, audits }: {
             </View>
 
             <View style={shared.section}>
-              {/* Le titre ne reste jamais seul en bas de page */}
+              {/* Le titre ne reste jamais seul en bas de page. Une synthèse très longue reste hors du
+                  bloc insécable : plus haut qu'une page, il serait comprimé (lignes superposées) */}
               <View wrap={false}>
                 <PdfSectionTitle icon="clipboardCheck">Évaluation des acquis</PdfSectionTitle>
                 <Ligne label="Modalités" valeur={cr.evaluation.modalites.join(', ')} />
-                <Ligne label="Résultats d’ensemble" valeur={cr.evaluation.synthese} />
+                {(cr.evaluation.synthese || '').length <= 1500 && <Ligne label="Résultats d’ensemble" valeur={cr.evaluation.synthese} />}
               </View>
+              {(cr.evaluation.synthese || '').length > 1500 && <Ligne label="Résultats d’ensemble" valeur={cr.evaluation.synthese} />}
               {cr.stagiaires.length > 0 && (
                 <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, marginTop: 4 }}>
                   {cr.stagiaires.map((s, i) => (
@@ -152,7 +154,7 @@ export function CompteRenduFormationPDF({ org, entete, cr, ancien, audits }: {
           <View style={shared.section}>
             <PdfSectionTitle icon="fileText">Rapport du formateur</PdfSectionTitle>
             {(ancien || []).filter(([, v]) => v && v.trim()).map(([l, v]) => (
-              <View key={l} wrap={false} style={{ marginBottom: 8 }}>
+              <View key={l} wrap={(v || '').length > 1500} style={{ marginBottom: 8 }}>
                 <Text style={{ fontSize: 8.6, fontWeight: 700, color: SURFACE_900, marginBottom: 2 }}>{l}</Text>
                 <P>{v}</P>
               </View>

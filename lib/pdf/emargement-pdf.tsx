@@ -90,6 +90,18 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants, 
         }
       }
       const jourLabel = startDateForPage.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      const ligneStagiaire = (a: any, idx: number) => (
+        <View key={idx} wrap={false} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
+          <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 8, color: SURFACE_900, fontFamily: 'Satoshi', fontWeight: 700 }}>{a ? `${a.nom || ''}`.toUpperCase().trim() : ''}</Text>
+            <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 1 }}>{a?.prenom || ''}</Text>
+            {a?.entreprise && <Text style={{ fontSize: 6, color: SURFACE_500, marginTop: 2 }}>{a.entreprise}</Text>}
+          </View>
+          {creneaux.map((_, i) => (
+            <View key={i} style={{ width: creneauW, borderLeftWidth: 0.5, borderLeftColor: SURFACE_200 }} />
+          ))}
+        </View>
+      )
       return (
       <Page key={dayIdx} size="A4" orientation="portrait" style={shared.page}>
         <PdfDocHeader
@@ -110,37 +122,31 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants, 
 
         {/* Tableau d'émargement — moderne, header propre.
             Pas d'overflow:hidden : le conteneur doit pouvoir se couper
-            proprement entre deux lignes quand il dépasse la page. */}
-        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200, marginBottom: 12 }}>
-          {/* En-tête colonnes */}
-          <View style={{ flexDirection: 'row', backgroundColor: BRAND_GREEN }}>
-            <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>Stagiaire</Text>
-            </View>
-            {creneaux.map((c, i) => (
-              <View key={i} style={{ width: creneauW, paddingVertical: 7, paddingHorizontal: 3, borderLeftWidth: 0.5, borderLeftColor: '#2a6555', alignItems: 'center' }}>
-                <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#fff' }}>{c.jour}</Text>
-                <Text style={{ fontSize: 6, color: '#c9e2d9', marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>{c.creneau}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Lignes stagiaires (signature) */}
-          {chunk.map((a, idx) => (
-            <View key={idx} wrap={false} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
+            proprement entre deux lignes quand il dépasse la page.
+            Pas de marge basse : react-pdf envoie à la page suivante un bloc
+            qui tient mais dont la marge basse dépasse (tableau entier en page 2). */}
+        <View style={{ borderWidth: 0.5, borderColor: SURFACE_200 }}>
+          {/* En-tête colonnes, insécable avec la première ligne : jamais seul ni écrasé en bas de page */}
+          <View wrap={false}>
+            <View style={{ flexDirection: 'row', backgroundColor: BRAND_GREEN }}>
               <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
-                <Text style={{ fontSize: 8, color: SURFACE_900, fontFamily: 'Satoshi', fontWeight: 700 }}>{a ? `${a.nom || ''}`.toUpperCase().trim() : ''}</Text>
-                <Text style={{ fontSize: 8, color: SURFACE_700, marginTop: 1 }}>{a?.prenom || ''}</Text>
-                {a?.entreprise && <Text style={{ fontSize: 6, color: SURFACE_500, marginTop: 2 }}>{a.entreprise}</Text>}
+                <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.6 }}>Stagiaire</Text>
               </View>
-              {creneaux.map((_, i) => (
-                <View key={i} style={{ width: creneauW, borderLeftWidth: 0.5, borderLeftColor: SURFACE_200 }} />
+              {creneaux.map((c, i) => (
+                <View key={i} style={{ width: creneauW, paddingVertical: 7, paddingHorizontal: 3, borderLeftWidth: 0.5, borderLeftColor: '#2a6555', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#fff' }}>{c.jour}</Text>
+                  <Text style={{ fontSize: 6, color: '#c9e2d9', marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>{c.creneau}</Text>
+                </View>
               ))}
             </View>
-          ))}
+
+            {/* Lignes stagiaires (signature) */}
+            {chunk.slice(0, 1).map((a, idx) => ligneStagiaire(a, idx))}
+          </View>
+          {chunk.slice(1).map((a, idx) => ligneStagiaire(a, idx + 1))}
 
           {/* Ligne formateur (mise en avant) */}
-          <View style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 1.2, borderTopColor: BRAND_GREEN, backgroundColor: BRAND_ULTRA_LIGHT }}>
+          <View wrap={false} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 1.2, borderTopColor: BRAND_GREEN, backgroundColor: BRAND_ULTRA_LIGHT }}>
             <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
               <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6 }}>Formateur</Text>
               {formateur && <Text style={{ fontSize: 7.5, color: SURFACE_700, marginTop: 3 }}>{formateur.prenom} {formateur.nom}</Text>}
@@ -152,12 +158,12 @@ export function EmargementPDF({ session, formation, org, formateur, apprenants, 
         </View>
 
         {/* Mention légale */}
-        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginBottom: 10, lineHeight: 1.5 }}>
+        <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 12, lineHeight: 1.5 }}>
           Chaque stagiaire et le formateur signent dans la case correspondant à la demi-journée de présence. Cette feuille atteste de la réalité de l'action de formation (art. L.6353-1 du Code du travail) et fait foi des présences enregistrées.
         </Text>
 
         {/* Signatures finales — cartes neutres, bloc insécable (jamais coupé par un saut de page) */}
-        <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14 }}>
+        <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14, marginTop: 10 }}>
           <View style={{ flex: 1, backgroundColor: SURFACE_50, borderWidth: 0.5, borderColor: SURFACE_200, borderRadius: 6, padding: 8 }}>
             <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 3 }}>Cachet de l'organisme</Text>
             <Text style={{ fontSize: 7, color: SURFACE_500, marginBottom: 5 }}>{org?.name || 'Lab Learning'}</Text>
