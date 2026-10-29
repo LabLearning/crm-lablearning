@@ -323,6 +323,11 @@ export async function sendConventionForSignatureAction(
     const montantHt = (sess as any).prix_ht != null
       ? Number((sess as any).prix_ht)
       : (tarifBase ? tarifBase * (nbApprenants || 1) : null)
+    // Le montant est obligatoire en base : sans prix sur la session ni tarif au catalogue,
+    // l'enregistrement échouait sur un message qui n'expliquait rien
+    if (montantHt == null) {
+      return { success: false, error: `Indiquez d'abord le prix de la formation sur la session (« Modifier », champ « Prix de la formation — HT ») : sans montant, la convention ne peut pas être créée.` }
+    }
     const { data: created, error: createErr } = await supabase.from('conventions').insert({
       organization_id: sess.organization_id,
       numero,
@@ -1171,6 +1176,9 @@ export async function envoyerContratParticulierAction(
     const token = createHash('sha256').update(randomBytes(32)).digest('hex')
     const expire = new Date(); expire.setDate(expire.getDate() + 30)
     const tarif = (sess as any).formation?.tarif_inter_ht != null ? Number((sess as any).formation.tarif_inter_ht) : null
+    if (tarif == null) {
+      return { success: false, error: `Indiquez d'abord le tarif inter de la formation (catalogue) : sans montant, le contrat ne peut pas être créé.` }
+    }
     const { data: cree, error: eConv } = await supabase.from('conventions').insert({
       organization_id: orgId, numero, type: 'inter_entreprise', session_id: sessionId,
       client_id: clientId, formation_id: sess.formation_id, status: 'envoyee',
@@ -1293,6 +1301,9 @@ export async function envoyerConventionEntrepriseInterAction(
     const tarifUnitaire = (sess as any).formation?.tarif_inter_ht != null ? Number((sess as any).formation.tarif_inter_ht) : null
     const prixSession = (sess as any).prix_ht != null && (sess.client_id === clientId || !sess.client_id) ? Number((sess as any).prix_ht) : null
     const montant = prixSession ?? (tarifUnitaire != null ? tarifUnitaire * siens.length : null)
+    if (montant == null) {
+      return { success: false, error: `Indiquez d'abord le prix sur la session ou le tarif inter de la formation (catalogue) : sans montant, la convention ne peut pas être créée.` }
+    }
     const { data: cree, error: eConv } = await supabase.from('conventions').insert({
       organization_id: orgId, numero, type: 'inter_entreprise', session_id: sessionId,
       client_id: clientId, formation_id: sess.formation_id, status: 'envoyee',
