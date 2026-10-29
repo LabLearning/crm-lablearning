@@ -88,7 +88,7 @@ export default async function PartenaireSessionsPage({ params }: { params: { tok
               {s.horaires && <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{s.horaires}</span>}
               {(s.lieu || s.ville) && <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{s.lieu || s.ville}</span>}
               {s.formation?.duree_heures && <span className="flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />{s.formation.duree_heures}h</span>}
-              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{inscrits}/{s.places_max || '?'} inscrits</span>
+              <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{inscrits} inscrit{inscrits > 1 ? 's' : ''}</span>
             </div>
             {s.formateur && <div className="text-xs text-surface-400 mt-1.5">Formateur : {s.formateur.prenom} {s.formateur.nom}</div>}
           </div>

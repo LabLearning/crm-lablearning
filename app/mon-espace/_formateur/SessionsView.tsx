@@ -113,7 +113,7 @@ export async function SessionsView({ formateurId, basePath }: { formateurId: str
                       </a>
                     )}
                     <span className="flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" /> {s._nb_inscrits}/{s.places_max} inscrits
+                      <Users className="h-3.5 w-3.5" /> {s._nb_inscrits} inscrit{s._nb_inscrits > 1 ? 's' : ''}
                     </span>
                     {s.formation?.duree_heures && <span>{s.formation.duree_heures}h</span>}
                   </div>

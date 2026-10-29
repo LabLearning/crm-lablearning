@@ -130,22 +130,8 @@ export async function inscrireApprenantAction(apprenantId: string, sessionId: st
   const session = await getSession()
   const supabase = await createServiceRoleClient()
 
-  // Check capacity
-  const { data: sessionData } = await supabase
-    .from('sessions')
-    .select('places_max')
-    .eq('id', sessionId)
-    .single()
-
-  const { count: inscritsCount } = await supabase
-    .from('inscriptions')
-    .select('*', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .not('status', 'in', '("annule","abandonne")')
-
-  if (sessionData && inscritsCount !== null && inscritsCount >= sessionData.places_max) {
-    return { success: false, error: 'La session est complète (plus de places disponibles)' }
-  }
+  // Pas de plafond de places : la capacité de la session (12 par défaut, jamais saisie)
+  // n'empêche plus d'inscrire (demande de Brahim, 29/10/2026)
 
   // Une inscription existe déjà (même annulée/abandonnée) ? La contrainte unique
   // (session, apprenant) empêche un nouvel INSERT → on RÉACTIVE l'existante.

@@ -86,7 +86,7 @@ function InscritsPill({ s }: { s: Session }) {
   const n = s._nb_inscrits ?? 0
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-semibold shrink-0 ${n > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-400'}`}>
-      <Users className="h-3 w-3 shrink-0" /> {n}{s.places_max ? `/${s.places_max}` : ''}
+      <Users className="h-3 w-3 shrink-0" /> {n}
     </span>
   )
 }
