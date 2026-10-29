@@ -3,7 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Building2, Mail, Phone, MapPin, Handshake, Users, GraduationCap,
+  Building2, Mail, Phone, MapPin, Users, GraduationCap,
   Banknote, Clock, CheckCircle2, CalendarDays, UserCog,
 } from '@/components/ui/icons'
 import { Badge, Avatar } from '@/components/ui'
@@ -14,6 +14,7 @@ import {
 } from '@/lib/commission-apporteur'
 import { ApporteurCommissions } from '../ApporteurCommissions'
 import { ApporteurEditButton } from '../ApporteurEditButton'
+import { ApporteurEtablissements } from '../ApporteurEtablissements'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,9 +42,9 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
   const [lignes, { data: clients }, { data: leads }, { data: compte }] = await Promise.all([
     chargerCommissionsApporteur(supabase, params.id, orgId),
     supabase.from('clients')
-      .select('id, raison_sociale, nom_commercial, ville, created_at')
+      .select('id, raison_sociale, nom_commercial, nom, prenom, ville, franchise_id')
       .eq('organization_id', orgId).eq('apporteur_id', params.id)
-      .order('created_at', { ascending: false }),
+      .order('nom_commercial', { ascending: true, nullsFirst: false }).order('raison_sociale', { ascending: true }),
     supabase.from('leads')
       .select('id, entreprise, status, created_at')
       .eq('organization_id', orgId).eq('apporteur_id', params.id)
@@ -54,10 +55,23 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
   ])
 
   const clientIds = (clients || []).map((c: any) => c.id)
-  const { data: sessionsAVenir } = clientIds.length
-    ? await supabase.from('sessions').select('id', { count: 'exact', head: false })
-        .eq('organization_id', orgId).in('client_id', clientIds).in('status', ['planifiee', 'confirmee', 'en_cours'])
-    : { data: [] as any[] }
+  const reseauIds = Array.from(new Set((clients || []).map((c: any) => c.franchise_id).filter(Boolean)))
+  const [{ data: sessionsAVenir }, { data: reseaux }] = await Promise.all([
+    clientIds.length
+      ? supabase.from('sessions').select('id', { count: 'exact', head: false })
+          .eq('organization_id', orgId).in('client_id', clientIds).in('status', ['planifiee', 'confirmee', 'en_cours'])
+      : Promise.resolve({ data: [] as any[] }),
+    reseauIds.length
+      ? supabase.from('franchises').select('id, nom').eq('organization_id', orgId).in('id', reseauIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ])
+  const reseauDe = new Map(((reseaux || []) as any[]).map((f) => [f.id, f.nom]))
+  const etablissements = (clients || []).map((c: any) => ({
+    id: c.id as string,
+    nom: c.nom_commercial || c.raison_sociale || [c.prenom, c.nom].filter(Boolean).join(' ') || 'Établissement',
+    detail: [c.ville, c.franchise_id && reseauDe.get(c.franchise_id) ? `réseau ${reseauDe.get(c.franchise_id)}` : null].filter(Boolean).join(' · '),
+    commission: lignes.filter((l) => l.client_id === c.id && l.status !== 'annulee').reduce((s, l) => s + Number(l.montant_commission || 0), 0),
+  }))
 
   const t = totauxCommissions(lignes)
   const actives = lignes.filter((l) => l.status !== 'annulee')
@@ -122,35 +136,8 @@ export default async function ApporteurDetailPage({ params }: { params: { id: st
       {/* Commissions par état */}
       <ApporteurCommissions apporteurId={params.id} lignes={lignes} peutGerer={peutGerer} sansMontant={sync.sansMontant} />
 
-      {/* Établissements apportés */}
-      <div className="card overflow-hidden">
-        <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-2">
-          <Handshake className="h-4 w-4 text-brand-500" />
-          <span className="text-xs font-semibold text-surface-500 uppercase tracking-wider">Établissements apportés ({(clients || []).length})</span>
-        </div>
-        {(clients || []).length === 0 ? (
-          <div className="text-center py-8 text-sm text-surface-400 px-6">
-            Aucun établissement rattaché. Choisissez cet apporteur dans le formulaire d&apos;un client (bouton Modifier de la fiche client).
-          </div>
-        ) : (
-          <div className="divide-y divide-surface-100">
-            {(clients || []).map((c: any) => {
-              const total = lignes.filter((l) => l.client_id === c.id && l.status !== 'annulee').reduce((s, l) => s + Number(l.montant_commission || 0), 0)
-              return (
-                <Link key={c.id} href={`/dashboard/clients/${c.id}`}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-surface-50 transition-colors">
-                  <Building2 className="h-4 w-4 text-surface-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-surface-900 truncate">{c.nom_commercial || c.raison_sociale}</div>
-                    <div className="text-xs text-surface-500">{[c.ville, `rattaché le ${formatDate(c.created_at, { day: 'numeric', month: 'short', year: 'numeric' })}`].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  {total > 0 && <span className="text-sm font-semibold text-surface-700 tabular-nums">{eur(total)}</span>}
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      {/* Établissements apportés : liste, rattachement direct et retrait */}
+      <ApporteurEtablissements apporteurId={params.id} apporteurNom={nomAff} actif={a.is_active !== false} etablissements={etablissements} peutGerer={peutGerer} />
 
       {/* Leads apportés (ancien circuit) */}
       {(leads || []).length > 0 && (

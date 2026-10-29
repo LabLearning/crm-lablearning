@@ -184,8 +184,9 @@ export interface ResultatSync {
  * ligne par session : nouvelle ou en attente, jamais une ligne validée,
  * payée ou annulée. Une session déjà encaissée passe d'elle-même « à
  * verser ». Les lignes en attente dont la session n'est plus commissionnable
- * (client réaffecté, contrat terminé) sont retirées. En mode essai, rien
- * n'est écrit.
+ * (client réaffecté, contrat terminé) sont retirées. Une session déjà validée
+ * ou versée à un autre apporteur (établissement réaffecté) ne donne pas de
+ * seconde commission. En mode essai, rien n'est écrit.
  */
 export async function syncCommissionsApporteur(
   supabase: any,
@@ -226,17 +227,22 @@ async function traiterApporteur(supabase: any, orgId: string, a: ApporteurCommis
   const liste = ((sessions || []) as SessionCommissionnable[]).filter((s) => !s.formation?.is_poei)
   if (!liste.length) return traitees
   const ids = liste.map((s) => s.id)
-  const [{ data: poeiLies }, { data: factures }, { data: existantes }] = await Promise.all([
+  const [{ data: poeiLies }, { data: factures }, { data: existantes }, { data: ailleurs }] = await Promise.all([
     supabase.from('poei').select('session_id').in('session_id', ids),
     supabase.from('factures').select('session_id, montant_ht, status').in('session_id', ids),
     supabase.from('commissions').select('id, session_id, status, montant_commission').eq('apporteur_id', a.id).in('session_id', ids),
+    // Établissement passé d'un apporteur à un autre : une session déjà validée ou versée à
+    // l'ancien ne donne pas une seconde commission au nouveau
+    supabase.from('commissions').select('session_id').neq('apporteur_id', a.id).in('status', ['validee', 'payee']).in('session_id', ids),
   ])
   const sessionsPoei = new Set(((poeiLies || []) as any[]).map((p) => p.session_id))
+  const dejaPayeesAilleurs = new Set(((ailleurs || []) as any[]).map((c) => c.session_id))
   const parSession = new Map(((existantes || []) as any[]).map((e) => [e.session_id, e]))
   const toutesFactures = (factures || []) as FactureSession[]
 
   for (const s of liste) {
     if (sessionsPoei.has(s.id)) continue
+    if (dejaPayeesAilleurs.has(s.id)) continue
     if (!sousContrat(a, s.date_debut)) continue
     const { base, source } = baseCommission(s, toutesFactures)
     const { montant, taux, detail } = montantCommission(a, base)
@@ -272,6 +278,52 @@ async function traiterApporteur(supabase: any, orgId: string, a: ApporteurCommis
   // Une ligne figée reste rattachée même si la session sort du périmètre
   for (const e of parSession.values()) if (e.status !== 'en_attente') traitees.add(e.session_id)
   return traitees
+}
+
+async function parPaquets<T = any>(ids: string[], lire: (paquet: string[]) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  const lignes: T[] = []
+  for (let i = 0; i < ids.length; i += 150) lignes.push(...((await lire(ids.slice(i, i + 150))).data || []))
+  return lignes
+}
+
+export interface ApercuRattachement { formations: number; aVerser: number; montant: number; sansMontant: number }
+
+/**
+ * Avant de rattacher des établissements à un apporteur : leurs formations déjà
+ * terminées pendant son contrat qui lui donneraient une commission, selon les
+ * mêmes règles que syncCommissionsApporteur, et combien sont déjà réglées
+ * (à verser tout de suite). Rien n'est écrit.
+ */
+export async function apercuRattachement(supabase: any, orgId: string, a: ApporteurCommissionnable, clientIds: string[]): Promise<ApercuRattachement> {
+  const apercu: ApercuRattachement = { formations: 0, aVerser: 0, montant: 0, sansMontant: 0 }
+  if (!clientIds.length) return apercu
+  const sessions = await parPaquets<SessionCommissionnable>(clientIds, (p) => supabase.from('sessions')
+    .select('id, client_id, status, date_debut, prix_ht, montant_finance_opco, formation:formation_id(is_poei)')
+    .eq('organization_id', orgId).in('client_id', p).eq('status', 'terminee'))
+  const liste = sessions.filter((s) => !s.formation?.is_poei && sousContrat(a, s.date_debut))
+  if (!liste.length) return apercu
+  const ids = liste.map((s) => s.id)
+  const [poeiLies, factures, lignes] = await Promise.all([
+    parPaquets<any>(ids, (p) => supabase.from('poei').select('session_id').in('session_id', p)),
+    parPaquets<FactureSession>(ids, (p) => supabase.from('factures').select('session_id, montant_ht, status').in('session_id', p)),
+    parPaquets<any>(ids, (p) => supabase.from('commissions').select('session_id, apporteur_id, status').in('session_id', p)),
+  ])
+  // Session sans effet : POEI, ligne déjà chez cet apporteur, ou déjà validée ou versée à un autre
+  const exclues = new Set([
+    ...poeiLies.map((p) => p.session_id),
+    ...lignes.filter((l) => l.apporteur_id === a.id || ['validee', 'payee'].includes(l.status)).map((l) => l.session_id),
+  ])
+  for (const s of liste) {
+    if (exclues.has(s.id)) continue
+    const { base } = baseCommission(s, factures)
+    const { montant } = montantCommission(a, base)
+    if (montant == null || base == null) { apercu.sansMontant++; continue }
+    apercu.formations++
+    apercu.montant = round2(apercu.montant + montant)
+    const facts = factures.filter((f) => f.session_id === s.id && f.status !== 'annulee')
+    if (facts.length > 0 && facts.every((f) => f.status === 'payee')) apercu.aVerser++
+  }
+  return apercu
 }
 
 /** Lignes d'un apporteur, session et établissement joints, les plus récentes d'abord. */

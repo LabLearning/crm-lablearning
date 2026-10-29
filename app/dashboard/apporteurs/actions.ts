@@ -345,3 +345,163 @@ export async function payerCommissionsApporteurAction(apporteurId: string, refer
   rafraichirCommissions(apporteurId)
   return { success: true, data: { total } }
 }
+
+// ─── Établissements apportés, depuis la fiche apporteur ──────────────────────
+// Même champ que la fiche client (clients.apporteur_id) : un établissement n'a
+// qu'un apporteur, rattaché établissement par établissement, jamais par réseau.
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const MAX_RESULTATS = 30
+
+/** Établissements à rattacher : recherche par nom, enseigne, ville, code postal ou SIRET. */
+export async function chercherEtablissementsApporteurAction(apporteurId: string, recherche: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  // Caractères réservés de la syntaxe .or() de PostgREST et jokers retirés
+  const q = String(recherche || '').replace(/[,()"%*\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+  if (q.length < 2) return { success: true, data: { resultats: [], tronque: false } }
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+
+  let requete = supabase.from('clients')
+    .select('id, raison_sociale, nom_commercial, nom, prenom, ville, siret, apporteur_id, franchise_id')
+    .eq('organization_id', orgId)
+  const siret = q.replace(/\s/g, '')
+  const mots = q.split(' ').filter((m) => m.length >= 2).slice(0, 4)
+  if (/^\d{9,14}$/.test(siret)) {
+    requete = requete.ilike('siret', `%${siret}%`)
+  } else if (!mots.length) {
+    return { success: true, data: { resultats: [], tronque: false } }
+  } else {
+    // Chaque mot doit se retrouver quelque part (« chamas nice » : l'enseigne et la ville)
+    for (const mot of mots) {
+      const champs = [`raison_sociale.ilike.%${mot}%`, `nom_commercial.ilike.%${mot}%`, `nom.ilike.%${mot}%`, `prenom.ilike.%${mot}%`, `ville.ilike.%${mot}%`]
+      if (/^\d{2,5}$/.test(mot)) champs.push(`code_postal.ilike.${mot}%`)
+      requete = requete.or(champs.join(','))
+    }
+  }
+  const { data: clients, error } = await requete
+    .order('nom_commercial', { ascending: true, nullsFirst: false }).order('raison_sociale', { ascending: true })
+    .limit(MAX_RESULTATS + 1)
+  if (error) return { success: false, error: 'Recherche impossible' }
+  const liste = (clients || []).slice(0, MAX_RESULTATS) as any[]
+
+  const autres = Array.from(new Set(liste.map((c) => c.apporteur_id).filter((id) => id && id !== apporteurId)))
+  const reseaux = Array.from(new Set(liste.map((c) => c.franchise_id).filter(Boolean)))
+  const [{ data: apporteurs }, { data: franchises }] = await Promise.all([
+    autres.length ? supabase.from('apporteurs_affaires').select('id, nom_enseigne, raison_sociale, prenom, nom').eq('organization_id', orgId).in('id', autres) : Promise.resolve({ data: [] as any[] }),
+    reseaux.length ? supabase.from('franchises').select('id, nom').eq('organization_id', orgId).in('id', reseaux) : Promise.resolve({ data: [] as any[] }),
+  ])
+  const { nomApporteur } = await import('@/lib/commission-apporteur')
+  const nomDe = new Map(((apporteurs || []) as any[]).map((a) => [a.id, nomApporteur(a)]))
+  const reseauDe = new Map(((franchises || []) as any[]).map((f) => [f.id, f.nom]))
+
+  const resultats = liste.map((c) => {
+    const nom = c.nom_commercial || c.raison_sociale || [c.prenom, c.nom].filter(Boolean).join(' ') || 'Établissement'
+    return {
+      id: c.id as string,
+      nom,
+      detail: [
+        c.raison_sociale && c.raison_sociale !== nom ? c.raison_sociale : null,
+        c.ville,
+        c.franchise_id && reseauDe.get(c.franchise_id) ? `réseau ${reseauDe.get(c.franchise_id)}` : null,
+        c.siret ? `SIRET ${c.siret}` : null,
+      ].filter(Boolean).join(' · '),
+      dejaRattache: c.apporteur_id === apporteurId,
+      autreApporteur: c.apporteur_id && c.apporteur_id !== apporteurId ? (nomDe.get(c.apporteur_id) || 'un autre apporteur') : null,
+    }
+  })
+  return { success: true, data: { resultats, tronque: (clients || []).length > MAX_RESULTATS } }
+}
+
+/** Commissions que déclencherait le rattachement de ces établissements (rien n'est écrit). */
+export async function apercuRattachementApporteurAction(apporteurId: string, clientIds: string[]): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const ids = Array.from(new Set((Array.isArray(clientIds) ? clientIds : []).filter((x) => typeof x === 'string' && UUID.test(x)))).slice(0, 50)
+  if (!UUID.test(String(apporteurId || ''))) return { success: false, error: 'Apporteur introuvable' }
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+  const [{ data: apporteur }, { data: clients }] = await Promise.all([
+    supabase.from('apporteurs_affaires').select('*').eq('id', apporteurId).eq('organization_id', orgId).maybeSingle(),
+    ids.length ? supabase.from('clients').select('id, apporteur_id').eq('organization_id', orgId).in('id', ids) : Promise.resolve({ data: [] as any[] }),
+  ])
+  if (!apporteur) return { success: false, error: 'Apporteur introuvable' }
+  const { apercuRattachement } = await import('@/lib/commission-apporteur')
+  const nouveaux = ((clients || []) as any[]).filter((c) => c.apporteur_id !== apporteurId).map((c) => c.id)
+  return { success: true, data: await apercuRattachement(supabase, orgId, apporteur, nouveaux) }
+}
+
+/**
+ * Rattache des établissements à l'apporteur depuis sa fiche, sans passer par
+ * la fiche de chaque client. Un établissement suivi par un autre apporteur
+ * change d'apporteur. Les commissions sont recalculées pour les deux :
+ * les lignes en attente suivent l'établissement, les lignes validées ou versées
+ * restent acquises à l'ancien apporteur.
+ */
+export async function rattacherEtablissementsApporteurAction(apporteurId: string, clientIds: string[]): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const ids = Array.from(new Set((Array.isArray(clientIds) ? clientIds : []).filter((x) => typeof x === 'string' && UUID.test(x))))
+  if (!ids.length) return { success: false, error: 'Aucun établissement choisi' }
+  if (ids.length > 50) return { success: false, error: 'Rattachez au plus 50 établissements à la fois' }
+  if (!UUID.test(String(apporteurId || ''))) return { success: false, error: 'Apporteur introuvable' }
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+
+  const [{ data: apporteur }, { data: clients }] = await Promise.all([
+    supabase.from('apporteurs_affaires').select('id').eq('id', apporteurId).eq('organization_id', orgId).maybeSingle(),
+    supabase.from('clients').select('id, apporteur_id').eq('organization_id', orgId).in('id', ids),
+  ])
+  if (!apporteur) return { success: false, error: 'Apporteur introuvable' }
+  const aRattacher = ((clients || []) as any[]).filter((c) => c.apporteur_id !== apporteurId)
+  if (!aRattacher.length) return { success: true, data: { rattaches: 0, changes: 0 } }
+
+  const { error } = await supabase.from('clients').update({ apporteur_id: apporteurId })
+    .eq('organization_id', orgId).in('id', aRattacher.map((c) => c.id))
+  if (error) return { success: false, error: 'Rattachement impossible' }
+
+  await Promise.all(aRattacher.map((c) => logAudit({
+    action: 'update', entity_type: 'client', entity_id: c.id,
+    details: { apporteur_id: { avant: c.apporteur_id || null, apres: apporteurId }, depuis: 'fiche apporteur' },
+  })))
+
+  // Commissions recalculées : le nouvel apporteur reçoit les formations terminées sous contrat,
+  // l'ancien perd ses lignes encore en attente sur ces établissements (les figées restent)
+  const anciens = Array.from(new Set(aRattacher.map((c) => c.apporteur_id).filter(Boolean))) as string[]
+  const { syncCommissionsApporteur } = await import('@/lib/commission-apporteur')
+  const calcul = await syncCommissionsApporteur(supabase, orgId, { apporteurId })
+  for (const id of anciens) await syncCommissionsApporteur(supabase, orgId, { apporteurId: id })
+  for (const id of [apporteurId, ...anciens]) rafraichirCommissions(id)
+  for (const c of aRattacher) revalidatePath(`/dashboard/clients/${c.id}`)
+  revalidatePath('/dashboard/clients')
+  return { success: true, data: { rattaches: aRattacher.length, changes: aRattacher.filter((c) => c.apporteur_id).length, commissions: calcul.creees } }
+}
+
+/**
+ * Retire un établissement à l'apporteur. Ses commissions en attente
+ * disparaissent au recalcul ; celles déjà validées ou versées restent.
+ */
+export async function detacherEtablissementApporteurAction(apporteurId: string, clientId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!peutGererCommissions(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  if (!UUID.test(String(apporteurId || '')) || !UUID.test(String(clientId || ''))) return { success: false, error: 'Établissement introuvable' }
+  const supabase = await createServiceRoleClient()
+  const orgId = session.organization.id
+
+  const { data: client } = await supabase.from('clients').select('id, apporteur_id')
+    .eq('id', clientId).eq('organization_id', orgId).maybeSingle()
+  if (!client || client.apporteur_id !== apporteurId) return { success: false, error: 'Cet établissement n’est pas rattaché à cet apporteur' }
+
+  const { error } = await supabase.from('clients').update({ apporteur_id: null })
+    .eq('id', clientId).eq('organization_id', orgId).eq('apporteur_id', apporteurId)
+  if (error) return { success: false, error: 'Retrait impossible' }
+
+  await logAudit({ action: 'update', entity_type: 'client', entity_id: clientId, details: { apporteur_id: { avant: apporteurId, apres: null }, depuis: 'fiche apporteur' } })
+  const { syncCommissionsApporteur } = await import('@/lib/commission-apporteur')
+  await syncCommissionsApporteur(supabase, orgId, { apporteurId })
+  rafraichirCommissions(apporteurId)
+  revalidatePath(`/dashboard/clients/${clientId}`)
+  revalidatePath('/dashboard/clients')
+  return { success: true }
+}
