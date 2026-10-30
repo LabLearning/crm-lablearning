@@ -170,74 +170,16 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
         <p className="text-sm text-surface-700">{convention.objet}</p>
       </div>
 
-      {/* Le document complet, lu dans la page : plus besoin d'ouvrir un autre onglet */}
-      <div className="card p-4 sm:p-6 space-y-3">
-        <div>
-          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">{particulier ? 'Le contrat' : 'La convention'}</div>
-          <div className="text-sm text-surface-600 mt-1">Lisez {nomDocument} ci-dessous avant de signer.</div>
-        </div>
-        <ApercuPdf
-          url={lienDocument}
-          titre={particulier ? `Contrat ${convention.numero || ''}`.trim() : `Convention ${convention.numero || ''}`.trim()}
-          onCharge={noterLecture}
-          onEchec={() => setApercuEnEchec(true)}
-        />
-      </div>
-
-      {/* Détails */}
-      <div className="card p-6 space-y-3">
-        <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Détails de la formation</div>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          {convention.formation?.intitule && (
-            <><div className="text-surface-500">Formation</div><div className="font-medium">{convention.formation.intitule}</div></>
-          )}
-          {convention.dates_formation && (
-            <><div className="text-surface-500">Dates</div><div className="font-medium">{convention.dates_formation}</div></>
-          )}
-          {convention.duree_heures && (
-            <><div className="text-surface-500">Durée</div><div className="font-medium">{convention.duree_heures} heures</div></>
-          )}
-          {convention.nombre_stagiaires && (
-            <><div className="text-surface-500">Stagiaires</div><div className="font-medium">{convention.nombre_stagiaires}</div></>
-          )}
-          {convention.lieu && (
-            <><div className="text-surface-500">Lieu</div><div className="font-medium">{convention.lieu}</div></>
-          )}
-          {convention.montant_ht !== null && (
-            <>
-              <div className="text-surface-500">Montant HT</div>
-              <div className="font-medium">{Number(convention.montant_ht).toLocaleString('fr-FR')} €</div>
-              <div className="text-surface-500">TVA ({convention.taux_tva}%)</div>
-              <div className="font-medium">{(Number(convention.montant_ttc || 0) - Number(convention.montant_ht)).toLocaleString('fr-FR')} €</div>
-              <div className="text-surface-700 font-semibold pt-1 border-t border-surface-100">Montant TTC</div>
-              <div className="font-bold text-brand-700 pt-1 border-t border-surface-100">{Number(convention.montant_ttc || 0).toLocaleString('fr-FR')} €</div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Client */}
-      {convention.client && (
-        <div className="card p-6 space-y-2">
-          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Client</div>
-          <div className="font-medium text-surface-900">{convention.client.raison_sociale}</div>
-          {convention.client.siret && <div className="text-xs text-surface-500">SIRET {convention.client.siret}</div>}
-          {convention.client.adresse && (
-            <div className="text-sm text-surface-700">
-              {convention.client.adresse}<br />
-              {convention.client.code_postal} {convention.client.ville}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Signature */}
+      {/* Signature, en tête de page (demande de Brahim du 30/10/2026) ; le document suit juste en dessous */}
       <div className="card p-6 space-y-4">
         <div>
           <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Signature</div>
           <div className="text-sm text-surface-600 mt-1">
-            Signez dans le cadre ci-dessous pour valider la convention. Cette signature engage votre entreprise.
+            Lisez {nomDocument} ci-dessous, puis signez dans le cadre pour {particulier ? 'le' : 'la'} valider. {particulier ? 'Cette signature vous engage.' : 'Cette signature engage votre entreprise.'}
           </div>
+          <a href="#document" className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold text-brand-600 hover:underline">
+            <FileText className="h-4 w-4" /> Lire {nomDocument}
+          </a>
         </div>
 
         <div>
@@ -298,7 +240,7 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
                   </a>
                 </>
               ) : (
-                <>Cette case se coche une fois {nomDocument} affiché{particulier ? '' : 'e'} ci-dessus.</>
+                <>Cette case se coche une fois {nomDocument} affiché{particulier ? '' : 'e'} ci-dessous.</>
               )}
             </p>
           )}
@@ -314,6 +256,67 @@ export function ConventionSignatureClient({ convention, token }: { convention: C
           {submitting ? 'Signature en cours…' : 'Signer la convention'}
         </button>
       </div>
+
+      {/* Le document complet, lu dans la page : plus besoin d'ouvrir un autre onglet */}
+      <div id="document" className="card p-4 sm:p-6 space-y-3 scroll-mt-4">
+        <div>
+          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">{particulier ? 'Le contrat' : 'La convention'}</div>
+          <div className="text-sm text-surface-600 mt-1">Le texte complet de {nomDocument} que vous signez.</div>
+        </div>
+        <ApercuPdf
+          url={lienDocument}
+          titre={particulier ? `Contrat ${convention.numero || ''}`.trim() : `Convention ${convention.numero || ''}`.trim()}
+          onCharge={noterLecture}
+          onEchec={() => setApercuEnEchec(true)}
+        />
+      </div>
+
+      {/* Détails */}
+      <div className="card p-6 space-y-3">
+        <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Détails de la formation</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          {convention.formation?.intitule && (
+            <><div className="text-surface-500">Formation</div><div className="font-medium">{convention.formation.intitule}</div></>
+          )}
+          {convention.dates_formation && (
+            <><div className="text-surface-500">Dates</div><div className="font-medium">{convention.dates_formation}</div></>
+          )}
+          {convention.duree_heures && (
+            <><div className="text-surface-500">Durée</div><div className="font-medium">{convention.duree_heures} heures</div></>
+          )}
+          {convention.nombre_stagiaires && (
+            <><div className="text-surface-500">Stagiaires</div><div className="font-medium">{convention.nombre_stagiaires}</div></>
+          )}
+          {convention.lieu && (
+            <><div className="text-surface-500">Lieu</div><div className="font-medium">{convention.lieu}</div></>
+          )}
+          {convention.montant_ht !== null && (
+            <>
+              <div className="text-surface-500">Montant HT</div>
+              <div className="font-medium">{Number(convention.montant_ht).toLocaleString('fr-FR')} €</div>
+              <div className="text-surface-500">TVA ({convention.taux_tva}%)</div>
+              <div className="font-medium">{(Number(convention.montant_ttc || 0) - Number(convention.montant_ht)).toLocaleString('fr-FR')} €</div>
+              <div className="text-surface-700 font-semibold pt-1 border-t border-surface-100">Montant TTC</div>
+              <div className="font-bold text-brand-700 pt-1 border-t border-surface-100">{Number(convention.montant_ttc || 0).toLocaleString('fr-FR')} €</div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Client */}
+      {convention.client && (
+        <div className="card p-6 space-y-2">
+          <div className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Client</div>
+          <div className="font-medium text-surface-900">{convention.client.raison_sociale}</div>
+          {convention.client.siret && <div className="text-xs text-surface-500">SIRET {convention.client.siret}</div>}
+          {convention.client.adresse && (
+            <div className="text-sm text-surface-700">
+              {convention.client.adresse}<br />
+              {convention.client.code_postal} {convention.client.ville}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
