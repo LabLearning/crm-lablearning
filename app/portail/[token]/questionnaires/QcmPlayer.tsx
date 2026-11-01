@@ -42,7 +42,8 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [result, setResult] = useState<{ score: number; isReussi: boolean | null } | null>(null)
+  // score null : rien à noter (satisfaction, texte libre) ; jamais affiché comme 0 %
+  const [result, setResult] = useState<{ score: number | null; isReussi: boolean | null } | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const currentQuestion = questions[currentIndex]
@@ -59,7 +60,7 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
     try {
       const res = await submitQcmAction(token, reponseId, answers)
       if (res.success) {
-        setResult({ score: res.score ?? 0, isReussi: res.isReussi ?? null })
+        setResult({ score: res.score ?? null, isReussi: res.isReussi ?? null })
       } else {
         setSubmitError(res.error || 'Une erreur est survenue')
       }
@@ -77,14 +78,14 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
       <div className="card p-6 md:p-8 text-center animate-fade-in max-w-lg mx-auto">
         <div
           className={`mx-auto mb-5 w-24 h-24 rounded-full flex items-center justify-center text-2xl font-heading font-bold ${
-            passed === true
+            passed === true || result.score === null
               ? 'bg-success-100 text-success-700'
               : passed === false
               ? 'bg-danger-100 text-danger-700'
               : 'bg-surface-100 text-surface-700'
           }`}
         >
-          {result.score}%
+          {result.score === null ? <CheckCircle2 className="h-10 w-10" /> : `${result.score}%`}
         </div>
 
         <h2 className="text-xl font-heading font-bold text-surface-900 mb-2">{qcm.titre}</h2>
@@ -107,7 +108,7 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
         )}
 
         {passed === null && (
-          <p className="text-sm text-surface-500 mb-6">Questionnaire complété.</p>
+          <p className="text-sm text-surface-500 mb-6">{result.score === null ? 'Merci, vos réponses sont enregistrées.' : 'Questionnaire complété.'}</p>
         )}
 
         <button
