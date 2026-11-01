@@ -9,6 +9,8 @@
  * (créés dans /dashboard/qcm).
  */
 
+import { typesRemplaces, typesRemplacesOrg } from '@/lib/qcm-autolink'
+
 export type QcmType = 'positionnement' | 'entree' | 'sortie' | 'satisfaction_chaud' | 'satisfaction_froid'
 
 export async function seedQcmReponsesForSession(
@@ -23,6 +25,8 @@ export async function seedQcmReponsesForSession(
     .eq('id', sessionId)
     .single()
   if (!sess?.formation_id) return { created: 0 }
+  // La session a son propre questionnaire de ce type (lib/qcm-autolink) : rien à préparer
+  if ((await typesRemplaces(supabase, sessionId)).has(qcmType)) return { created: 0 }
 
   const { data: inscriptions } = await supabase
     .from('inscriptions')
@@ -179,6 +183,8 @@ export async function backfillOrgQcmReponses(supabase: any, orgId: string): Prom
     const existing = await fetchAll((f, t) => supabase
       .from('qcm_reponses').select('qcm_id, apprenant_id').eq('organization_id', orgId).range(f, t))
     const seen = new Set(existing.map((e: any) => `${e.qcm_id}:${e.apprenant_id}`))
+    // Types que la session couvre avec ses propres questionnaires (lib/qcm-autolink)
+    const remplaces = await typesRemplacesOrg(supabase, orgId)
 
     const rows: any[] = []
     for (const s of (sessions || [])) {
@@ -186,6 +192,7 @@ export async function backfillOrgQcmReponses(supabase: any, orgId: string): Prom
       if (!types) continue
       const apprenants = insBySession.get(s.id) || []
       for (const t of types) {
+        if (remplaces.has(`${s.id}|${t}`)) continue
         const qid = qcmByFT.get(`${s.formation_id}:${t}`)
         if (!qid) continue
         for (const aid of apprenants) {
@@ -211,7 +218,7 @@ export async function notifyApprenantsForQcm(
   supabase: any,
   sessionId: string,
   qcmType: QcmType,
-  opts?: { seulementEnAttente?: boolean; relance?: boolean },
+  opts?: { seulementEnAttente?: boolean; relance?: boolean; titre?: string | null },
 ) {
   const { createNotification } = await import('@/lib/email')
   const labels: Record<QcmType, string> = {
@@ -291,6 +298,19 @@ export async function notifyApprenantsForQcm(
       if (c) { c.subject = `Rappel — ${c.subject}`; c.intro = `Petit rappel : ${c.intro.charAt(0).toLowerCase()}${c.intro.slice(1)}` }
     }
   }
+  // Envoi par le formateur d'un questionnaire précis (un quiz du cours…) : le
+  // message le nomme, sans le texte de son type (« votre formation touche à sa
+  // fin » au premier jour d'une POEI)
+  if (opts?.titre && emailConfig[qcmType]) {
+    // Le titre et l'introduction entrent tels quels dans le HTML du mail
+    const titreHtml = opts.titre.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    emailConfig[qcmType] = {
+      subject: `Questionnaire à compléter — ${opts.titre}`,
+      docTitle: titreHtml,
+      intro: `Votre formateur vous propose le questionnaire « ${titreHtml} » de votre formation "${formationName}". Il vous attend dans votre espace : quelques minutes suffisent.`,
+      cta: 'Répondre au questionnaire',
+    }
+  }
 
   const { sendWhatsAppTemplate } = await import('@/lib/whatsapp')
   const { getOrCreateApprenantToken } = await import('@/lib/portal-token')
@@ -303,7 +323,7 @@ export async function notifyApprenantsForQcm(
       await createNotification({
         organizationId: sess.organization_id,
         userId: a.user_id,
-        titre: labels[qcmType],
+        titre: opts?.titre || labels[qcmType],
         message: `Un nouveau questionnaire est disponible pour la formation "${formationName}".`,
         type: 'qcm',
         lienUrl: '/mon-espace',
@@ -379,13 +399,16 @@ export async function lierInscritsAuxQcmSession(
   if (!sess) return { created: 0 }
 
   const [{ data: liens }, { data: inscriptions }, { data: existantes }] = await Promise.all([
-    supabase.from('qcm_sessions').select('qcm_id').eq('session_id', sessionId),
+    supabase.from('qcm_sessions').select('id, qcm_id').eq('session_id', sessionId),
     supabase.from('inscriptions').select('apprenant_id').eq('session_id', sessionId)
       .not('status', 'in', '("annule","abandonne")'),
     supabase.from('qcm_reponses').select('qcm_id, apprenant_id').eq('session_id', sessionId),
   ])
 
-  const qcmIds = [...new Set((liens || []).map((l: any) => l.qcm_id).filter(Boolean))]
+  const qcmIds = [...new Set((liens || []).map((l: any) => l.qcm_id).filter(Boolean))] as string[]
+  // La réponse porte son rattachement : un questionnaire encore fermé le reste pour l'arrivant
+  const lienDe = new Map<string, string>()
+  for (const l of (liens || []) as any[]) if (l.qcm_id && !lienDe.has(l.qcm_id)) lienDe.set(l.qcm_id, l.id)
   const apprenantIds = [...new Set((inscriptions || []).map((i: any) => i.apprenant_id).filter(Boolean))]
   if (qcmIds.length === 0 || apprenantIds.length === 0) return { created: 0 }
 
@@ -397,6 +420,7 @@ export async function lierInscritsAuxQcmSession(
       rows.push({
         organization_id: sess.organization_id,
         qcm_id: qcmId,
+        qcm_session_id: lienDe.get(qcmId) || null,
         session_id: sessionId,
         apprenant_id: apprenantId,
         is_complete: false,

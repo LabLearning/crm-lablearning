@@ -131,9 +131,12 @@ export function QcmFormateur({
 
                   {ouvert && (
                     <>
-                      {/* Envoi du questionnaire aux apprenants (email + WhatsApp) */}
+                      {/* Envoi du questionnaire aux apprenants (email + WhatsApp) ; le
+                          questionnaire à froid part tout seul trois mois après */}
                       <div className="flex justify-end my-2">
-                        <SendQcmButton token={token} sessionId={sessionId} qcmId={qs.qcm_id} titre={titre} />
+                        {qs.qcm?.type === 'satisfaction_froid'
+                          ? <span className="text-[11px] text-surface-500">Envoyé automatiquement aux stagiaires trois mois après la formation</span>
+                          : <SendQcmButton token={token} sessionId={sessionId} qcmId={qs.qcm_id} titre={titre} />}
                       </div>
 
                       {/* Résultat détaillé par apprenant, comme la vue admin */}

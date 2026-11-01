@@ -34,7 +34,7 @@ export default async function PortalHomePage({ params }: { params: { token: stri
         .order('date_inscription', { ascending: false }),
       supabase
         .from('qcm_reponses')
-        .select('id, qcm_session_id')
+        .select('id, qcm_session_id, session_id, qcm_id')
         .eq('apprenant_id', context.apprenant.id)
         .eq('is_complete', false),
       supabase

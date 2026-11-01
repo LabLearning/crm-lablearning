@@ -81,11 +81,15 @@ export async function sendQcmToApprenantsAction(sessionId: string, qcmId: string
   // être rattaché à la session, comme ceux que son écran propose
   const [{ data: sess }, { data: qcm }, { data: lien }] = await Promise.all([
     supabase.from('sessions').select('id').eq('id', sessionId).eq('formateur_id', formateurId).maybeSingle(),
-    supabase.from('qcm').select('id, type').eq('id', qcmId).eq('organization_id', ctx.orgId).maybeSingle(),
+    supabase.from('qcm').select('id, type, titre').eq('id', qcmId).eq('organization_id', ctx.orgId).maybeSingle(),
     supabase.from('qcm_sessions').select('id, date_ouverture').eq('session_id', sessionId).eq('qcm_id', qcmId).limit(1).maybeSingle(),
   ])
   if (!sess) return { success: false, error: 'Session introuvable' }
   if (!qcm || !lien) return { success: false, error: 'Questionnaire introuvable' }
+  // Le questionnaire à froid part tout seul trois mois après la formation (cron satisfaction-froid)
+  if ((qcm as any).type === 'satisfaction_froid') {
+    return { success: false, error: 'Le questionnaire à froid part automatiquement trois mois après la formation.' }
+  }
 
   const { seedQcmReponsesForQcm, notifyApprenantsForQcm } = await import('@/lib/qcm-auto-seed')
   // 1) S'assurer que chaque apprenant inscrit a bien sa réponse (accès portail)
@@ -103,7 +107,7 @@ export async function sendQcmToApprenantsAction(sessionId: string, qcmId: string
 
   // 3) Notifier (email + WhatsApp + notif) pour ce type de questionnaire
   try {
-    await notifyApprenantsForQcm(supabase, sessionId, qcm.type as any)
+    await notifyApprenantsForQcm(supabase, sessionId, qcm.type as any, { titre: (qcm as any).titre || null })
   } catch (e) {
     // Envoi interrompu : il pourra être relancé sans attendre 24 heures
     console.error('[envoi questionnaire]', e)

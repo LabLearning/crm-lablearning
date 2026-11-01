@@ -35,7 +35,7 @@ export async function submitQcmAction(
 
   // Questionnaire pas encore ouvert par le formateur : rien ne s'enregistre
   const { reponseOuverte } = await import('@/lib/qcm-ouverture')
-  if (!(await reponseOuverte(supabase, (reponse as any).qcm_session_id))) {
+  if (!(await reponseOuverte(supabase, reponse as any))) {
     return { success: false, error: 'Ce questionnaire n’est pas encore ouvert : votre formateur l’ouvrira pendant le cours.' }
   }
 

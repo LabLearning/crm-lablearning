@@ -23,11 +23,12 @@ export default async function PortalEvaluationsPage({ params }: { params: { toke
       .eq('apprenant_id', context.apprenant.id)
       .order('created_at', { ascending: false })
 
-    // Un questionnaire pas encore ouvert par le formateur n'apparaît pas (lib/qcm-ouverture)
+    // Un questionnaire pas encore ouvert par le formateur n'apparaît pas (lib/qcm-ouverture) ;
+    // un résultat déjà enregistré reste toujours visible
     const { reponsesOuvertes } = await import('@/lib/qcm-ouverture')
-    const allReponses = await reponsesOuvertes(supabase, (reponses || []) as any[])
-    const completed = allReponses.filter((r) => r.is_complete)
-    const pending = allReponses.filter((r) => !r.is_complete)
+    const completed = ((reponses || []) as any[]).filter((r) => r.is_complete)
+    const pending = await reponsesOuvertes(supabase, ((reponses || []) as any[]).filter((r) => !r.is_complete))
+    const allReponses = [...pending, ...completed]
 
     return (
       <div className="space-y-6 animate-fade-in">

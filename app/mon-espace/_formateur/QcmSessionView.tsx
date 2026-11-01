@@ -68,9 +68,11 @@ export async function QcmSessionView({
       .select('qcm_id, apprenant_id, score, is_reussi, is_complete')
       .eq('session_id', session.id),
   ])
-  // Dans l'ordre du cours : les titres commencent par la séance (S01, S02…)
+  // Dans l'ordre du cours : les titres commencent par la séance (S01, S02…) ;
+  // le questionnaire à froid, envoyé trois mois après, ferme la liste
+  const aFroid = (q: any) => (q.qcm?.type === 'satisfaction_froid' ? 1 : 0)
   const qcmSessions = ((qcmSessRes.data || []) as any[])
-    .sort((a, b) => String(a.qcm?.titre || '').localeCompare(String(b.qcm?.titre || ''), 'fr', { numeric: true }))
+    .sort((a, b) => aFroid(a) - aFroid(b) || String(a.qcm?.titre || '').localeCompare(String(b.qcm?.titre || ''), 'fr', { numeric: true }))
   const qcmReponses = (qcmRepRes.data || []) as any[]
 
   return (
