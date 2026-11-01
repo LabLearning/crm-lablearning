@@ -34,7 +34,7 @@ export default async function PortalHomePage({ params }: { params: { token: stri
         .order('date_inscription', { ascending: false }),
       supabase
         .from('qcm_reponses')
-        .select('id, qcm_session_id, session_id, qcm_id')
+        .select('id, qcm_session_id, session_id, qcm_id, qcm:qcm_id(type), session:session_id(date_fin)')
         .eq('apprenant_id', context.apprenant.id)
         .eq('is_complete', false),
       supabase
@@ -43,9 +43,17 @@ export default async function PortalHomePage({ params }: { params: { token: stri
         .eq('apprenant_id', context.apprenant.id),
     ])
 
-    // Seulement les questionnaires ouverts par le formateur (lib/qcm-ouverture)
+    // Seulement les questionnaires ouverts par le formateur (lib/qcm-ouverture), sans
+    // le questionnaire à froid tant qu'il est verrouillé (trois mois après la fin)
     const { reponsesOuvertes } = await import('@/lib/qcm-ouverture')
-    const pendingQcm = (await reponsesOuvertes(supabase, (qcmEnAttente || []) as any[])).length
+    const aujourdhuiQcm = new Date().toISOString().slice(0, 10)
+    const aFroidVerrouille = (r: any) => {
+      if (r.qcm?.type !== 'satisfaction_froid' || !r.session?.date_fin) return false
+      const dispo = new Date(r.session.date_fin + 'T00:00:00Z')
+      dispo.setUTCDate(dispo.getUTCDate() + 90)
+      return dispo.toISOString().slice(0, 10) > aujourdhuiQcm
+    }
+    const pendingQcm = (await reponsesOuvertes(supabase, (qcmEnAttente || []) as any[])).filter((r: any) => !aFroidVerrouille(r)).length
     const allInscriptions = inscriptions || []
     const enCours = allInscriptions.filter((i) => ['inscrit', 'confirme', 'en_cours'].includes(i.status))
     const terminees = allInscriptions.filter((i) => i.status === 'complete')

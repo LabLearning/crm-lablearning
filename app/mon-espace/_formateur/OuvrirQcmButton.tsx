@@ -17,6 +17,8 @@ export function OuvrirQcmButton({ token, sessionId, qcmSessionId, titre }: { tok
   const [pending, start] = useTransition()
 
   function ouvrir() {
+    // L'ouverture est définitive : on vérifie que c'est la bonne ligne
+    if (!window.confirm(`Ouvrir « ${titre} » aux stagiaires ?\n\nIl apparaîtra sur leur téléphone et ne pourra plus être refermé.`)) return
     start(async () => {
       const r = await ouvrirQcmSessionAction(sessionId, qcmSessionId, token || null)
       if (r.success) { toast('success', `« ${titre} » est ouvert : les stagiaires le voient sur leur téléphone`); router.refresh() }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, ClipboardCheck } from '@/components/ui/icons'
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, ClipboardCheck, ArrowLeft } from '@/components/ui/icons'
 import { submitQcmAction } from './actions'
 
 interface QcmChoix {
@@ -32,9 +32,11 @@ interface QcmPlayerProps {
     score_min_reussite: number | null
     questions: QcmQuestion[]
   }
+  /** Retour à la liste des questionnaires (sinon : page précédente du navigateur) */
+  onRetour?: () => void
 }
 
-export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
+export default function QcmPlayer({ token, reponseId, qcm, onRetour }: QcmPlayerProps) {
   const router = useRouter()
   const questions = [...qcm.questions].sort((a, b) => a.position - b.position)
   const total = questions.length
@@ -54,7 +56,23 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
+  const retour = () => (onRetour ? onRetour() : router.back())
+
+  // Rien n'est enregistré avant « Terminer » : quitter en cours de route fait tout perdre
+  function quitter() {
+    if (Object.keys(answers).length > 0 && !window.confirm('Quitter ce questionnaire ? Vos réponses ne seront pas enregistrées.')) return
+    retour()
+  }
+
   async function handleSubmit() {
+    // Une question sans réponse compte comme fausse : on le signale avant d'envoyer
+    // (les réponses libres restent facultatives)
+    const sansReponse = questions.findIndex((q) => q.type !== 'texte_libre' && !answers[q.id])
+    const nbSansReponse = questions.filter((q) => q.type !== 'texte_libre' && !answers[q.id]).length
+    if (nbSansReponse > 0 && !window.confirm(`${nbSansReponse} question${nbSansReponse > 1 ? 's' : ''} sans réponse. Terminer quand même ?`)) {
+      setCurrentIndex(sansReponse)
+      return
+    }
     setIsSubmitting(true)
     setSubmitError(null)
     try {
@@ -112,7 +130,7 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
         )}
 
         <button
-          onClick={() => router.back()}
+          onClick={retour}
           className="btn-primary"
         >
           Retour aux questionnaires
@@ -133,6 +151,14 @@ export default function QcmPlayer({ token, reponseId, qcm }: QcmPlayerProps) {
 
   return (
     <div className="space-y-5 animate-fade-in max-w-2xl mx-auto">
+      <button
+        onClick={quitter}
+        className="flex items-center gap-1.5 text-sm text-surface-500 hover:text-surface-700 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Retour aux questionnaires
+      </button>
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">

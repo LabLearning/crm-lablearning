@@ -189,7 +189,7 @@ export function QcmFormateur({
           </div>
 
           <div className="px-4 py-2 bg-surface-50/60 text-[11px] text-surface-500">
-            Ouvrez chaque questionnaire quand le cours en est là : il apparaît aussitôt sur le téléphone des stagiaires.
+            Ouvrez chaque questionnaire quand le cours en est là : il apparaît en quelques secondes sur le téléphone des stagiaires. Une fois ouvert, il ne se referme pas.
           </div>
         </div>
       )}

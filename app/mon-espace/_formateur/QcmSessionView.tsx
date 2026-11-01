@@ -2,6 +2,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from '@/components/ui/icons'
+import { RafraichissementAuto } from '@/components/ui/RafraichissementAuto'
 import { SessionHeaderFormateur } from '@/app/portail/[token]/SessionHeaderFormateur'
 import { PositionnementList } from '@/app/portail/[token]/ContenuPedagogique'
 import { QcmFormateur } from '@/app/portail/[token]/qcm/QcmFormateur'
@@ -90,12 +91,12 @@ export async function QcmSessionView({
         stagiaires={stagiaires}
       />
 
+      {/* En salle : les réponses des stagiaires arrivent sans recharger la page */}
+      <RafraichissementAuto secondes={20} />
+
       <div className="space-y-4">
-        {positionnement.length > 0 && (
-          <div className="card p-4 sm:p-5">
-            <PositionnementList positionnement={positionnement} />
-          </div>
-        )}
+        {/* L'accès des stagiaires (QR codes) et les questionnaires d'abord : c'est
+            par là que commence la séance */}
         <QcmFormateur
           token={token}
           basePath={basePath}
@@ -104,6 +105,11 @@ export async function QcmSessionView({
           qcmReponses={qcmReponses}
           stagiaires={stagiaires}
         />
+        {positionnement.length > 0 && (
+          <div className="card p-4 sm:p-5">
+            <PositionnementList positionnement={positionnement} />
+          </div>
+        )}
         {positionnement.length === 0 && qcmSessions.length === 0 && (
           <div className="card p-8 text-center text-sm text-surface-400">
             Aucun questionnaire pour cette session.

@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui'
+import { RafraichissementAuto } from '@/components/ui/RafraichissementAuto'
 import { QCM_TYPE_LABELS, QCM_TYPE_COLORS, QCM_TYPE_QUALIOPI } from '@/lib/types/evaluation'
 import { formatDate } from '@/lib/utils'
-import { ListChecks, Clock, CheckCircle2, ChevronRight, ArrowLeft } from '@/components/ui/icons'
+import { ListChecks, Clock, CheckCircle2, ChevronRight } from '@/components/ui/icons'
 import type { QCMType } from '@/lib/types/evaluation'
 import QcmPlayer from './QcmPlayer'
 
@@ -64,22 +66,18 @@ export default function QuestionnairesClient({
   pendingReponses,
   completedReponses,
 }: QuestionnairesClientProps) {
+  const router = useRouter()
   const [selected, setSelected] = useState<{ reponseId: string; qcm: PendingReponse['qcm'] } | null>(null)
 
   if (selected && selected.qcm) {
     return (
       <div className="space-y-4 animate-fade-in">
-        <button
-          onClick={() => setSelected(null)}
-          className="flex items-center gap-1.5 text-sm text-surface-500 hover:text-surface-700 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour aux questionnaires
-        </button>
         <QcmPlayer
           token={token}
           reponseId={selected.reponseId}
           qcm={selected.qcm}
+          // Retour à la liste à jour : le questionnaire terminé passe dans « Complétés »
+          onRetour={() => { setSelected(null); router.refresh() }}
         />
       </div>
     )
@@ -87,6 +85,9 @@ export default function QuestionnairesClient({
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* En salle, le formateur ouvre les questionnaires au fil du cours : la liste se
+          met à jour seule, sans que le stagiaire recharge (jamais pendant un questionnaire) */}
+      <RafraichissementAuto secondes={15} />
       <div>
         <h1 className="text-2xl font-heading font-bold text-surface-900 tracking-heading">Mes questionnaires</h1>
         <p className="text-surface-500 mt-1">QCM et questionnaires de satisfaction</p>
