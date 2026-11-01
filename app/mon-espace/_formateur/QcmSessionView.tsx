@@ -60,7 +60,7 @@ export async function QcmSessionView({
     // Questionnaires rattachés à la session
     supabase
       .from('qcm_sessions')
-      .select('id, qcm_id, qcm:qcm(id, titre, type, score_min_reussite)')
+      .select('id, qcm_id, date_ouverture, qcm:qcm(id, titre, type, score_min_reussite)')
       .eq('session_id', session.id),
     // Réponses des apprenants (qui a répondu + score)
     supabase
@@ -68,7 +68,9 @@ export async function QcmSessionView({
       .select('qcm_id, apprenant_id, score, is_reussi, is_complete')
       .eq('session_id', session.id),
   ])
-  const qcmSessions = (qcmSessRes.data || []) as any[]
+  // Dans l'ordre du cours : les titres commencent par la séance (S01, S02…)
+  const qcmSessions = ((qcmSessRes.data || []) as any[])
+    .sort((a, b) => String(a.qcm?.titre || '').localeCompare(String(b.qcm?.titre || ''), 'fr', { numeric: true }))
   const qcmReponses = (qcmRepRes.data || []) as any[]
 
   return (

@@ -21,7 +21,7 @@ export default async function PortalHomePage({ params }: { params: { token: stri
 
   if (context.type === 'apprenant') {
     // Fetch apprenant data
-    const [{ data: inscriptions }, { count: pendingQcm }, { count: docsCount }] = await Promise.all([
+    const [{ data: inscriptions }, { data: qcmEnAttente }, { count: docsCount }] = await Promise.all([
       supabase
         .from('inscriptions')
         .select(`
@@ -34,7 +34,7 @@ export default async function PortalHomePage({ params }: { params: { token: stri
         .order('date_inscription', { ascending: false }),
       supabase
         .from('qcm_reponses')
-        .select('*', { count: 'exact', head: true })
+        .select('id, qcm_session_id')
         .eq('apprenant_id', context.apprenant.id)
         .eq('is_complete', false),
       supabase
@@ -43,6 +43,9 @@ export default async function PortalHomePage({ params }: { params: { token: stri
         .eq('apprenant_id', context.apprenant.id),
     ])
 
+    // Seulement les questionnaires ouverts par le formateur (lib/qcm-ouverture)
+    const { reponsesOuvertes } = await import('@/lib/qcm-ouverture')
+    const pendingQcm = (await reponsesOuvertes(supabase, (qcmEnAttente || []) as any[])).length
     const allInscriptions = inscriptions || []
     const enCours = allInscriptions.filter((i) => ['inscrit', 'confirme', 'en_cours'].includes(i.status))
     const terminees = allInscriptions.filter((i) => i.status === 'complete')

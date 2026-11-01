@@ -80,7 +80,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     .eq('session_id', params.id)
     .not('status', 'in', '("annule","abandonne")')
 
-  const apprenants = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
+  const apprenants = ((inscriptions || []).map((i: any) => i.apprenant).filter(Boolean) as any[])
+    .sort((x, y) => `${x.nom} ${x.prenom}`.localeCompare(`${y.nom} ${y.prenom}`, 'fr'))
+  // ?vue=projection : un stagiaire par écran, pour le vidéoprojecteur (sinon la planche imprimable)
+  const projection = new URL(req.url).searchParams.get('vue') === 'projection'
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
 
   // Pour chaque apprenant : récupère ou crée un token portail
@@ -111,9 +114,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     const portalUrl = `${appUrl}/portail/${token}`
-    const qrDataUrl = await QRCode.toDataURL(portalUrl, { width: 300, margin: 1 })
+    // Plus fin pour la projection : le QR occupe une grande partie de l'écran
+    const qrDataUrl = await QRCode.toDataURL(portalUrl, { width: projection ? 640 : 300, margin: 1 })
     items.push({ apprenant: a, url: portalUrl, qrDataUrl })
   }
+
+  if (projection) return pageProjection(sess, items)
 
   // HTML imprimable (browser print to PDF)
   const formationName = (sess as any).formation?.intitule || 'Formation'
@@ -147,15 +153,75 @@ ${items.map(it => `
 </div>
 </body></html>`
 
+  return pageHtml(html)
+}
+
+/** La page porte des accès permanents aux portails : ni cache, ni référent transmis, ni script exécutable */
+function pageHtml(html: string) {
   return new NextResponse(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      // La page porte des accès permanents aux portails : ni cache, ni
-      // référent transmis, ni script exécutable
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
       'X-Robots-Tag': 'noindex, nofollow',
       'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
     },
   })
+}
+
+/**
+ * Projection en salle : un stagiaire par écran, son nom en grand au-dessus de
+ * son QR code, puis « Suivant ». Le formateur appelle chacun à son tour ; la vue
+ * « Tous » montre la planche entière. Sans script (la page n'en exécute aucun) :
+ * la navigation passe par des ancres (#s1, #s2…, #tous).
+ */
+function pageProjection(sess: any, items: Array<{ apprenant: any; url: string; qrDataUrl: string }>) {
+  const formationName = sess.formation?.intitule || 'Formation'
+  const n = items.length
+  const diapos = items.map((it, i) => `
+  <section class="diapo" id="s${i + 1}">
+    <div class="haut"><span>${esc(formationName)}</span><span>Stagiaire ${i + 1} / ${n}</span></div>
+    <div class="nom">${esc(it.apprenant.prenom || '')} ${esc(it.apprenant.nom || '')}</div>
+    <img class="qr" src="${esc(it.qrDataUrl)}" alt="QR code de ${esc(it.apprenant.prenom || '')} ${esc(it.apprenant.nom || '')}" />
+    <div class="consigne">Scannez votre QR code avec l’appareil photo de votre téléphone</div>
+    <nav class="nav">
+      ${i > 0 ? `<a href="#s${i}">← Précédent</a>` : '<span></span>'}
+      <a class="secondaire" href="#tous">Tous les QR codes</a>
+      ${i < n - 1 ? `<a href="#s${i + 2}">Suivant →</a>` : '<span></span>'}
+    </nav>
+  </section>`).join('')
+  const planche = `
+  <section class="diapo tous" id="tous">
+    <div class="haut"><span>${esc(formationName)}</span><span>${n} stagiaire${n > 1 ? 's' : ''}</span></div>
+    <div class="grille">
+      ${items.map((it, i) => `<a class="carte" href="#s${i + 1}"><img src="${esc(it.qrDataUrl)}" alt="" /><span>${esc(it.apprenant.prenom || '')} ${esc((it.apprenant.nom || '').slice(0, 1))}.</span></a>`).join('')}
+    </div>
+    <nav class="nav"><span></span><a href="#s1">Un par un →</a><span></span></nav>
+  </section>`
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accès des stagiaires — ${esc(formationName)}</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #ffffff; color: #0f172a; font-family: Manrope, system-ui, -apple-system, sans-serif; }
+  .diapo { display: none; height: 100vh; padding: 3vh 4vw; flex-direction: column; align-items: center; justify-content: space-between; gap: 2vh; }
+  .diapo:target, .diapos:not(:has(.diapo:target)) .diapo:first-child { display: flex; }
+  .haut { width: 100%; display: flex; justify-content: space-between; gap: 2vw; font-size: clamp(14px, 2.2vh, 22px); color: #64748b; }
+  .nom { font-size: clamp(28px, 8vh, 96px); font-weight: 800; letter-spacing: -0.02em; text-align: center; line-height: 1.05; color: #205040; }
+  .qr { height: min(56vh, 80vw); width: auto; image-rendering: pixelated; }
+  .consigne { font-size: clamp(14px, 2.6vh, 26px); color: #334155; text-align: center; }
+  .nav { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 2vw; }
+  .nav a { justify-self: center; font-size: clamp(16px, 2.8vh, 28px); font-weight: 700; color: #ffffff; background: #205040; padding: 1.2vh 2.4vw; border-radius: 12px; text-decoration: none; }
+  .nav a:first-child { justify-self: start; } .nav a:last-child { justify-self: end; }
+  .nav a.secondaire { background: #ffffff; color: #205040; border: 2px solid #205040; }
+  .nav a:focus-visible, .carte:focus-visible { outline: 4px solid #5CD9A0; outline-offset: 3px; }
+  .tous { justify-content: flex-start; }
+  .grille { flex: 1; width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(22vh, 40vw), 1fr)); gap: 2vh 2vw; align-content: center; overflow: auto; }
+  .carte { display: flex; flex-direction: column; align-items: center; gap: 0.6vh; text-decoration: none; color: #0f172a; font-weight: 700; font-size: clamp(12px, 2vh, 20px); }
+  .carte img { width: 100%; max-width: 22vh; height: auto; image-rendering: pixelated; }
+</style>
+</head><body>
+<main class="diapos">${diapos}${planche}
+</main>
+</body></html>`
+  return pageHtml(html)
 }

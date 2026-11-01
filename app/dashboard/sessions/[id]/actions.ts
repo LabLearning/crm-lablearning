@@ -243,6 +243,35 @@ export async function attachQcmToSessionAction(sessionId: string, qcmId: string)
   return { success: true, data: { created: res.created } }
 }
 
+/**
+ * Ouvre aux stagiaires un questionnaire rattaché encore fermé (lib/qcm-ouverture),
+ * comme le bouton du formateur dans son espace : il apparaît aussitôt dans
+ * l'espace de chaque stagiaire, sans mail ni message.
+ */
+export async function ouvrirQcmSessionAdminAction(sessionId: string, qcmSessionId: string): Promise<ActionResult> {
+  const session = await getSession()
+  if (!['super_admin', 'gestionnaire', 'directeur_commercial'].includes(session.user.role)) {
+    return { success: false, error: 'Accès non autorisé' }
+  }
+  const supabase = await createServiceRoleClient()
+  const { data: lien } = await supabase.from('qcm_sessions')
+    .select('id, qcm_id, date_ouverture')
+    .eq('id', qcmSessionId).eq('session_id', sessionId).eq('organization_id', session.organization.id)
+    .maybeSingle()
+  if (!lien) return { success: false, error: 'Questionnaire introuvable' }
+  const { estOuvert } = await import('@/lib/qcm-ouverture')
+  if (!estOuvert(lien.date_ouverture)) {
+    const { error } = await supabase.from('qcm_sessions').update({ date_ouverture: new Date().toISOString() })
+      .eq('id', qcmSessionId).eq('organization_id', session.organization.id)
+    if (error) return { success: false, error: 'Ouverture impossible' }
+  }
+  const { seedQcmReponsesForQcm } = await import('@/lib/qcm-auto-seed')
+  await seedQcmReponsesForQcm(supabase, sessionId, lien.qcm_id, qcmSessionId)
+  await logAudit({ action: 'ouvrir_qcm_session', entity_type: 'session', entity_id: sessionId, details: { qcmSessionId, qcmId: lien.qcm_id } })
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  return { success: true }
+}
+
 const fmtFr = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString('fr-FR') : '—')
 
 /**

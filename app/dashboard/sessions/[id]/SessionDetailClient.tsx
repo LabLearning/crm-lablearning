@@ -42,7 +42,8 @@ import { SessionFormateur } from './SessionFormateur'
 import { SaisieQuestionnaire } from '@/components/qcm/SaisieQuestionnaire'
 import { SaisieRapide } from '@/components/qcm/SaisieRapide'
 import { DetailReponse } from '@/components/qcm/DetailReponse'
-import { marquerJourneePresentAction, rouvrirFeuilleEmargementAction } from './actions'
+import { marquerJourneePresentAction, rouvrirFeuilleEmargementAction, ouvrirQcmSessionAdminAction } from './actions'
+import { estOuvert } from '@/lib/qcm-ouverture'
 import { SessionContenuPedagogique } from './SessionContenuPedagogique'
 import { SessionRecueil } from './SessionRecueil'
 import { SessionForm } from '../SessionForm'
@@ -1528,6 +1529,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                         <div className="text-sm font-medium text-surface-900 [overflow-wrap:anywhere] line-clamp-2 sm:line-clamp-1">{q.qcm?.titre || 'QCM'}</div>
                         <div className="text-xs text-surface-500 flex items-center gap-2 flex-wrap">
                           {q.qcm?.type && <Badge variant="info">{QCM_TYPE_LABELS[q.qcm.type] || q.qcm.type}</Badge>}
+                          {!estOuvert(q.date_ouverture) && <Badge variant="default">Fermé · ouvert en cours par le formateur</Badge>}
                           <span>{completed.length}/{reponses.length} répondu{completed.length > 1 ? 's' : ''}</span>
                           {scoreMin != null && <span className="text-surface-400">Seuil {scoreMin}%</span>}
                         </div>
@@ -1542,6 +1544,20 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                       accès comme l'administratif : c'est lui qui imprime.
                     */}
                     <div className="px-4 pb-3 -mt-1 flex flex-col sm:flex-row gap-2">
+                      {!estOuvert(q.date_ouverture) && (
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => startTransition(async () => {
+                            const r = await ouvrirQcmSessionAdminAction(session.id, q.id)
+                            if (r.success) { toast('success', `« ${q.qcm?.titre || 'Questionnaire'} » est ouvert aux stagiaires`); router.refresh() }
+                            else toast('error', r.error || 'Ouverture impossible')
+                          })}
+                          className="btn-primary !py-2 sm:!py-1 !px-2.5 min-h-[40px] sm:min-h-0 text-xs inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          Ouvrir aux stagiaires
+                        </button>
+                      )}
                       <a
                         href={`/api/pdf/questionnaire-papier?session=${session.id}&qcm=${q.qcm_id}`}
                         target="_blank" rel="noopener noreferrer"

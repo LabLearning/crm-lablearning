@@ -23,7 +23,9 @@ export default async function PortalEvaluationsPage({ params }: { params: { toke
       .eq('apprenant_id', context.apprenant.id)
       .order('created_at', { ascending: false })
 
-    const allReponses = reponses || []
+    // Un questionnaire pas encore ouvert par le formateur n'apparaît pas (lib/qcm-ouverture)
+    const { reponsesOuvertes } = await import('@/lib/qcm-ouverture')
+    const allReponses = await reponsesOuvertes(supabase, (reponses || []) as any[])
     const completed = allReponses.filter((r) => r.is_complete)
     const pending = allReponses.filter((r) => !r.is_complete)
 

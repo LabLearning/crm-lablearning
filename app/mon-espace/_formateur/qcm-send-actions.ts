@@ -82,14 +82,20 @@ export async function sendQcmToApprenantsAction(sessionId: string, qcmId: string
   const [{ data: sess }, { data: qcm }, { data: lien }] = await Promise.all([
     supabase.from('sessions').select('id').eq('id', sessionId).eq('formateur_id', formateurId).maybeSingle(),
     supabase.from('qcm').select('id, type').eq('id', qcmId).eq('organization_id', ctx.orgId).maybeSingle(),
-    supabase.from('qcm_sessions').select('id').eq('session_id', sessionId).eq('qcm_id', qcmId).limit(1).maybeSingle(),
+    supabase.from('qcm_sessions').select('id, date_ouverture').eq('session_id', sessionId).eq('qcm_id', qcmId).limit(1).maybeSingle(),
   ])
   if (!sess) return { success: false, error: 'Session introuvable' }
   if (!qcm || !lien) return { success: false, error: 'Questionnaire introuvable' }
 
   const { seedQcmReponsesForQcm, notifyApprenantsForQcm } = await import('@/lib/qcm-auto-seed')
   // 1) S'assurer que chaque apprenant inscrit a bien sa réponse (accès portail)
-  await seedQcmReponsesForQcm(supabase, sessionId, qcmId)
+  await seedQcmReponsesForQcm(supabase, sessionId, qcmId, (lien as any).id)
+  // Un questionnaire encore fermé s'ouvre en partant : sinon le lien mène à un questionnaire invisible
+  const { estOuvert } = await import('@/lib/qcm-ouverture')
+  if (!estOuvert((lien as any).date_ouverture)) {
+    const { error: eOuverture } = await supabase.from('qcm_sessions').update({ date_ouverture: new Date().toISOString() }).eq('id', (lien as any).id)
+    if (eOuverture) return { success: false, error: "L'ouverture du questionnaire a échoué — réessayez dans un instant." }
+  }
 
   // 2) Pas de rafale : l'envoi est compté avant de partir
   const reservation = await reserverEnvoi(supabase, ctx.orgId, formateurId, ctx.userId, sessionId, qcmId, (qcm as any).type ?? null)
@@ -111,4 +117,34 @@ export async function sendQcmToApprenantsAction(sessionId: string, qcmId: string
     .eq('session_id', sessionId).not('status', 'in', '("annule","abandonne")')
 
   return { success: true, data: { count: count || 0 } }
+}
+
+/**
+ * Ouvre aux stagiaires un questionnaire rattaché à la session, quand le cours
+ * en est là : fermé jusque-là (lib/qcm-ouverture), il apparaît aussitôt dans
+ * leur espace, sans mail ni message. Un stagiaire inscrit depuis le rattachement
+ * reçoit aussi le sien.
+ */
+export async function ouvrirQcmSessionAction(sessionId: string, qcmSessionId: string, token: string | null): Promise<ActionResult> {
+  const ctx = await resolveFormateur(token)
+  if (!ctx) return { success: false, error: 'Accès non autorisé' }
+  const { supabase, formateurId } = ctx
+
+  // La session doit être la sienne, et le questionnaire rattaché à cette session
+  const [{ data: sess }, { data: lien }] = await Promise.all([
+    supabase.from('sessions').select('id').eq('id', sessionId).eq('formateur_id', formateurId).eq('organization_id', ctx.orgId).maybeSingle(),
+    supabase.from('qcm_sessions').select('id, qcm_id, date_ouverture').eq('id', qcmSessionId).eq('session_id', sessionId).maybeSingle(),
+  ])
+  if (!sess) return { success: false, error: 'Session introuvable' }
+  if (!lien) return { success: false, error: 'Questionnaire introuvable' }
+
+  const { estOuvert } = await import('@/lib/qcm-ouverture')
+  if (!estOuvert((lien as any).date_ouverture)) {
+    const { error } = await supabase.from('qcm_sessions').update({ date_ouverture: new Date().toISOString() })
+      .eq('id', qcmSessionId).eq('session_id', sessionId)
+    if (error) return { success: false, error: "L'ouverture a échoué — réessayez dans un instant." }
+  }
+  const { seedQcmReponsesForQcm } = await import('@/lib/qcm-auto-seed')
+  await seedQcmReponsesForQcm(supabase, sessionId, (lien as any).qcm_id, qcmSessionId)
+  return { success: true }
 }

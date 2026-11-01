@@ -2,6 +2,7 @@ import { getPortalContext } from '@/lib/portal-auth'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import QuestionnairesClient from './QuestionnairesClient'
+import { reponsesOuvertes } from '@/lib/qcm-ouverture'
 
 // Donnees temps reel : jamais de cache statique (acces par token, sans cookies)
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export default async function PortalQuestionnairesPage({ params }: { params: { t
   const supabase = await createServiceRoleClient()
 
   // Pending QCMs with full questions + choices for the player + Completed QCMs (summary only)
-  const [{ data: pendingReponses }, { data: completedReponses }] = await Promise.all([
+  const [{ data: pendingTous }, { data: completedReponses }] = await Promise.all([
     supabase
       .from('qcm_reponses')
       .select(`
@@ -39,6 +40,9 @@ export default async function PortalQuestionnairesPage({ params }: { params: { t
       .eq('is_complete', true)
       .order('completed_at', { ascending: false }),
   ])
+
+  // Un questionnaire que le formateur n'a pas encore ouvert n'apparaît pas (lib/qcm-ouverture)
+  const pendingReponses = await reponsesOuvertes(supabase, (pendingTous || []) as any[])
 
   // Le questionnaire à froid mesure ce qui reste appliqué trois mois après :
   // il est verrouillé jusqu'à J+90 après la fin de session.

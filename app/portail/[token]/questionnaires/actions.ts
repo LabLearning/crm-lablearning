@@ -20,7 +20,7 @@ export async function submitQcmAction(
   // Fetch the qcm_reponse and verify ownership
   const { data: reponse, error: reponseError } = await supabase
     .from('qcm_reponses')
-    .select('id, qcm_id, is_complete, apprenant_id, organization_id, session_id, qcm:qcm_id(type)')
+    .select('id, qcm_id, qcm_session_id, is_complete, apprenant_id, organization_id, session_id, qcm:qcm_id(type)')
     .eq('id', qcmReponseId)
     .eq('apprenant_id', context.apprenant.id)
     .single()
@@ -31,6 +31,12 @@ export async function submitQcmAction(
 
   if (reponse.is_complete) {
     return { success: false, error: 'Déjà soumis' }
+  }
+
+  // Questionnaire pas encore ouvert par le formateur : rien ne s'enregistre
+  const { reponseOuverte } = await import('@/lib/qcm-ouverture')
+  if (!(await reponseOuverte(supabase, (reponse as any).qcm_session_id))) {
+    return { success: false, error: 'Ce questionnaire n’est pas encore ouvert : votre formateur l’ouvrira pendant le cours.' }
   }
 
   // Verrou J+90 côté serveur : le questionnaire à froid ne peut pas être
