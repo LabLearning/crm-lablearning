@@ -102,8 +102,9 @@ export function QcmFormateur({
 
               return (
                 <div key={qs.id} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
+                    {/* Largeur minimale : sur téléphone, le bouton passe sous le titre au lieu de l'écraser */}
+                    <div className="min-w-[14rem] flex-1">
                       <div className="text-sm font-medium text-surface-900">{titre}</div>
                       <div className="text-xs text-surface-500 mt-0.5">
                         {ouvert
