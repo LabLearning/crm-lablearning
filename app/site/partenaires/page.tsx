@@ -12,7 +12,8 @@ export const metadata = {
 }
 
 // ── Partenaires : cartes « mini-page » — couverture, avatar logo, activité ──
-const PARTENAIRES: { nom: string; logo: string; cover: string; type: string; desc: string }[] = [
+// `logoLarge` : logo horizontal → médaillon arrondi plus large au lieu du rond
+const PARTENAIRES: { nom: string; logo: string; cover: string; type: string; desc: string; logoLarge?: boolean }[] = [
   { nom: 'Chamas Tacos', logo: '/site/logos/partenaires/chamas-tacos.png', cover: '/site/photos/partenaires/chamas-tacos.png',
     type: 'Réseau de franchise · French tacos',
     desc: 'Hygiène, HACCP et standards de production : nous formons les équipes du réseau au geste juste, de la réception des matières au service.' },
@@ -28,15 +29,22 @@ const PARTENAIRES: { nom: string; logo: string; cover: string; type: string; des
   { nom: 'Kassia Food', logo: '/site/logos/partenaires/kassia-food.png', cover: '/site/photos/partenaires/kassia-food.jpg',
     type: 'Réseau · restauration rapide',
     desc: "Accompagnement des établissements du réseau : hygiène alimentaire, sécurité et formation continue des équipes." },
+  { nom: 'Khadispal', logo: '/site/logos/partenaires/khadispal.png', cover: '/site/photos/partenaires/khadispal.webp', logoLarge: true,
+    type: 'Grossiste cash & carry · fast food',
+    desc: "Le grossiste des restaurants de restauration rapide. Nous formons les équipes de son magasin de Grenoble : hygiène alimentaire, prévention des risques et conduite de chariots en sécurité." },
 ]
 
 // ── Clients : enseignes et restaurants formés ──
 // `pleine` : le logo embarque son propre fond de marque → la tuile est l'image
 const CLIENTS: { nom: string; logo?: string; pleine?: boolean; grand?: boolean }[] = [
+  { nom: "O'Tacos", logo: '/site/logos/clients/o-tacos.svg', grand: true },
+  { nom: 'Bangkok Factory', logo: '/site/logos/clients/bangkok-factory.png' },
+  { nom: 'Black & White Burger', logo: '/site/logos/clients/black-and-white.png' },
+  { nom: 'Crousty Game', logo: '/site/logos/clients/crousty-game.svg' },
+  { nom: 'Big M', logo: '/site/logos/clients/big-m.png', grand: true },
   { nom: 'La Kazdalerie', logo: '/site/logos/clients/la-kazdalerie.png' },
   { nom: 'Chicken Street', logo: '/site/logos/partenaires/chicken-street.png' },
   { nom: 'Croust Wok', logo: '/site/logos/partenaires/croust-wok.webp', grand: true },
-  { nom: 'Khadispal', logo: '/site/logos/clients/khadispal.png' },
   { nom: 'Shake Beef', logo: '/site/logos/clients/shake-beef.png' },
   { nom: 'Tasty Crousty', logo: '/site/logos/clients/tasty-crousty.png', pleine: true },
   { nom: 'Crousty One', logo: '/site/logos/clients/crousty-one.png' },
@@ -81,8 +89,8 @@ export default function SiteClients() {
                 </div>
                 {/* Avatar logo qui chevauche la couverture */}
                 <div className="px-6">
-                  <div className="relative z-10 -mt-10 h-20 w-20 rounded-full bg-white ring-4 ring-white shadow-lg flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-110 group-hover:rotate-2">
-                    <img src={p.logo} alt={p.nom} className="h-14 w-14 object-contain" />
+                  <div className={`relative z-10 -mt-10 h-20 bg-white ring-4 ring-white shadow-lg flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-110 group-hover:rotate-2 ${p.logoLarge ? 'w-48 rounded-2xl px-4' : 'w-20 rounded-full'}`}>
+                    <img src={p.logo} alt={p.nom} className={p.logoLarge ? 'max-h-14 w-auto max-w-full object-contain' : 'h-14 w-14 object-contain'} />
                   </div>
                 </div>
                 <div className="px-6 pt-3 pb-6 flex flex-col flex-1">

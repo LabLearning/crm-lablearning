@@ -57,7 +57,7 @@ const ETAPES = [
   { Icon: Network, t: 'En réseau', d: 'Le même programme dans chaque établissement, partout en France, et un suivi pour la tête de réseau et ses franchisés.' },
 ]
 
-const ENSEIGNES = ['Chamas Tacos', 'New School Tacos', 'Chickeez', 'Dream’s Donuts', 'Kassia Food', 'Chicken Street', 'Croust Wok', 'Tasty Crousty', 'Crousty One', 'Big Smash', 'Shake Beef']
+const ENSEIGNES = ['Chamas Tacos', 'New School Tacos', 'Chickeez', 'Dream’s Donuts', 'Kassia Food', 'O’Tacos', 'Chicken Street', 'Croust Wok', 'Black & White Burger', 'Big M', 'Bangkok Factory', 'Crousty Game', 'Tasty Crousty', 'Crousty One', 'Big Smash', 'Shake Beef']
 
 /** Nos chiffres en restauration rapide, juste sous l'en-tête de la page. */
 export function IntroRapide({ chiffres }: { chiffres: ChiffresRestaurationRapide }) {
