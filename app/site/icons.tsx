@@ -18,7 +18,7 @@ import {
   StarIcon, ArrowDown01Icon,
   AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon, PlayIcon,
   PauseIcon, FullScreenIcon, Download01Icon, PrinterIcon, RefreshIcon, ArrowUp02Icon,
-  NewspaperIcon, WarehouseIcon,
+  NewspaperIcon, WarehouseIcon, Home01Icon, UserCircleIcon, Notification03Icon, Fire02Icon, RankingIcon,
 } from '@hugeicons/core-free-icons'
 
 type P = { className?: string; strokeWidth?: number }
@@ -104,6 +104,13 @@ export const ChefHat = make(ChefHatIcon)
 export const Beef = make(BeefIcon)
 export const Wheat = make(Bread02Icon)
 export const Warehouse = make(WarehouseIcon)          // grossiste alimentaire, cash & carry
+
+// ── Écran de l'appli Learnexa (page e-learning) ──
+export const Home = make(Home01Icon)                    // onglet Accueil
+export const UserCircle = make(UserCircleIcon)          // onglet Profil
+export const Bell = make(Notification03Icon)            // notifications
+export const Flame = make(Fire02Icon)                   // série de jours d'affilée
+export const Ranking = make(RankingIcon)                // classement de l'équipe
 export const Cake = make(CakeIcon)
 export const Croissant = make(CroissantIcon)
 export const Coffee = make(Coffee02Icon)
