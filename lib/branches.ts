@@ -18,6 +18,9 @@ export const BRANCHES_BASE: BrancheBase[] = [
   { slug: 'restaurant-hcr', label: 'Restaurant & Hôtellerie', tagline: 'Restaurant, hôtel, café, bar · CHR' },
   { slug: 'boucherie-charcuterie', label: 'Boucherie – Charcuterie', tagline: 'Boucherie, charcuterie, préparation des viandes' },
   { slug: 'boulangerie-patisserie', label: 'Boulangerie – Pâtisserie', tagline: 'Boulangerie, pâtisserie, viennoiserie' },
+  // Ajouté le 03/11/2026 (Khadispal) : les formations transverses (hygiène,
+  // sécurité, chariots, management) y figurent d'office
+  { slug: 'grossiste-alimentaire', label: 'Grossiste alimentaire', tagline: 'Grossiste, cash & carry, distribution alimentaire' },
 ]
 
 export const BRANCHE_SLUGS = BRANCHES_BASE.map((b) => b.slug)

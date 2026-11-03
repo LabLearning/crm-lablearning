@@ -40,6 +40,7 @@ export function SiteFooter() {
             <li><Link href="/branches/restaurant-hcr" className="text-[#D6D3D1] hover:text-white transition-colors">Restaurant &amp; HCR</Link></li>
             <li><Link href="/branches/boucherie-charcuterie" className="text-[#D6D3D1] hover:text-white transition-colors">Boucherie-charcuterie</Link></li>
             <li><Link href="/branches/boulangerie-patisserie" className="text-[#D6D3D1] hover:text-white transition-colors">Boulangerie-pâtisserie</Link></li>
+            <li><Link href="/branches/grossiste-alimentaire" className="text-[#D6D3D1] hover:text-white transition-colors">Grossiste alimentaire</Link></li>
             <li><Link href="/formations" className="text-[#D6D3D1] hover:text-white transition-colors">Tout le catalogue</Link></li>
             <li><Link href="/formation-restauration-rapide" className="text-[#D6D3D1] hover:text-white transition-colors">Nos villes</Link></li>
             <li><Link href="/financements" className="text-[#D6D3D1] hover:text-white transition-colors">Financements</Link></li>

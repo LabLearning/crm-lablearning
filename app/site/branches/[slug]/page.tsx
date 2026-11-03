@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowRight, ArrowLeft, Clock, Monitor, CheckCircle2, ShieldCheck, Banknote } from '../../icons'
 import { getBranchesData } from '@/lib/public-site-data'
-import { brancheBySlug, BRANCHES } from '../../branches'
+import { brancheBySlug, BRANCHES, apparenceBranche } from '../../branches'
 import { MetierVisual } from '../../MetierVisual'
 import { Reveal } from '../../Reveal'
 import { titreFormation } from '@/lib/utils'
@@ -158,10 +158,10 @@ export default async function SiteBranche({ params }: { params: { slug: string }
       {/* Autres métiers */}
       <section className="max-w-6xl mx-auto px-5 md:px-8 pb-16">
         <div className="mb-5"><span className="ll-kicker">Autres métiers</span></div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {autres.map((x) => (
             <Link key={x.slug} href={`/branches/${x.slug}`} className="group rounded-2xl overflow-hidden ring-1 ring-black/5 hover:ring-[#205040]/25 ll-lift">
-              <MetierVisual nom={x.label} label={x.label} height="h-28" />
+              <MetierVisual nom={x.label} label={x.label} apparence={apparenceBranche(x)} height="h-28" />
             </Link>
           ))}
         </div>

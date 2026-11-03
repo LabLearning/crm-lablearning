@@ -1,4 +1,4 @@
-import { ChefHat, Beef, Wheat, Cake, Croissant, Coffee, Wine, Sandwich, Management, Hygiene, FirstAid, Formation } from './icons'
+import { ChefHat, Beef, Wheat, Cake, Croissant, Coffee, Wine, Sandwich, Management, Hygiene, FirstAid, Formation, Warehouse } from './icons'
 
 export interface MetierStyle {
   Icon: any
@@ -33,6 +33,10 @@ export function metierStyle(nom: string): MetierStyle {
     return { Icon: Hygiene, from: '#0E7490', to: '#06B6D4', tint: '#ECFEFF', ink: '#0E7490', img: IMG('hygiene') }
   if (n.includes('secour') || n.includes('sst') || n.includes('sauveteur') || n.includes('incendie') || n.includes('sécurit') || n.includes('securit'))
     return { Icon: FirstAid, from: '#9F1239', to: '#E11D48', tint: '#FFF1F2', ink: '#BE123C', img: IMG('secourisme') }
+
+  // ── Distribution alimentaire ──
+  if (n.includes('grossiste') || n.includes('cash & carry') || n.includes('cash and carry'))
+    return { Icon: Warehouse, from: '#1E293B', to: '#475569', tint: '#F1F5F9', ink: '#334155', img: IMG('grossiste') }
 
   // ── Métiers de bouche ──
   if (n.includes('bouch'))

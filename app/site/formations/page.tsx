@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, Hygiene, FirstAid, Management, Bulb, CheckCircle2 } from '../icons'
 import { getBranchesData } from '@/lib/public-site-data'
-import { BRANCHES } from '../branches'
+import { BRANCHES, apparenceBranche } from '../branches'
 import { MetierVisual } from '../MetierVisual'
 import { Reveal } from '../Reveal'
 import { Kicker } from '../Kicker'
@@ -159,9 +159,10 @@ export default async function SiteFormations() {
           {BRANCHES.map((b, i) => {
             const d = bySlug.get(b.slug)
             return (
-              <Reveal key={b.slug} delay={(i % 2) * 90}>
+              // Nombre impair de métiers : le dernier prend toute la largeur
+              <Reveal key={b.slug} delay={(i % 2) * 90} className={BRANCHES.length % 2 === 1 && i === BRANCHES.length - 1 ? 'sm:col-span-2' : undefined}>
                 <Link href={`/branches/${b.slug}`} className="group block rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-lg ll-lift">
-                  <MetierVisual nom={b.label} label={b.label} height="h-52 md:h-60" />
+                  <MetierVisual nom={b.label} label={b.label} apparence={apparenceBranche(b)} height="h-52 md:h-60" />
                   <div className="p-5 md:p-6 flex items-center justify-between gap-4">
                     <div>
                       <div className="text-sm text-[#57534E]">{b.tagline}</div>

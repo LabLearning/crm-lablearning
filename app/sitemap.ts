@@ -4,6 +4,7 @@ import { guidesPublies } from '@/lib/guides'
 import { articlesParus } from '@/lib/blog'
 import { getVilles } from '@/lib/site-villes'
 import { MODELES } from '@/lib/modeles'
+import { BRANCHE_SLUGS } from '@/lib/branches'
 
 const BASE = 'https://www.lab-learning.fr'
 const ORG = 'ff747dfe-c034-44d8-98d7-e53892263fb5'
@@ -35,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/cookies`, changeFrequency: 'yearly', priority: 0.1 },
   ]
 
-  const branches = ['restauration-rapide', 'restaurant-hcr', 'boucherie-charcuterie', 'boulangerie-patisserie']
+  const branches = BRANCHE_SLUGS
     .map((slug) => ({ url: `${BASE}/branches/${slug}`, changeFrequency: 'weekly' as const, priority: 0.8 }))
 
   let formations: MetadataRoute.Sitemap = []

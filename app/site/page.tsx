@@ -13,7 +13,7 @@ import { FilmSection } from './FilmSection'
 import { Kicker } from './Kicker'
 import { Marquee } from './Marquee'
 import { PhotoStrip } from './PhotoStrip'
-import { BRANCHES } from './branches'
+import { BRANCHES, brancheBySlug, apparenceBranche } from './branches'
 import { altFormation } from './alt'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +23,19 @@ export const metadata = {
 }
 
 const fmt = (n: number) => n.toLocaleString('fr-FR')
+
+// Les quatre métiers du collage d'en-tête (choix de Brahim, 03/11/2026). La carte
+// « HCR » mène à la page Restaurant & Hôtellerie ; la boulangerie, toujours au
+// catalogue, laisse sa place au grossiste alimentaire (cash & carry, comme Khadispal).
+const METIERS_HERO = [
+  { slug: 'restauration-rapide', label: 'Restauration rapide' },
+  { slug: 'restaurant-hcr', label: 'HCR' },
+  { slug: 'boucherie-charcuterie', label: 'Boucherie – Charcuterie' },
+  { slug: 'grossiste-alimentaire', label: 'Grossiste alimentaire' },
+].flatMap((m) => {
+  const b = brancheBySlug(m.slug)
+  return b ? [{ ...m, branche: b }] : []
+})
 
 const POURQUOI = [
   { Icon: UserCheck, t: 'Des formateurs de terrain', d: 'Des praticiens du métier qui transmettent le geste réel, pas de la théorie hors-sol.' },
@@ -108,14 +121,14 @@ export default async function SiteHome() {
           </div>
 
           {/* Collage métier (données live) — asymétrique */}
-          {BRANCHES.length >= 2 && (
+          {METIERS_HERO.length >= 2 && (
             <div className="ll-rise lg:col-span-6 grid grid-cols-2 gap-4 sm:gap-5 relative" style={{ animationDelay: '0.12s' }}>
-              {BRANCHES.map((b, i) => (
-                <Link key={b.slug} href={`/branches/${b.slug}`}
+              {METIERS_HERO.map(({ slug, label, branche }, i) => (
+                <Link key={slug} href={`/branches/${slug}`}
                   className={`group rounded-3xl overflow-hidden shadow-sm ring-1 ring-black/5 ll-lift ${i % 2 === 1 ? 'translate-y-6 sm:translate-y-10' : ''}`}>
-                  <MetierVisual nom={b.label} label={b.label} height={i % 2 === 1 ? 'h-56 sm:h-72' : 'h-52 sm:h-64'} />
+                  <MetierVisual nom={branche.label} label={label} apparence={apparenceBranche(branche)} height={i % 2 === 1 ? 'h-56 sm:h-72' : 'h-52 sm:h-64'} />
                   <div className="bg-white px-4 py-3 flex items-center justify-between">
-                    <span className="text-xs text-[#78716C]">{brancheCount.get(b.slug) || 0} formation{(brancheCount.get(b.slug) || 0) > 1 ? 's' : ''}</span>
+                    <span className="text-xs text-[#78716C]">{brancheCount.get(slug) || 0} formation{(brancheCount.get(slug) || 0) > 1 ? 's' : ''}</span>
                     <ArrowRight className="h-4 w-4 text-[#205040] opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all" />
                   </div>
                 </Link>
@@ -215,9 +228,10 @@ export default async function SiteHome() {
         </div>
         <div className="mt-12 grid gap-5 sm:grid-cols-2">
           {BRANCHES.map((b, i) => (
-            <Reveal key={b.slug} delay={(i % 2) * 90} className="h-full">
+            // Nombre impair de métiers : le dernier prend toute la largeur
+            <Reveal key={b.slug} delay={(i % 2) * 90} className={`h-full ${BRANCHES.length % 2 === 1 && i === BRANCHES.length - 1 ? 'sm:col-span-2' : ''}`}>
               <Link href={`/branches/${b.slug}`} className="group h-full flex flex-col rounded-3xl overflow-hidden bg-white ring-1 ring-black/5 hover:ring-[#205040]/25 hover:shadow-xl hover:shadow-black/5 ll-lift">
-                <MetierVisual nom={b.label} label={b.label} height="h-48 md:h-52" />
+                <MetierVisual nom={b.label} label={b.label} apparence={apparenceBranche(b)} height="h-48 md:h-52" />
                 <div className="p-5 md:p-6 flex items-center justify-between gap-4">
                   <div>
                     <div className="text-[15px] text-[#57534E]">{b.tagline}</div>

@@ -1,12 +1,16 @@
-import { metierStyle } from './metier'
+import { metierStyle, type MetierStyle } from './metier'
 
 /**
  * Bandeau visuel d'une catégorie métier : photo réelle + teinte métier +
  * scrim pour la lisibilité, avec icône et libellé. Repli sur un dégradé
  * illustré si la photo est absente.
  */
-export function MetierVisual({ nom, label, className = '', height = 'h-32' }: { nom: string; label?: string; className?: string; height?: string }) {
-  const s = metierStyle(nom)
+export function MetierVisual({ nom, label, className = '', height = 'h-32', apparence }: {
+  nom: string; label?: string; className?: string; height?: string
+  /** Visuel imposé (celui d'un métier, app/site/branches.ts) au lieu de celui déduit du nom */
+  apparence?: Partial<Pick<MetierStyle, 'img' | 'Icon' | 'from' | 'to'>>
+}) {
+  const s = { ...metierStyle(nom), ...apparence }
   const Icon = s.Icon
   return (
     <div className={`relative overflow-hidden ${height} ${className}`} style={{ background: `linear-gradient(135deg, ${s.from}, ${s.to})` }}>

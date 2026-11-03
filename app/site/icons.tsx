@@ -18,7 +18,7 @@ import {
   StarIcon, ArrowDown01Icon,
   AiMagicIcon, AiChat01Icon, AiBrain01Icon, AiSecurity01Icon, PlayIcon,
   PauseIcon, FullScreenIcon, Download01Icon, PrinterIcon, RefreshIcon, ArrowUp02Icon,
-  NewspaperIcon,
+  NewspaperIcon, WarehouseIcon,
 } from '@hugeicons/core-free-icons'
 
 type P = { className?: string; strokeWidth?: number }
@@ -103,6 +103,7 @@ export const Formation = make(GraduationScrollIcon)
 export const ChefHat = make(ChefHatIcon)
 export const Beef = make(BeefIcon)
 export const Wheat = make(Bread02Icon)
+export const Warehouse = make(WarehouseIcon)          // grossiste alimentaire, cash & carry
 export const Cake = make(CakeIcon)
 export const Croissant = make(CroissantIcon)
 export const Coffee = make(Coffee02Icon)
