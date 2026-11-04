@@ -1,6 +1,7 @@
 'use client'
 
 import { FileText, Download, Users, Mail as MailIcon, GraduationCap, ClipboardCheck, Receipt, Award } from '@/components/ui/icons'
+import { RowMenu } from '@/components/ui'
 import { dernierEnvoiDoc, destinatairesDoc, type EnvoiEmail } from '@/lib/emails-session'
 
 /**
@@ -17,6 +18,8 @@ interface Props {
   facture?: { id: string; numero?: string | null; status?: string | null; montant_ttc?: number | null } | null
   participants: { id: string; prenom: string | null; nom: string | null; email?: string | null }[]
   envois?: EnvoiEmail[]
+  /** Envoi d'un document à un participant (attestation, certificat, hygiène) */
+  onEnvoyer?: (apprenantId: string, type: 'attestation' | 'certificat' | 'hygiene', label: string) => void
 }
 
 function BoutonDoc({ href, icon: Icon, titre, sous, teinte = 'brand' }: {
@@ -42,7 +45,8 @@ function BoutonDoc({ href, icon: Icon, titre, sous, teinte = 'brand' }: {
   )
 }
 
-export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, facture, participants, envois = [] }: Props) {
+export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, facture, participants, envois = [], onEnvoyer }: Props) {
+  const bouton = 'inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap'
   const nbConvoques = destinatairesDoc(envois, 'convocation')
   const etatEnvoi = (type: any, email?: string | null) => {
     const e = dernierEnvoiDoc(envois, type, email)
@@ -105,21 +109,37 @@ export function SessionDocsTab({ sessionId, formationId, estHygiene, aClient, fa
                     return morceaux.length ? <span className="block text-2xs text-emerald-600">{morceaux.join(' · ')}</span> : <span className="block text-2xs text-surface-400">rien d'envoyé</span>
                   })()}
                 </span>
-                {/* Sur mobile, les trois PDF forment une rangée pleine largeur sous le nom */}
+                {/* Sur mobile, les PDF forment une rangée pleine largeur sous le nom */}
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <a href={`/api/pdf/attestation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap">
+                  <a href={`/api/pdf/convocation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer" className={bouton}>
+                    Convocation
+                  </a>
+                  <a href={`/api/pdf/attestation-entree/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer" className={bouton}>
+                    Attestation d’entrée
+                  </a>
+                  <a href={`/api/pdf/attestation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer" className={bouton}>
                     Attestation de fin
                   </a>
-                  <a href={`/api/pdf/certificat-realisation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap">
+                  <a href={`/api/pdf/certificat-realisation/${a.id}?session=${sessionId}`} target="_blank" rel="noopener noreferrer" className={bouton}>
                     Certificat
                   </a>
+                  {/* Document réglementaire de l'arrêté du 12 février 2024 (formations hygiène) */}
                   {estHygiene && (
-                    <a href={`/api/pdf/attestation-hygiene?session=${sessionId}&apprenant=${a.id}`} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center flex-1 sm:flex-none min-h-[40px] sm:min-h-0 text-xs font-medium rounded-lg border border-surface-200 px-2.5 py-1.5 text-surface-600 hover:border-surface-300 transition-colors whitespace-nowrap">
+                    <a href={`/api/pdf/attestation-hygiene?session=${sessionId}&apprenant=${a.id}`} target="_blank" rel="noopener noreferrer" className={bouton}>
                       Attestation hygiène
                     </a>
+                  )}
+                  {onEnvoyer && (
+                    <RowMenu
+                      width={230}
+                      triggerClassName={`${bouton} gap-1.5 !text-surface-600`}
+                      trigger={<><MailIcon className="h-3.5 w-3.5" /> Envoyer</>}
+                      items={[
+                        { label: "Envoyer l'attestation de fin", icon: <MailIcon className="h-4 w-4 text-surface-400" />, onClick: () => onEnvoyer(a.id, 'attestation', 'Attestation') },
+                        { label: 'Envoyer le certificat', icon: <MailIcon className="h-4 w-4 text-surface-400" />, onClick: () => onEnvoyer(a.id, 'certificat', 'Certificat') },
+                        ...(estHygiene ? [{ label: "Envoyer l'attestation d'hygiène", icon: <MailIcon className="h-4 w-4 text-surface-400" />, onClick: () => onEnvoyer(a.id, 'hygiene', "Attestation d'hygiène") }] : []),
+                      ]}
+                    />
                   )}
                 </div>
               </div>

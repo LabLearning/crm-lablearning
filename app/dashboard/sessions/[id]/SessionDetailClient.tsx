@@ -1112,7 +1112,6 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 const assiduity = appEchus > 0 ? Math.round((appPresent / appEchus) * 100) : null
 
                 const evalBadges = evaluationsAppr.filter((e) => e.apprenant_id === a?.id && e.note != null)
-                const base = `?session=${session.id}`
                 return (
                   <div key={ins.id} className="px-4 py-3 flex items-center gap-3">
                     <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
@@ -1171,24 +1170,12 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                         <div className="text-2xs text-surface-400 mt-0.5 whitespace-nowrap">{appPresent}/{appEchus} créneau{appEchus > 1 ? 'x' : ''}{appAVenir > 0 ? ` · ${appAVenir} à venir` : ''}</div>
                       </div>
                     )}
-                    {/* Un seul menu d'actions (modifier, documents, envoi, retrait) */}
+                    {/* Deux actions seulement (demande du 04/11/2026) : les documents
+                        et leurs envois sont dans l'onglet Documents, par participant */}
                     {!isFormateur && (
                       <div className="shrink-0 -mr-2 sm:mr-0">
                         <RowMenu triggerClassName="p-2.5 sm:p-1.5" items={[
-                          { label: 'Modifier l\'apprenant', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditApprenant(a) },
-                          { label: 'Attestation d\'entrée (PDF)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/attestation-entree/${a?.id}${base}`, '_blank') },
-                          { label: 'Convocation (PDF)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/convocation/${a?.id}${base}`, '_blank') },
-                          { label: 'Attestation (PDF)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/attestation/${a?.id}${base}`, '_blank') },
-                          { label: 'Envoyer l\'attestation par email', icon: <Mail className="h-4 w-4 text-surface-400" />, onClick: () => handleSendDoc(a?.id, 'attestation', 'Attestation') },
-                          { label: 'Certificat de réalisation (PDF)', icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/certificat-realisation/${a?.id}${base}`, '_blank') },
-                          { label: 'Envoyer le certificat par email', icon: <Mail className="h-4 w-4 text-surface-400" />, onClick: () => handleSendDoc(a?.id, 'certificat', 'Certificat') },
-                          // Document réglementaire de l'arrêté du 12 février 2024, exigé
-                          // en plus des documents de clôture sur toute formation en
-                          // hygiène alimentaire.
-                          ...(estFormationHygiene(session.formation) ? [
-                            { label: "Attestation d'hygiène alimentaire (PDF)", icon: <Download className="h-4 w-4 text-surface-400" />, onClick: () => window.open(`/api/pdf/attestation-hygiene?session=${session.id}&apprenant=${a?.id}`, '_blank') },
-                            { label: "Envoyer l'attestation d'hygiène par email", icon: <Mail className="h-4 w-4 text-surface-400" />, onClick: () => handleSendDoc(a?.id, 'hygiene', "Attestation d'hygiène") },
-                          ] : []),
+                          { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditApprenant(a) },
                           { label: 'Retirer de la session', icon: <Trash2 className="h-4 w-4" />, onClick: () => handleDesinscrire(a?.id, `${a?.prenom || ''} ${a?.nom || ''}`.trim()), danger: true },
                         ]} />
                       </div>
@@ -1691,6 +1678,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
           facture={factureOpco || null}
           participants={inscriptions.map((i: any) => i.apprenant).filter(Boolean).map((a: any) => ({ id: a.id, prenom: a.prenom, nom: a.nom, email: a.email }))}
           envois={emailLogs as any[]}
+          onEnvoyer={handleSendDoc}
         />
         {/* Supports pédagogiques téléversés — ex-onglet Contenu */}
         <SessionContenuPedagogique
