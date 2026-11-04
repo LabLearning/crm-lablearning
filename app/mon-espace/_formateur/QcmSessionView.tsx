@@ -66,7 +66,7 @@ export async function QcmSessionView({
     // Réponses des apprenants (qui a répondu + score)
     supabase
       .from('qcm_reponses')
-      .select('qcm_id, apprenant_id, score, is_reussi, is_complete')
+      .select('id, qcm_id, apprenant_id, score, is_reussi, is_complete')
       .eq('session_id', session.id),
   ])
   // Dans l'ordre du cours : les titres commencent par la séance (S01, S02…) ;
@@ -75,6 +75,32 @@ export async function QcmSessionView({
   const qcmSessions = ((qcmSessRes.data || []) as any[])
     .sort((a, b) => aFroid(a) - aFroid(b) || String(a.qcm?.titre || '').localeCompare(String(b.qcm?.titre || ''), 'fr', { numeric: true }))
   const qcmReponses = (qcmRepRes.data || []) as any[]
+
+  // Questions et corrigé de chaque questionnaire, et ce que chaque stagiaire a
+  // répondu : le formateur corrige en salle. Rien de tout cela n'est envoyé au
+  // navigateur des stagiaires (leur portail retire les bonnes réponses).
+  const qcmIds = Array.from(new Set(qcmSessions.map((q: any) => q.qcm_id).filter(Boolean))) as string[]
+  const faites = qcmReponses.filter((r: any) => r.is_complete).map((r: any) => r.id as string)
+  const [questionsRes, details] = await Promise.all([
+    qcmIds.length
+      ? supabase.from('qcm_questions')
+        .select('id, qcm_id, texte, type, explication, position, choix:qcm_choix(id, texte, est_correct, position)')
+        .in('qcm_id', qcmIds)
+        .order('position', { ascending: true })
+      : Promise.resolve({ data: [] as any[] }),
+    // Par paquets : 40 réponses × 20 questions restent sous le plafond de 1 000 lignes
+    (async () => {
+      const lignes: any[] = []
+      for (let i = 0; i < faites.length; i += 40) {
+        const { data } = await supabase.from('qcm_reponses_detail')
+          .select('reponse_id, question_id, choix_ids, texte_libre, est_correct, note_valeur')
+          .in('reponse_id', faites.slice(i, i + 40))
+        lignes.push(...(data || []))
+      }
+      return lignes
+    })(),
+  ])
+  const questions = ((questionsRes as any).data || []) as any[]
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -104,6 +130,8 @@ export async function QcmSessionView({
           qcmSessions={qcmSessions}
           qcmReponses={qcmReponses}
           stagiaires={stagiaires}
+          questions={questions}
+          details={details}
         />
         {positionnement.length > 0 && (
           <div className="card p-4 sm:p-5">
