@@ -41,7 +41,8 @@ const CLIENTS: { nom: string; logo?: string; pleine?: boolean; grand?: boolean }
   { nom: 'Bangkok Factory', logo: '/site/logos/clients/bangkok-factory.png' },
   { nom: 'Black & White Burger', logo: '/site/logos/clients/black-and-white.png' },
   { nom: 'Crousty Game', logo: '/site/logos/clients/crousty-game.svg' },
-  { nom: 'Big M', logo: '/site/logos/clients/big-m.png', grand: true },
+  // Nouvel emblème (2026), tiré du communiqué officiel du groupe Tawila, maison mère de Big M
+  { nom: 'Big M', logo: '/site/logos/clients/big-m-2026.png', grand: true },
   { nom: 'La Kazdalerie', logo: '/site/logos/clients/la-kazdalerie.png' },
   { nom: 'Chicken Street', logo: '/site/logos/partenaires/chicken-street.png' },
   { nom: 'Croust Wok', logo: '/site/logos/partenaires/croust-wok.webp', grand: true },
