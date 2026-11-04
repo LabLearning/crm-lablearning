@@ -41,7 +41,7 @@ export default async function PoeiPage() {
       .order('date_debut_formation_prevue', { ascending: true, nullsFirst: false }),
     supabase
       .from('candidats_vivier')
-      .select('*, client:clients(raison_sociale, nom_commercial, sigle), poei:poei(numero, formation:formations(intitule)), poei_prevision:poei_previsions(entreprise, date_debut_formation_prevue, client:clients(raison_sociale, nom_commercial, sigle))')
+      .select('*, client:clients(raison_sociale, nom_commercial, sigle, ville), poei:poei(numero, formation:formations(intitule), client:clients(raison_sociale, nom_commercial, sigle, ville)), poei_prevision:poei_previsions(entreprise, date_debut_formation_prevue, client:clients(raison_sociale, nom_commercial, sigle, ville))')
       .eq('organization_id', session.organization.id)
       .order('created_at', { ascending: false }),
   ])

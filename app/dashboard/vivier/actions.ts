@@ -310,3 +310,35 @@ export async function deleteCandidatCvAction(id: string): Promise<ActionResult> 
   revalidatePath('/dashboard/vivier')
   return { success: true }
 }
+
+/**
+ * Enregistre l'entretien de présélection téléphonique d'un candidat
+ * (lib/entretien-candidat.ts, migration 171) : rôles du vivier, candidat de
+ * l'organisation, contenu remis en forme avant d'être stocké.
+ */
+export async function enregistrerEntretienCandidatAction(id: string, entretien: unknown): Promise<ActionResult> {
+  const session = await getSession()
+  if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const { nettoyerEntretien, totalEntretien } = await import('@/lib/entretien-candidat')
+  const propre = nettoyerEntretien(entretien)
+  if (!propre.recruteur.trim()) propre.recruteur = `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim()
+
+  const supabase = await createServiceRoleClient()
+  const maintenant = new Date().toISOString()
+  const { data, error } = await supabase
+    .from('candidats_vivier')
+    .update({ entretien: propre, entretien_le: maintenant, updated_at: maintenant })
+    .eq('id', id).eq('organization_id', session.organization.id)
+    .select('id')
+  if (error) {
+    if ((error as any).code === '42703') return { success: false, error: 'Colonne absente : appliquer la migration 171_vivier_entretien.sql' }
+    return { success: false, error: 'Enregistrement impossible' }
+  }
+  if (!data?.length) return { success: false, error: 'Candidat introuvable' }
+
+  const { total, notes } = totalEntretien(propre)
+  await logAudit({ action: 'entretien_candidat_vivier', entity_type: 'candidat_vivier', entity_id: id, details: { decision: propre.decision, total, criteres_notes: notes } })
+  revalidatePath('/dashboard/vivier')
+  revalidatePath('/dashboard/poei')
+  return { success: true }
+}

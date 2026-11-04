@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Search, Save, Pencil, Trash2, CheckCircle2, Users, Briefcase, FileText, Upload, Loader2 } from '@/components/ui/icons'
+import { UserPlus, Search, Save, Pencil, Trash2, CheckCircle2, Users, Briefcase, FileText, Upload, Loader2, PhoneCall } from '@/components/ui/icons'
 import { Button, Badge, Input, Select, SearchSelectField, Modal, useToast, RowMenu, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
 import {
@@ -10,6 +10,8 @@ import {
   assignCandidatToPoeiAction, deleteCandidatVivierAction, validerCandidatVivierAction,
   updateCandidatEvaluationAction, uploadCandidatCvAction, deleteCandidatCvAction,
 } from './actions'
+import { EntretienCandidat } from './EntretienCandidat'
+import { DECISIONS, libelleContrat, totalEntretien, type ContexteEntretien } from '@/lib/entretien-candidat'
 
 type BadgeVariant = 'default' | 'info' | 'success' | 'warning' | 'danger' | 'purple'
 const STATUTS: { value: string; label: string; variant: BadgeVariant }[] = [
@@ -42,9 +44,32 @@ interface Candidat {
   evaluation: string | null; cv_url: string | null; cv_nom: string | null
   client_id: string | null; poei_id: string | null; poei_prevision_id: string | null; poste_vise: string | null; identifiant_ft: string | null
   apprenant_id: string | null
-  client?: { raison_sociale: string | null; nom_commercial?: string | null; sigle?: string | null } | null
-  poei?: { numero: string | null; formation?: { intitule: string | null } | null } | null
-  poei_prevision?: { entreprise: string | null; date_debut_formation_prevue: string | null; client?: { raison_sociale: string | null } | null } | null
+  /** Entretien de présélection téléphonique (lib/entretien-candidat, migration 171) */
+  entretien?: any; entretien_le?: string | null
+  client?: { raison_sociale: string | null; nom_commercial?: string | null; sigle?: string | null; ville?: string | null } | null
+  poei?: { numero: string | null; formation?: { intitule: string | null } | null; client?: { raison_sociale: string | null; nom_commercial?: string | null; sigle?: string | null; ville?: string | null } | null } | null
+  poei_prevision?: { entreprise: string | null; date_debut_formation_prevue: string | null; client?: { raison_sociale: string | null; nom_commercial?: string | null; ville?: string | null } | null } | null
+}
+
+// Enseigne, ville et poste pour la trame d'entretien : entreprise pressentie,
+// sinon celle du projet POEI ou de la prévision
+const contexteEntretien = (c: Candidat): ContexteEntretien => ({
+  enseigne: companyLabel(c.client) || companyLabel(c.poei?.client) || c.poei_prevision?.entreprise || companyLabel(c.poei_prevision?.client) || null,
+  ville: c.client?.ville || c.poei?.client?.ville || c.poei_prevision?.client?.ville || null,
+  poste: c.poste_vise || 'Équipier polyvalent en restauration rapide',
+})
+
+/** Pastille de l'entretien fait : total sur 24 et décision */
+function PastilleEntretien({ c, onClick }: { c: Candidat; onClick: () => void }) {
+  if (!c.entretien) return null
+  const { total, max } = totalEntretien(c.entretien)
+  const d = DECISIONS.find((x) => x.value === c.entretien.decision)
+  const cls = d?.value === 'retenir' ? 'bg-emerald-50 text-emerald-700' : d?.value === 'approfondir' ? 'bg-amber-50 text-amber-700' : d?.value === 'non_retenu' ? 'bg-danger-50 text-danger-700' : 'bg-surface-100 text-surface-600'
+  return (
+    <button type="button" onClick={onClick} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
+      <PhoneCall className="h-3 w-3" /> Entretien {total}/{max}{d ? ` · ${d.label}` : ''}
+    </button>
+  )
 }
 interface ClientLite { id: string; raison_sociale: string | null; nom_commercial?: string | null; sigle?: string | null }
 interface PoeiLite { id: string; numero: string | null; formation?: { intitule: string | null } | null; client?: { raison_sociale: string | null } | null }
@@ -90,6 +115,7 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
   const [createOpen, setCreateOpen] = useState(false)
   const [editCand, setEditCand] = useState<Candidat | null>(null)
   const [detailCand, setDetailCand] = useState<Candidat | null>(null)
+  const [entretienCand, setEntretienCand] = useState<Candidat | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -208,6 +234,7 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
                           {EVALUATIONS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
                         </select>
                         <CvButton c={c} url={c.cv_url ? cvUrls[c.cv_url] || null : null} onDone={() => router.refresh()} />
+                        <PastilleEntretien c={c} onClick={() => setEntretienCand(c)} />
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-surface-700">{companyLabel(c.client) || <span className="text-surface-300">—</span>}</td>
@@ -237,6 +264,7 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
                     </td>
                     <td className="py-2.5 px-2">
                       <RowMenu items={[
+                        { label: c.entretien ? 'Voir l’entretien' : 'Entretien téléphonique', icon: <PhoneCall className="h-4 w-4 text-surface-400" />, onClick: () => setEntretienCand(c) },
                         { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditCand(c) },
                         ...(!valide ? [{ label: 'Valider (→ apprenant)', icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />, onClick: () => valider(c) }] : []),
                         { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => remove(c), danger: true },
@@ -260,10 +288,14 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
         {detailCand && (
           <CandidatDetail
             c={detailCand}
+            onEntretien={() => { const cc = detailCand; setDetailCand(null); setEntretienCand(cc) }}
             onEdit={() => { const cc = detailCand; setDetailCand(null); setEditCand(cc) }}
             onValider={!detailCand.apprenant_id && detailCand.statut !== 'valide' ? () => { const cc = detailCand; setDetailCand(null); valider(cc) } : undefined}
           />
         )}
+      </Modal>
+      <Modal isOpen={!!entretienCand} onClose={() => setEntretienCand(null)} title={entretienCand ? `Entretien · ${entretienCand.prenom} ${entretienCand.nom}` : ''} size="lg">
+        {entretienCand && <EntretienCandidat candidat={entretienCand} contexte={contexteEntretien(entretienCand)} onDone={() => setEntretienCand(null)} />}
       </Modal>
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouveau candidat (vivier)" size="lg">
         <CandidatForm clients={clients} poeis={poeis} previsions={previsions} onDone={() => { setCreateOpen(false); toast('success', 'Candidat ajouté au vivier'); router.refresh() }} />
@@ -334,7 +366,7 @@ function CvButton({ c, url, onDone }: { c: Candidat; url: string | null; onDone:
   )
 }
 
-function CandidatDetail({ c, onEdit, onValider }: { c: Candidat; onEdit: () => void; onValider?: () => void }) {
+function CandidatDetail({ c, onEdit, onValider, onEntretien }: { c: Candidat; onEdit: () => void; onValider?: () => void; onEntretien: () => void }) {
   const sm = statutMeta(c.statut)
   const adresse = [c.adresse, [c.code_postal, c.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const cible = c.poei?.numero
@@ -381,7 +413,24 @@ function CandidatDetail({ c, onEdit, onValider }: { c: Candidat; onEdit: () => v
 
       {c.notes && <DSection title="Notes"><p className="text-sm text-surface-700 whitespace-pre-line">{c.notes}</p></DSection>}
 
-      <div className="flex justify-end gap-3 pt-3 border-t border-surface-100">
+      <DSection title="Entretien de présélection">
+        {c.entretien ? (() => {
+          const { total, max } = totalEntretien(c.entretien)
+          const d = DECISIONS.find((x) => x.value === c.entretien.decision)
+          return (
+            <>
+              <DRow label="Date" value={c.entretien.date ? formatDate(c.entretien.date, { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+              <DRow label="Recruteur" value={c.entretien.recruteur} />
+              <DRow label="Contrat proposé" value={c.entretien.contrat_type ? `${libelleContrat(c.entretien)} par semaine` : null} />
+              <DRow label="Évaluation" value={`${total} / ${max}`} />
+              <DRow label="Décision" value={d ? `${d.label} · ${d.detail}` : 'Non décidée'} />
+            </>
+          )
+        })() : <p className="text-sm text-surface-500">Pas encore d’entretien téléphonique.</p>}
+      </DSection>
+
+      <div className="flex flex-wrap justify-end gap-3 pt-3 border-t border-surface-100">
+        <Button variant="secondary" onClick={onEntretien} icon={<PhoneCall className="h-4 w-4" />}>{c.entretien ? 'Voir l’entretien' : 'Faire l’entretien'}</Button>
         {onValider && <Button variant="secondary" onClick={onValider} icon={<CheckCircle2 className="h-4 w-4" />}>Valider (→ apprenant)</Button>}
         <Button onClick={onEdit} icon={<Pencil className="h-4 w-4" />}>Modifier</Button>
       </div>
