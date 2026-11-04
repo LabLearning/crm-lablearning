@@ -16,7 +16,9 @@ import {
   QrCode, ChevronRight, CheckCircle, MinusCircle, Trash2, Pencil, Sparkles, ReceiptEuro, Printer,
   TrendingUp, Lock, UserCog,
   ShieldCheck as PackHygieneIcon, Landmark, Briefcase,
+  Moon,
 } from '@/components/ui/icons'
+import { estRepos } from '@/lib/emargement-repos'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
 import { SessionRetourClient } from './SessionRetourClient'
 import { DerouleOperationnel } from '@/components/deroule/DerouleOperationnel'
@@ -395,7 +397,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
   const totalEmargements = emargements.length
   const totalPresents = emargements.filter(e => e.est_present).length
   // Créneaux échus (présence renseignée) : base honnête du % d'assiduité
-  const totalEchus = emargements.filter(e => e.est_present !== null && e.est_present !== undefined).length
+  // Un jour de repos n'est ni présent ni absent : il sort de la base de calcul
+  const totalEchus = emargements.filter(e => e.est_present !== null && e.est_present !== undefined && !estRepos(e)).length
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -1007,6 +1010,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                                 null = créneau pas encore passé (session en cours). */}
                             {em.est_present
                               ? <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              : estRepos(em)
+                              ? <Moon className="h-4 w-4 text-sky-500" />
                               : em.est_present === false
                               ? <XCircle className="h-4 w-4 text-surface-300" />
                               : <Clock className="h-4 w-4 text-surface-300" />
@@ -1041,14 +1046,15 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                                 disabled={isPending}
                                 title={em.motif_absence || undefined}
                                 className={cn('flex items-center gap-1 px-2.5 py-2 sm:py-1.5 min-h-[40px] sm:min-h-0 rounded-lg text-xs font-medium transition-colors',
-                                  em.est_present === false ? 'bg-red-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}
+                                  estRepos(em) ? 'bg-sky-100 text-sky-700 hover:bg-sky-200'
+                                    : em.est_present === false ? 'bg-red-600 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}
                               >
-                                <XCircle className="h-3.5 w-3.5" /> Absent
+                                {estRepos(em) ? <><Moon className="h-3.5 w-3.5" /> Repos</> : <><XCircle className="h-3.5 w-3.5" /> Absent</>}
                               </button>
                             </div>
                           ) : (
                             <span className={cn('text-xs font-semibold shrink-0', em.est_present ? 'text-emerald-600' : 'text-surface-400')}>
-                              {em.est_present ? 'Présent' : em.est_present === false ? (em.motif_absence ? `Absent · ${em.motif_absence}` : 'Absent') : 'À venir'}
+                              {em.est_present ? 'Présent' : estRepos(em) ? 'Repos' : em.est_present === false ? (em.motif_absence ? `Absent · ${em.motif_absence}` : 'Absent') : 'À venir'}
                             </span>
                           )}
                         </div>
@@ -1101,7 +1107,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 const appPresent = appEmargements.filter((e: any) => e.est_present).length
                 // Assiduité sur les seuls créneaux ÉCHUS (est_present renseigné) :
                 // inclure les créneaux à venir faussait le % en cours de session.
-                const appEchus = appEmargements.filter((e: any) => e.est_present !== null && e.est_present !== undefined).length
+                const appEchus = appEmargements.filter((e: any) => e.est_present !== null && e.est_present !== undefined && !estRepos(e)).length
                 const appAVenir = appEmargements.length - appEchus
                 const assiduity = appEchus > 0 ? Math.round((appPresent / appEchus) * 100) : null
 

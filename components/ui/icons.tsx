@@ -53,6 +53,7 @@ import {
   Clock01Icon,
   Clock04Icon,
   Coffee02Icon,
+  Moon02Icon,
   CompassIcon,
   ComputerIcon,
   ComputerPhoneSyncIcon,
@@ -269,6 +270,7 @@ export const ClipboardList = hugeify(TaskDaily01Icon)
 export const ClipboardPaste = hugeify(ClipboardIcon)
 export const Clock = hugeify(Clock01Icon)
 export const Coffee = hugeify(Coffee02Icon)
+export const Moon = hugeify(Moon02Icon)            // jour de repos (émargement)
 export const Columns3 = hugeify(LayoutThreeColumnIcon)
 export const Compass = hugeify(CompassIcon)
 export const Construction = hugeify(ConstructionIcon)

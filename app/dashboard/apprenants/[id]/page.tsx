@@ -6,6 +6,7 @@ import {
   ArrowLeft, Mail, Phone, Building2, Calendar, MapPin, GraduationCap,
   CheckCircle2, Star, Accessibility, Cake, FileText, ListChecks,
 } from '@/components/ui/icons'
+import { estRepos } from '@/lib/emargement-repos'
 import { Avatar, Badge, BackLink } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
 import { ApprenantEditButton } from './ApprenantEditButton'
@@ -149,8 +150,8 @@ export default async function ApprenantDetailPage({ params }: { params: { id: st
           </div>
           <div className="divide-y divide-surface-100">
             {[...emParSession.entries()].map(([sessionId, lignes]) => {
-              // null = créneau pas encore passé : ni présent ni absent
-              const faits = lignes.filter((l: any) => l.est_present !== null)
+              // null = créneau pas encore passé : ni présent ni absent ; un repos non plus
+              const faits = lignes.filter((l: any) => l.est_present !== null && !estRepos(l))
               const presents = faits.filter((l: any) => l.est_present).length
               const absences = faits.filter((l: any) => l.est_present === false)
               const dates = lignes.map((l: any) => String(l.date)).sort()

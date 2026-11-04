@@ -3,6 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Building2, GraduationCap, Calendar, CheckSquare, FileText } from '@/components/ui/icons'
+import { estMotifRepos } from '@/lib/emargement-repos'
 import { Badge, BackLink } from '@/components/ui'
 import { POEI_STATUS_LABELS, POEI_STATUS_COLORS } from '@/lib/types/poei'
 import { formatDate, companyLabel } from '@/lib/utils'
@@ -169,7 +170,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     candidatsEmargement = candidats.map((c: any) => {
       const aid = c.apprenant?.id || c.apprenant_id || ''
       const siennes = ((lignesEm || []) as any[]).filter((x: any) => x.apprenant_id === aid)
-      const absences = siennes.filter((x: any) => x.motif_absence)
+      const absences = siennes.filter((x: any) => x.motif_absence && !estMotifRepos(x.motif_absence))
         .map((x: any) => ({ date: x.date, creneau: x.creneau, motif: x.motif_absence }))
         .sort((x, y) => String(x.date).localeCompare(String(y.date)))
       return {

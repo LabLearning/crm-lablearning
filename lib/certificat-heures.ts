@@ -1,3 +1,5 @@
+import { estMotifRepos } from '@/lib/emargement-repos'
+
 /**
  * Heures réalisées et assiduité portées sur les certificats de réalisation et
  * les attestations.
@@ -57,6 +59,8 @@ export async function heuresCertificats(
 
   const parApprenant = new Map<string, { total: number; absences: number }>()
   for (const l of (lignes || []) as any[]) {
+    // Un créneau de repos n'était pas prévu pour ce stagiaire : ni dû, ni manqué
+    if (estMotifRepos(l.motif_absence)) continue
     const k = String(l.apprenant_id)
     const e = parApprenant.get(k) || { total: 0, absences: 0 }
     e.total++

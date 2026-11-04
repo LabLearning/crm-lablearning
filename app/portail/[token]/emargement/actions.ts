@@ -716,8 +716,10 @@ export async function markToutPresentPapierAction(
       motif_absence: null,
     })
     .eq('session_id', sessionId).eq('date', date).eq('creneau', creneau)
-    // Une signature numérique déjà recueillie ne se réécrit pas.
+    // Une signature numérique déjà recueillie ne se réécrit pas, une absence
+    // ou un repos marqués non plus.
     .is('signature_data', null)
+    .is('motif_absence', null)
     .select('id')
 
   if (error) return { success: false, error: error.message }

@@ -16,7 +16,9 @@ import {
   MonitorSmartphone,
   FileText,
   RefreshCw,
+  Moon,
 } from '@/components/ui/icons'
+import { estRepos, MOTIF_REPOS } from '@/lib/emargement-repos'
 import {
   signApprenantPresenceAction,
   markAbsentAction,
@@ -109,6 +111,7 @@ function ApprenantRow({
   onSign,
   onPresent,
   onAbsent,
+  onRepos,
 }: {
   em: EmargementRow
   locked: boolean
@@ -116,27 +119,32 @@ function ApprenantRow({
   onSign: () => void
   onPresent: () => void
   onAbsent: () => void
+  onRepos: () => void
 }) {
   const signed = em.est_present && !!em.signature_data
   const presentPapier = em.est_present && !em.signature_data
-  const absent = !em.est_present && !!em.motif_absence
+  // Un jour de repos n'est pas une absence (lib/emargement-repos)
+  const repos = estRepos(em)
+  const absent = !em.est_present && !!em.motif_absence && !repos
 
   return (
     <div
       className={`px-4 py-3 border-b border-surface-100/70 last:border-0 ${
-        em.est_present ? 'bg-emerald-50/40' : absent ? 'bg-rose-50/40' : 'bg-white'
+        em.est_present ? 'bg-emerald-50/40' : absent ? 'bg-rose-50/40' : repos ? 'bg-sky-50/50' : 'bg-white'
       }`}
     >
       <div className="flex items-center gap-3">
         <div
           className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center ${
-            em.est_present ? 'bg-emerald-100' : absent ? 'bg-rose-100' : 'bg-surface-100'
+            em.est_present ? 'bg-emerald-100' : absent ? 'bg-rose-100' : repos ? 'bg-sky-100' : 'bg-surface-100'
           }`}
         >
           {em.est_present ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
           ) : absent ? (
             <UserX className="h-5 w-5 text-rose-500" />
+          ) : repos ? (
+            <Moon className="h-5 w-5 text-sky-600" />
           ) : (
             <PenLine className="h-5 w-5 text-surface-300" />
           )}
@@ -149,7 +157,8 @@ function ApprenantRow({
           )}
           {presentPapier && <div className="text-[11px] text-emerald-600 mt-0.5">Présent · feuille papier</div>}
           {absent && <div className="text-[11px] text-rose-500 mt-0.5 truncate">Absent · {em.motif_absence}</div>}
-          {!em.est_present && !absent && (
+          {repos && <div className="text-[11px] text-sky-600 mt-0.5">Repos</div>}
+          {!em.est_present && !absent && !repos && (
             <div className="text-[11px] text-surface-400 mt-0.5">
               {mode === 'papier' ? 'À pointer' : 'En attente de signature'}
             </div>
@@ -195,6 +204,17 @@ function ApprenantRow({
             }`}
           >
             <XCircle className="h-4 w-4" /> Absent
+          </button>
+          {/* Jour de repos : ni présent ni absent ; un second appui l'annule */}
+          <button
+            onClick={onRepos}
+            className={`inline-flex items-center justify-center gap-1.5 text-sm font-medium min-h-[44px] px-4 rounded-xl transition-colors ${
+              repos
+                ? 'bg-sky-600 text-white'
+                : 'bg-white border border-surface-200 text-surface-500 active:bg-sky-50'
+            }`}
+          >
+            <Moon className="h-4 w-4" /> Repos
           </button>
         </div>
       )}
@@ -279,6 +299,7 @@ export function CreneauPanel({
   // ── Feuille verrouillée ─────────────────────────────────────
   if (locked) {
     const presents = emargements.filter((e) => e.est_present).length
+    const nbRepos = emargements.filter((e) => estRepos(e)).length
     return (
       <div className="px-4 py-4 bg-emerald-50/50">
         <div className="flex items-start gap-3">
@@ -290,7 +311,7 @@ export function CreneauPanel({
               Feuille validée · {feuille?.mode === 'papier' ? 'feuille papier' : 'signature numérique'}
             </div>
             <div className="text-[11px] text-emerald-600 mt-0.5">
-              {presents}/{total} présents
+              {presents}/{total - nbRepos} présents{nbRepos > 0 && ` · ${nbRepos} repos`}
               {feuille?.validated_at && ` · ${new Date(feuille.validated_at).toLocaleString('fr-FR')}`}
             </div>
             {scanUrl && (
@@ -370,7 +391,7 @@ export function CreneauPanel({
           )}
           {mode === 'papier' ? 'Feuille papier' : 'Signature numérique'}
         </span>
-        {mode === 'papier' && !locked && emargements.some((e: any) => !e.est_present && !e.signature_data) && (
+        {mode === 'papier' && !locked && emargements.some((e: any) => !e.est_present && !e.signature_data && !e.motif_absence) && (
           <button
             onClick={() => run(() => markToutPresentPapierAction(token, sessionId, date, creneau))}
             title="Tout le monde a signé la feuille papier"
@@ -395,9 +416,11 @@ export function CreneauPanel({
           }}
           onPresent={() => run(() => markPresentPapierAction(token, em.id))}
           onAbsent={() => {
-            setAbsentMotif(em.motif_absence || '')
+            // Un repos n'est pas un motif d'absence : on repart d'un motif vide
+            setAbsentMotif(estRepos(em) ? '' : em.motif_absence || '')
             setAbsentingFor(em)
           }}
+          onRepos={() => run(() => markAbsentAction(token, em.id, estRepos(em) ? null : MOTIF_REPOS))}
         />
       ))}
 

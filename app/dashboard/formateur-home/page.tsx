@@ -84,7 +84,9 @@ export default async function FormateurHomePage() {
         .select('id', { count: 'exact', head: true })
         .in('session_id', activeIds)
         .eq('date', today)
-        .eq('est_present', false),
+        .eq('est_present', false)
+        // Absents et repos marqués ne sont plus « en attente »
+        .is('motif_absence', null),
     ])
     nbApprenants = apprenantsCount || 0
     emargementsPending = emargementsCount || 0

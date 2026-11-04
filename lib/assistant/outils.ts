@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { estRepos } from '@/lib/emargement-repos'
 import type { Permission } from '@/lib/types'
 import { MODULES_RECHERCHE, clientDansPortefeuille, outilAutorise, peutLire } from '@/lib/assistant/propositions'
 
@@ -333,6 +334,7 @@ export async function executerOutil(
       for (const e of (emargs || []) as any[]) {
         const a = parApprenant.get(e.apprenant_id)
         if (!a) continue
+        if (estRepos(e)) continue // jour de repos : ni présent ni absent
         if (e.est_present === false) a.absences++
         else if (e.signed_at) a.signes++
         else a.presents_non_signes++

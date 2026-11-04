@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, CheckSquare, Clock, PenTool } from '@/components/ui/icons'
+import { CheckCircle2, XCircle, CheckSquare, Clock, PenTool, Moon } from '@/components/ui/icons'
+import { estRepos } from '@/lib/emargement-repos'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui'
 import { SignaturePad } from '../emargement/SignaturePad'
@@ -55,6 +56,8 @@ export function MesEmargementsClient({ token, groupes }: { token: string; groupe
         <span className="text-surface-500">{CRENEAU[c.creneau] || c.creneau}</span>
         {c.signe
           ? <span className="inline-flex items-center gap-0.5 font-medium text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> Signé</span>
+          : estRepos(c)
+          ? <span className="inline-flex items-center gap-0.5 font-medium text-sky-600"><Moon className="h-3.5 w-3.5" /> Repos</span>
           : c.est_present === false && c.motif_absence
           ? <span className="inline-flex items-center gap-0.5 font-medium text-surface-400"><XCircle className="h-3.5 w-3.5" /> Absent · {c.motif_absence}</span>
           : <span className="inline-flex items-center gap-0.5 font-medium text-amber-600"><Clock className="h-3.5 w-3.5" /> À signer</span>}

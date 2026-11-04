@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { estMotifRepos } from '@/lib/emargement-repos'
 import { Document, Page, View, Text, Image } from '@react-pdf/renderer'
 import { PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared, BRAND_GREEN, BRAND_ULTRA_LIGHT, SURFACE_50, SURFACE_200, SURFACE_500, SURFACE_700, SURFACE_900 } from './components'
 
@@ -93,6 +94,9 @@ export function EmargementSignePDF({ session, formation, org, formateur, apprena
                     // papier ou pointage formateur) : la case dit « Présent »
                     // — jamais vide quand la présence est constatée.
                     <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Présent</Text>
+                  ) : estMotifRepos(em?.motif_absence) ? (
+                    // Jour de repos : ni présent ni absent (lib/emargement-repos)
+                    <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_500 }}>Repos</Text>
                   ) : em?.motif_absence ? (
                     // « Absent » uniquement si l'absence est explicitement documentée (motif).
                     // Une ligne jamais renseignée (est_present=false par défaut, sans signature

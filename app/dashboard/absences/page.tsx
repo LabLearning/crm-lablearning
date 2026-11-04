@@ -48,7 +48,9 @@ export default async function AbsencesPage() {
       'id, session_id, apprenant_id, date, creneau, motif_absence, apprenant:apprenant_id(prenom, nom)',
       (q) => q.eq('organization_id', session.organization.id)
         .eq('est_present', false)
-        .not('motif_absence', 'is', null),
+        .not('motif_absence', 'is', null)
+        // Un jour de repos n'est pas une absence (lib/emargement-repos)
+        .not('motif_absence', 'ilike', 'repos'),
     ),
   ])
 
