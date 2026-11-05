@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CheckSquare, CheckCircle2, XCircle, Clock, AlertTriangle, Download, ExternalLink, CalendarDays } from '@/components/ui/icons'
 import { formatDate } from '@/lib/utils'
+import { BoutonEmargementParticipant } from '@/components/emargement/EmargementParticipant'
 
 export interface LigneEmargementCandidat {
   apprenantId: string
@@ -10,7 +11,10 @@ export interface LigneEmargementCandidat {
   /** Demi-journées déclarées absentes, avec leur motif. */
   absences: { date: string; creneau: string; motif: string }[]
   /** Demi-journées ni signées ni déclarées absentes. */
+  /** Demi-journées passées sans signature ni motif */
   aSigner: number
+  /** Demi-journées à venir */
+  aVenir?: number
   /** Heures portées sur le certificat de réalisation. */
   heuresCertifiees: number
 }
@@ -41,6 +45,7 @@ export function PoeiEmargement({ sessions, candidats, dureeParcours }: {
   dureeParcours: number | null
 }) {
   const totalAbsences = candidats.reduce((n, c) => n + c.absences.length, 0)
+  const sessionIds = sessions.map((s) => s.id)
   const totalASigner = candidats.reduce((n, c) => n + c.aSigner, 0)
 
   if (sessions.length === 0) {
@@ -121,10 +126,13 @@ export function PoeiEmargement({ sessions, candidats, dureeParcours }: {
                       <Clock className="h-3.5 w-3.5" />{c.aSigner} à signer
                     </span>
                   )}
+                  {(c.aVenir || 0) > 0 && <span className="text-xs text-surface-400">{c.aVenir} à venir</span>}
                   <span className="text-sm font-semibold text-surface-900 tabular-nums">
                     {c.heuresCertifiees} h
                     <span className="text-xs font-normal text-surface-400"> certifiées</span>
                   </span>
+                  {/* Présent, absent ou repos par demi-journée, puis le lien pour qu'il signe */}
+                  {c.apprenantId && <BoutonEmargementParticipant apprenantId={c.apprenantId} sessionIds={sessionIds} nom={c.nom} />}
                 </div>
                 {c.absences.length > 0 && (
                   <div className="mt-1.5 text-xs text-surface-500">

@@ -23,6 +23,24 @@ export default async function PortalEmargementsPage({ params }: { params: { toke
     .order('date', { ascending: false })
 
   const aujourdhui = new Date().toISOString().slice(0, 10)
+
+  // Mêmes règles que signerMaJourneeAction : une feuille validée par le
+  // formateur ou une inscription annulée ne se signent plus. Sans cela le
+  // bouton « Signer la journée » s'affichait et la signature était refusée.
+  const sessionIds = Array.from(new Set(((emargements || []) as any[]).map((e) => e.session_id)))
+  const [{ data: feuilles }, { data: inscriptions }] = sessionIds.length
+    ? await Promise.all([
+      supabase.from('emargement_feuilles').select('session_id, date, creneau')
+        .in('session_id', sessionIds).not('validated_at', 'is', null),
+      supabase.from('inscriptions').select('session_id')
+        .eq('apprenant_id', context.apprenant.id).in('session_id', sessionIds)
+        .not('status', 'in', '("annule","abandonne")'),
+    ])
+    : [{ data: [] as any[] }, { data: [] as any[] }]
+  const verrouilles = new Set(((feuilles || []) as any[]).map((f) => `${f.session_id}|${f.date}|${f.creneau}`))
+  // Lecture en échec : on retombe sur l'affichage d'avant, l'action vérifie de toute façon
+  const inscrites = inscriptions ? new Set((inscriptions as any[]).map((i) => i.session_id)) : null
+
   const parSession = new Map<string, any[]>()
   for (const e of (emargements || []) as any[]) {
     if (!parSession.has(e.session_id)) parSession.set(e.session_id, [])
@@ -41,18 +59,25 @@ export default async function PortalEmargementsPage({ params }: { params: { toke
       .sort(([a], [b]) => (a < b ? 1 : -1))
       .map(([date, creneaux]) => {
         const tries = creneaux.sort((a: any, b: any) => (a.creneau === 'matin' ? -1 : 1))
+        const verrouille = (c: any) => verrouilles.has(`${sessionId}|${date}|${c.creneau}`)
+        const aSigner = (c: any) => !c.signature_data && !c.motif_absence
         return {
           date,
+          futur: date > aujourdhui,
           creneaux: tries.map((c: any) => ({
             creneau: c.creneau,
             est_present: c.est_present,
             motif_absence: c.motif_absence,
             signe: !!c.signature_data,
+            verrouille: verrouille(c),
           })),
-          // Journée signable : au moins un créneau passé, non signé, non absent.
-          // Une ligne naît avec « présent = non » tant qu'elle n'est pas signée :
-          // seul un motif d'absence (toujours posé par le formateur) fait l'absence.
-          signable: tries.some((c: any) => !c.signature_data && date <= aujourdhui && !c.motif_absence),
+          // Journée signable : au moins un créneau passé, non signé, non absent,
+          // sur une feuille encore ouverte. Une ligne naît avec « présent = non »
+          // tant qu'elle n'est pas signée : seul un motif d'absence (posé par le
+          // formateur ou l'organisme) fait l'absence.
+          signable: (!inscrites || inscrites.has(sessionId)) && date <= aujourdhui && tries.some((c: any) => aSigner(c) && !verrouille(c)),
+          // Rien de signable parce que la feuille est close : on le dit
+          close: date <= aujourdhui && tries.some((c: any) => aSigner(c) && verrouille(c)),
         }
       })
     return {

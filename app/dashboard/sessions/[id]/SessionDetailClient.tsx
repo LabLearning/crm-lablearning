@@ -19,6 +19,7 @@ import {
   Moon,
 } from '@/components/ui/icons'
 import { estRepos } from '@/lib/emargement-repos'
+import { BoutonEmargementParticipant } from '@/components/emargement/EmargementParticipant'
 import { Badge, PoeiBadge, useToast, RowMenu, Modal, BackLink } from '@/components/ui'
 import { SessionRetourClient } from './SessionRetourClient'
 import { DerouleOperationnel } from '@/components/deroule/DerouleOperationnel'
@@ -1169,6 +1170,11 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                         <div className={cn('text-sm font-bold leading-none', assiduity >= 80 ? 'text-emerald-600' : assiduity >= 50 ? 'text-amber-600' : 'text-red-600')}>{assiduity}%</div>
                         <div className="text-2xs text-surface-400 mt-0.5 whitespace-nowrap">{appPresent}/{appEchus} créneau{appEchus > 1 ? 'x' : ''}{appAVenir > 0 ? ` · ${appAVenir} à venir` : ''}</div>
                       </div>
+                    )}
+                    {/* Émargement du participant : présent, absent, repos, lien de signature */}
+                    {!isFormateur && a?.id && (
+                      <BoutonEmargementParticipant apprenantId={a.id} sessionIds={[session.id]} nom={`${a.prenom || ''} ${a.nom || ''}`.trim()} compact
+                        className="inline-flex min-h-[36px] sm:min-h-[32px] items-center gap-1 rounded-lg border border-surface-200 px-2.5 text-xs font-semibold text-surface-600 hover:bg-surface-50 shrink-0" />
                     )}
                     {/* Deux actions seulement (demande du 04/11/2026) : les documents
                         et leurs envois sont dans l'onglet Documents, par participant */}

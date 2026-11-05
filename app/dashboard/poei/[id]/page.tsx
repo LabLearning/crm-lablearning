@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Building2, GraduationCap, Calendar, CheckSquare, FileText } from '@/components/ui/icons'
 import { estMotifRepos } from '@/lib/emargement-repos'
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
 import { Badge, BackLink } from '@/components/ui'
 import { POEI_STATUS_LABELS, POEI_STATUS_COLORS } from '@/lib/types/poei'
 import { formatDate, companyLabel } from '@/lib/utils'
@@ -152,7 +153,11 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     const [{ data: sessionsPoei }, { data: feuilles }, { data: lignesEm }] = await Promise.all([
       supabase.from('sessions').select('id, reference, intitule, date_debut, date_fin, poei_intervention_id').in('id', idsSessionsPoei),
       supabase.from('emargement_feuilles').select('session_id, date, creneau, validated_at').in('session_id', idsSessionsPoei),
-      supabase.from('emargements').select('apprenant_id, session_id, date, creneau, signature_data, motif_absence').in('session_id', idsSessionsPoei),
+      // Une ligne par stagiaire et par demi-journée : 12 stagiaires sur 57 jours
+      // dépassent déjà le plafond de 1000 lignes de PostgREST
+      fetchAllPaged((from, to) => supabase.from('emargements')
+        .select('id, apprenant_id, session_id, date, creneau, signature_data, motif_absence')
+        .in('session_id', idsSessionsPoei).order('id').range(from, to)).then((data) => ({ data })),
     ])
     const libelleParIntervention = new Map(((interventions || []) as any[]).map((iv) => [iv.id, iv.libelle]))
     const libelleIntervention = new Map(((sessionsInterv || []) as any[]).map((x) => [x.id, libelleParIntervention.get(x.poei_intervention_id) || null]))
@@ -167,6 +172,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       }
     }).sort((a, b) => String(a.date_debut).localeCompare(String(b.date_debut)))
 
+    const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
     candidatsEmargement = candidats.map((c: any) => {
       const aid = c.apprenant?.id || c.apprenant_id || ''
       const siennes = ((lignesEm || []) as any[]).filter((x: any) => x.apprenant_id === aid)
@@ -178,7 +184,9 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat',
         signees: siennes.filter((x: any) => x.signature_data).length,
         absences,
-        aSigner: siennes.filter((x: any) => !x.signature_data && !x.motif_absence).length,
+        // À signer = passé et sans signature ni motif ; les jours à venir à part
+        aSigner: siennes.filter((x: any) => !x.signature_data && !x.motif_absence && String(x.date) <= aujourdhui).length,
+        aVenir: siennes.filter((x: any) => !x.signature_data && !x.motif_absence && String(x.date) > aujourdhui).length,
         heuresCertifiees: heures.get(String(aid))?.heures ?? Number(p.duree_heures || 0),
       }
     })

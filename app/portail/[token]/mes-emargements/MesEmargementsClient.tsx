@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, CheckSquare, Clock, PenTool, Moon } from '@/components/ui/icons'
+import { CheckCircle2, XCircle, CheckSquare, Clock, PenTool, Moon, Lock } from '@/components/ui/icons'
 import { estRepos } from '@/lib/emargement-repos'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui'
@@ -16,12 +16,17 @@ interface Creneau {
   est_present: boolean | null
   motif_absence: string | null
   signe: boolean
+  /** Feuille de la demi-journée validée par le formateur */
+  verrouille?: boolean
 }
 
 interface Jour {
   date: string
   creneaux: Creneau[]
   signable: boolean
+  futur?: boolean
+  /** Des créneaux restent à signer mais leur feuille est close */
+  close?: boolean
 }
 
 interface GroupeSession {
@@ -50,7 +55,7 @@ export function MesEmargementsClient({ token, groupes }: { token: string; groupe
     else toast('error', r.error || 'Erreur')
   }
 
-  function EtatCreneau({ c }: { c: Creneau }) {
+  function EtatCreneau({ c, futur }: { c: Creneau; futur?: boolean }) {
     return (
       <span className="inline-flex items-center gap-1 text-xs">
         <span className="text-surface-500">{CRENEAU[c.creneau] || c.creneau}</span>
@@ -60,6 +65,10 @@ export function MesEmargementsClient({ token, groupes }: { token: string; groupe
           ? <span className="inline-flex items-center gap-0.5 font-medium text-sky-600"><Moon className="h-3.5 w-3.5" /> Repos</span>
           : c.est_present === false && c.motif_absence
           ? <span className="inline-flex items-center gap-0.5 font-medium text-surface-400"><XCircle className="h-3.5 w-3.5" /> Absent · {c.motif_absence}</span>
+          : futur
+          ? <span className="inline-flex items-center gap-0.5 font-medium text-surface-400"><Clock className="h-3.5 w-3.5" /> À venir</span>
+          : c.verrouille
+          ? <span className="inline-flex items-center gap-0.5 font-medium text-surface-400"><Lock className="h-3.5 w-3.5" /> Feuille close</span>
           : <span className="inline-flex items-center gap-0.5 font-medium text-amber-600"><Clock className="h-3.5 w-3.5" /> À signer</span>}
       </span>
     )
@@ -100,8 +109,11 @@ export function MesEmargementsClient({ token, groupes }: { token: string; groupe
                       {formatDate(j.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
-                      {j.creneaux.map((c) => <EtatCreneau key={c.creneau} c={c} />)}
+                      {j.creneaux.map((c) => <EtatCreneau key={c.creneau} c={c} futur={j.futur} />)}
                     </div>
+                    {!j.signable && j.close && (
+                      <p className="mt-1 text-xs text-surface-500">La feuille de cette journée est déjà close. Si vous étiez présent, prévenez l’organisme de formation.</p>
+                    )}
                   </div>
                   {j.signable && (
                     <button
