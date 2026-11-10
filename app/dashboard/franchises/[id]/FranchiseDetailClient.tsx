@@ -359,6 +359,23 @@ export default function FranchiseDetailClient({
                                   className="text-[11px] text-surface-400 hover:text-surface-700">Annuler paiement</button>
                               )}
                             </div>
+                            {/* Ligne figée dont les coûts ont changé depuis (déplacement saisi après coup…) */}
+                            {l.ecart_fige && (cs === 'validee' || cs === 'payee') && (
+                              <div className="basis-full flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                <span className="flex-1 min-w-[220px]">
+                                  Coûts modifiés depuis la {cs === 'payee' ? 'validation et le paiement' : 'validation'} : formateur {fmtEuro(l.ecart_fige.cout)}
+                                  {l.ecart_fige.frais > 0 ? `, déplacement ${fmtEuro(l.ecart_fige.frais)}` : ''}. Recalculée, la commission serait de {fmtEuro(l.ecart_fige.commission)} au lieu de {fmtEuro(l.commission_montant)}.
+                                  {cs === 'payee' ? ' Elle est déjà payée : elle reste figée.' : ''}
+                                </span>
+                                {cs === 'validee' && (
+                                  <button onClick={() => doAction(() => updateSessionCommissionStatusAction(l.session_id, 'a_venir'))}
+                                    className="shrink-0 rounded-md bg-amber-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-amber-700">
+                                    Annuler la validation et recalculer
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )
                       })}

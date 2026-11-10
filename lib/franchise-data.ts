@@ -1,6 +1,6 @@
 import type { CommissionStatus } from '@/lib/commission'
 import { estFormationHygiene } from '@/lib/formation-hygiene'
-import { coutFormateurDeSession, type SourceCoutFormateur } from '@/lib/commission'
+import { coutFormateurDeSession, fraisDeplacementDeduits, sommeFraisDeplacementFormateur, type SourceCoutFormateur } from '@/lib/commission'
 
 /**
  * Agrégations de données pour le portail franchise, assises sur les SESSIONS
@@ -151,6 +151,12 @@ export interface LigneCommissionSession {
   frais_annexes?: number | null
   /** D'où vient le coût formateur (renseigné seulement à la demande, pour la fiche franchise de l'administration). */
   cout_source?: SourceCoutLigne
+  /**
+   * Ligne validée ou payée dont les coûts ont changé depuis (déplacement saisi
+   * après coup, contrat modifié…) : ce que la commission vaudrait rouverte.
+   * Renseigné seulement à la demande (fiche franchise de l'administration).
+   */
+  ecart_fige?: { cout: number; frais: number; commission: number } | null
   commission_montant: number
   commission_taux: number
   commission_type: string
@@ -191,11 +197,13 @@ export async function getFranchiseCommissionLines(supabase: any, franchiseId: st
     const paquets = <T,>(l: T[], n = 100) => Array.from({ length: Math.ceil(l.length / n) }, (_, i) => l.slice(i * n, i * n + n))
     const lire = (table: string, colonnes: string, filtre: (q: any) => any = (q) => q) =>
       Promise.all(paquets(ids).map((p) => filtre(supabase.from(table).select(colonnes).in(table === 'sessions' ? 'id' : 'session_id', p)).then((r: any) => r.data || []))).then((r) => r.flat())
-    const [sessions, contrats, facturesFormateur] = await Promise.all([
+    const [sessions, contrats, facturesFormateur, deplacements] = await Promise.all([
       lire('sessions', 'id, cout_formateur, formateur_id, horaires_jours, formation:formation_id(duree_jours)'),
       lire('contrats_formateur', 'session_id, montant_ht', (q) => q.neq('status', 'annule')),
       // Factures en brouillon ou rejetées hors coût (même règle que lib/commission)
       lire('factures_formateur', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","rejetee")')),
+      // Déplacement du formateur (case de l'onglet Formateur), déduit en budget net
+      lire('session_frais', 'session_id, categorie, formateur_id, montant', (q) => q.eq('categorie', 'deplacement')),
     ])
     const formateurIds = Array.from(new Set((sessions as any[]).map((s) => s.formateur_id).filter(Boolean)))
     const formateurs = formateurIds.length
@@ -205,18 +213,30 @@ export async function getFranchiseCommissionLines(supabase: any, franchiseId: st
     const tarifDe = new Map((formateurs as any[]).map((f) => [f.id, f.tarif_journalier]))
     const somme = (l: any[], id: string) => l.filter((x) => x.session_id === id).reduce((t, x) => t + Number(x.montant_ht || 0), 0)
     for (const l of lignes) {
-      if (['validee', 'payee'].includes(String(l.status))) { l.cout_source = 'fige'; continue }
-      if (l.base_source === 'poei') { l.cout_source = Number(l.cout_formateur) > 0 ? 'parcours' : 'aucune'; continue }
+      const fige = ['validee', 'payee'].includes(String(l.status))
+      if (l.base_source === 'poei') { l.cout_source = fige ? 'fige' : Number(l.cout_formateur) > 0 ? 'parcours' : 'aucune'; continue }
       const s = sessionDe.get(l.session_id)
       const nbHoraires = Array.isArray(s?.horaires_jours) ? s.horaires_jours.length : 0
-      l.cout_source = coutFormateurDeSession({
+      const entree = {
         coutContratsHt: somme(contrats as any[], l.session_id),
         coutFacturesFormateurHt: somme(facturesFormateur as any[], l.session_id),
         coutFormateurSession: s?.cout_formateur ?? null,
         coutFormateurManuelJour: l.cout_formateur_manuel ?? null,
         tarifJournalierFormateur: s?.formateur_id ? tarifDe.get(s.formateur_id) ?? null : null,
         nbJours: Math.max(1, nbHoraires || Number(s?.formation?.duree_jours) || 1),
-      }).source
+        fraisDeplacementFormateur: sommeFraisDeplacementFormateur((deplacements as any[]).filter((f) => f.session_id === l.session_id), s?.formateur_id),
+      }
+      const cout = coutFormateurDeSession(entree)
+      if (!fige) { l.cout_source = cout.source; continue }
+      l.cout_source = 'fige'
+      // Ligne figée : les coûts du moment diffèrent-ils de ceux de la validation ?
+      if (l.commission_type === 'budget_net') {
+        const frais = fraisDeplacementDeduits(entree, cout.source)
+        if (Math.abs(cout.montant - (Number(l.cout_formateur) || 0)) > 0.005 || Math.abs(frais - (Number(l.frais_annexes) || 0)) > 0.005) {
+          const base = Math.max(0, (Number(l.base_montant) || 0) - cout.montant - frais)
+          l.ecart_fige = { cout: cout.montant, frais, commission: Math.round(base * (Number(l.commission_taux) || 0)) / 100 }
+        }
+      }
     }
   }
   return lignes.sort((a, b) => String(b.session?.date_debut || '').localeCompare(String(a.session?.date_debut || '')))

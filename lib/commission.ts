@@ -208,6 +208,22 @@ export const sommeFraisDeplacementFormateur = (
   formateurId: string | null | undefined,
 ) => round2(frais.filter((f) => estFraisDeplacementFormateur(f, formateurId)).reduce((t, f) => t + (Number(f.montant) || 0), 0))
 
+/**
+ * Déplacement déduit d'une commission de session (budget net) : celui du
+ * formateur, moins ce qu'une facture du formateur au-dessus de son contrat en
+ * contient déjà (elle est pré-remplie avec la rémunération saisie), soit
+ * coût + frais = max(factures, contrats + déplacement).
+ */
+export function fraisDeplacementDeduits(
+  e: { coutContratsHt: number; coutFacturesFormateurHt?: number; fraisDeplacementFormateur?: number },
+  sourceCout: string,
+): number {
+  const contratsHt = Number(e.coutContratsHt || 0)
+  const excedentFacture = sourceCout === 'facture' && contratsHt > 0
+    ? Math.max(0, Number(e.coutFacturesFormateurHt || 0) - contratsHt) : 0
+  return round2(Math.max(0, Number(e.fraisDeplacementFormateur || 0) - excedentFacture))
+}
+
 /** D'où vient le coût formateur retenu pour une commission. */
 export type SourceCoutFormateur = 'contrat' | 'facture' | 'session' | 'manuel' | 'fiche' | 'intervention' | 'aucune'
 
@@ -379,14 +395,8 @@ export function calculerCommissionSession(e: EntreeCommissionSession & { force?:
   const cout = coutFormateurDeSession(e)
   const coutFormateur = cout.montant
   // Déplacement du formateur, saisi à part du contrat : déduit en budget net
-  // seulement, le budget débloqué se commissionne brut. Une facture du
-  // formateur qui dépasse son contrat contient déjà le déplacement à hauteur
-  // de l'excédent (elle est pré-remplie avec la rémunération saisie) : seul le
-  // reste se déduit, soit coût + frais = max(factures, contrats + frais).
-  const contratsHt = Number(e.coutContratsHt || 0)
-  const excedentFacture = cout.source === 'facture' && contratsHt > 0
-    ? Math.max(0, Number(e.coutFacturesFormateurHt || 0) - contratsHt) : 0
-  const frais = type === 'budget_net' ? round2(Math.max(0, Number(e.fraisDeplacementFormateur || 0) - excedentFacture)) : 0
+  // seulement, le budget débloqué se commissionne brut (voir fraisDeplacementDeduits)
+  const frais = type === 'budget_net' ? fraisDeplacementDeduits(e, cout.source) : 0
 
   const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur, frais })
   const exStatus = e.existante?.status
