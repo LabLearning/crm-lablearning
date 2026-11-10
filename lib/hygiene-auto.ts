@@ -1,4 +1,37 @@
 /**
+ * Heures attestées par stagiaire pour l'envoi automatique et son aperçu : la
+ * règle commune des certificats (lib/certificat-heures : seules les absences
+ * déclarées en retirent, jamais un repos ni une demi-journée non signée),
+ * comme la route PDF et l'envoi au référent. L'envoi part sans relecture : un
+ * stagiaire n'y entre que si une présence au moins est posée ou signée (0 h
+ * sinon, donc retiré du lot). Sans aucune ligne d'émargement : la durée prévue.
+ */
+async function heuresHygieneAuto(
+  supabase: any, sessionId: string, orgId: string, dureePrevue: number, apprenantIds: string[],
+): Promise<Record<string, number>> {
+  const { heuresCertificats } = await import('@/lib/certificat-heures')
+  const { fetchAllPaged } = await import('@/lib/supabase/fetch-all')
+  const [heures, lignes] = await Promise.all([
+    heuresCertificats(supabase, { sessionId, organizationId: orgId, dureeFormation: dureePrevue }),
+    fetchAllPaged((from, to) => supabase.from('emargements')
+      .select('id, apprenant_id, est_present, signed_at').eq('session_id', sessionId).order('id').range(from, to)),
+  ])
+  const avecLignes = new Set<string>()
+  const avecPresence = new Set<string>()
+  for (const e of lignes as any[]) {
+    avecLignes.add(String(e.apprenant_id))
+    if (e.est_present || e.signed_at) avecPresence.add(String(e.apprenant_id))
+  }
+  const out: Record<string, number> = {}
+  for (const id of apprenantIds) {
+    out[id] = !avecLignes.has(id) ? dureePrevue
+      : !avecPresence.has(id) ? 0
+      : (heures.get(id)?.heures ?? dureePrevue)
+  }
+  return out
+}
+
+/**
  * Envoi automatique des attestations d'hygiène à la clôture d'une session :
  * attestations groupées + diplôme d'établissement au client (email, sinon
  * premier contact). Idempotent via email_logs — appelé au passage en
@@ -39,18 +72,9 @@ export async function envoyerHygieneAutomatique(supabase: any, sessionId: string
   const apprenants = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
     .sort((a: any, b: any) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr'))
   if (!apprenants.length) return
-  const { data: em } = await supabase.from('emargements')
-    .select('apprenant_id, est_present').eq('session_id', sessionId)
   const dureePrevue = Number((sess as any).formation?.duree_heures || 0)
   if (!dureePrevue) return // pas de durée fiable : jamais d'attestation à 0 h
-  const heuresParApprenant: Record<string, number> = {}
-  for (const a of apprenants) {
-    const lignes = (em || []).filter((e: any) => e.apprenant_id === a.id)
-    const presents = lignes.filter((e: any) => e.est_present).length
-    heuresParApprenant[a.id] = lignes.length > 0
-      ? Math.round((dureePrevue * presents / lignes.length) * 100) / 100
-      : dureePrevue
-  }
+  const heuresParApprenant = await heuresHygieneAuto(supabase, sessionId, orgId, dureePrevue, apprenants.map((a: any) => String(a.id)))
   // RÈGLE ABSOLUE : aucune attestation à 0 heure ne part. Un stagiaire sans
   // présence pointée/signée est retiré du lot ; s'il ne reste personne,
   // l'envoi attend que les présences soient posées (liens de signature).
@@ -142,12 +166,8 @@ export async function apercuHygiene(supabase: any, sessionId: string, orgId: str
   if (!inscriptions?.length) return { envoyable: false, raison: 'aucun inscrit', client: nomClient }
   const dureePrevue = Number((sess as any).formation?.duree_heures || 0)
   if (!dureePrevue) return { envoyable: false, raison: 'durée de formation absente', client: nomClient }
-  const { data: em } = await supabase.from('emargements').select('apprenant_id, est_present').eq('session_id', sessionId)
-  const heures = inscriptions.map((i: any) => {
-    const lignes = (em || []).filter((e: any) => e.apprenant_id === i.apprenant_id)
-    const presents = lignes.filter((e: any) => e.est_present).length
-    return lignes.length > 0 ? Math.round((dureePrevue * presents / lignes.length) * 100) / 100 : dureePrevue
-  })
+  const parApprenant = await heuresHygieneAuto(supabase, sessionId, orgId, dureePrevue, inscriptions.map((i: any) => String(i.apprenant_id)))
+  const heures = inscriptions.map((i: any) => parApprenant[String(i.apprenant_id)] ?? 0)
   const valides = heures.filter((h: number) => h > 0)
   if (!valides.length) return { envoyable: false, raison: 'tous les stagiaires à 0 h (présences non posées)', client: nomClient }
   return {

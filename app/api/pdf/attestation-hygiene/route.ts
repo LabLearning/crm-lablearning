@@ -91,7 +91,8 @@ export async function GET(req: NextRequest) {
   // La durée attestée est celle réellement suivie, selon la règle commune des
   // certificats (lib/certificat-heures) : une demi-journée non signée n'est
   // pas une absence (feuille tenue sur papier), seule compte l'absence
-  // déclarée par le formateur. L'envoi automatique, lui, attend les signatures.
+  // déclarée par le formateur, et jamais un repos. L'envoi automatique suit la
+  // même règle, mais n'atteste que les stagiaires dont une présence est posée.
   const dureePrevue = Number(formation?.duree_heures || 0)
   const { heuresCertificats } = await import('@/lib/certificat-heures')
   const heures = await heuresCertificats(supabase, { sessionId, organizationId: orgId, dureeFormation: dureePrevue })

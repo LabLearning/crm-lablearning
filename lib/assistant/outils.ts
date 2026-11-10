@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
 import { estRepos } from '@/lib/emargement-repos'
 import type { Permission } from '@/lib/types'
 import { MODULES_RECHERCHE, clientDansPortefeuille, outilAutorise, peutLire } from '@/lib/assistant/propositions'
@@ -80,7 +81,7 @@ export const OUTILS_ASSISTANT = [
   },
   {
     name: 'emargements_session',
-    description: "État des émargements (signatures de présence) d'une session : par stagiaire, créneaux signés / manquants / absences. Pour « qui n'a pas signé », « la feuille est-elle complète ».",
+    description: "État des émargements (signatures de présence) d'une session : par stagiaire, créneaux signés / présents non signés / non renseignés (échus) / à venir / absences déclarées (les repos ne comptent pas). Pour « qui n'a pas signé », « la feuille est-elle complète ».",
     input_schema: {
       type: 'object',
       properties: { session_id: { type: 'string', description: 'UUID de la session' } },
@@ -323,21 +324,30 @@ export async function executerOutil(
       const sid = String(args.session_id)
       const { data: s } = await org(supabase.from('sessions').select('id, formation:formation_id(intitule)')).eq('id', sid).maybeSingle()
       if (!s) return { erreur: 'Session introuvable dans cette organisation' }
-      const [{ data: emargs }, { data: insc }] = await Promise.all([
-        supabase.from('emargements').select('apprenant_id, date, creneau, est_present, signed_at, motif_absence').eq('session_id', sid),
+      // Lecture paginée : une session chapeau de POEI dépasse les 1000 lignes
+      const [emargs, { data: insc }] = await Promise.all([
+        fetchAllPaged((from, to) => supabase.from('emargements')
+          .select('id, apprenant_id, date, creneau, est_present, signed_at, motif_absence')
+          .eq('session_id', sid).order('id').range(from, to)),
         supabase.from('inscriptions').select('apprenant:apprenants(id, prenom, nom)').eq('session_id', sid).not('status', 'in', '("annule","abandonne")'),
       ])
-      const parApprenant = new Map<string, { nom: string; signes: number; presents_non_signes: number; absences: number }>()
+      const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
+      const parApprenant = new Map<string, { nom: string; signes: number; presents_non_signes: number; absences: number; non_renseignes: number; a_venir: number }>()
       for (const i of (insc || []) as any[]) {
-        if (i.apprenant) parApprenant.set(i.apprenant.id, { nom: `${i.apprenant.prenom || ''} ${i.apprenant.nom || ''}`.trim(), signes: 0, presents_non_signes: 0, absences: 0 })
+        if (i.apprenant) parApprenant.set(i.apprenant.id, { nom: `${i.apprenant.prenom || ''} ${i.apprenant.nom || ''}`.trim(), signes: 0, presents_non_signes: 0, absences: 0, non_renseignes: 0, a_venir: 0 })
       }
       for (const e of (emargs || []) as any[]) {
         const a = parApprenant.get(e.apprenant_id)
         if (!a) continue
         if (estRepos(e)) continue // jour de repos : ni présent ni absent
-        if (e.est_present === false) a.absences++
+        // L'absence, c'est le motif : une ligne naît « présent = non » tant
+        // qu'elle n'est pas signée
+        if (e.motif_absence) a.absences++
         else if (e.signed_at) a.signes++
-        else a.presents_non_signes++
+        else if (e.est_present) a.presents_non_signes++
+        // Pas encore échue : « à venir », pas « non renseignée » (lib/emargement-participant statutCreneau)
+        else if (String(e.date) > aujourdhui) a.a_venir++
+        else a.non_renseignes++
       }
       return {
         formation: (s as any).formation?.intitule,
@@ -383,7 +393,8 @@ export async function executerOutil(
       // Émargements non signés sur les sessions terminées récentes
       const manquesEmargement: any[] = []
       for (const s of (sessions || []) as any[]) {
-        const { count: total } = await supabase.from('emargements').select('id', { count: 'exact', head: true }).eq('session_id', s.id)
+        // Seules les demi-journées signables comptent : une absence ou un repos ne se signent jamais
+        const { count: total } = await supabase.from('emargements').select('id', { count: 'exact', head: true }).eq('session_id', s.id).is('motif_absence', null)
         if (!total) continue
         const { count: signes } = await supabase.from('emargements').select('id', { count: 'exact', head: true }).eq('session_id', s.id).not('signature_data', 'is', null)
         if ((signes || 0) < total) {

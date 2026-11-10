@@ -332,6 +332,14 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     if (!emargementsByDateCreneau[e.date][e.creneau]) emargementsByDateCreneau[e.date][e.creneau] = []
     emargementsByDateCreneau[e.date][e.creneau].push(e)
   })
+  // Chaque demi-journée liste les stagiaires par nom, comme la feuille papier
+  // (un stagiaire retiré qui avait signé reste, en fin de liste)
+  const nomDeLApprenant = new Map<string, string>(inscriptions.map((i: any) => [i.apprenant?.id, `${i.apprenant?.nom || ''} ${i.apprenant?.prenom || ''}`.trim()]))
+  for (const parCreneau of Object.values(emargementsByDateCreneau)) {
+    for (const liste of Object.values(parCreneau)) {
+      liste.sort((x: any, y: any) => (nomDeLApprenant.get(x.apprenant_id) || '\uffff').localeCompare(nomDeLApprenant.get(y.apprenant_id) || '\uffff', 'fr'))
+    }
+  }
 
   const CRENEAU_LABELS: Record<string, string> = { matin: 'Matin', apres_midi: 'Après-midi', journee: 'Journée' }
 
@@ -400,6 +408,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
   // Créneaux échus (présence renseignée) : base honnête du % d'assiduité
   // Un jour de repos n'est ni présent ni absent : il sort de la base de calcul
   const totalEchus = emargements.filter(e => e.est_present !== null && e.est_present !== undefined && !estRepos(e)).length
+  const totalAVenir = totalEmargements - totalEchus - emargements.filter((e) => estRepos(e)).length
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
@@ -732,6 +741,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 const dayPointage = pointagesByDate[day]
                 const dayEmargements = getDayEmargements(day)
                 const presentCount = dayEmargements.filter((e: any) => e.est_present).length
+                const baseJour = dayEmargements.filter((e: any) => !estRepos(e)).length
                 const isToday = day === today
 
                 return (
@@ -755,8 +765,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                         {dayPointage?.heure_depart && (
                           <span className="flex items-center gap-1 text-red-600"><LogOut className="h-3 w-3" />{formatHeure(dayPointage.heure_depart)}</span>
                         )}
-                        {dayEmargements.length > 0 && (
-                          <span className="flex items-center gap-1"><UserCheck className="h-3 w-3" />{presentCount}/{dayEmargements.length}</span>
+                        {baseJour > 0 && (
+                          <span className="flex items-center gap-1"><UserCheck className="h-3 w-3" />{presentCount}/{baseJour}</span>
                         )}
                         {feuillesEmargement.filter((f) => f.date === day && f.validated_at).sort((a, b) => (a.creneau === 'matin' ? -1 : 1) - (b.creneau === 'matin' ? -1 : 1)).map((f) => (
                           <span key={f.creneau} className="inline-flex items-center gap-1 rounded-md bg-surface-100 px-1.5 py-0.5 text-surface-600">
@@ -898,7 +908,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
               <div className="text-2xl font-heading font-bold text-amber-600">
                 {totalEchus > 0 ? Math.round((totalPresents / totalEchus) * 100) : 0}%
               </div>
-              <div className="text-xs text-surface-600">Assiduité{totalEmargements > totalEchus ? ` (${totalEmargements - totalEchus} à venir)` : ''}</div>
+              <div className="text-xs text-surface-600">Assiduité{totalAVenir > 0 ? ` (${totalAVenir} à venir)` : ''}</div>
             </div>
           </div>
 
@@ -909,6 +919,9 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
             if (creneauxList.length === 0) return null
             const allDay = getDayEmargements(day)
             const presentCount = allDay.filter((e: any) => e.est_present).length
+            // Un repos n'est pas attendu : le jour est complet sans lui
+            const baseJour = allDay.filter((e: any) => !estRepos(e)).length
+            const jourComplet = baseJour > 0 && presentCount >= baseJour
             const isExpanded = expandedDays[day] !== false
 
             return (
@@ -919,7 +932,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 >
                   <div className="flex items-center gap-3">
                     <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0',
-                      presentCount === allDay.length ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-600'
+                      jourComplet ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-600'
                     )}>
                       J{idx + 1}
                     </div>
@@ -934,9 +947,9 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full',
-                      presentCount === allDay.length ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-600'
+                      jourComplet ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-600'
                     )}>
-                      {presentCount}/{allDay.length} présent{presentCount > 1 ? 's' : ''}
+                      {baseJour === 0 ? 'Repos' : `${presentCount}/${baseJour} présent${presentCount > 1 ? 's' : ''}`}
                     </span>
                     {isExpanded ? <ChevronUp className="h-4 w-4 text-surface-400" /> : <ChevronDown className="h-4 w-4 text-surface-400" />}
                   </div>
@@ -961,7 +974,8 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                   </div>
                 )}
 
-                {!isFormateur && presentCount < allDay.length && (
+                {/* Seulement s'il reste une demi-journée ni signée, ni présente, ni absente, ni en repos */}
+                {!isFormateur && allDay.some((e: any) => !e.est_present && !e.signature_data && !e.motif_absence) && (
                   <div className="px-4 pb-3 -mt-1">
                     <button
                       onClick={() => marquerJournee(day)}
@@ -979,6 +993,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                     {creneauxList.map(creneau => {
                       const creneauEmargements = dayCreneaux[creneau] || []
                       const creneauPresent = creneauEmargements.filter((e: any) => e.est_present).length
+                      const creneauBase = creneauEmargements.filter((e: any) => !estRepos(e)).length
                       return (
                         <div key={creneau}>
                           {/* Sous-en-tête créneau */}
@@ -987,9 +1002,9 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                               {CRENEAU_LABELS[creneau] || creneau}
                             </span>
                             <span className={cn('text-2xs font-semibold px-2 py-0.5 rounded-full',
-                              creneauPresent === creneauEmargements.length ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-200 text-surface-500'
+                              creneauBase > 0 && creneauPresent >= creneauBase ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-200 text-surface-500'
                             )}>
-                              {creneauPresent}/{creneauEmargements.length}
+                              {creneauPresent}/{creneauBase}
                             </span>
                           </div>
                           {creneauEmargements.map((em: any) => {
@@ -1109,7 +1124,7 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
                 // Assiduité sur les seuls créneaux ÉCHUS (est_present renseigné) :
                 // inclure les créneaux à venir faussait le % en cours de session.
                 const appEchus = appEmargements.filter((e: any) => e.est_present !== null && e.est_present !== undefined && !estRepos(e)).length
-                const appAVenir = appEmargements.length - appEchus
+                const appAVenir = appEmargements.length - appEchus - appEmargements.filter((e: any) => estRepos(e)).length
                 const assiduity = appEchus > 0 ? Math.round((appPresent / appEchus) * 100) : null
 
                 const evalBadges = evaluationsAppr.filter((e) => e.apprenant_id === a?.id && e.note != null)

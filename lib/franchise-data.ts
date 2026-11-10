@@ -107,7 +107,9 @@ export async function getFranchiseStats(
   if (sessionIds.length) {
     const [{ count: pres }, { count: abs }] = await Promise.all([
       supabase.from('emargements').select('id', { count: 'exact', head: true }).in('session_id', sessionIds).eq('est_present', true),
-      supabase.from('emargements').select('id', { count: 'exact', head: true }).in('session_id', sessionIds).eq('est_present', false),
+      // Absence = motif déclaré, jamais un repos ni une demi-journée pas encore signée
+      supabase.from('emargements').select('id', { count: 'exact', head: true }).in('session_id', sessionIds)
+        .eq('est_present', false).not('motif_absence', 'is', null).not('motif_absence', 'ilike', 'repos'),
     ])
     nbPresences = pres || 0
     nbAbsences = abs || 0

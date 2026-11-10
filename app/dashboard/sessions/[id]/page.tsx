@@ -7,6 +7,7 @@ import { peutVoirMarge } from '@/lib/rentabilite'
 import { rentabiliteSession, MESSAGE_RENTABILITE_INDISPONIBLE } from '@/lib/rentabilite-data'
 import { peutGererSessions } from '@/lib/sessions-acces'
 import { checkDashboardAccess } from '@/lib/dashboard-guard'
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
 
 /** Onglets d'une session POEI ouverts depuis la fiche POEI ou la rentabilité ; tout le reste se gère sur la POEI.
     (« facturation » n'y affiche que la rentabilité et les frais annexes.) */
@@ -100,12 +101,16 @@ export default async function SessionDetailPage({ params, searchParams }: { para
     { data: feuillesEmargement },
     { data: conventionsSigneesElec },
   ] = await Promise.all([
-    // Récupérer les émargements (y compris ceux qu'on vient de créer)
-    supabase
+    // Récupérer les émargements (y compris ceux qu'on vient de créer). Sans
+    // motif_absence, un repos passait pour une absence sur toute la fiche ;
+    // lecture paginée (une session chapeau POEI dépasse 1000 lignes).
+    fetchAllPaged((from, to) => supabase
       .from('emargements')
-      .select('id, apprenant_id, date, creneau, est_present, signature_data, signed_at')
+      .select('id, apprenant_id, date, creneau, est_present, signature_data, signed_at, motif_absence')
       .eq('session_id', params.id)
-      .order('date', { ascending: true }),
+      // Ordre total pour paginer : (date, créneau, stagiaire) est unique dans une session
+      .order('date', { ascending: true }).order('creneau').order('apprenant_id').order('id')
+      .range(from, to)).then((data) => ({ data })),
     // Pointages du formateur
     supabase
       .from('pointages_formateur')

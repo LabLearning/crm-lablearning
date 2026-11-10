@@ -308,9 +308,10 @@ export async function envoyerDocumentsAuReferentAction(
 
   const { data: inscriptions } = await supabase
     .from('inscriptions')
-    .select('apprenant:apprenants(*)')
+    .select('heures_presence, apprenant:apprenants(*)')
     .eq('session_id', sessionId)
     .not('status', 'in', '("annule","abandonne")')
+  const heuresSaisies = new Map(((inscriptions || []) as any[]).filter((i) => i.apprenant).map((i) => [String(i.apprenant.id), i.heures_presence]))
   const inscrits = (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean)
     .sort((a: any, b: any) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr'))
   if (inscrits.length === 0) return { success: false, error: 'Aucun stagiaire sur cette session' }
@@ -318,7 +319,7 @@ export async function envoyerDocumentsAuReferentAction(
   // L'assiduité de chaque stagiaire, comme sur les envois individuels.
   // Heures certifiées : durée du parcours POEI, sinon durée prévue moins les
   // absences déclarées (une demi-journée non signée n'est pas une absence)
-  const { heuresCertificats } = await import('@/lib/certificat-heures')
+  const { heuresCertificats, heuresSuiviesAttestation } = await import('@/lib/certificat-heures')
   const dureePrevue = Number(formation?.duree_heures || 0)
   const heuresParStagiaire = await heuresCertificats(supabase, {
     sessionId, organizationId: session.organization.id, dureeFormation: dureePrevue,
@@ -328,6 +329,9 @@ export async function envoyerDocumentsAuReferentAction(
     if (!h) return { assiduite: undefined as number | undefined, heures: dureePrevue, dureeTotale: dureePrevue }
     return { assiduite: h.assiduite, heures: h.heures, dureeTotale: h.dureeTotale }
   }
+  // Heures suivies d'une attestation : celles qu'elle imprime, reprises dans le mail
+  const heuresAttestationDe = (id: string) =>
+    heuresSuiviesAttestation(heuresParStagiaire.get(String(id)), heuresSaisies.get(String(id)), dureePrevue)
   // Même règle que l'envoi automatique : aucune attestation d'hygiène à 0 heure
   const apprenants = type === 'hygiene' ? inscrits.filter((a: any) => assiduiteDe(a.id).heures > 0) : inscrits
   if (apprenants.length === 0) {
@@ -351,7 +355,7 @@ export async function envoyerDocumentsAuReferentAction(
   const hFr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',')
   const stagiaireLigne = (a: any) => {
     const nom = `${a.prenom || ''} ${a.nom || ''}`.trim()
-    const h = assiduiteDe(a.id).heures
+    const h = type === 'attestation' ? (heuresAttestationDe(a.id) ?? dureePrevue) : assiduiteDe(a.id).heures
     return type !== 'hygiene' && h ? `${nom} (${hFr(h)} h)` : nom
   }
   const emailParams = {
@@ -406,9 +410,12 @@ export async function envoyerDocumentsAuReferentAction(
       const sessDoc = await datesDuParcours(supabase, sess, session.organization.id)
       for (const a of apprenants) {
         const { assiduite, heures, dureeTotale } = assiduiteDe(a.id)
+        // L'attestation lit heuresSuivies (mêmes heures que l'attestation
+        // téléchargée) ; le certificat lit heuresPresence
+        const heuresSuivies = type === 'attestation' ? heuresAttestationDe(a.id) : undefined
         const buffer = await renderToBuffer(createElement(composant as any, {
           apprenant: a, session: sessDoc, formation, org: orgDoc,
-          assiduite, heuresPresence: heures, dureeTotale,
+          assiduite, heuresPresence: heures, dureeTotale, heuresSuivies,
         }) as any)
         attachments.push({
           filename: `${type}-${(a.nom || 'stagiaire')}-${(a.prenom || '')}.pdf`.replace(/\s+/g, '_'),

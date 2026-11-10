@@ -88,8 +88,10 @@ export function MesEmargementsClient({ token, groupes }: { token: string; groupe
       )}
 
       {groupes.map((g) => {
-        const total = g.jours.length
-        const signes = g.jours.filter((j) => j.creneaux.every((c) => c.signe || (c.est_present === false && !!c.motif_absence))).length
+        // Jours à signer : ceux qui gardent une demi-journée sans absence ni repos
+        const aSigner = g.jours.filter((j) => j.creneaux.some((c) => !c.motif_absence))
+        const total = aSigner.length
+        const signes = aSigner.filter((j) => j.creneaux.every((c) => c.signe || !!c.motif_absence)).length
         return (
           <div key={g.sessionId} className="card overflow-hidden">
             <div className="px-4 py-3 border-b border-surface-100 flex items-center gap-3">
@@ -97,9 +99,11 @@ export function MesEmargementsClient({ token, groupes }: { token: string; groupe
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-heading font-semibold text-surface-900 truncate">{g.titre}</div>
               </div>
-              <span className={`text-xs font-semibold tabular-nums shrink-0 ${signes === total ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {signes}/{total} jour{total > 1 ? 's' : ''} signé{signes > 1 ? 's' : ''}
-              </span>
+              {total > 0 && (
+                <span className={`text-xs font-semibold tabular-nums shrink-0 ${signes === total ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {signes}/{total} jour{total > 1 ? 's' : ''} signé{signes > 1 ? 's' : ''}
+                </span>
+              )}
             </div>
             <div className="divide-y divide-surface-50">
               {g.jours.map((j) => (

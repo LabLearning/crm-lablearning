@@ -1,4 +1,5 @@
 import { estMotifRepos } from '@/lib/emargement-repos'
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
 
 /**
  * Heures réalisées et assiduité portées sur les certificats de réalisation et
@@ -16,6 +17,11 @@ import { estMotifRepos } from '@/lib/emargement-repos'
  *     La durée retenue est celle du candidat si elle lui est propre (entrée
  *     décalée), ses heures effectuées si le parcours a été interrompu, sinon
  *     la durée du parcours.
+ *
+ *  3. Un repos ne change jamais les heures : seules les absences en retirent
+ *     (Brahim, 05/11/2026). La demi-journée de repos reste dans la base du
+ *     partage. L'en retirer alourdissait chaque absence : sur 14 h en quatre
+ *     demi-journées, une absence donnait 11 h, et 9 h avec un repos en plus.
  */
 
 export interface HeuresCertificat {
@@ -52,27 +58,25 @@ export async function heuresCertificats(
   if (poei) return heuresCertificatsPoei(supabase, poei, dureeFormation)
 
   // ── Session ordinaire : la durée prévue, moins les absences déclarées ──
-  const { data: lignes } = await supabase
+  const lignes = await fetchAllPaged((from, to) => supabase
     .from('emargements')
-    .select('apprenant_id, motif_absence')
+    .select('id, apprenant_id, motif_absence')
     .eq('session_id', sessionId)
+    .order('id')
+    .range(from, to))
 
   const parApprenant = new Map<string, { total: number; absences: number }>()
-  for (const l of (lignes || []) as any[]) {
-    // Un créneau de repos n'était pas prévu pour ce stagiaire : ni dû, ni manqué
-    if (estMotifRepos(l.motif_absence)) continue
+  for (const l of lignes as any[]) {
     const k = String(l.apprenant_id)
     const e = parApprenant.get(k) || { total: 0, absences: 0 }
+    // Chaque demi-journée compte dans la base, repos compris (règle 3) :
+    // seule une absence déclarée retire des heures
     e.total++
-    if (l.motif_absence) e.absences++
+    if (l.motif_absence && !estMotifRepos(l.motif_absence)) e.absences++
     parApprenant.set(k, e)
   }
 
   for (const [apprenantId, { total, absences }] of parApprenant) {
-    if (total === 0) {
-      out.set(apprenantId, { heures: dureeFormation, dureeTotale: dureeFormation, source: 'duree_prevue' })
-      continue
-    }
     const taux = (total - absences) / total
     out.set(apprenantId, {
       heures: Math.round(dureeFormation * taux),
@@ -109,6 +113,23 @@ export async function heuresCertificatsPoei(
     out.set(String(c.apprenant_id), { heures, dureeTotale: prevu, source: 'poei' })
   }
   return out
+}
+
+/**
+ * Heures « suivies » de l'attestation de fin de formation : les heures saisies
+ * sur l'inscription priment (import Dendreo), sinon les heures certifiées. On
+ * ne les imprime que quand le parcours est réellement partiel.
+ */
+export function heuresSuiviesAttestation(
+  h: HeuresCertificat | null | undefined,
+  saisies: unknown,
+  dureeReference: number | null | undefined,
+): number | null {
+  const heures = nombre(saisies) ?? (h ? h.heures : null)
+  const reference = h?.dureeTotale || nombre(dureeReference)
+  // Sans durée de référence, « X heures sur 0 prévues » n'a pas de sens
+  if (!reference) return null
+  return heures != null && heures >= reference ? null : heures
 }
 
 /** Heures certifiées d'un seul stagiaire. */

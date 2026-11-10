@@ -58,7 +58,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       sessionId: s.id, apprenantId: params.id, organizationId: auth.user.organizationId, dureeFormation: f?.duree_heures,
     })
     assiduite = h.assiduite
-    heuresPresence = h.heures || undefined
+    // 0 h reste 0 h : un stagiaire absent partout ne repart pas à la durée pleine
+    heuresPresence = h.heures
     dureeTotale = h.dureeTotale || undefined
   }
 

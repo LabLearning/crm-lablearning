@@ -1124,8 +1124,10 @@ export async function marquerJourneePresentAction(
     })
     .eq('session_id', sessionId)
     .eq('date', date)
-    // Une signature déjà recueillie ne se réécrit pas.
+    // Une signature déjà recueillie ne se réécrit pas, une absence ou un repos
+    // marqués non plus (ils changeraient les heures du certificat)
     .is('signature_data', null)
+    .is('motif_absence', null)
   if (creneau) requete = requete.eq('creneau', creneau)
 
   const { data, error } = await requete.select('id')

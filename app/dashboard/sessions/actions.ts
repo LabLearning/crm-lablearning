@@ -876,8 +876,19 @@ export async function sendDocumentToApprenantAction(
     sessionId, apprenantId, organizationId: session.organization.id, dureeFormation: formation?.duree_heures,
   })
   const assiduite = hCert.assiduite
-  const heuresPresence = hCert.heures || undefined
+  // 0 h reste 0 h : un stagiaire absent partout ne repart pas à la durée
+  // pleine ; sans durée de référence connue, aucune heure n'est avancée
+  const heuresPresence: number | undefined = hCert.dureeTotale > 0 ? hCert.heures : undefined
   const dureeTotale = hCert.dureeTotale || undefined
+  // Attestation : mêmes heures suivies que l'attestation téléchargée
+  // (app/api/pdf/attestation), reprises telles quelles dans le texte du mail
+  let heuresSuivies: number | null = null
+  if (docType === 'attestation') {
+    const { heuresSuiviesAttestation } = await import('@/lib/certificat-heures')
+    const { data: insc } = await supabase.from('inscriptions')
+      .select('heures_presence').eq('session_id', sessionId).eq('apprenant_id', apprenantId).maybeSingle()
+    heuresSuivies = heuresSuiviesAttestation(hCert, insc?.heures_presence, formation?.duree_heures)
+  }
 
   // Rendu du PDF
   const { createElement } = await import('react')
@@ -889,13 +900,22 @@ export async function sendDocumentToApprenantAction(
   try {
     if (docType === 'attestation') {
       const { AttestationFormationPDF } = await import('@/lib/pdf/attestation-formation-pdf')
-      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: await datesDuParcours(supabase, sess, session.organization.id), formation, org: orgDoc, assiduite }) as any)
+      buffer = await renderToBuffer(createElement(AttestationFormationPDF, { apprenant, session: await datesDuParcours(supabase, sess, session.organization.id), formation, org: orgDoc, assiduite, heuresSuivies }) as any)
       docDbType = 'attestation_fin'
       docNom = `Attestation de formation — ${formationNom}`
     } else if (docType === 'hygiene') {
       const { estFormationHygiene } = await import('@/lib/formation-hygiene')
       if (!estFormationHygiene(formation)) {
         return { success: false, error: "Cette session ne porte pas sur l'hygiène alimentaire" }
+      }
+      // Comme partout ailleurs, aucune attestation d'hygiène à 0 heure, quelle que soit la source
+      if (!(hCert.heures > 0)) {
+        return {
+          success: false,
+          error: hCert.source !== 'poei' && !(Number(formation?.duree_heures) > 0)
+            ? "La formation n'a pas de durée renseignée : l'attestation d'hygiène ne peut pas être émise"
+            : "Aucune présence relevée pour ce stagiaire : l'attestation d'hygiène attend ses émargements",
+        }
       }
       const { AttestationHygienePDF } = await import('@/lib/pdf/attestation-hygiene-pdf')
       // La durée attestée est celle réellement suivie : c'est elle qui est
@@ -925,9 +945,13 @@ export async function sendDocumentToApprenantAction(
     : '—'
   // Durée : les heures portées sur le document (saisies pour une POEI), pas la durée du catalogue
   const hFr = (n: number) => String(Math.round(n * 100) / 100).replace('.', ',')
-  const dureeEmail = heuresPresence != null
-    ? `${hFr(heuresPresence)} h${dureeTotale && heuresPresence < dureeTotale ? ` sur ${hFr(dureeTotale)} h prévues` : ''}`
-    : formation?.duree_heures ? `${formation.duree_heures} h` : '—'
+  // Attestation : exactement ce qu'elle imprime (« X h sur D h prévues » ou la durée)
+  const dureeDoc = Number(formation?.duree_heures) || 0
+  const dureeEmail = docType === 'attestation'
+    ? (heuresSuivies != null ? `${hFr(heuresSuivies)} h sur ${hFr(dureeDoc)} h prévues` : dureeDoc ? `${hFr(dureeDoc)} h` : '—')
+    : heuresPresence != null
+      ? `${hFr(heuresPresence)} h${dureeTotale && heuresPresence < dureeTotale ? ` sur ${hFr(dureeTotale)} h prévues` : ''}`
+      : formation?.duree_heures ? `${formation.duree_heures} h` : '—'
   const isAtt = docType === 'attestation'
   const isHyg = docType === 'hygiene'
   const sujetEmail = isHyg

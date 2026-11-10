@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { estMotifRepos } from '@/lib/emargement-repos'
 
 /**
  * Actions de l'assistant CRM : l'IA les PROPOSE, l'utilisateur les CONFIRME
@@ -414,7 +415,7 @@ const STATUTS_FACTURE_PAYABLES = ['emise', 'envoyee', 'payee_partiellement', 'en
  * l'onglet Émargement), et jamais une présence à venir. Une erreur de base
  * fait échouer le pointage au lieu de lever le verrou.
  */
-async function analyserCreneaux(params: any, orgId: string): Promise<{ total: number; ids: string[]; signes: number; verrouilles: number; futurs: number }> {
+async function analyserCreneaux(params: any, orgId: string): Promise<{ total: number; ids: string[]; signes: number; verrouilles: number; futurs: number; repos: number }> {
   const supabase = await createServiceRoleClient()
   const present = params.present === true || params.present === 'true'
   const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
@@ -424,7 +425,7 @@ async function analyserCreneaux(params: any, orgId: string): Promise<{ total: nu
   }
   const [{ count, error: errTotal }, { data: libres, error }, { data: verrous, error: errVerrous }] = await Promise.all([
     cible(supabase.from('emargements').select('id', { count: 'exact', head: true })),
-    cible(supabase.from('emargements').select('id, date, creneau')).is('signature_data', null).is('validated_by', null),
+    cible(supabase.from('emargements').select('id, date, creneau, motif_absence')).is('signature_data', null).is('validated_by', null),
     supabase.from('emargement_feuilles').select('date, creneau')
       .eq('organization_id', orgId).eq('session_id', String(params.session_id)).not('validated_at', 'is', null),
   ])
@@ -433,19 +434,22 @@ async function analyserCreneaux(params: any, orgId: string): Promise<{ total: nu
   if (errVerrous) throw errVerrous
   const verrouille = (c: any) => (verrous || []).some((v: any) =>
     v.date === c.date && (v.creneau === c.creneau || v.creneau === 'journee' || c.creneau === 'journee'))
-  let verrouilles = 0, futurs = 0
+  let verrouilles = 0, futurs = 0, repos = 0
   const ids: string[] = []
   for (const c of (libres || []) as any[]) {
+    // Un repos posé ne s'écrase pas : il se retire d'abord à la main
+    if (estMotifRepos(c.motif_absence)) { repos++; continue }
     if (verrouille(c)) { verrouilles++; continue }
     if (present && String(c.date) > aujourdhui) { futurs++; continue }
     ids.push(c.id)
   }
   const total = count || 0
-  return { total, ids, signes: total - (libres || []).length, verrouilles, futurs }
+  return { total, ids, signes: total - (libres || []).length, verrouilles, futurs, repos }
 }
 
-const motifCreneaux = (a: { signes: number; verrouilles: number; futurs: number }) => [
+const motifCreneaux = (a: { signes: number; verrouilles: number; futurs: number; repos?: number }) => [
   a.signes ? `${a.signes} déjà signé${a.signes > 1 ? 's' : ''}` : '',
+  a.repos ? `${a.repos} en repos (à retirer d’abord dans le panneau Émargement du stagiaire)` : '',
   a.verrouilles ? `${a.verrouilles} sur une feuille validée (à rouvrir dans l’onglet Émargement)` : '',
   a.futurs ? `${a.futurs} à une date à venir (une présence ne se pose pas à l’avance)` : '',
 ].filter(Boolean).join(', ')
@@ -708,6 +712,8 @@ export async function executerAction(type: string, params: any, orgId: string, u
           ? { est_present: true, motif_absence: null }
           : { est_present: false, motif_absence: params.motif || 'Non précisé' })
         .in('id', ids).is('signature_data', null)
+        // Un repos posé entre-temps ne s'écrase pas non plus
+        .or('motif_absence.is.null,motif_absence.not.ilike.repos')
         .select('id')
       if (errMaj) return { success: false, message: errMaj.message }
       if (!data?.length) return { success: false, message: 'Aucun créneau modifiable (signés entre-temps)' }
