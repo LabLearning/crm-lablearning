@@ -89,11 +89,6 @@ export function EmargementSignePDF({ session, formation, org, formateur, apprena
                 <View key={i} style={{ width: creneauW, borderLeftWidth: 0.5, borderLeftColor: SURFACE_200, alignItems: 'center', justifyContent: 'center', padding: 3 }}>
                   {em?.signature_data ? (
                     <Image src={em.signature_data} style={{ height: 34, maxWidth: creneauW - 8, objectFit: 'contain' }} />
-                  ) : em?.est_present ? (
-                    // Présence relevée sans signature électronique (feuille
-                    // papier ou pointage formateur) : la case dit « Présent »
-                    // — jamais vide quand la présence est constatée.
-                    <Text style={{ fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>Présent</Text>
                   ) : estMotifRepos(em?.motif_absence) ? (
                     // Jour de repos : ni présent ni absent (lib/emargement-repos)
                     <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_500 }}>Repos</Text>
@@ -106,7 +101,10 @@ export function EmargementSignePDF({ session, formation, org, formateur, apprena
                       <Text style={{ fontSize: 7.5, fontFamily: 'Satoshi', fontWeight: 700, color: '#b91c1c' }}>Absent</Text>
                       <Text style={{ fontSize: 6, color: SURFACE_500, marginTop: 1, textAlign: 'center' }}>{em.motif_absence}</Text>
                     </View>
-                  ) : null}
+                  ) : null
+                  /* La présence est liée à la signature (Brahim, 10/11/2026) : une
+                     case cochée « présent » sans signature reste vide, jamais
+                     « Présent » ; le stagiaire la signe depuis son espace */}
                 </View>
               )
             })}
