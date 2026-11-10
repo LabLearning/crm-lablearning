@@ -67,6 +67,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     nbStagiaires: inscrits.get(l.session_id) || 0,
     base: Number(l.base_montant || 0),
     coutFormateur: Number(l.cout_formateur || 0),
+    // Déplacement du formateur, ou frais d'un parcours POEI, déduits en budget net
+    frais: Number(l.frais_annexes || 0),
+    poei: l.base_source === 'poei',
     commission: Number(l.commission_montant || 0),
   }))
 

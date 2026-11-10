@@ -13,8 +13,13 @@ export interface LigneReleve {
   dateDebut: string | null
   dateFin: string | null
   nbStagiaires: number
+  /** Budget du dossier : prise en charge OPCO, prix HT, facturé ou montant du parcours POEI */
   base: number
   coutFormateur: number
+  /** Frais déduits en plus du coût formateur : déplacement du formateur, frais d'un parcours POEI */
+  frais?: number
+  /** Le dossier est un parcours POEI (libellé des frais) */
+  poei?: boolean
   commission: number
 }
 
@@ -48,8 +53,11 @@ const jour = (d?: string | null) =>
 const periode = (debut?: string | null, fin?: string | null) =>
   !debut ? '' : (!fin || fin === debut) ? jour(debut) : `${jour(debut)} au ${jour(fin)}`
 
-// Largeurs de colonnes, en pourcentage de la largeur utile
-const COL = { formation: '44%', stagiaires: '12%', base: '20%', commission: '24%' }
+// Largeurs de colonnes, en pourcentage de la largeur utile. Budget net :
+// budget, frais, marge et commission, pour que chaque montant se refasse ;
+// budget débloqué : la commission ne dépend que du budget.
+const COL_NET = { formation: '31%', stagiaires: '8%', base: '15%', frais: '16%', marge: '15%', commission: '15%' }
+const COL_DEBLOQUE = { formation: '44%', stagiaires: '12%', base: '20%', frais: '0%', marge: '0%', commission: '24%' }
 
 /**
  * Relevé des commissions dues à une franchise, dossier par dossier.
@@ -60,6 +68,13 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
   const totalStagiaires = lignes.reduce((t, l) => t + l.nbStagiaires, 0)
   const estNet = franchise.commission_type === 'budget_net'
   const taux = Number(franchise.taux_commission || (estNet ? 40 : 10))
+  const COL = estNet ? COL_NET : COL_DEBLOQUE
+  const fraisDe = (l: LigneReleve) => (Number(l.coutFormateur) || 0) + (Number(l.frais) || 0)
+  const margeDe = (l: LigneReleve) => Math.max(0, (Number(l.base) || 0) - fraisDe(l))
+  const totalBudget = lignes.reduce((t, l) => t + (Number(l.base) || 0), 0)
+  const totalFrais = lignes.reduce((t, l) => t + fraisDe(l), 0)
+  const totalMarge = lignes.reduce((t, l) => t + margeDe(l), 0)
+  const cellNum = { fontSize: 8, textAlign: 'right' as const }
   const aujourdhui = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   // Regroupement par établissement, du plus gros au plus petit
@@ -95,7 +110,7 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
           <View style={shared.row}>
             <Text style={shared.label}>Commission :</Text>
             <Text style={shared.value}>
-              {taux} % TTC {estNet ? 'du budget net de chaque dossier, après déduction des frais de formateur' : 'du budget débloqué de chaque dossier'}
+              {taux} % TTC {estNet ? 'de la marge de chaque dossier : son budget moins les frais (rémunération et déplacement du formateur, frais d\'un parcours POEI)' : 'du budget débloqué de chaque dossier'}
             </Text>
           </View>
         </View>
@@ -129,8 +144,10 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
               <Text style={[shared.tableHeaderCell, { width: COL.formation }]}>Formation</Text>
               <Text style={[shared.tableHeaderCell, { width: COL.stagiaires, textAlign: 'center' }]}>Stagiaires</Text>
               <Text style={[shared.tableHeaderCell, { width: COL.base, textAlign: 'right' }]}>
-                {estNet ? 'Budget net' : 'Budget débloqué'}
+                {estNet ? 'Budget' : 'Budget débloqué'}
               </Text>
+              {estNet ? <Text style={[shared.tableHeaderCell, { width: COL.frais, textAlign: 'right' }]}>Frais</Text> : null}
+              {estNet ? <Text style={[shared.tableHeaderCell, { width: COL.marge, textAlign: 'right' }]}>Marge</Text> : null}
               <Text style={[shared.tableHeaderCell, { width: COL.commission, textAlign: 'right' }]}>Commission TTC</Text>
             </View>
 
@@ -160,14 +177,39 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
                       </Text>
                     </View>
                     <Text style={[shared.tableCell, { width: COL.stagiaires, textAlign: 'center' }]}>{l.nbStagiaires || '—'}</Text>
-                    <Text style={[shared.tableCell, { width: COL.base, textAlign: 'right' }]}>{euro(l.base)}</Text>
-                    <Text style={[shared.tableCell, { width: COL.commission, textAlign: 'right', fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }]}>
+                    <Text style={[shared.tableCell, cellNum, { width: COL.base }]}>{euro(l.base)}</Text>
+                    {estNet ? (
+                      <View style={{ width: COL.frais }}>
+                        <Text style={[shared.tableCell, cellNum]}>{euro(fraisDe(l))}</Text>
+                        {/* D'où viennent les frais : formateur, et déplacement ou frais du parcours */}
+                        <Text style={{ fontSize: 6.5, color: SURFACE_400, marginTop: 1.5, textAlign: 'right' }}>
+                          {`formateur ${euro(l.coutFormateur)}${Number(l.frais) > 0 ? `${l.poei ? ' · frais' : ' · déplacement'} ${euro(Number(l.frais))}` : ''}`}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {estNet ? <Text style={[shared.tableCell, cellNum, { width: COL.marge }]}>{euro(margeDe(l))}</Text> : null}
+                    <Text style={[shared.tableCell, cellNum, { width: COL.commission, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }]}>
                       {euro(l.commission)}
                     </Text>
                   </View>
                 ))}
               </View>
             ))}
+
+            {/* Totaux et total à verser : un seul bloc insécable, pour qu'un saut de
+                page ne coupe jamais la barre verte en deux */}
+            <View wrap={false}>
+            {/* Totaux du budget, des frais et de la marge (budget net) */}
+            {estNet ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 7, paddingHorizontal: 10, borderTopWidth: 0.5, borderTopColor: SURFACE_200 }}>
+                <Text style={{ width: COL.formation, fontSize: 8, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>Totaux</Text>
+                <Text style={{ width: COL.stagiaires, fontSize: 8, textAlign: 'center', color: SURFACE_700 }}>{totalStagiaires || '—'}</Text>
+                <Text style={{ width: COL.base, fontSize: 8, textAlign: 'right', color: SURFACE_900 }}>{euro(totalBudget)}</Text>
+                <Text style={{ width: COL.frais, fontSize: 8, textAlign: 'right', color: SURFACE_900 }}>{euro(totalFrais)}</Text>
+                <Text style={{ width: COL.marge, fontSize: 8, textAlign: 'right', color: SURFACE_900 }}>{euro(totalMarge)}</Text>
+                <Text style={{ width: COL.commission, fontSize: 8, textAlign: 'right', fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>{euro(total)}</Text>
+              </View>
+            ) : null}
 
             {/* Total */}
             <View style={{
@@ -180,6 +222,7 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
               <Text style={{ fontSize: 11, fontFamily: 'Satoshi', fontWeight: 700, color: '#ffffff' }}>
                 {euro(total)}
               </Text>
+            </View>
             </View>
           </View>
         </View>
