@@ -30,6 +30,32 @@ export interface SessionEmargement {
   /** Demi-journées dont la feuille est validée par le formateur. */
   feuillesValidees: number
   feuillesTotal: number
+  /** Demi-journées signées par les stagiaires. */
+  signees?: number
+}
+
+/**
+ * Au-delà de 300 signatures, la feuille de toute la session dépasserait la
+ * limite de 4,5 Mo des réponses Vercel (≈ 11 Ko de PDF par signature) : on ne
+ * propose alors que les feuilles par semaine.
+ */
+const SEUIL_SESSION_ENTIERE = 300
+
+const jourIso = (d: Date) => d.toISOString().slice(0, 10)
+const courtFr = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+
+/** Semaines (lundi → dimanche, bornées à la session) déjà commencées. */
+function semainesCommencees(debut: string, fin: string, aujourdhui: string): { du: string; au: string }[] {
+  const out: { du: string; au: string }[] = []
+  const d0 = new Date(`${debut}T12:00:00Z`)
+  const lundi = new Date(d0.getTime() - ((d0.getUTCDay() + 6) % 7) * 86_400_000)
+  for (let l = lundi; jourIso(l) <= fin; l = new Date(l.getTime() + 7 * 86_400_000)) {
+    const du = jourIso(l) < debut ? debut : jourIso(l)
+    const dim = jourIso(new Date(l.getTime() + 6 * 86_400_000))
+    const au = dim > fin ? fin : dim
+    if (du <= aujourdhui) out.push({ du, au })
+  }
+  return out
 }
 
 const CRENEAU: Record<string, string> = { matin: 'matin', apres_midi: 'après-midi', journee: 'journée' }
@@ -46,6 +72,7 @@ export function PoeiEmargement({ sessions, candidats, dureeParcours }: {
 }) {
   const totalAbsences = candidats.reduce((n, c) => n + c.absences.length, 0)
   const sessionIds = sessions.map((s) => s.id)
+  const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
   const totalASigner = candidats.reduce((n, c) => n + c.aSigner, 0)
 
   if (sessions.length === 0) {
@@ -81,13 +108,47 @@ export function PoeiEmargement({ sessions, candidats, dureeParcours }: {
               <div className="flex items-center gap-2 shrink-0">
                 <a href={`/api/pdf/emargement/${s.id}`} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-surface-500 hover:text-brand-600">
-                  <Download className="h-3.5 w-3.5" /> Feuille PDF
+                  <Download className="h-3.5 w-3.5" /> Feuille vierge
                 </a>
                 <Link href={`/dashboard/sessions/${s.id}?tab=presences`}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:underline">
                   Gérer <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
               </div>
+              {/* Feuilles signées : toute la session, ou par semaine quand elle dure plus de 7 jours */}
+              {(() => {
+                const signees = s.signees || 0
+                if (!signees) return <div className="basis-full text-xs text-surface-400">Aucune signature pour l&apos;instant : la feuille signée sera proposée dès la première.</div>
+                const debut = String(s.date_debut || '').slice(0, 10)
+                const fin = String(s.date_fin || s.date_debut || '').slice(0, 10)
+                const duree = debut && fin ? Math.round((Date.parse(`${fin}T12:00:00Z`) - Date.parse(`${debut}T12:00:00Z`)) / 86_400_000) + 1 : 0
+                const lien = 'inline-flex items-center gap-1.5 rounded-lg border border-surface-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50'
+                if (duree <= 7) {
+                  return (
+                    <div className="basis-full flex flex-wrap gap-2">
+                      <a href={`/api/pdf/emargement-signe/${s.id}`} target="_blank" rel="noopener noreferrer" className={lien}>
+                        <Download className="h-3.5 w-3.5" /> Feuille signée (PDF)
+                      </a>
+                    </div>
+                  )
+                }
+                const semaines = semainesCommencees(debut, fin, aujourdhui)
+                return (
+                  <div className="basis-full flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-surface-500">Feuilles signées :</span>
+                    {semaines.map((w) => (
+                      <a key={w.du} href={`/api/pdf/emargement-signe/${s.id}?du=${w.du}&au=${w.au}`} target="_blank" rel="noopener noreferrer" className={lien}>
+                        <Download className="h-3.5 w-3.5" /> {w.du === w.au ? courtFr(w.du) : `${courtFr(w.du)} au ${courtFr(w.au)}`}
+                      </a>
+                    ))}
+                    {signees <= SEUIL_SESSION_ENTIERE && (
+                      <a href={`/api/pdf/emargement-signe/${s.id}`} target="_blank" rel="noopener noreferrer" className={lien}>
+                        <Download className="h-3.5 w-3.5" /> Toute la session
+                      </a>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </div>

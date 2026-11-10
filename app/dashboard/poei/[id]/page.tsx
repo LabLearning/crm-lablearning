@@ -156,7 +156,9 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       // Une ligne par stagiaire et par demi-journée : 12 stagiaires sur 57 jours
       // dépassent déjà le plafond de 1000 lignes de PostgREST
       fetchAllPaged((from, to) => supabase.from('emargements')
-        .select('id, apprenant_id, session_id, date, creneau, signature_data, motif_absence')
+        // signed_at plutôt que signature_data : on compte les signatures sans
+        // charger leurs images (6,6 Mo par affichage sur une POEI de 12 stagiaires)
+        .select('id, apprenant_id, session_id, date, creneau, signed_at, motif_absence')
         .in('session_id', idsSessionsPoei).order('id').range(from, to)).then((data) => ({ data })),
     ])
     const libelleParIntervention = new Map(((interventions || []) as any[]).map((iv) => [iv.id, iv.libelle]))
@@ -169,6 +171,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         intervention: libelleIntervention.get(sp.id) || null,
         feuillesValidees: f.filter((x: any) => x.validated_at).length,
         feuillesTotal: creneaux.size,
+        signees: ((lignesEm || []) as any[]).filter((x: any) => x.session_id === sp.id && x.signed_at).length,
       }
     }).sort((a, b) => String(a.date_debut).localeCompare(String(b.date_debut)))
 
@@ -182,11 +185,11 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       return {
         apprenantId: aid,
         nom: `${c.apprenant?.prenom || c.prenom || ''} ${c.apprenant?.nom || c.nom || ''}`.trim() || 'Candidat',
-        signees: siennes.filter((x: any) => x.signature_data).length,
+        signees: siennes.filter((x: any) => x.signed_at).length,
         absences,
         // À signer = passé et sans signature ni motif ; les jours à venir à part
-        aSigner: siennes.filter((x: any) => !x.signature_data && !x.motif_absence && String(x.date) <= aujourdhui).length,
-        aVenir: siennes.filter((x: any) => !x.signature_data && !x.motif_absence && String(x.date) > aujourdhui).length,
+        aSigner: siennes.filter((x: any) => !x.signed_at && !x.motif_absence && String(x.date) <= aujourdhui).length,
+        aVenir: siennes.filter((x: any) => !x.signed_at && !x.motif_absence && String(x.date) > aujourdhui).length,
         heuresCertifiees: heures.get(String(aid))?.heures ?? Number(p.duree_heures || 0),
       }
     })
