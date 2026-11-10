@@ -86,7 +86,13 @@ async function recalculerCommissionPoei(supabase: any, orgId: string, sessionId:
       const { data: p } = await supabase.from('poei').select('id').eq('session_id', sessionId).eq('organization_id', orgId).limit(1)
       parcours = !!p?.length
     }
-    if (!parcours) return
+    if (!parcours) {
+      // Session ordinaire : le déplacement de son formateur entre dans sa
+      // commission (budget net), recalculée tout de suite elle aussi
+      const { recalcSessionCommission } = await import('@/lib/commission')
+      await recalcSessionCommission(supabase, sessionId, orgId)
+      return
+    }
     const { syncFranchiseCommissions } = await import('@/lib/commission')
     await syncFranchiseCommissions(supabase, client.franchise_id, orgId)
   } catch (e) {

@@ -83,6 +83,12 @@ export async function updateSessionCommissionStatusAction(sessionId: string, sta
     })
   }
 
+  // Rouverte (validation ou paiement annulés) : elle reprend tout de suite les
+  // coûts du moment, sans attendre la prochaine synchro de la fiche franchise
+  if (status === 'a_venir') {
+    try { await recalcSessionCommission(supabase, sessionId, session.organization.id) } catch (e) { console.error('[commission rouverte]', e) }
+  }
+
   await logAudit({ action: `commission_session_${status}`, entity_type: 'session', entity_id: sessionId })
   revalidatePath('/dashboard/franchises')
   revalidatePath(`/dashboard/sessions/${sessionId}`)

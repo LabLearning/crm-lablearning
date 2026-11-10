@@ -13,6 +13,7 @@ import type { BadgeVariant } from '@/lib/types'
 import { updateCoutFormateurAction } from './actions'
 import { changerFormateurSessionAction } from './formateur-actions'
 import { SessionDocuments } from './SessionDocuments'
+import { FraisDeplacementFormateur } from './FraisDeplacementFormateur'
 
 interface FormateurFiche {
   id: string
@@ -340,12 +341,21 @@ export function SessionFormateur({
           </div>
         )}
 
+        {/* Déplacement du formateur : à part du contrat, déduit de la marge et de la commission */}
+        {peutFixerRemuneration && (
+          <FraisDeplacementFormateur sessionId={session.id} formateurId={session.formateur_id || null}
+            factureAuDessusDuContrat={Math.round(factures.reduce((t, f) => t + Number(f.montant_ht || 0), 0) * 100)
+              > Math.round(contrats.filter((c) => c.status !== 'annule').reduce((t, c) => t + Number(c.montant_ht || 0), 0) * 100)} />
+        )}
+
         {ecartContrat && (
           <div className="flex items-start gap-2 rounded-xl border border-warning-100 bg-warning-50 px-3 py-2 text-xs text-warning-700">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
               Le contrat signé {contratActif.numero || ''} porte {euros(contratActif.montant_ht)} HT, la rémunération saisie {euros(cout)} :
               c&apos;est le contrat signé qui fait foi.
+              {peutFixerRemuneration && <> Un coût en plus, comme un déplacement, se saisit, TVA comprise, dans « Frais de déplacement du formateur » :
+              il compte dans la marge et la commission sans toucher au contrat.</>}
             </span>
           </div>
         )}

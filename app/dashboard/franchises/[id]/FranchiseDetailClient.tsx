@@ -342,7 +342,13 @@ export default function FranchiseDetailClient({
                                 <button onClick={() => doAction(() => updateSessionCommissionStatusAction(l.session_id, 'payee'))}
                                   className="text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">Payer</button>
                               )}
-                              {(cs === 'a_venir' || cs === 'validee') && (
+                              {/* Une ligne validée est figée : on la rouvre pour qu'elle reprenne les coûts du moment */}
+                              {cs === 'validee' && (
+                                <button onClick={() => doAction(() => updateSessionCommissionStatusAction(l.session_id, 'a_venir'))}
+                                  title="La commission redevient « à venir » et se recalcule (coût, déplacement du formateur…)"
+                                  className="text-[11px] text-surface-400 hover:text-surface-700">Annuler la validation</button>
+                              )}
+                              {cs === 'a_venir' && (
                                 <button onClick={() => doAction(() => recalcSessionCommissionAction(l.session_id))}
                                   title="Recalculer" className="p-1.5 rounded-md text-surface-400 hover:text-surface-700 hover:bg-surface-100">
                                   <RefreshCw className="h-3.5 w-3.5" />
@@ -387,7 +393,8 @@ const SOURCE_COUT: Record<string, string> = {
  */
 function CoutFormateurCell({ ligne }: { ligne: LigneCommissionSession }) {
   const cout = Number(ligne.cout_formateur) || 0
-  // Frais du parcours POEI (onglet Frais de la POEI), déduits en plus en budget net
+  // Frais déduits en plus en budget net : ceux du parcours POEI (onglet Frais),
+  // ou le déplacement du formateur d'une session (onglet Formateur de la session)
   const frais = Number(ligne.frais_annexes) || 0
   const net = ligne.commission_type === 'budget_net'
   return (

@@ -239,7 +239,17 @@ export function SessionDetailClient({ session, inscriptions, emargements, feuill
     const montant = coutValue.trim() === '' ? null : Number(coutValue)
     if (montant !== null && !Number.isFinite(montant)) return
     setEditCout(false)
-    startTransition(async () => { await updateCoutFormateurAction(session.id, montant) })
+    startTransition(async () => {
+      const r: any = await updateCoutFormateurAction(session.id, montant)
+      if (!r?.success) { toast('error', r?.error || 'Enregistrement impossible'); return }
+      // Contrat signé à un autre montant : c'est lui qui compte pour la marge et
+      // la commission ; un déplacement se saisit à part (onglet Formateur)
+      const c: any = contratFormateur
+      const signe = c && c.status !== 'annule' && (c.signature_formateur_date || c.status === 'signe_formateur')
+      if (signe && montant != null && c.montant_ht != null && Math.abs(Number(c.montant_ht) - montant) > 0.005) {
+        toast('info', `Le contrat signé ${c.numero || ''} reste à ${Number(c.montant_ht).toLocaleString('fr-FR')} € et fait foi : un déplacement se saisit dans l'onglet Formateur`)
+      } else toast('success', r.data?.contratMisAJour ? 'Rémunération enregistrée, contrat mis à jour' : 'Rémunération enregistrée')
+    })
   }
 
   function savePrix() {

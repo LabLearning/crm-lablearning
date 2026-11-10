@@ -95,6 +95,12 @@ export async function updateSessionStatusAction(sessionId: string, newStatus: st
     } catch (e) { console.error('[email eval client]', e) }
   }
 
+  // La commission franchise suit tout de suite, sans attendre la synchro de
+  // la fiche franchise (une commission validée ou payée reste figée)
+  try {
+    const { recalcSessionCommission } = await import('@/lib/commission')
+    await recalcSessionCommission(supabase, sessionId, session.organization.id)
+  } catch (e) { console.error('[commission franchise]', e) }
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true }
 }
@@ -736,13 +742,20 @@ export async function updateCoutFormateurAction(sessionId: string, montant: numb
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (contrat && !contrat.signature_formateur_date && contrat.status !== 'signe_formateur') {
+  const contratMisAJour = !!contrat && !contrat.signature_formateur_date && contrat.status !== 'signe_formateur'
+  if (contratMisAJour) {
     await supabase.from('contrats_formateur').update({ montant_ht: montant }).eq('id', contrat.id)
   }
 
   await logAudit({ action: 'update_cout_formateur', entity_type: 'session', entity_id: sessionId, details: { montant } })
+  // La commission franchise suit tout de suite, sans attendre la synchro de
+  // la fiche franchise (une commission validée ou payée reste figée)
+  try {
+    const { recalcSessionCommission } = await import('@/lib/commission')
+    await recalcSessionCommission(supabase, sessionId, session.organization.id)
+  } catch (e) { console.error('[commission franchise]', e) }
   revalidatePath(`/dashboard/sessions/${sessionId}`)
-  return { success: true, data: { contratMisAJour: !!contrat && !contrat.signature_formateur_date } }
+  return { success: true, data: { contratMisAJour } }
 }
 
 /**
@@ -793,6 +806,12 @@ export async function updateSessionPrixAction(sessionId: string, montant: number
   }
 
   await logAudit({ action: 'update_prix_session', entity_type: 'session', entity_id: sessionId, details: { montant, conventions_corrigees: corrections.map((c) => c.numero) } })
+  // La commission franchise suit tout de suite, sans attendre la synchro de
+  // la fiche franchise (une commission validée ou payée reste figée)
+  try {
+    const { recalcSessionCommission } = await import('@/lib/commission')
+    await recalcSessionCommission(supabase, sessionId, session.organization.id)
+  } catch (e) { console.error('[commission franchise]', e) }
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { success: true, data: { conventionMaj } }
 }

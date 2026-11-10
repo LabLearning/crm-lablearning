@@ -745,6 +745,12 @@ export async function updateSessionAction(id: string, formData: FormData): Promi
   } catch (e) { console.error('[programme convention]', e) }
 
   await logAudit({ action: 'update', entity_type: 'session', entity_id: id })
+  // La commission franchise suit tout de suite, sans attendre la synchro de
+  // la fiche franchise (une commission validée ou payée reste figée)
+  try {
+    const { recalcSessionCommission } = await import('@/lib/commission')
+    await recalcSessionCommission(supabase, id, session.organization.id)
+  } catch (e) { console.error('[commission franchise]', e) }
   revalidatePath('/dashboard/sessions')
   return { success: true, data: { conventionsAReprendre } }
 }

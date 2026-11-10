@@ -147,7 +147,7 @@ export interface LigneCommissionSession {
   base_source: string
   cout_formateur: number
   cout_formateur_manuel: number | null
-  /** Frais du parcours POEI déduits en budget net (migration 166 ; absent avant) */
+  /** Frais déduits en budget net : parcours POEI ou déplacement du formateur d'une session (migration 166 ; absent avant) */
   frais_annexes?: number | null
   /** D'où vient le coût formateur (renseigné seulement à la demande, pour la fiche franchise de l'administration). */
   cout_source?: SourceCoutLigne
@@ -194,7 +194,8 @@ export async function getFranchiseCommissionLines(supabase: any, franchiseId: st
     const [sessions, contrats, facturesFormateur] = await Promise.all([
       lire('sessions', 'id, cout_formateur, formateur_id, horaires_jours, formation:formation_id(duree_jours)'),
       lire('contrats_formateur', 'session_id, montant_ht', (q) => q.neq('status', 'annule')),
-      lire('factures_formateur', 'session_id, montant_ht'),
+      // Factures en brouillon ou rejetées hors coût (même règle que lib/commission)
+      lire('factures_formateur', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","rejetee")')),
     ])
     const formateurIds = Array.from(new Set((sessions as any[]).map((s) => s.formateur_id).filter(Boolean)))
     const formateurs = formateurIds.length

@@ -6,7 +6,9 @@
  *   - 'budget_net'      : taux% × (prise_en_charge - cout_formateur) (ex: 40%) ;
  *     pour un parcours POEI, les frais du parcours (transport, logement, salle,
  *     formateur hors contrat…, table session_frais) sont déduits aussi
- *     (demande de Brahim du 23/10/2026)
+ *     (demande de Brahim du 23/10/2026) ; pour une session, les frais de
+ *     déplacement de son formateur (demande du 10/11/2026 : le contrat signé
+ *     garde son montant, le déplacement se saisit à part)
  *
  * Le montant obtenu est un montant TTC : c'est ce que la franchise facture,
  * elle n'ajoute pas de TVA par-dessus.
@@ -26,7 +28,7 @@ export function computeCommission(params: {
   taux: number // pourcentage, ex: 10 ou 40
   montantPriseEnCharge: number
   coutFormateur: number
-  /** Frais annexes déduits en plus du coût formateur, en budget net (parcours POEI) */
+  /** Frais déduits en plus du coût formateur, en budget net (parcours POEI, déplacement du formateur d'une session) */
   frais?: number
 }): { montant: number; base: number } {
   const taux = Number(params.taux || 0)
@@ -47,7 +49,7 @@ export function computeCommission(params: {
  * tels quels, sans ajouter de TVA par-dessus.
  */
 export function commissionTypeLabel(type: CommissionType | string | null): string {
-  if (type === 'budget_net') return '40% TTC du budget net (après frais formateur, et frais du parcours pour une POEI)'
+  if (type === 'budget_net') return '40% TTC du budget net (après coût et déplacement du formateur, et frais du parcours pour une POEI)'
   return '10% TTC du budget débloqué'
 }
 
@@ -185,11 +187,26 @@ export interface SessionCommissionResult {
   base: number
   baseSource: 'opco' | 'prix_ht' | 'factures' | 'poei' | 'aucune'
   coutFormateur: number
-  /** Frais du parcours POEI déduits (budget net) ; 0 ailleurs */
+  /** Frais déduits en budget net : ceux du parcours POEI, ou le déplacement du formateur d'une session */
   frais?: number
   type: CommissionType
   status: CommissionStatus
 }
+
+/**
+ * Frais de déplacement du formateur d'une session : les session_frais de la
+ * catégorie « déplacement » rattachés au formateur ACTUEL de la session (case
+ * de l'onglet Formateur ou détail des frais), soit exactement ce que la case
+ * affiche. Un formateur remplacé ne compte plus. Déduits de la commission en
+ * budget net, sans toucher au contrat du formateur.
+ */
+export const estFraisDeplacementFormateur = (f: { categorie?: string | null; formateur_id?: string | null }, formateurId: string | null | undefined) =>
+  f.categorie === 'deplacement' && !!formateurId && f.formateur_id === formateurId
+
+export const sommeFraisDeplacementFormateur = (
+  frais: { categorie?: string | null; formateur_id?: string | null; montant?: number | string | null }[],
+  formateurId: string | null | undefined,
+) => round2(frais.filter((f) => estFraisDeplacementFormateur(f, formateurId)).reduce((t, f) => t + (Number(f.montant) || 0), 0))
 
 /** D'où vient le coût formateur retenu pour une commission. */
 export type SourceCoutFormateur = 'contrat' | 'facture' | 'session' | 'manuel' | 'fiche' | 'intervention' | 'aucune'
@@ -292,6 +309,8 @@ export interface EntreeCommissionSession {
   /** max(1, jours planifiés || durée catalogue || 1) */
   nbJours: number
   coutFormateurSession: number | null
+  /** Frais de déplacement du formateur (sommeFraisDeplacementFormateur), déduits en budget net */
+  fraisDeplacementFormateur?: number
   existante: CommissionSessionExistante | null
 }
 
@@ -357,15 +376,25 @@ export function calculerCommissionSession(e: EntreeCommissionSession & { force?:
     if (facture > 0) { base = facture; baseSource = 'factures' }
   }
   // Coût formateur de la session : trouvé seul, voir coutFormateurDeSession
-  const coutFormateur = coutFormateurDeSession(e).montant
+  const cout = coutFormateurDeSession(e)
+  const coutFormateur = cout.montant
+  // Déplacement du formateur, saisi à part du contrat : déduit en budget net
+  // seulement, le budget débloqué se commissionne brut. Une facture du
+  // formateur qui dépasse son contrat contient déjà le déplacement à hauteur
+  // de l'excédent (elle est pré-remplie avec la rémunération saisie) : seul le
+  // reste se déduit, soit coût + frais = max(factures, contrats + frais).
+  const contratsHt = Number(e.coutContratsHt || 0)
+  const excedentFacture = cout.source === 'facture' && contratsHt > 0
+    ? Math.max(0, Number(e.coutFacturesFormateurHt || 0) - contratsHt) : 0
+  const frais = type === 'budget_net' ? round2(Math.max(0, Number(e.fraisDeplacementFormateur || 0) - excedentFacture)) : 0
 
-  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur })
+  const { montant } = computeCommission({ type, taux, montantPriseEnCharge: base, coutFormateur, frais })
   const exStatus = e.existante?.status
   const status: CommissionStatus = e.sessionAnnulee
     ? 'annulee'
     : (exStatus && exStatus !== 'annulee' ? exStatus as CommissionStatus : 'a_venir')
 
-  return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource, coutFormateur, type, status }, taux }
+  return { kind: 'calculee', fige: false, resultat: { montant, base, baseSource, coutFormateur, frais, type, status }, taux }
 }
 
 /** Tout ce que le calcul de la commission d'un parcours POEI doit connaître, déjà lu. */
@@ -458,10 +487,9 @@ export async function recalcSessionCommission(
       return null
     }
   }
-  const [{ data: existante }, { data: poei }, { count: nbInscrits }, franchiseRes, { data: factures }, { data: contrats }, { data: facturesFormateur }, { data: formateur }] = await Promise.all([
-    supabase.from('commissions_sessions')
-      .select('id, status, cout_formateur_manuel, commission_montant, base_montant, base_source, cout_formateur, commission_type')
-      .eq('session_id', sessionId).maybeSingle(),
+  const [{ data: existante }, { data: poei }, { count: nbInscrits }, franchiseRes, { data: factures }, { data: contrats }, { data: facturesFormateur }, { data: formateur }, { data: fraisSession }] = await Promise.all([
+    // select('*') : frais_annexes n'existe qu'après la migration 166
+    supabase.from('commissions_sessions').select('*').eq('session_id', sessionId).maybeSingle(),
     supabase.from('poei').select('id').eq('session_id', sessionId).maybeSingle(),
     supabase.from('inscriptions').select('id', { count: 'exact', head: true })
       .eq('session_id', sessionId).not('status', 'in', '("annule","abandonne")'),
@@ -473,10 +501,14 @@ export async function recalcSessionCommission(
     supabase.from('factures').select('montant_ht, status').eq('session_id', sessionId)
       .not('status', 'in', '("brouillon","annulee")'),
     supabase.from('contrats_formateur').select('montant_ht').eq('session_id', sessionId).neq('status', 'annule'),
-    supabase.from('factures_formateur').select('montant_ht').eq('session_id', sessionId).eq('organization_id', organizationId),
+    // Une facture en brouillon ou rejetée n'est pas un coût (comme lib/rentabilite)
+    supabase.from('factures_formateur').select('montant_ht').eq('session_id', sessionId).eq('organization_id', organizationId)
+      .not('status', 'in', '("brouillon","rejetee")'),
     sess.formateur_id
       ? supabase.from('formateurs').select('tarif_journalier').eq('id', sess.formateur_id).eq('organization_id', organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase.from('session_frais').select('categorie, formateur_id, montant')
+      .eq('session_id', sessionId).eq('organization_id', organizationId).eq('categorie', 'deplacement'),
   ])
   const retirer = async () => {
     if (existante && !['validee', 'payee'].includes(existante.status)) {
@@ -503,6 +535,7 @@ export async function recalcSessionCommission(
     coutFormateurManuelJour: existante?.cout_formateur_manuel ?? null,
     nbJours: Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1),
     coutFormateurSession: sess.cout_formateur,
+    fraisDeplacementFormateur: sommeFraisDeplacementFormateur((fraisSession || []) as any[], sess.formateur_id),
     existante: existante || null,
     force: opts?.force,
   })
@@ -514,7 +547,7 @@ export async function recalcSessionCommission(
   if (r.fige) return r.resultat
 
   const { montant, base, baseSource, coutFormateur, type, status } = r.resultat
-  await supabase.from('commissions_sessions').upsert({
+  const ligne = {
     organization_id: organizationId,
     franchise_id: franchiseId,
     session_id: sessionId,
@@ -522,13 +555,21 @@ export async function recalcSessionCommission(
     base_montant: base,
     base_source: baseSource,
     cout_formateur: coutFormateur,
+    frais_annexes: Number(r.resultat.frais || 0),
     commission_type: type,
     commission_taux: r.taux,
     commission_montant: montant,
     status,
     calculee_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'session_id' })
+  }
+  const { error } = await supabase.from('commissions_sessions').upsert(ligne, { onConflict: 'session_id' })
+  // Avant la migration 166, la colonne frais_annexes n'existe pas : la
+  // commission (frais déjà déduits) s'écrit quand même, sans le détail
+  if (error && /frais_annexes/.test(String(error.message || ''))) {
+    const { frais_annexes, ...sansFrais } = ligne
+    await supabase.from('commissions_sessions').upsert(sansFrais, { onConflict: 'session_id' })
+  } else if (error) console.error('[commission session]', error.message)
 
   return r.resultat
 }
@@ -588,10 +629,12 @@ export async function syncFranchiseCommissions(
     lire('inscriptions', 'session_id', (q) => q.not('status', 'in', '("annule","abandonne")')),
     lire('factures', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","annulee")')),
     lire('contrats_formateur', 'id, session_id, montant_ht', (q) => q.neq('status', 'annule')),
-    lire('factures_formateur', 'session_id, montant_ht', (q) => q),
+    // Une facture en brouillon ou rejetée n'est pas un coût (comme lib/rentabilite)
+    lire('factures_formateur', 'session_id, montant_ht', (q) => q.not('status', 'in', '("brouillon","rejetee")')),
     Promise.all(paquets(formateurIds).map((p) => supabase.from('formateurs').select('id, tarif_journalier').eq('organization_id', organizationId).in('id', p).then((r: any) => r.data || []))).then((r) => r.flat()),
-    // Frais annexes des sessions : ceux d'un parcours POEI sont déduits de sa commission
-    lire('session_frais', 'session_id, montant', (q) => q.eq('organization_id', organizationId)),
+    // Frais annexes des sessions : ceux d'un parcours POEI sont déduits de sa
+    // commission, et le déplacement du formateur de celle d'une session
+    lire('session_frais', 'session_id, montant, categorie, formateur_id', (q) => q.eq('organization_id', organizationId)),
   ])
   const sommeFrais = (sessionIds: string[]) => {
     const dans = new Set(sessionIds)
@@ -695,6 +738,7 @@ export async function syncFranchiseCommissions(
       coutFormateurManuelJour: existante?.cout_formateur_manuel ?? null,
       nbJours: Math.max(1, nbHoraires || Number((sess.formation as any)?.duree_jours) || 1),
       coutFormateurSession: sess.cout_formateur,
+      fraisDeplacementFormateur: sommeFraisDeplacementFormateur((frais as any[]).filter((f) => f.session_id === sess.id), sess.formateur_id),
       existante,
     })
     if (r.kind === 'aucune') {

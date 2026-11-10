@@ -9,7 +9,7 @@
  * Un montant inconnu vaut null, jamais 0 : la marge passe alors « À
  * compléter » avec la liste de ce qui manque.
  */
-import { calculerCommissionSession, commissionTypeLabel } from '@/lib/commission'
+import { calculerCommissionSession, commissionTypeLabel, sommeFraisDeplacementFormateur } from '@/lib/commission'
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
 
@@ -249,7 +249,7 @@ export interface CommissionSessionRentab {
   session_id: string; franchise_id: string | null; status: string | null
   commission_montant: Num; base_montant: Num; base_source: string | null
   cout_formateur: Num; cout_formateur_manuel: Num; commission_type: string | null; calculee_at: string | null
-  /** Frais du parcours POEI déduits en budget net (migration 166) */
+  /** Frais déduits en budget net : parcours POEI ou déplacement du formateur d'une session (migration 166) */
   frais_annexes?: Num
 }
 export interface FraisRentab {
@@ -1240,11 +1240,15 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
       coutContratsHt: (d.idx.contratsParSession.get(s.id) || [])
         .filter((c) => c.status !== 'annule')
         .reduce((a, c) => a + n(c.montant_ht), 0),
-      coutFacturesFormateurHt: (d.idx.ffParSession.get(s.id) || []).reduce((a, f) => a + n(f.montant_ht), 0),
+      // Factures en brouillon ou rejetées hors coût, comme pour les coûts plus haut
+      coutFacturesFormateurHt: (d.idx.ffParSession.get(s.id) || [])
+        .filter((f) => !['brouillon', 'rejetee'].includes(String(f.status)))
+        .reduce((a, f) => a + n(f.montant_ht), 0),
       tarifJournalierFormateur: s.formateur_id ? n(d.idx.formateurParId.get(s.formateur_id)?.tarif_journalier) || null : null,
       coutFormateurManuelJour: existante?.cout_formateur_manuel == null ? null : n(existante.cout_formateur_manuel),
       nbJours: jours,
       coutFormateurSession: s.cout_formateur == null ? null : n(s.cout_formateur),
+      fraisDeplacementFormateur: sommeFraisDeplacementFormateur((d.idx.fraisParSession.get(s.id) || []) as any[], s.formateur_id),
       existante,
     })
     const nomFr = franchise?.nom || 'franchise'
@@ -1299,7 +1303,7 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
       cle: `cf:${s.id}`,
       famille: 'commission_franchise',
       libelle: `Commission ${nomFr}`,
-      detail: `${commissionTypeLabel(res.type)} · base ${euro(res.base)}${res.type === 'budget_net' ? ` moins ${euro(res.coutFormateur)} de coût formateur` : ''}${suffixe}`,
+      detail: `${commissionTypeLabel(res.type)} · base ${euro(res.base)}${res.type === 'budget_net' ? ` moins ${euro(res.coutFormateur)} de coût formateur${n(res.frais) > 0 ? ` et ${euro(n(res.frais))} de déplacement du formateur` : ''}` : ''}${suffixe}`,
       montant: res.montant,
       qualite: 'a_venir',
       sessionId: s.id,
