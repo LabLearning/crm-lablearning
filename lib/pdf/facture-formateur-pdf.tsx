@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { shared } from './components' // side-effect: enregistre les polices (Satoshi)
 import { FACTURE_MODELES, type FactureModele } from './facture-modeles'
-import { dureeFr, lignesDetail, type DetailPrestation } from '@/lib/facture-formateur-detail'
+import { lignesDetail, lignesFacturees, montantPdf, type DetailPrestation, type LigneFacture } from '@/lib/facture-formateur-detail'
 
 /**
  * Facture de prestation émise PAR un formateur À l'organisme (Lab Learning).
@@ -10,7 +10,9 @@ import { dureeFr, lignesDetail, type DetailPrestation } from '@/lib/facture-form
  * qu'en « Facturé à ». Trois modèles de style au choix du formateur.
  *
  * Chaque modèle porte le détail de la prestation (formation, dates, durée,
- * client, lieu, stagiaires) quand la facture est rattachée à une session.
+ * client, lieu, horaires, contrat) quand la facture est rattachée à une
+ * session, puis le tableau de facturation : chaque jour daté avec ses
+ * horaires, jours × tarif, déplacement, ou les interventions d'une POEI.
  */
 export { FACTURE_MODELES, type FactureModele }
 
@@ -34,8 +36,8 @@ interface Parts {
   objet: string | null
   /** Lignes « libellé, valeur » du détail de la prestation ; vide sans session rattachée. */
   detail: [string, string][]
-  /** Ligne facturée : « Prestation de formation · 3 jours × 300,00 € ». */
-  designation: string
+  /** Tableau de facturation (lib/facture-formateur-detail lignesFacturees). */
+  lignes: LigneFacture[]
   montantHt: any
   montantTva: any
   montantTtc: any
@@ -63,17 +65,13 @@ function buildParts(facture: any, formateur: any, org: any, d: DetailPrestation 
   ].filter(Boolean) as string[]
 
   const tauxTva = Number(facture.taux_tva || 0)
-  // Le prix par jour n'est écrit que lorsqu'il tombe juste : pas de « 2,5 jours × 466,67 € »
-  const calcul = d?.jours && d.tarifJour && Number.isInteger(d.jours) && Number.isInteger(d.tarifJour * 100) && Math.abs(d.jours * d.tarifJour - Number(facture.montant_ht || 0)) < 0.01
-    ? `${d.jours} ${d.jours > 1 ? 'jours' : 'jour'} × ${fmt(d.tarifJour)} €`
-    : d ? dureeFr(d) : null
   return {
     emetteurNom, emetteurLignes, ofNom, ofLignes,
     numAffiche: facture.reference_externe || facture.numero,
     dateEmission: fmtDate(facture.date_emission || facture.created_at),
     objet: facture.objet || null,
     detail: d ? lignesDetail(d) : (facture.session?.reference ? [['Session', String(facture.session.reference)]] : []),
-    designation: ['Prestation de formation', calcul].filter(Boolean).join(' · '),
+    lignes: lignesFacturees(d, Number(facture.montant_ht || 0)),
     montantHt: facture.montant_ht, montantTva: facture.montant_tva, montantTtc: facture.montant_ttc,
     tauxTva,
     mentionTva: tauxTva === 0
@@ -96,9 +94,44 @@ function DetailLignes({ lignes, couleurLibelle }: { lignes: [string, string][]; 
   )
 }
 
+/**
+ * Tableau de facturation commun aux trois modèles : désignation (avec son
+ * détail : session, jours datés, horaires), quantité, prix unitaire, montant.
+ * Les colonnes Qté et P.U. n'apparaissent que si une ligne les renseigne.
+ */
+function TableauLignes({ lignes, fondEntete, texteEntete, filet, detail, pad = 0 }: {
+  lignes: LigneFacture[]; fondEntete?: string; texteEntete: string; filet: string; detail: string; pad?: number
+}) {
+  const avecQte = lignes.some((l) => !!l.quantite)
+  const avecPu = lignes.some((l) => l.prixUnitaire != null)
+  const entete = { fontSize: 7.5, fontWeight: 700 as const, color: texteEntete }
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', paddingVertical: 6, paddingHorizontal: pad, backgroundColor: fondEntete, borderBottomWidth: fondEntete ? 0 : 0.75, borderBottomColor: filet }}>
+        <Text style={{ ...entete, flex: 1 }}>Désignation</Text>
+        {avecQte ? <Text style={{ ...entete, width: 52, textAlign: 'right' }}>Qté</Text> : null}
+        {avecPu ? <Text style={{ ...entete, width: 72, textAlign: 'right' }}>P.U. HT</Text> : null}
+        <Text style={{ ...entete, width: 84, textAlign: 'right' }}>Montant HT</Text>
+      </View>
+      {lignes.map((l, i) => (
+        // Sécable : une longue liste de jours continue sur la page suivante
+        <View key={i} style={{ flexDirection: 'row', paddingVertical: 7, paddingHorizontal: pad, borderBottomWidth: 0.5, borderBottomColor: filet }}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={{ fontSize: 9, lineHeight: 1.35 }}>{l.libelle}</Text>
+            {l.sousLignes.map((s, j) => <Text key={j} style={{ fontSize: 7.5, color: detail, marginTop: 1.5 }}>{s}</Text>)}
+          </View>
+          {avecQte ? <Text style={{ width: 52, textAlign: 'right', fontSize: 9 }}>{l.quantite || ''}</Text> : null}
+          {avecPu ? <Text style={{ width: 72, textAlign: 'right', fontSize: 9 }}>{l.prixUnitaire != null ? montantPdf(l.prixUnitaire) : ''}</Text> : null}
+          <Text style={{ width: 84, textAlign: 'right', fontSize: 9 }}>{montantPdf(l.montant)}</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 // ─────────────────────────── Modèle « Épuré » ───────────────────────────
 const ep = StyleSheet.create({
-  page: { padding: 48, fontFamily: 'Satoshi', fontSize: 9, color: '#0F1720' },
+  page: { padding: 48, paddingBottom: 96, fontFamily: 'Satoshi', fontSize: 9, color: '#0F1720' },
   name: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
   meta: { fontSize: 9, color: '#6B7885' },
   small: { fontSize: 8, color: '#6B7885', lineHeight: 1.5 },
@@ -151,12 +184,9 @@ function ModeleEpure({ p }: { p: Parts }) {
       ) : null}
 
       <View style={ep.ruleThin} />
-      <View style={{ ...ep.row, marginBottom: 8 }}>
-        <Text style={{ fontSize: 9, color: '#4E5A67' }}>{p.designation}</Text>
-        <Text style={{ fontSize: 9 }}>{fmt(p.montantHt)} €</Text>
-      </View>
+      <TableauLignes lignes={p.lignes} texteEntete="#9AA6B2" filet="#CBD3DB" detail="#6B7885" />
 
-      <View style={{ marginLeft: 'auto', width: 220, marginTop: 6 }}>
+      <View wrap={false} style={{ marginLeft: 'auto', width: 220, marginTop: 6 }}>
         <View style={{ ...ep.row, marginBottom: 3 }}><Text style={ep.totLabel}>Total HT</Text><Text style={ep.totVal}>{fmt(p.montantHt)} €</Text></View>
         <View style={{ ...ep.row, marginBottom: 6 }}><Text style={ep.totLabel}>TVA ({fmt(p.tauxTva)}%)</Text><Text style={ep.totVal}>{fmt(p.montantTva)} €</Text></View>
         <View style={{ borderTopWidth: 1, borderTopColor: '#0F1720', paddingTop: 6, ...ep.row }}>
@@ -164,7 +194,8 @@ function ModeleEpure({ p }: { p: Parts }) {
         </View>
       </View>
 
-      <View style={{ position: 'absolute', bottom: 40, left: 48, right: 48 }}>
+      <Text fixed style={{ position: 'absolute', bottom: 22, right: 48, fontSize: 7.5, color: '#6B7885' }} render={({ pageNumber, totalPages }) => (totalPages > 1 ? `Facture N° ${p.numAffiche} · page ${pageNumber}/${totalPages}` : '')} />
+      <View fixed style={{ position: 'absolute', bottom: 40, left: 48, right: 48 }}>
         <View style={{ borderTopWidth: 0.5, borderTopColor: '#CBD3DB', paddingTop: 8 }}>
           <Text style={ep.small}>{p.mentionTva}</Text>
           <Text style={ep.small}>Facture émise dans le cadre d'une sous-traitance pédagogique.</Text>
@@ -176,7 +207,7 @@ function ModeleEpure({ p }: { p: Parts }) {
 
 // ─────────────────────────── Modèle « Classique » ───────────────────────
 const cl = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Satoshi', fontSize: 9, color: '#0F1720' },
+  page: { padding: 40, paddingBottom: 84, fontFamily: 'Satoshi', fontSize: 9, color: '#0F1720' },
   box: { borderWidth: 1, borderColor: '#0F1720', padding: 14 },
   boxLight: { borderWidth: 1, borderColor: '#CBD3DB', padding: 12 },
   h: { fontSize: 20, fontWeight: 700, letterSpacing: 1 },
@@ -223,15 +254,8 @@ function ModeleClassique({ p }: { p: Parts }) {
       ) : null}
 
       <View style={{ marginTop: 14, borderWidth: 1, borderColor: '#0F1720' }}>
-        <View style={cl.th}>
-          <Text style={{ ...cl.thc, flex: 4 }}>Désignation</Text>
-          <Text style={{ ...cl.thc, width: 90, textAlign: 'right' }}>Montant HT</Text>
-        </View>
-        <View style={cl.td}>
-          <Text style={{ flex: 4, fontSize: 9 }}>{p.designation}</Text>
-          <Text style={{ width: 90, textAlign: 'right', fontSize: 9 }}>{fmt(p.montantHt)} €</Text>
-        </View>
-        <View style={{ padding: 8 }}>
+        <TableauLignes lignes={p.lignes} fondEntete="#0F1720" texteEntete="#ffffff" filet="#E1E6EB" detail="#4E5A67" pad={8} />
+        <View wrap={false} style={{ padding: 8 }}>
           <View style={{ marginLeft: 'auto', width: 200 }}>
             <View style={{ ...cl.row, marginBottom: 3 }}><Text style={{ fontSize: 9, color: '#4E5A67' }}>Total HT</Text><Text style={{ fontSize: 9 }}>{fmt(p.montantHt)} €</Text></View>
             <View style={{ ...cl.row, marginBottom: 5 }}><Text style={{ fontSize: 9, color: '#4E5A67' }}>TVA ({fmt(p.tauxTva)}%)</Text><Text style={{ fontSize: 9 }}>{fmt(p.montantTva)} €</Text></View>
@@ -242,7 +266,8 @@ function ModeleClassique({ p }: { p: Parts }) {
         </View>
       </View>
 
-      <View style={{ position: 'absolute', bottom: 36, left: 40, right: 40 }}>
+      <Text fixed style={{ position: 'absolute', bottom: 22, right: 40, fontSize: 7.5, color: '#4E5A67' }} render={({ pageNumber, totalPages }) => (totalPages > 1 ? `Facture N° ${p.numAffiche} · page ${pageNumber}/${totalPages}` : '')} />
+      <View fixed style={{ position: 'absolute', bottom: 36, left: 40, right: 40 }}>
         <Text style={cl.small}>{p.mentionTva}</Text>
         <Text style={cl.small}>Facture émise dans le cadre d'une sous-traitance pédagogique.</Text>
       </View>
@@ -253,8 +278,8 @@ function ModeleClassique({ p }: { p: Parts }) {
 // ─────────────────────────── Modèle « Moderne » ─────────────────────────
 const ACCENT = '#4338ca' // indigo — volontairement distinct du vert Lab Learning
 const mo = StyleSheet.create({
-  page: { fontFamily: 'Satoshi', fontSize: 9, color: '#0F1720' },
-  band: { backgroundColor: ACCENT, paddingHorizontal: 40, paddingVertical: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  page: { fontFamily: 'Satoshi', fontSize: 9, color: '#0F1720', paddingTop: 36, paddingBottom: 84 },
+  band: { marginTop: -36, backgroundColor: ACCENT, paddingHorizontal: 40, paddingVertical: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   bandName: { color: '#ffffff', fontSize: 16, fontWeight: 700 },
   bandSmall: { color: '#c7d2fe', fontSize: 8, lineHeight: 1.5, marginTop: 3 },
   bandTitle: { color: '#ffffff', fontSize: 20, fontWeight: 700, letterSpacing: 2 },
@@ -300,14 +325,11 @@ function ModeleModerne({ p }: { p: Parts }) {
           </View>
         ) : null}
 
-        <View style={{ borderTopWidth: 2, borderTopColor: ACCENT, paddingTop: 10 }}>
-          <View style={{ ...mo.row, marginBottom: 6 }}>
-            <Text style={{ fontSize: 9, color: '#4E5A67' }}>{p.designation}</Text>
-            <Text style={{ fontSize: 9 }}>{fmt(p.montantHt)} €</Text>
-          </View>
+        <View style={{ borderTopWidth: 2, borderTopColor: ACCENT, paddingTop: 4 }}>
+          <TableauLignes lignes={p.lignes} texteEntete={ACCENT} filet="#E4E1F7" detail="#4E5A67" />
         </View>
 
-        <View style={mo.card}>
+        <View wrap={false} style={mo.card}>
           <View style={{ ...mo.row, marginBottom: 4 }}><Text style={{ fontSize: 9, color: '#4E5A67' }}>Total HT</Text><Text style={{ fontSize: 9 }}>{fmt(p.montantHt)} €</Text></View>
           <View style={{ ...mo.row, marginBottom: 6 }}><Text style={{ fontSize: 9, color: '#4E5A67' }}>TVA ({fmt(p.tauxTva)}%)</Text><Text style={{ fontSize: 9 }}>{fmt(p.montantTva)} €</Text></View>
           <View style={{ ...mo.row, borderTopWidth: 1, borderTopColor: '#ddd6fe', paddingTop: 6 }}>
@@ -317,7 +339,8 @@ function ModeleModerne({ p }: { p: Parts }) {
         </View>
       </View>
 
-      <View style={{ position: 'absolute', bottom: 36, left: 40, right: 40 }}>
+      <Text fixed style={{ position: 'absolute', bottom: 22, right: 40, fontSize: 7.5, color: '#4E5A67' }} render={({ pageNumber, totalPages }) => (totalPages > 1 ? `Facture N° ${p.numAffiche} · page ${pageNumber}/${totalPages}` : '')} />
+      <View fixed style={{ position: 'absolute', bottom: 36, left: 40, right: 40 }}>
         <Text style={mo.small}>{p.mentionTva}</Text>
         <Text style={mo.small}>Facture émise dans le cadre d'une sous-traitance pédagogique.</Text>
       </View>

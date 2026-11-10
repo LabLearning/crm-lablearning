@@ -44,8 +44,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const override = req.nextUrl.searchParams.get('modele') as FactureModele | null
   const modele = (override || (facture as any).formateur?.facture_modele || 'epure') as FactureModele
 
-  // Le détail de la prestation (formation, dates, client, lieu) vient de la session rattachée
-  const detail = (await chargerDetailsPrestations(supabase, [facture]))[(facture as any).id] || null
+  // Le détail de la prestation (formation, dates, client, lieu, horaires, contrat)
+  // et le tableau de facturation viennent de la session rattachée
+  const detail = (await chargerDetailsPrestations(supabase, [facture], { lignes: true }))[(facture as any).id] || null
 
   const buffer = await renderToBuffer(
     createElement(FactureFormateurPDF, { facture, formateur: (facture as any).formateur, org, modele, detail }) as any
