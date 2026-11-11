@@ -10,6 +10,26 @@ function aUneTrace(e: {
 }
 
 /**
+ * Date d'entrée des candidats d'une POEI entrés en cours de parcours
+ * (poei_candidats.date_debut), pour la session chapeau comme pour une session
+ * d'intervention. Vide hors POEI.
+ */
+async function entreesPoei(supabase: any, sess: any, sessionId: string, organizationId: string): Promise<Map<string, string>> {
+  let poeiId: string | null = null
+  if (sess.poei_intervention_id) {
+    const { data: iv } = await supabase.from('poei_interventions').select('poei_id').eq('id', sess.poei_intervention_id).maybeSingle()
+    poeiId = iv?.poei_id || null
+  } else {
+    const { data: p } = await supabase.from('poei').select('id').eq('session_id', sessionId).eq('organization_id', organizationId).limit(1)
+    poeiId = p?.[0]?.id || null
+  }
+  if (!poeiId) return new Map()
+  const { data: cands } = await supabase.from('poei_candidats').select('apprenant_id, date_debut')
+    .eq('poei_id', poeiId).not('date_debut', 'is', null)
+  return new Map(((cands || []) as any[]).filter((c) => c.apprenant_id).map((c) => [String(c.apprenant_id), String(c.date_debut).slice(0, 10)]))
+}
+
+/**
  * Génération des feuilles d'émargement d'une session.
  *
  * Elles étaient créées uniquement à l'ouverture de la fiche session par un
@@ -85,6 +105,14 @@ export async function ensureEmargements(
     }
   }
 
+  // Candidat POEI entré en cours de parcours : aucune demi-journée avant son
+  // entrée (Brahim, 11/11/2026 : « elle n'était pas encore en formation »)
+  const entree = await entreesPoei(supabase, sess, sessionId, organizationId)
+  const avantEntree = (apprenantId: string, date: string) => {
+    const e = entree.get(String(apprenantId))
+    return !!e && String(date).slice(0, 10) < e
+  }
+
   // Une seule lecture de l'existant plutôt qu'une par jour et par créneau
   const { data: existants } = await supabase
     .from('emargements')
@@ -100,7 +128,7 @@ export async function ensureEmargements(
   // une preuve : elle reste, quoi qu'il arrive au planning.
   const attendus = new Set(creneaux.map((c) => `${c.date}|${c.creneau}`))
   const aRetirer = (existants || []).filter((e: any) =>
-    !attendus.has(`${e.date}|${e.creneau}`) && !aUneTrace(e),
+    (!attendus.has(`${e.date}|${e.creneau}`) || avantEntree(e.apprenant_id, e.date)) && !aUneTrace(e),
   )
   if (aRetirer.length) {
     for (let i = 0; i < aRetirer.length; i += 500) {
@@ -114,6 +142,7 @@ export async function ensureEmargements(
   for (const c of creneaux) {
     for (const apprenant_id of apprenantIds) {
       if (deja.has(`${c.date}|${c.creneau}|${apprenant_id}`)) continue
+      if (avantEntree(apprenant_id, c.date)) continue
       aCreer.push({
         organization_id: organizationId,
         session_id: sessionId,
