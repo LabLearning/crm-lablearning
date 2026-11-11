@@ -27,6 +27,8 @@ interface Props {
   org: any
   formateur: any
   apprenants: Apprenant[]
+  /** Date d'entrée (AAAA-MM-JJ) des candidats POEI entrés en cours de parcours, par apprenant */
+  entrees?: Record<string, string>
   emargements: Emargement[]
   feuilles: Feuille[]
 }
@@ -44,7 +46,7 @@ function creneauLabel(c: string) {
  * (ou « Absent » + motif). Une page par jour. Sert au formateur et à l'admin
  * pour récupérer les présences signées.
  */
-export function EmargementSignePDF({ session, formation, org, formateur, apprenants, emargements, feuilles }: Props) {
+export function EmargementSignePDF({ session, formation, org, formateur, apprenants, entrees = {}, emargements, feuilles }: Props) {
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
   const lieu = session.lieu || session.adresse || [session.code_postal, session.ville].filter(Boolean).join(' ') || '—'
   const numero = session.reference || `SESS-${String(session.id || '').slice(0, 8)}`
@@ -76,6 +78,18 @@ export function EmargementSignePDF({ session, formation, org, formateur, apprena
         const creneauW = creneaux.length > 0 ? (pageWidth - nameW) / creneaux.length : 60
         const jourLabel = new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
         const allValidated = creneaux.length > 0 && creneaux.every((c) => feuilleByKey.get(`${date}|${c}`)?.validated_at)
+        // Un candidat POEI n'est pas encore en formation avant son entrée (Brahim,
+        // 11/11/2026) : il ne figure pas sur ces jours-là, sauf si une case porte
+        // une trace (signature, présence, motif), qui ne se cache jamais. Une ligne
+        // vide d'avant l'entrée, pas encore nettoyée par ensureEmargements, ne compte pas.
+        const stagiairesDuJour = chunk.filter((a) => {
+          const entree = entrees[a.id]
+          if (!entree || date >= entree) return true
+          return creneaux.some((c) => {
+            const em = emByKey.get(sigKey(a.id, date, c))
+            return !!(em && (em.signature_data || em.signed_at || em.est_present || em.motif_absence))
+          })
+        })
         const ligneStagiaire = (a: (typeof chunk)[number], idx: number) => (
           <View key={a.id} wrap={false} style={{ flexDirection: 'row', minHeight: 46, borderTopWidth: 0.5, borderTopColor: SURFACE_200, backgroundColor: idx % 2 ? SURFACE_50 : '#fff' }}>
             <View style={{ width: nameW, padding: 9, justifyContent: 'center' }}>
@@ -144,9 +158,9 @@ export function EmargementSignePDF({ session, formation, org, formateur, apprena
                 </View>
 
                 {/* Lignes stagiaires : signature réelle ou absence */}
-                {chunk.slice(0, 1).map((a, idx) => ligneStagiaire(a, idx))}
+                {stagiairesDuJour.slice(0, 1).map((a, idx) => ligneStagiaire(a, idx))}
               </View>
-              {chunk.slice(1).map((a, idx) => ligneStagiaire(a, idx + 1))}
+              {stagiairesDuJour.slice(1).map((a, idx) => ligneStagiaire(a, idx + 1))}
 
               {/* Ligne formateur : sa signature de validation par créneau, insécable (les images de
                   signature ne partent jamais à la page suivante sans le nom) */}

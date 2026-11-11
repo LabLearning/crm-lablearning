@@ -1,3 +1,5 @@
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
+
 /**
  * Liste des participants à faire figurer sur une feuille d'émargement.
  *
@@ -18,16 +20,20 @@ export async function participantsFeuille(
   supabase: any,
   sessionId: string,
 ): Promise<ParticipantFeuille[]> {
-  const [{ data: inscriptions }, { data: signataires }] = await Promise.all([
+  const [{ data: inscriptions }, signataires] = await Promise.all([
     supabase
       .from('inscriptions')
       .select('status, apprenant:apprenants(id, prenom, nom, entreprise)')
       .eq('session_id', sessionId),
-    supabase
+    // Paginé : au-delà de 1000 signatures, un stagiaire retiré qui a signé
+    // aurait pu manquer à la feuille
+    fetchAllPaged((from, to) => supabase
       .from('emargements')
       .select('apprenant_id')
       .eq('session_id', sessionId)
-      .not('signature_data', 'is', null),
+      .not('signature_data', 'is', null)
+      .order('id')
+      .range(from, to)),
   ])
 
   const ontSigne = new Set((signataires || []).map((e: any) => e.apprenant_id))

@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
@@ -47,14 +48,17 @@ export async function EmargementSessionView({
   await ensureEmargements(supabase, session.id, session.organization_id)
 
   const todayDate = todayISO()
-  const [emRes, fRes, insRes, pRes] = await Promise.all([
-    supabase
+  const [emRows, fRes, insRes, pRes] = await Promise.all([
+    // Paginé, ordre total : au-delà de 1000 lignes (une longue POEI), les
+    // derniers jours disparaissaient et le formateur ne pouvait plus les signer
+    fetchAllPaged((from, to) => supabase
       .from('emargements')
       .select(
         'id, apprenant_id, date, creneau, est_present, signature_data, signed_at, motif_absence, apprenant:apprenants(prenom, nom)',
       )
       .eq('session_id', session.id)
-      .order('date', { ascending: true }),
+      .order('date', { ascending: true }).order('creneau').order('apprenant_id').order('id')
+      .range(from, to)),
     supabase
       .from('emargement_feuilles')
       .select('id, date, creneau, mode, scan_storage_path, formateur_signature_data, validated_at')
@@ -73,7 +77,7 @@ export async function EmargementSessionView({
   ])
   const pointageToday = (pRes as any).data || null
 
-  const emargements = (emRes.data || []) as any[]
+  const emargements = emRows as any[]
   const feuilles = (fRes.data || []) as any[]
   const stagiaires = (insRes as any[]) || []
 

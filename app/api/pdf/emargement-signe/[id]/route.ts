@@ -67,9 +67,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const org = await withDocumentLogo(supabase, orgRaw)
 
   const { participantsFeuille } = await import('@/lib/emargement-participants')
+  const { entreesPoei } = await import('@/lib/emargements')
   const periode = (q: any) => { if (du) q = q.gte('date', du); if (au) q = q.lte('date', au); return q }
-  const [apprenants, lignes, { data: feuilles }] = await Promise.all([
+  const [apprenants, entrees, lignes, { data: feuilles }] = await Promise.all([
     participantsFeuille(supabase, params.id),
+    // Candidat POEI entré en cours de parcours : absent de la feuille avant son entrée
+    entreesPoei(supabase, session, params.id, session.organization_id),
     // Lecture paginée, ordre total : une POEI dépasse vite 1000 lignes
     fetchAllPaged((from, to) => periode(supabase
       .from('emargements')
@@ -93,6 +96,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       org,
       formateur: (session as any).formateur,
       apprenants,
+      entrees: Object.fromEntries(entrees),
       emargements,
       feuilles: (feuilles || []) as any[],
     }) as any,

@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
 import Link from 'next/link'
 import { Badge } from '@/components/ui'
 import { CalendarDays, MapPin, Users, ChevronRight, CheckCircle2, CheckSquare, Building2 } from '@/components/ui/icons'
@@ -35,18 +36,23 @@ export async function EmargementListView({ formateurId, basePath }: { formateurI
   let feuilles: any[] = []
 
   if (sessionIds.length > 0) {
-    const [emRes, fRes] = await Promise.all([
-      supabase
+    // Paginé, ordre total : toutes les sessions du formateur dépassent vite
+    // 1000 lignes ensemble (une POEI en compte déjà près de 900), et les
+    // compteurs des cartes devenaient faux
+    ;[emargements, feuilles] = await Promise.all([
+      fetchAllPaged((from, to) => supabase
         .from('emargements')
         .select('session_id, apprenant_id, date, creneau')
-        .in('session_id', sessionIds),
-      supabase
+        .in('session_id', sessionIds)
+        .order('id')
+        .range(from, to)),
+      fetchAllPaged((from, to) => supabase
         .from('emargement_feuilles')
         .select('session_id, date, creneau, validated_at')
-        .in('session_id', sessionIds),
+        .in('session_id', sessionIds)
+        .order('id')
+        .range(from, to)),
     ])
-    emargements = emRes.data || []
-    feuilles = fRes.data || []
   }
 
   const today = todayISO()

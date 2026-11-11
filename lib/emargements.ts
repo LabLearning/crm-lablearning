@@ -1,3 +1,5 @@
+import { fetchAllPaged } from '@/lib/supabase/fetch-all'
+
 /** Une ligne qui porte une trace est une preuve : elle ne se supprime pas. */
 function aUneTrace(e: {
   est_present?: boolean | null
@@ -12,9 +14,10 @@ function aUneTrace(e: {
 /**
  * Date d'entrée des candidats d'une POEI entrés en cours de parcours
  * (poei_candidats.date_debut), pour la session chapeau comme pour une session
- * d'intervention. Vide hors POEI.
+ * d'intervention. Vide hors POEI. Sert aussi à la feuille signée, qui ne
+ * liste pas un candidat les jours qui précèdent son entrée.
  */
-async function entreesPoei(supabase: any, sess: any, sessionId: string, organizationId: string): Promise<Map<string, string>> {
+export async function entreesPoei(supabase: any, sess: { poei_intervention_id?: string | null }, sessionId: string, organizationId: string): Promise<Map<string, string>> {
   let poeiId: string | null = null
   if (sess.poei_intervention_id) {
     const { data: iv } = await supabase.from('poei_interventions').select('poei_id').eq('id', sess.poei_intervention_id).maybeSingle()
@@ -113,11 +116,15 @@ export async function ensureEmargements(
     return !!e && String(date).slice(0, 10) < e
   }
 
-  // Une seule lecture de l'existant plutôt qu'une par jour et par créneau
-  const { data: existants } = await supabase
+  // Une seule lecture de l'existant plutôt qu'une par jour et par créneau,
+  // paginée : au-delà de 1000 lignes (une longue POEI), la lecture tronquée
+  // faisait réinsérer des lignes existantes et le lot entier échouait
+  const existants = await fetchAllPaged((from, to) => supabase
     .from('emargements')
     .select('id, apprenant_id, date, creneau, est_present, signature_data, signed_at, motif_absence, notes')
     .eq('session_id', sessionId)
+    .order('id')
+    .range(from, to))
   const deja = new Set(
     (existants || []).map((e: any) => `${e.date}|${e.creneau}|${e.apprenant_id}`),
   )
