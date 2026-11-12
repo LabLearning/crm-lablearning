@@ -132,6 +132,9 @@ export async function executerOutil(
       const q = String(args.requete || '').trim()
       if (q.length < 2) return { erreur: 'Requête trop courte' }
       const motif = `%${q}%`
+      // Dans un .or() PostgREST, la valeur entre guillemets : une virgule ou une
+      // parenthèse de la saisie ne peut plus ajouter de condition
+      const cite = `"%${q.replace(/[\\"]/g, '\\$&')}%"`
       const type = args.type || 'tous'
       const veut = (t: string) => (type === 'tous' || type === t)
         && (!droits || !MODULES_RECHERCHE[t] || peutLire(MODULES_RECHERCHE[t], droits.role, droits.permissions))
@@ -139,9 +142,9 @@ export async function executerOutil(
         veut('clients') ? (commercial
           ? org(supabase.from('clients').select('id, raison_sociale, nom_commercial, ville, type')).eq('assigned_to', commercial.id)
           : org(supabase.from('clients').select('id, raison_sociale, nom_commercial, ville, type'))
-        ).or(`raison_sociale.ilike.${motif},nom_commercial.ilike.${motif}`).limit(6) : { data: [] },
-        veut('apprenants') ? org(supabase.from('apprenants').select('id, prenom, nom, email, client:client_id(raison_sociale, nom_commercial)')).or(`nom.ilike.${motif},prenom.ilike.${motif},email.ilike.${motif}`).limit(6) : { data: [] },
-        veut('formateurs') ? org(supabase.from('formateurs').select('id, prenom, nom, email')).or(`nom.ilike.${motif},prenom.ilike.${motif}`).limit(4) : { data: [] },
+        ).or(`raison_sociale.ilike.${cite},nom_commercial.ilike.${cite}`).limit(6) : { data: [] },
+        veut('apprenants') ? org(supabase.from('apprenants').select('id, prenom, nom, email, client:client_id(raison_sociale, nom_commercial)')).or(`nom.ilike.${cite},prenom.ilike.${cite},email.ilike.${cite}`).limit(6) : { data: [] },
+        veut('formateurs') ? org(supabase.from('formateurs').select('id, prenom, nom, email')).or(`nom.ilike.${cite},prenom.ilike.${cite}`).limit(4) : { data: [] },
         veut('factures') ? org(supabase.from('factures').select('id, numero, status, montant_ttc, client:client_id(raison_sociale, nom_commercial)')).ilike('numero', motif).limit(5) : { data: [] },
         veut('conventions') ? org(supabase.from('conventions').select('id, numero, status, session_id, client:client_id(raison_sociale, nom_commercial)')).ilike('numero', motif).limit(5) : { data: [] },
         veut('sessions') ? org(supabase.from('formations').select('id, intitule')).ilike('intitule', motif).limit(4) : { data: [] },
@@ -179,7 +182,7 @@ export async function executerOutil(
         .eq('id', sid).maybeSingle()
       if (!s) return { erreur: 'Session introuvable dans cette organisation' }
       const [{ data: insc }, { data: convs }, { data: factures }] = await Promise.all([
-        supabase.from('inscriptions').select('status, apprenant:apprenants(id, prenom, nom, email)').eq('session_id', sid),
+        org(supabase.from('inscriptions').select('status, apprenant:apprenants(id, prenom, nom, email)')).eq('session_id', sid),
         org(supabase.from('conventions').select('id, numero, status, sent_at, signature_client_date, signature_client_signed_at, client:client_id(raison_sociale, nom_commercial)')).eq('session_id', sid),
         org(supabase.from('factures').select('id, numero, status, montant_ttc')).eq('session_id', sid),
       ])
@@ -233,8 +236,8 @@ export async function executerOutil(
       const aid = String(args.apprenant_id)
       const { data: a } = await org(supabase.from('apprenants').select('id, prenom, nom, email, telephone, client:client_id(id, raison_sociale, nom_commercial)')).eq('id', aid).maybeSingle()
       if (!a) return { erreur: 'Apprenant introuvable dans cette organisation' }
-      const { data: insc } = await supabase.from('inscriptions')
-        .select('status, session:sessions(id, date_debut, date_fin, status, organization_id, formation:formation_id(intitule))')
+      const { data: insc } = await org(supabase.from('inscriptions')
+        .select('status, session:sessions(id, date_debut, date_fin, status, organization_id, formation:formation_id(intitule))'))
         .eq('apprenant_id', aid)
       const sessions = (insc || []).filter((i: any) => i.session?.organization_id === orgId)
       return {
@@ -326,10 +329,10 @@ export async function executerOutil(
       if (!s) return { erreur: 'Session introuvable dans cette organisation' }
       // Lecture paginée : une session chapeau de POEI dépasse les 1000 lignes
       const [emargs, { data: insc }] = await Promise.all([
-        fetchAllPaged((from, to) => supabase.from('emargements')
-          .select('id, apprenant_id, date, creneau, est_present, signed_at, motif_absence')
+        fetchAllPaged((from, to) => org(supabase.from('emargements')
+          .select('id, apprenant_id, date, creneau, est_present, signed_at, motif_absence'))
           .eq('session_id', sid).order('id').range(from, to)),
-        supabase.from('inscriptions').select('apprenant:apprenants(id, prenom, nom)').eq('session_id', sid).not('status', 'in', '("annule","abandonne")'),
+        org(supabase.from('inscriptions').select('apprenant:apprenants(id, prenom, nom)')).eq('session_id', sid).not('status', 'in', '("annule","abandonne")'),
       ])
       const aujourdhui = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' })
       const parApprenant = new Map<string, { nom: string; signes: number; presents_non_signes: number; absences: number; non_renseignes: number; a_venir: number }>()
@@ -394,9 +397,9 @@ export async function executerOutil(
       const manquesEmargement: any[] = []
       for (const s of (sessions || []) as any[]) {
         // Seules les demi-journées signables comptent : une absence ou un repos ne se signent jamais
-        const { count: total } = await supabase.from('emargements').select('id', { count: 'exact', head: true }).eq('session_id', s.id).is('motif_absence', null)
+        const { count: total } = await org(supabase.from('emargements').select('id', { count: 'exact', head: true })).eq('session_id', s.id).is('motif_absence', null)
         if (!total) continue
-        const { count: signes } = await supabase.from('emargements').select('id', { count: 'exact', head: true }).eq('session_id', s.id).not('signature_data', 'is', null)
+        const { count: signes } = await org(supabase.from('emargements').select('id', { count: 'exact', head: true })).eq('session_id', s.id).not('signature_data', 'is', null)
         if ((signes || 0) < total) {
           manquesEmargement.push({ formation: s.formation?.intitule, client: nomClient(s.client), fin: s.date_fin, signes: signes || 0, total, lien: `/dashboard/sessions/${s.id}?tab=presences` })
         }
@@ -431,6 +434,8 @@ export async function executerOutil(
 
     return { erreur: `Outil inconnu : ${nom}` }
   } catch (e: any) {
-    return { erreur: `Échec de l'outil ${nom} : ${e?.message || 'erreur inconnue'}` }
+    // Le détail reste dans les journaux du serveur : un message de la base peut contenir des valeurs
+    console.error('[assistant outil]', nom, e)
+    return { erreur: `Échec de l'outil ${nom}. Réessaie, ou reformule la demande.` }
   }
 }

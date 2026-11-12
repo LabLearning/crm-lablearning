@@ -170,8 +170,9 @@ export default async function ActivitePage({ searchParams }: { searchParams?: Pa
     let q = supabase.from('audit_logs')
       .select('id, user_id, action, entity_type, entity_id, details, created_at, acteur:user_id(first_name, last_name, avatar_url, email)', { count: 'exact' })
       .eq('organization_id', orgId)
-      // Les questions posées à Starkk sur le site public ont leur propre lecture : elles noieraient le journal
-      .neq('entity_type', 'chat_site')
+      // Les questions posées à Starkk sur le site public et les lectures du connecteur Claude
+      // ont leur propre lecture : elles noieraient le journal
+      .not('entity_type', 'in', '("chat_site","connecteur_claude")')
     // Les tâches d'admin à admin restent hors de vue des autres membres de l'équipe, journal compris
     if (!estAdminTaches(session.user.role)) {
       const { data: taches } = await supabase.from('crm_taches').select('id, created_by, assignee_id').eq('organization_id', orgId)

@@ -23,6 +23,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/site') ||
     // Prospects envoyés par Meta et Google Ads : signature ou clé vérifiée par la route
     pathname.startsWith('/api/webhooks') ||
+    // Connecteur Claude : la route vérifie elle-même sa clé
+    pathname.startsWith('/api/mcp') ||
     // Données publiques sans session (aide à la saisie des adresses, fiche
     // entreprise du simulateur) : appelées à chaque frappe, elles ne doivent
     // pas attendre la vérification de la session

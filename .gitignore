@@ -8,5 +8,8 @@ supabase/.temp/
 # Données d'import client (réelles — ne pas versionner)
 chamas/
 
+# Scripts jetables et sauvegardes de corrections : contiennent des données réelles (dépôt public)
+scripts/.tmp/
+
 .DS_Store
 backups/

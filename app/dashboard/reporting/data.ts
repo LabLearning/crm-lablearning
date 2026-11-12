@@ -64,7 +64,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   // ── Voie rapide : toutes les agrégations en UNE requête SQL (RPC dashboard_kpis) ──
   // Repli automatique sur l'ancienne implémentation si la fonction n'est pas en base.
   try {
-    const { data: k, error } = await supabase.rpc('dashboard_kpis', { org: orgId })
+    // L'activité récente de la RPC ne trie pas le journal : elle se remplirait des
+    // questions du site et des lectures du connecteur Claude. Lue à part, filtrée.
+    const [{ data: k, error }, { data: journal }] = await Promise.all([
+      supabase.rpc('dashboard_kpis', { org: orgId }),
+      supabase
+        .from('audit_logs')
+        .select('action, entity_type, created_at, user:users(first_name, last_name)')
+        .eq('organization_id', orgId)
+        .not('entity_type', 'in', '("chat_site","connecteur_claude")')
+        .order('created_at', { ascending: false })
+        .limit(10),
+    ])
     if (!error && k && typeof k === 'object') {
       const ca_realise = Number(k.ca_realise) || 0
       const devis_valeur = Number(k.devis_valeur) || 0
@@ -93,7 +104,14 @@ export async function getDashboardData(): Promise<DashboardData> {
         factures_en_retard: Number(k.factures_en_retard) || 0,
         documents_en_attente: 0,
         habilitations_a_renouveler: Number(k.habilitations_a_renouveler) || 0,
-        activite_recente: (k.activite_recente || []) as DashboardData['activite_recente'],
+        activite_recente: journal
+          ? (journal as any[]).map((log) => ({
+            action: log.action,
+            entity_type: log.entity_type,
+            user_name: log.user ? `${log.user.first_name} ${log.user.last_name}` : 'Système',
+            created_at: log.created_at,
+          }))
+          : (k.activite_recente || []) as DashboardData['activite_recente'],
         ca_mensuel: ((k.ca_mensuel || []) as { mois: string; montant: number }[]).map((x) => ({ mois: moisLabel(x.mois), montant: Number(x.montant) || 0 })),
         inscriptions_mensuelles: ((k.inscriptions_mensuelles || []) as { mois: string; count: number }[]).map((x) => ({ mois: moisLabel(x.mois), count: Number(x.count) || 0 })),
       }
@@ -179,7 +197,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .from('audit_logs')
       .select('action, entity_type, created_at, user:users(first_name, last_name)')
       .eq('organization_id', orgId)
-      .neq('entity_type', 'chat_site')
+      .not('entity_type', 'in', '("chat_site","connecteur_claude")')
       .order('created_at', { ascending: false })
       .limit(10),
   ])

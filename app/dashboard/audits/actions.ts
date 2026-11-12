@@ -128,30 +128,39 @@ export async function createApiKeyAction(name: string): Promise<Result<{ key: st
 
   const { full, prefix, hash } = generateApiKey()
 
-  const { error } = await supabase.from('api_keys').insert({
+  const { data: creee, error } = await supabase.from('api_keys').insert({
     organization_id: session.organization.id,
     name: name.trim() || 'Clé API',
     key_prefix: prefix,
     key_hash: hash,
     scopes: ['audits:write'],
     created_by: session.user.id,
-  })
-  if (error) return { success: false, error: error.message }
+  }).select('id').single()
+  if (error || !creee) return { success: false, error: error?.message || 'Création impossible' }
 
-  await logAudit({ action: 'create', entity_type: 'api_key', entity_id: prefix })
+  // entity_id est un UUID : l'identifiant de la clé, le préfixe va dans les détails
+  await logAudit({ action: 'create', entity_type: 'api_key', entity_id: creee.id, details: { prefixe: prefix } })
   revalidatePath('/dashboard/audits')
   return { success: true, data: { key: full, prefix } }
 }
 
 export async function revokeApiKeyAction(id: string): Promise<Result> {
   const session = await getSession()
+  if (session.user.role !== 'super_admin' && session.user.role !== 'gestionnaire') {
+    return { success: false, error: 'Accès réservé aux administrateurs' }
+  }
   const supabase = await createServiceRoleClient()
-  const { error } = await supabase
+  // Seules les clés d'audit se révoquent ici ; celles du connecteur Claude, dans Paramètres
+  const { data, error } = await supabase
     .from('api_keys')
     .update({ is_active: false })
     .eq('id', id)
     .eq('organization_id', session.organization.id)
+    .contains('scopes', ['audits:write'])
+    .select('id')
   if (error) return { success: false, error: error.message }
+  if (!data?.length) return { success: false, error: 'Clé introuvable' }
+  await logAudit({ action: 'revoke', entity_type: 'api_key', entity_id: id })
   revalidatePath('/dashboard/audits')
   return { success: true }
 }

@@ -34,6 +34,8 @@ export default async function AuditsPage() {
           .from('api_keys')
           .select('id, name, key_prefix, scopes, last_used_at, request_count, is_active, created_at')
           .eq('organization_id', orgId)
+          // Les clés du connecteur Claude (crm:read) se gèrent dans Paramètres, par le super administrateur seul
+          .contains('scopes', ['audits:write'])
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as any[] }),
   ])

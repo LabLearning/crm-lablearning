@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth'
 import { peutAdministrer } from '@/lib/acces-reserves'
 import { isSuperAdmin } from '@/lib/permissions'
 import { SettingsForm } from './SettingsForm'
+import { ConnecteurClaude } from './ConnecteurClaude'
 
 export default async function SettingsPage() {
   const { user, organization } = await getSession()
@@ -21,6 +22,8 @@ export default async function SettingsPage() {
         </div>
       </div>
       <SettingsForm organization={organization} canEdit={canEdit} />
+      {/* Clés du connecteur Claude : super administrateur seulement (claude-actions) */}
+      {canEdit && <ConnecteurClaude prenom={user.first_name} appUrl={process.env.NEXT_PUBLIC_APP_URL || null} />}
     </div>
   )
 }
