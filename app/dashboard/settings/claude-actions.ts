@@ -62,6 +62,67 @@ export type LectureClaude = {
   arguments: Record<string, unknown> | null
 }
 
+export type ConnexionClaude = {
+  famille: string
+  application: string
+  utilisateur: string
+  depuis: string
+  derniere: string | null
+}
+
+/** Connexions actives de l'application Claude (connexion par compte CRM, migration 172) */
+export async function listerConnexionsClaudeAction(): Promise<ActionResult<ConnexionClaude[]>> {
+  const ctx = await contexte()
+  if (!ctx) return { success: false, error: 'Réservé au super administrateur' }
+  const orgId = ctx.session.organization.id
+  // Seules les lignes vivantes : une par connexion active (la rotation révoque les anciennes)
+  const { data, error } = await ctx.supabase.from('oauth_tokens')
+    .select('famille, client_name, user_id, created_at, last_used_at')
+    .eq('organization_id', orgId)
+    .is('revoked_at', null)
+    .gt('refresh_expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(200)
+  // Tables absentes tant que la migration 172 n'est pas appliquée : rien à montrer
+  if (error) return { success: true, data: [], warning: error.code === '42P01' ? 'migration 172 à appliquer' : 'lecture impossible' }
+  const familles = new Map<string, any>()
+  for (const t of (data || []) as any[]) if (!familles.has(t.famille)) familles.set(t.famille, t)
+  const actives = Array.from(familles.values()).slice(0, 50)
+  // Date d'autorisation : le premier jeton de chaque connexion
+  const [premiers, { data: users }] = await Promise.all([
+    Promise.all(actives.map((f) => ctx.supabase.from('oauth_tokens').select('created_at').eq('famille', f.famille).order('created_at', { ascending: true }).limit(1))),
+    ctx.supabase.from('users').select('id, first_name, last_name').in('id', Array.from(new Set(actives.map((f) => f.user_id)))),
+  ])
+  const nom = new Map(((users || []) as any[]).map((u) => [u.id, `${u.first_name || ''} ${u.last_name || ''}`.trim()]))
+  return {
+    success: true,
+    data: actives.map((f, i) => ({
+      famille: f.famille,
+      application: f.client_name || 'Claude',
+      utilisateur: nom.get(f.user_id) || '—',
+      depuis: (premiers[i] as any)?.data?.[0]?.created_at || f.created_at,
+      derniere: f.last_used_at,
+    })),
+  }
+}
+
+/** Coupe une connexion de l'application Claude : tous ses jetons sont révoqués */
+export async function revoquerConnexionClaudeAction(famille: string): Promise<ActionResult> {
+  const ctx = await contexte()
+  if (!ctx) return { success: false, error: 'Réservé au super administrateur' }
+  const { data, error } = await ctx.supabase.from('oauth_tokens')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('famille', famille)
+    .eq('organization_id', ctx.session.organization.id)
+    .is('revoked_at', null)
+    .select('id')
+  if (error) return { success: false, error: 'Déconnexion impossible' }
+  if (!data?.length) return { success: false, error: 'Cette connexion n’est plus active' }
+  await logAudit({ action: 'deconnecter_claude', entity_type: 'connecteur', details: { connexion: famille } })
+  revalidatePath('/dashboard/settings')
+  return { success: true }
+}
+
 /** Les 50 derniers appels du connecteur (lectures et refus), pour le super administrateur */
 export async function journalConnecteurClaudeAction(): Promise<ActionResult<LectureClaude[]>> {
   const ctx = await contexte()
@@ -77,7 +138,13 @@ export async function journalConnecteurClaudeAction(): Promise<ActionResult<Lect
     ctx.supabase.from('api_keys').select('id, name, key_prefix').eq('organization_id', orgId).contains('scopes', [PORTEE_CLAUDE]),
   ])
   if (error) return { success: false, error: 'Lecture du journal impossible' }
-  const nomCle = new Map(((cles || []) as any[]).map((k) => [k.id, k.name || k.key_prefix]))
+  const nomCle = new Map<string, string>(((cles || []) as any[]).map((k) => [k.id, k.name || k.key_prefix]))
+  // Connexions de l'application citées au journal (une ligne par connexion suffit pour le nom)
+  const familles = Array.from(new Set(((data || []) as any[]).map((l) => l.entity_id).filter((id: string) => id && !nomCle.has(id))))
+  if (familles.length) {
+    const noms = await Promise.all(familles.map((f) => ctx.supabase.from('oauth_tokens').select('client_name').eq('famille', f).limit(1)))
+    familles.forEach((f, i) => { const n = (noms[i] as any)?.data?.[0]; if (n) nomCle.set(f, `Application ${n.client_name || 'Claude'}`) })
+  }
   return {
     success: true,
     data: ((data || []) as any[]).map((l) => {
@@ -86,7 +153,7 @@ export async function journalConnecteurClaudeAction(): Promise<ActionResult<Lect
         id: l.id,
         le: l.created_at,
         action: l.action,
-        cle: nomCle.get(l.entity_id) || 'clé supprimée',
+        cle: nomCle.get(l.entity_id) || 'accès supprimé',
         outil: d.outil ?? null,
         table: d.table ?? null,
         lignes: typeof d.lignes === 'number' ? d.lignes : null,

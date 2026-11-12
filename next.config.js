@@ -21,6 +21,12 @@ const nextConfig = {
   // anciennes URLs /site/… redirigent vers la version propre. Les préfixes
   // sont énumérés (pas de catch-all) pour ne jamais intercepter /api,
   // /_next ni les fichiers statiques du dossier public.
+  async headers() {
+    return [
+      // La page d'autorisation du connecteur Claude ne s'affiche jamais dans un cadre (détournement de clic)
+      { source: '/oauth/:path*', headers: [{ key: 'X-Frame-Options', value: 'DENY' }, { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" }] },
+    ]
+  },
   async redirects() {
     const hosts = ['lab-learning.fr', 'www.lab-learning.fr']
     // Seules les SECTIONS de pages redirigent (/site/formations -> /formations) :
@@ -70,6 +76,12 @@ const nextConfig = {
     ])
     return {
       beforeFiles: [
+        // Découverte OAuth du connecteur Claude (RFC 9728 et RFC 8414) : les adresses
+        // normalisées pointent vers les routes de lib/connecteur-claude/oauth
+        { source: '/.well-known/oauth-protected-resource', destination: '/api/oauth/protected-resource' },
+        { source: '/.well-known/oauth-protected-resource/:path*', destination: '/api/oauth/protected-resource' },
+        { source: '/.well-known/oauth-authorization-server', destination: '/api/oauth/metadata' },
+        { source: '/.well-known/oauth-authorization-server/:path*', destination: '/api/oauth/metadata' },
         ...hosts.flatMap((h) => [
           { source: '/', has: [{ type: 'host', value: h }], destination: '/site' },
           ...pages({ has: [{ type: 'host', value: h }] }),

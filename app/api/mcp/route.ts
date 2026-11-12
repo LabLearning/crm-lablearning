@@ -1,6 +1,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { verifierCleClaude } from '@/lib/api-keys'
+import { verifierCleClaude, type VerificationCleClaude } from '@/lib/api-keys'
 import { VERSIONS, traiterMessage, type ContexteConnecteur, type JournalConnecteur } from '@/lib/connecteur-claude/protocole'
+import { PORTEE, adresseMetadonneesRessource, verifierJetonAcces } from '@/lib/connecteur-claude/oauth'
 
 /**
  * Connecteur Claude (serveur MCP, transport HTTP sans session) : Claude lit
@@ -66,11 +67,17 @@ export async function POST(req: Request) {
   if (appels > APPELS_PAR_REQUETE) return erreur(400, -32600, `${APPELS_PAR_REQUETE} appels d'outils au plus par requête`)
 
   const supabase = await createServiceRoleClient()
-  const verif = await verifierCleClaude(
-    supabase,
-    req.headers.get('authorization') || req.headers.get('x-api-key'),
-    messages.some((m) => m?.method === 'initialize'),
-  )
+  const entete = req.headers.get('authorization') || req.headers.get('x-api-key')
+  const presente = String(entete || '').replace(/^Bearer\s+/i, '').trim()
+  // Jeton de l'application Claude (connexion par compte CRM) ou clé de Claude Code
+  let verif: VerificationCleClaude
+  if (presente.startsWith('ll_oauth_')) {
+    const j = await verifierJetonAcces(supabase, presente)
+    verif = j.etat === 'ok' ? { etat: 'ok', organizationId: j.organizationId, userId: j.userId, cleId: j.famille }
+      : j.etat === 'indisponible' ? { etat: 'indisponible' } : { etat: 'inconnue' }
+  } else {
+    verif = await verifierCleClaude(supabase, entete, messages.some((m) => m?.method === 'initialize'))
+  }
   if (verif.etat === 'indisponible') return erreur(503, -32603, 'Base momentanément indisponible, réessaie dans un instant', { 'Retry-After': '10' })
   if (verif.etat !== 'ok') {
     if (verif.etat === 'refusee') {
@@ -86,7 +93,15 @@ export async function POST(req: Request) {
         })
       }
     }
-    return erreur(401, -32001, 'Clé du connecteur absente, invalide ou révoquée', { 'WWW-Authenticate': 'Bearer realm="crm-lab-learning"' })
+    // resource_metadata indique à Claude où se connecter (sans lui, l'application affiche « impossible de joindre ») ;
+    // invalid_token sur un jeton présenté : Claude le renouvelle
+    const defi = [
+      'Bearer realm="crm-lab-learning"',
+      `resource_metadata="${adresseMetadonneesRessource()}"`,
+      `scope="${PORTEE}"`,
+      ...(presente ? ['error="invalid_token"'] : []),
+    ].join(', ')
+    return erreur(401, -32001, 'Clé ou jeton du connecteur absent, invalide ou révoqué', { 'WWW-Authenticate': defi })
   }
   const cle = verif
 

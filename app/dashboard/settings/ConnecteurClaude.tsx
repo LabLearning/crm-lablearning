@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { Check, Copy, Info, KeyRound, Loader2, Lock, Plus, ShieldAlert, Sparkles } from '@/components/ui/icons'
-import { creerCleClaudeAction, journalConnecteurClaudeAction, listerClesClaudeAction, revoquerCleClaudeAction, type CleClaude, type LectureClaude } from './claude-actions'
+import {
+  creerCleClaudeAction, journalConnecteurClaudeAction, listerClesClaudeAction, listerConnexionsClaudeAction,
+  revoquerCleClaudeAction, revoquerConnexionClaudeAction, type CleClaude, type ConnexionClaude, type LectureClaude,
+} from './claude-actions'
 
 const LIBELLES_ACTION: Record<string, string> = {
   connecteur_claude: '',
@@ -105,14 +108,27 @@ export function ConnecteurClaude({ prenom, appUrl }: { prenom?: string | null; a
   const [nouvelle, setNouvelle] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const [adresse, setAdresse] = useState(appUrl ? `${appUrl.replace(/\/$/, '')}/api/mcp` : '')
+  const [connexions, setConnexions] = useState<ConnexionClaude[]>([])
 
   const charger = useCallback(async () => {
     try {
-      const r = await listerClesClaudeAction()
+      const [r, c] = await Promise.all([listerClesClaudeAction(), listerConnexionsClaudeAction()])
       if (r.success) setCles(r.data || [])
       else setErreur(r.error || 'Lecture impossible')
+      if (c.success) setConnexions(c.data || [])
     } catch { setErreur('Lecture impossible, réessayez') }
   }, [])
+
+  function deconnecter(famille: string) {
+    if (!confirm('Déconnecter Claude ? Il faudra autoriser à nouveau depuis l’application.')) return
+    setErreur(null)
+    start(async () => {
+      let r: any = null
+      try { r = await revoquerConnexionClaudeAction(famille) } catch { r = null }
+      if (r?.success) await charger()
+      else setErreur(r?.error || 'Déconnexion impossible, réessayez')
+    })
+  }
 
   useEffect(() => {
     if (!appUrl) setAdresse(`${window.location.origin}/api/mcp`)
@@ -176,6 +192,34 @@ export function ConnecteurClaude({ prenom, appUrl }: { prenom?: string | null; a
         </div>
       </div>
 
+      <div className="rounded-xl border border-surface-200 p-4">
+        <div className="text-sm font-semibold text-surface-900">Dans l&apos;application Claude (web, ordinateur, téléphone)</div>
+        <ol className="list-decimal pl-4 mt-2 space-y-1 text-xs text-surface-700">
+          <li>Personnaliser, puis Connecteurs, puis « Ajouter un connecteur personnalisé ».</li>
+          <li>Nom : CRM Lab Learning ; adresse : celle ci-dessus, exactement.</li>
+          <li>Gardez les réglages que Claude propose (marqués « Detected ») et validez : Claude ouvre une page du CRM, cliquez sur « Autoriser ».</li>
+        </ol>
+        <div className="mt-2 text-xs text-surface-500">Aucune clé à copier. Seul un super administrateur peut autoriser, car Claude lit toutes les données.</div>
+        {connexions.length > 0 && (
+          <div className="mt-3 divide-y divide-surface-100 border-t border-surface-100">
+            {connexions.map((c) => (
+              <div key={c.famille} className="flex items-center gap-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-surface-900 truncate">{c.application} · {c.utilisateur}</div>
+                  <div className="text-[11px] text-surface-500">
+                    Autorisée le {new Date(c.depuis).toLocaleDateString('fr-FR')}
+                    {c.derniere ? ` · dernière lecture le ${new Date(c.derniere).toLocaleDateString('fr-FR')}` : ''}
+                  </div>
+                </div>
+                <button type="button" onClick={() => deconnecter(c.famille)} disabled={pending} className="text-xs font-medium text-danger-600 hover:text-danger-700 shrink-0">
+                  Déconnecter
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {nouvelle && (
         <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -187,16 +231,6 @@ export function ConnecteurClaude({ prenom, appUrl }: { prenom?: string | null; a
             <BoutonCopier valeur={nouvelle} />
           </div>
           <div className="text-xs text-surface-700 space-y-2">
-            <div>
-              <div className="font-semibold">Dans l&apos;application Claude (web, ordinateur, téléphone)</div>
-              <ol className="list-decimal pl-4 mt-1 space-y-0.5">
-                <li>Personnaliser, puis Connecteurs, puis « Ajouter un connecteur personnalisé ».</li>
-                <li>Nom : CRM Lab Learning ; adresse : celle ci-dessus.</li>
-                <li>Authentification « No sign-in », puis « Request headers » : en-tête authorization, valeur « Bearer » suivi d&apos;un espace et de la clé.</li>
-              </ol>
-              <div className="mt-1 text-surface-500">Si la section « Request headers » n&apos;apparaît pas, votre compte Claude n&apos;y a pas encore accès : utilisez Claude Code en attendant la connexion par compte CRM.</div>
-              <div className="mt-1 text-warning-700">Sur une offre Claude Team ou Enterprise, une clé saisie dans « Request headers » sert à tous les membres de l&apos;organisation Claude : ne l&apos;ajoutez que sur un compte Claude personnel.</div>
-            </div>
             <div>
               <div className="font-semibold">Dans Claude Code</div>
               <div className="flex items-start gap-2 mt-1">
@@ -213,7 +247,7 @@ export function ConnecteurClaude({ prenom, appUrl }: { prenom?: string | null; a
         <div className="flex items-center justify-between px-4 py-3 border-b border-surface-100">
           <div className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-surface-400" />
-            <span className="text-sm font-semibold text-surface-900">Clés du connecteur</span>
+            <span className="text-sm font-semibold text-surface-900">Clés pour Claude Code</span>
           </div>
           {!creation && (
             <button type="button" onClick={() => setCreation(true)} className="text-xs font-medium text-brand-600 hover:text-brand-700 inline-flex items-center gap-1">
@@ -238,7 +272,7 @@ export function ConnecteurClaude({ prenom, appUrl }: { prenom?: string | null; a
         {cles === null ? (
           <div className="px-4 py-6 text-center text-sm text-surface-400">Chargement…</div>
         ) : cles.length === 0 ? (
-          <div className="px-4 py-6 text-center text-sm text-surface-400">Aucune clé. Créez-en une pour brancher Claude sur le CRM.</div>
+          <div className="px-4 py-6 text-center text-sm text-surface-400">Aucune clé. Créez-en une pour brancher Claude Code sur le CRM.</div>
         ) : (
           <div className="divide-y divide-surface-100">
             {cles.map((k) => (

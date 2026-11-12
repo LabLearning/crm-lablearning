@@ -14,7 +14,11 @@
  * est un journal technique brut (déjà reporté dans le CRM) dont les liens
  * publics Dendreo ouvrent des documents signés sans connexion.
  */
-export const TABLES_EXCLUES = new Set(['api_keys', 'portal_access_tokens', 'invitations', 'dendreo_webhook_events'])
+export const TABLES_EXCLUES = new Set([
+  'api_keys', 'portal_access_tokens', 'invitations', 'dendreo_webhook_events',
+  // Connexion OAuth du connecteur lui-même (migration 172)
+  'oauth_clients', 'oauth_codes', 'oauth_tokens',
+])
 
 /** Colonnes et clés JSON jamais transmises */
 const SECRET = new RegExp([

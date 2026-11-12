@@ -47,8 +47,11 @@ export function LoginForm({ suspendu = false }: { suspendu?: boolean }) {
       return
     }
 
-    // Le /dashboard redirigera automatiquement vers le bon espace selon le rôle
-    router.push('/dashboard')
+    // Retour à l'autorisation du connecteur Claude quand c'est elle qui a demandé la
+    // connexion (seule suite permise : pas de redirection vers une autre adresse) ;
+    // sinon le /dashboard redirige vers le bon espace selon le rôle
+    const suite = new URLSearchParams(window.location.search).get('suite')
+    router.push(suite && suite.startsWith('/oauth/authorize?') ? suite : '/dashboard')
     router.refresh()
   }
 
