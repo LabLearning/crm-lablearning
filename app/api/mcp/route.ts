@@ -43,10 +43,13 @@ function reserverDansInstance(cle: string, n: number, plafond: number): boolean 
 // Une trace par minute au plus pour une clé révoquée rejouée
 const refusTraces = new Map<string, number>()
 
-/** Messages qui ne lisent aucune donnée : ouverture, test de présence, liste des outils, notifications et réponses du client */
-const METHODES_PUBLIQUES = new Set(['initialize', 'ping', 'tools/list'])
-const messagePublic = (m: any) => !!m && typeof m === 'object' && !Array.isArray(m)
-  && (typeof m.method !== 'string' || m.method.startsWith('notifications/') || METHODES_PUBLIQUES.has(m.method))
+/**
+ * Seul tools/call lit des données : tout le reste (initialize, ping, tools/list,
+ * notifications, réponses du client, méthodes inconnues comme le server/discover
+ * de la version 2026-07-28, qui reçoit « méthode non prise en charge » et
+ * laisse Claude revenir à initialize) passe sans jeton.
+ */
+const messagePublic = (m: any) => !!m && typeof m === 'object' && !Array.isArray(m) && m.method !== 'tools/call'
 
 type Diagnostic = { corps?: string; auth?: string | null }
 
