@@ -44,41 +44,7 @@ function reserverDansInstance(cle: string, n: number, plafond: number): boolean 
 // Une trace par minute au plus pour une clé révoquée rejouée
 const refusTraces = new Map<string, number>()
 
-type Diagnostic = { corps?: string; auth?: string | null }
-
-/**
- * Relevé temporaire (12/11/2026) : l'application Claude n'arrive pas à se
- * connecter et reçoit des 400. Pour les appels venus de Claude, on écrit dans
- * les journaux Vercel ce qu'il envoie et ce qu'on répond : en-têtes utiles,
- * corps tronqué, jamais de clé ni de jeton (préfixe et longueur seulement).
- */
-export async function POST(req: Request) {
-  const diag: Diagnostic = {}
-  const reponse = await traiterPost(req, diag)
-  const ua = req.headers.get('user-agent') || ''
-  if (/claude|anthropic|python-httpx/i.test(ua)) {
-    const corps = (diag.corps || '')
-      .replace(/ll_[a-z]+_[a-f0-9]{16,}/g, (m) => `${m.slice(0, 10)}…`)
-      .replace(/[a-f0-9]{32,}/gi, '[jeton]')
-      .slice(0, 400)
-    console.info('[mcp diag]', JSON.stringify({
-      statut: reponse.status,
-      ua: ua.slice(0, 80),
-      // Surface d'où vient l'appel (application, Cowork, Claude Code)
-      client: req.headers.get('x-anthropic-client'),
-      accept: req.headers.get('accept'),
-      type: req.headers.get('content-type'),
-      version: req.headers.get('mcp-protocol-version'),
-      origine: req.headers.get('origin'),
-      session: req.headers.get('mcp-session-id'),
-      auth: diag.auth ?? null,
-      corps,
-    }))
-  }
-  return reponse
-}
-
-async function traiterPost(req: Request, diag: Diagnostic): Promise<Response> {
+export async function POST(req: Request): Promise<Response> {
   const base = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/$/, '')
 
   // Version du protocole : jamais de refus sur une version inconnue (la négociation se fait dans
@@ -89,7 +55,6 @@ async function traiterPost(req: Request, diag: Diagnostic): Promise<Response> {
   if (origine && origine !== new URL(base).origin) return erreur(403, -32600, 'Origine refusée')
 
   const brut = await req.text()
-  diag.corps = brut
   if (brut.length > TAILLE_CORPS_MAX) return erreur(413, -32600, 'Requête trop volumineuse')
   let corps: any
   try {
@@ -105,7 +70,6 @@ async function traiterPost(req: Request, diag: Diagnostic): Promise<Response> {
   const supabase = await createServiceRoleClient()
   const entete = req.headers.get('authorization') || req.headers.get('x-api-key')
   const presente = String(entete || '').replace(/^Bearer\s+/i, '').trim()
-  diag.auth = presente ? `${presente.slice(0, 10)}… (${presente.length} car.)` : null
   // Jeton de l'application Claude (connexion par compte CRM) ou clé de Claude Code
   let verif: VerificationCleClaude
   if (presente.startsWith('ll_oauth_')) {

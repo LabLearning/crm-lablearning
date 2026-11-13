@@ -16,8 +16,6 @@ const DUREE_CODE_MS = 10 * 60_000
 // Jeton d'accès de 8 h : chaque appel revérifie l'auteur et la révocation, un accès plus long ne retarde aucune coupure
 const DUREE_ACCES_S = 8 * 3600
 const DUREE_RENOUVELLEMENT_MS = 60 * 86_400_000
-/** Deux renouvellements presque simultanés du même jeton (appels d'outils en parallèle) ne coupent pas la connexion */
-const GRACE_ROTATION_MS = 60_000
 
 export function baseCrm(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr').replace(/\/$/, '')
@@ -224,25 +222,16 @@ export async function echangerCode(supabase: any, p: Record<string, string>): Pr
   return jetons || indisponible
 }
 
-/** Une connexion vit tant que l'un de ses jetons n'est pas révoqué (hors `sauf`, l'empreinte d'accès d'un couple qu'on vient d'émettre) */
-async function connexionVivante(supabase: any, famille: string, sauf?: string): Promise<boolean | null> {
-  let requete = supabase.from('oauth_tokens').select('id').eq('famille', famille).is('revoked_at', null)
-  if (sauf) requete = requete.neq('access_hash', sauf)
-  const { data, error } = await requete.limit(1)
-  if (error) return null
-  return !!data?.length
-}
-
-const rejoue: ErreurJeton = { erreur: 'invalid_grant', description: 'refresh_token already used, connection revoked' }
-
 /**
- * Renouvellement avec rotation : le nouveau couple est inscrit AVANT la
- * révocation atomique de l'ancien. Un jeton déjà renouvelé qui revient dans
- * la minute, connexion toujours vivante, est un renouvellement simultané
- * (deux appels d'outils en parallèle) : il reçoit lui aussi un couple. Au-delà
- * de la minute, ou si la connexion a été coupée (« Déconnecter », compte
- * retiré), c'est un jeton rejoué : toute la connexion est révoquée, nouveau
- * couple compris. Rien ne survit à une déconnexion.
+ * Renouvellement avec rotation stricte (OAuth 2.1) : le nouveau couple est
+ * inscrit AVANT la révocation atomique de l'ancien. Un jeton déjà renouvelé
+ * qui revient est un jeton rejoué, donc peut-être volé : toute la connexion
+ * est révoquée. Deux renouvellements parfaitement simultanés du même jeton
+ * (les deux l'ont lu encore valable) : le premier à le révoquer gagne ; le
+ * second retire son propre couple et reçoit invalid_grant, sans couper la
+ * connexion du gagnant ni ouvrir de branche parallèle. Une déconnexion pendant
+ * l'échange a déjà révoqué l'ancien couple : le nouveau est retiré de même,
+ * rien ne lui survit.
  */
 export async function renouveler(supabase: any, p: Record<string, string>): Promise<ReponseJetons | ErreurJeton> {
   const { refresh_token, client_id } = p
@@ -252,15 +241,9 @@ export async function renouveler(supabase: any, p: Record<string, string>): Prom
     .eq('refresh_hash', empreinte(refresh_token)).maybeSingle()
   if (error) return indisponible
   if (!t) return { erreur: 'invalid_grant', description: 'unknown refresh_token' }
-  const dejaRenouvele = !!t.revoked_at
-  if (dejaRenouvele) {
-    const recent = Date.now() - new Date(t.revoked_at).getTime() < GRACE_ROTATION_MS
-    const vivante = recent ? await connexionVivante(supabase, t.famille) : false
-    if (vivante === null) return indisponible
-    if (!vivante) {
-      await revoquerFamille(supabase, t.famille)
-      return rejoue
-    }
+  if (t.revoked_at) {
+    await revoquerFamille(supabase, t.famille)
+    return { erreur: 'invalid_grant', description: 'refresh_token already used, connection revoked' }
   }
   // client_id facultatif (client public), mais le même s'il est donné
   if (client_id && t.client_id !== client_id) return { erreur: 'invalid_grant', description: 'client mismatch' }
@@ -273,27 +256,16 @@ export async function renouveler(supabase: any, p: Record<string, string>): Prom
   }
   const jetons = await emettreJetons(supabase, { famille: t.famille, client_id: t.client_id, client_name: t.client_name, user_id: t.user_id, organization_id: t.organization_id })
   if (!jetons) return indisponible
-  if (dejaRenouvele) {
-    // Ancien couple déjà révoqué par le renouvellement simultané. Une déconnexion survenue
-    // pendant l'émission a révoqué tous les autres couples : celui-ci ne lui survit pas.
-    const vivante = await connexionVivante(supabase, t.famille, empreinte(jetons.access_token))
-    if (vivante === null) return indisponible
-    if (vivante) return jetons
-    await revoquerFamille(supabase, t.famille)
-    return rejoue
-  }
   const { data: revoque, error: errRevoque } = await supabase.from('oauth_tokens')
     .update({ revoked_at: new Date().toISOString() }).eq('id', t.id).is('revoked_at', null).select('id')
   // Panne au moment de révoquer : l'ancien couple reste valable, on ne coupe rien
   if (errRevoque) return indisponible
   if (!revoque?.length) {
-    // Un renouvellement simultané vient de faire la rotation : la connexion vit encore (hors ce couple) et on le garde ;
-    // une déconnexion survenue entre-temps a tout révoqué, ce couple compris
-    const vivante = await connexionVivante(supabase, t.famille, empreinte(jetons.access_token))
-    if (vivante === null) return indisponible
-    if (vivante) return jetons
-    await revoquerFamille(supabase, t.famille)
-    return rejoue
+    // Ancien couple révoqué entre-temps (renouvellement simultané gagnant, ou déconnexion) : ce couple-ci est retiré
+    const { error: errRetrait } = await supabase.from('oauth_tokens')
+      .update({ revoked_at: new Date().toISOString() }).eq('access_hash', empreinte(jetons.access_token))
+    if (errRetrait) return indisponible
+    return { erreur: 'invalid_grant', description: 'refresh_token already used' }
   }
   return jetons
 }

@@ -197,7 +197,9 @@ export function ConnecteurClaude({ prenom, appUrl }: { prenom?: string | null; a
         <ol className="list-decimal pl-4 mt-2 space-y-1 text-xs text-surface-700">
           <li>Personnaliser, puis Connecteurs, puis « Ajouter un connecteur personnalisé ».</li>
           <li>Nom : CRM Lab Learning ; adresse : celle ci-dessus, exactement.</li>
-          <li>Gardez les réglages que Claude propose (marqués « Detected ») et validez : Claude ouvre une page du CRM, cliquez sur « Autoriser ».</li>
+          <li>Gardez « Se connecter maintenant » et « Utiliser l&apos;identité publiée de Claude » (marqués « Détecté »), puis Ajouter.</li>
+          <li>Sur la fiche du connecteur, cliquez sur « Connecter » : une page du CRM s&apos;ouvre, cliquez sur « Autoriser ».</li>
+          <li>Ouvrez une nouvelle conversation : celles déjà ouvertes ne voient pas le connecteur.</li>
         </ol>
         <div className="mt-2 text-xs text-surface-500">Aucune clé à copier. Seul un super administrateur peut autoriser, car Claude lit toutes les données.</div>
         {connexions.length > 0 && (
