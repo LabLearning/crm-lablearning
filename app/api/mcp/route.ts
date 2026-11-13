@@ -43,17 +43,55 @@ function reserverDansInstance(cle: string, n: number, plafond: number): boolean 
 // Une trace par minute au plus pour une clé révoquée rejouée
 const refusTraces = new Map<string, number>()
 
+/** Messages qui ne lisent aucune donnée : ouverture, test de présence, liste des outils, notifications et réponses du client */
+const METHODES_PUBLIQUES = new Set(['initialize', 'ping', 'tools/list'])
+const messagePublic = (m: any) => !!m && typeof m === 'object' && !Array.isArray(m)
+  && (typeof m.method !== 'string' || m.method.startsWith('notifications/') || METHODES_PUBLIQUES.has(m.method))
+
+type Diagnostic = { corps?: string; auth?: string | null }
+
+/**
+ * Relevé temporaire (12/11/2026) : l'application Claude n'arrive pas à se
+ * connecter et reçoit des 400. Pour les appels venus de Claude, on écrit dans
+ * les journaux Vercel ce qu'il envoie et ce qu'on répond : en-têtes utiles,
+ * corps tronqué, jamais de clé ni de jeton (préfixe et longueur seulement).
+ */
 export async function POST(req: Request) {
+  const diag: Diagnostic = {}
+  const reponse = await traiterPost(req, diag)
+  const ua = req.headers.get('user-agent') || ''
+  if (/claude|anthropic|python-httpx/i.test(ua)) {
+    const corps = (diag.corps || '')
+      .replace(/ll_[a-z]+_[a-f0-9]{16,}/g, (m) => `${m.slice(0, 10)}…`)
+      .replace(/[a-f0-9]{32,}/gi, '[jeton]')
+      .slice(0, 400)
+    console.info('[mcp diag]', JSON.stringify({
+      statut: reponse.status,
+      ua: ua.slice(0, 80),
+      accept: req.headers.get('accept'),
+      type: req.headers.get('content-type'),
+      version: req.headers.get('mcp-protocol-version'),
+      origine: req.headers.get('origin'),
+      session: req.headers.get('mcp-session-id'),
+      auth: diag.auth ?? null,
+      corps,
+    }))
+  }
+  return reponse
+}
+
+async function traiterPost(req: Request, diag: Diagnostic): Promise<Response> {
   const base = (process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin).replace(/\/$/, '')
 
-  // Version du protocole annoncée par le client après initialize
-  const version = req.headers.get('mcp-protocol-version')
-  if (version && !VERSIONS.includes(version)) return erreur(400, -32600, 'Version du protocole MCP non prise en charge')
+  // Version du protocole : jamais de refus sur une version inconnue (la négociation se fait dans
+  // initialize ; un client plus récent que nous doit pouvoir s'y présenter)
+  void VERSIONS
   // Un navigateur d'un autre site ne parle pas au connecteur (les serveurs de Claude n'envoient pas d'Origin)
   const origine = req.headers.get('origin')
   if (origine && origine !== new URL(base).origin) return erreur(403, -32600, 'Origine refusée')
 
   const brut = await req.text()
+  diag.corps = brut
   if (brut.length > TAILLE_CORPS_MAX) return erreur(413, -32600, 'Requête trop volumineuse')
   let corps: any
   try {
@@ -69,6 +107,7 @@ export async function POST(req: Request) {
   const supabase = await createServiceRoleClient()
   const entete = req.headers.get('authorization') || req.headers.get('x-api-key')
   const presente = String(entete || '').replace(/^Bearer\s+/i, '').trim()
+  diag.auth = presente ? `${presente.slice(0, 10)}… (${presente.length} car.)` : null
   // Jeton de l'application Claude (connexion par compte CRM) ou clé de Claude Code
   let verif: VerificationCleClaude
   if (presente.startsWith('ll_oauth_')) {
@@ -93,15 +132,35 @@ export async function POST(req: Request) {
         })
       }
     }
-    // resource_metadata indique à Claude où se connecter (sans lui, l'application affiche « impossible de joindre ») ;
-    // invalid_token sur un jeton présenté : Claude le renouvelle
+    /**
+     * Ouverture sans compte (schéma d'Anthropic, « lazy authentication ») :
+     * initialize, ping, tools/list et les notifications passent sans jeton.
+     * Ils ne contiennent aucune donnée du CRM (le code est public sur GitHub),
+     * et Claude doit pouvoir ouvrir la connexion avant de faire signer : sinon
+     * l'application affiche « impossible de joindre ». Toute lecture de données
+     * (tools/call) exige un jeton ou une clé valide. Un jeton présenté mais
+     * invalide est toujours refusé, pour que Claude le renouvelle.
+     */
+    if (!presente && messages.every(messagePublic)) {
+      const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'inconnue'
+      if (!reserverDansInstance(`ip:${ip}`, 1, REQUETES_PAR_MINUTE)) return erreur(429, -32000, 'Trop de requêtes en une minute, réessaie dans un instant', { 'Retry-After': '30' })
+      const ctxPublic: ContexteConnecteur = { organizationId: '', userId: '', cleId: '', base }
+      const reponses: any[] = []
+      for (const m of messages) {
+        const r = await traiterMessage(m, ctxPublic)
+        if (r !== null) reponses.push(r)
+      }
+      if (!reponses.length) return new Response(null, { status: 202 })
+      return json(Array.isArray(corps) ? reponses : reponses[0])
+    }
+    // Forme attendue par Claude pour lancer la connexion : 401 et WWW-Authenticate avec resource_metadata
     const defi = [
-      'Bearer realm="crm-lab-learning"',
+      'Bearer error="invalid_token"',
+      'error_description="Authentication required"',
       `resource_metadata="${adresseMetadonneesRessource()}"`,
       `scope="${PORTEE}"`,
-      ...(presente ? ['error="invalid_token"'] : []),
     ].join(', ')
-    return erreur(401, -32001, 'Clé ou jeton du connecteur absent, invalide ou révoqué', { 'WWW-Authenticate': defi })
+    return json({ error: 'invalid_token', error_description: 'Authentication required' }, 401, { 'WWW-Authenticate': defi })
   }
   const cle = verif
 
