@@ -5,9 +5,10 @@ import { PORTEE, adresseMetadonneesRessource, verifierJetonAcces } from '@/lib/c
 
 /**
  * Connecteur Claude (serveur MCP, transport HTTP sans session) : Claude lit
- * tout le CRM en lecture seule avec une clé « ll_claude_… » créée dans
- * Paramètres. Chaque appel d'outil réserve d'abord sa ligne de journal
- * (audit_logs, entity_type connecteur_claude) ; une clé est limitée à
+ * tout le CRM en lecture seule, avec un jeton « ll_oauth_… » (application
+ * Claude, connexion par compte CRM) ou une clé « ll_claude_… » créée dans
+ * Paramètres (Claude Code). Chaque appel d'outil réserve d'abord sa ligne de
+ * journal (audit_logs, entity_type connecteur_claude) ; un accès est limité à
  * 120 appels par minute et à 5 appels par requête.
  */
 
@@ -43,14 +44,6 @@ function reserverDansInstance(cle: string, n: number, plafond: number): boolean 
 // Une trace par minute au plus pour une clé révoquée rejouée
 const refusTraces = new Map<string, number>()
 
-/**
- * Seul tools/call lit des données : tout le reste (initialize, ping, tools/list,
- * notifications, réponses du client, méthodes inconnues comme le server/discover
- * de la version 2026-07-28, qui reçoit « méthode non prise en charge » et
- * laisse Claude revenir à initialize) passe sans jeton.
- */
-const messagePublic = (m: any) => !!m && typeof m === 'object' && !Array.isArray(m) && m.method !== 'tools/call'
-
 type Diagnostic = { corps?: string; auth?: string | null }
 
 /**
@@ -71,6 +64,8 @@ export async function POST(req: Request) {
     console.info('[mcp diag]', JSON.stringify({
       statut: reponse.status,
       ua: ua.slice(0, 80),
+      // Surface d'où vient l'appel (application, Cowork, Claude Code)
+      client: req.headers.get('x-anthropic-client'),
       accept: req.headers.get('accept'),
       type: req.headers.get('content-type'),
       version: req.headers.get('mcp-protocol-version'),
@@ -136,34 +131,22 @@ async function traiterPost(req: Request, diag: Diagnostic): Promise<Response> {
       }
     }
     /**
-     * Ouverture sans compte (schéma d'Anthropic, « lazy authentication ») :
-     * initialize, ping, tools/list et les notifications passent sans jeton.
-     * Ils ne contiennent aucune donnée du CRM (le code est public sur GitHub),
-     * et Claude doit pouvoir ouvrir la connexion avant de faire signer : sinon
-     * l'application affiche « impossible de joindre ». Toute lecture de données
-     * (tools/call) exige un jeton ou une clé valide. Un jeton présenté mais
-     * invalide est toujours refusé, pour que Claude le renouvelle.
+     * Connexion obligatoire (mode « Se connecter maintenant » de Claude) : toute
+     * requête sans jeton ni clé valide, initialize et server/discover compris,
+     * reçoit 401 + WWW-Authenticate. Ce 401 fait détecter le mode et afficher
+     * « Connecter » dans les réglages de claude.ai, seul endroit où l'accès se
+     * donne : les conversations (sessions de type Cowork) n'affichent jamais de
+     * carte de connexion, elles utilisent l'accès déjà accordé. Jamais de 400
+     * ici : un 400 au server/discover fait croire à Claude que le serveur ne
+     * répond pas. Sans jeton : pas de code d'erreur (RFC 6750 § 3.1) ; jeton
+     * refusé : invalid_token, pour que Claude le renouvelle.
      */
-    if (!presente && messages.every(messagePublic)) {
-      const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'inconnue'
-      if (!reserverDansInstance(`ip:${ip}`, 1, REQUETES_PAR_MINUTE)) return erreur(429, -32000, 'Trop de requêtes en une minute, réessaie dans un instant', { 'Retry-After': '30' })
-      const ctxPublic: ContexteConnecteur = { organizationId: '', userId: '', cleId: '', base }
-      const reponses: any[] = []
-      for (const m of messages) {
-        const r = await traiterMessage(m, ctxPublic)
-        if (r !== null) reponses.push(r)
-      }
-      if (!reponses.length) return new Response(null, { status: 202 })
-      return json(Array.isArray(corps) ? reponses : reponses[0])
-    }
-    // Forme attendue par Claude pour lancer la connexion : 401 et WWW-Authenticate avec resource_metadata
     const defi = [
-      'Bearer error="invalid_token"',
-      'error_description="Authentication required"',
-      `resource_metadata="${adresseMetadonneesRessource()}"`,
+      `Bearer resource_metadata="${adresseMetadonneesRessource()}"`,
       `scope="${PORTEE}"`,
+      ...(presente ? ['error="invalid_token"', 'error_description="Invalid or expired token"'] : []),
     ].join(', ')
-    return json({ error: 'invalid_token', error_description: 'Authentication required' }, 401, { 'WWW-Authenticate': defi })
+    return json({ error: 'invalid_token', error_description: presente ? 'Invalid or expired token' : 'Authentication required' }, 401, { 'WWW-Authenticate': defi })
   }
   const cle = verif
 
