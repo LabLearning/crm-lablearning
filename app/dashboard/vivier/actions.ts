@@ -4,11 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/audit'
 import { getSession } from '@/lib/auth'
+import { peutGererVivier } from '@/lib/vivier-acces'
 import type { ActionResult } from '@/lib/types'
 
-function canManage(role: string) {
-  return ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial'].includes(role)
-}
+const canManage = peutGererVivier
 function str(fd: FormData, key: string): string | null {
   const v = (fd.get(key) as string) || ''
   return v.trim() || null

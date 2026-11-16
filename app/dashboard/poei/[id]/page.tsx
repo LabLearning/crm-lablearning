@@ -10,6 +10,7 @@ import { POEI_STATUS_LABELS, POEI_STATUS_COLORS } from '@/lib/types/poei'
 import { formatDate, companyLabel } from '@/lib/utils'
 import { PoeiEditor } from './PoeiEditor'
 import { PoeiCandidats } from './PoeiCandidats'
+import { peutGererVivier } from '@/lib/vivier-acces'
 import { PoeiPositionnement, type PositionnementCandidat } from './PoeiPositionnement'
 import { PoeiFacturation } from './PoeiFacturation'
 import { PoeiEvaluations } from './PoeiEvaluations'
@@ -103,7 +104,8 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   const statutCalcule = statutAttenduPoei(faits)
 
   // Interventions formateurs (plusieurs formateurs possibles sur un POEI)
-  const [{ data: interventions }, { data: formateursList }] = await Promise.all([
+  const idsApprenants = candidats.map((c) => c.apprenant_id).filter(Boolean) as string[]
+  const [{ data: interventions }, { data: formateursList }, { data: cvVivier }] = await Promise.all([
     supabase
       .from('poei_interventions')
       .select('*, formateur:formateurs(prenom, nom), contrat:contrats_formateur(id, numero, status, signature_formateur_date)')
@@ -116,7 +118,13 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       .eq('organization_id', session.organization.id)
       .eq('is_active', true)
       .order('nom'),
+    // CV déposés dans le vivier avant la validation des candidats
+    idsApprenants.length
+      ? supabase.from('candidats_vivier').select('id, apprenant_id')
+        .eq('organization_id', session.organization.id).in('apprenant_id', idsApprenants).not('cv_url', 'is', null)
+      : Promise.resolve({ data: [] as any[] }),
   ])
+  const cvParApprenant: Record<string, string> = Object.fromEntries(((cvVivier || []) as any[]).map((v) => [v.apprenant_id, v.id]))
 
   // ── Émargement du parcours : la session chapeau et celles des interventions ──
   // La session d'une intervention porte le lien (sessions.poei_intervention_id),
@@ -600,6 +608,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
             agenceRenseignee={!!(p as any).agence_ft_id}
             bilansSignes={grilles.filter((g: any) => g.semaine == null && g.appreciations?.[SIGNATURE_BILAN.signeLe] && !g.signature_vide).map((g: any) => String(g.apprenant_id))}
             peutCorrigerIncidents={ROLES_INCIDENTS_POEI.includes(session.user.role)}
+            cvParApprenant={peutGererVivier(session.user.role) ? cvParApprenant : {}}
           />
         }
         positionnement={

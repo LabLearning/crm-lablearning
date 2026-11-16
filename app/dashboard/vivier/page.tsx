@@ -32,15 +32,5 @@ export default async function VivierPage() {
       .order('date_debut_formation_prevue', { ascending: true, nullsFirst: false }),
   ])
 
-  // URLs signées des CV (bucket privé documents)
-  const cands = (candidats || []) as any[]
-  const cvPaths = cands.map((c) => c.cv_url).filter((u) => u && !/^https?:\/\//.test(u)) as string[]
-  const cvUrls: Record<string, string> = {}
-  if (cvPaths.length > 0) {
-    const { data: signed } = await supabase.storage.from('documents').createSignedUrls(cvPaths, 3600)
-    ;(signed || []).forEach((s: any, i: number) => { if (s?.signedUrl && !s.error) cvUrls[cvPaths[i]] = s.signedUrl })
-  }
-  for (const c of cands) if (c.cv_url && /^https?:\/\//.test(c.cv_url)) cvUrls[c.cv_url] = c.cv_url
-
-  return <VivierList candidats={cands} clients={(clients || []) as any[]} poeis={(poeis || []) as any[]} previsions={(previsions || []) as any[]} cvUrls={cvUrls} />
+  return <VivierList candidats={(candidats || []) as any[]} clients={(clients || []) as any[]} poeis={(poeis || []) as any[]} previsions={(previsions || []) as any[]} />
 }

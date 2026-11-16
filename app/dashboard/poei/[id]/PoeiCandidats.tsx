@@ -48,6 +48,8 @@ interface Props {
   bilansSignes?: string[]
   /** Le compte peut corriger un incident dans l'onglet Incidents */
   peutCorrigerIncidents?: boolean
+  /** Candidats (apprenant_id) dont le CV a été déposé dans le vivier → identifiant du candidat du vivier */
+  cvParApprenant?: Record<string, string>
 }
 
 const contratOptions = [{ value: '', label: '—' }, ...Object.entries(TYPE_CONTRAT_LABELS).map(([v, l]) => ({ value: v, label: l as string }))]
@@ -79,7 +81,7 @@ function fmtDateTime(d: string | null): string {
   try { return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' }
 }
 
-export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {}, sessionTerminee = false, incidents = [], agenceRenseignee = true, bilansSignes = [], peutCorrigerIncidents = true }: Props) {
+export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, apprenants, emailStatus = {}, clientNom, clientId, devisByCandidat = {}, sessionTerminee = false, incidents = [], agenceRenseignee = true, bilansSignes = [], peutCorrigerIncidents = true, cvParApprenant = {} }: Props) {
   const { toast } = useToast()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -324,7 +326,7 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                   </div>
                   {/* Sur téléphone la ligne se replie : le numéro FT ou de convention reste lisible */}
                   <div className="text-xs text-surface-500 break-words sm:truncate">
-                    {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null, (c as any).numero_convention ? `Conv. ${(c as any).numero_convention}` : null, (c as any).entretien ? `Entretien${(c as any).entretien_date ? ` du ${new Date((c as any).entretien_date).toLocaleDateString('fr-FR')}` : ' mené'}` : null].filter(Boolean).join(' · ') || '—'}
+                    {[c.apprenant?.email, c.poste_vise, c.type_contrat ? TYPE_CONTRAT_LABELS[c.type_contrat] : null, c.identifiant_ft ? `FT ${c.identifiant_ft}` : null, (c as any).numero_convention ? `Conv. ${(c as any).numero_convention}` : null, (c as any).entretien ? `Entretien${(c as any).entretien_date ? ` du ${new Date((c as any).entretien_date).toLocaleDateString('fr-FR')}` : ' mené'}` : null, c.apprenant_id && cvParApprenant[c.apprenant_id] ? 'CV au dossier' : null].filter(Boolean).join(' · ') || '—'}
                   </div>
                   {c.statut !== 'abandonne' && ((c as any).date_debut || (c as any).date_fin || (c as any).duree_heures != null) && (
                     <div className={cn('text-xs mt-0.5 font-medium', entreApres ? 'text-amber-700' : 'text-brand-600')}>
@@ -375,6 +377,11 @@ export function PoeiCandidats({ poeiId, projet, interventions = [], candidats, a
                   triggerClassName="h-10 w-10 sm:h-auto sm:w-auto inline-flex items-center justify-center"
                   items={[
                     { label: 'Modifier les informations', icon: <Pencil className="h-4 w-4" />, onClick: () => setEditCand(c) },
+                    ...(c.apprenant_id && cvParApprenant[c.apprenant_id] ? [{
+                      label: 'Voir le CV',
+                      icon: <FileText className="h-4 w-4" />,
+                      onClick: () => window.open(`/api/vivier/cv/${cvParApprenant[c.apprenant_id as string]}`, '_blank'),
+                    }] : []),
                     { label: 'Déclarer un abandon', icon: <XCircle className="h-4 w-4" />, onClick: () => setAbandonCand(c) },
                     ...(c.statut === 'abandonne' && c.apprenant_id ? [{
                       label: 'Attestation de sortie',

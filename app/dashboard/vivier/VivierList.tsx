@@ -107,7 +107,7 @@ function TargetSelect({ value, poeis, previsions, name, disabled, onChange, clas
   return <select name={name} defaultValue={value} className={className}>{opts}</select>
 }
 
-export function VivierList({ candidats, clients, poeis, previsions = [], embedded, cvUrls = {} }: { candidats: Candidat[]; clients: ClientLite[]; poeis: PoeiLite[]; previsions?: PrevisionLite[]; embedded?: boolean; cvUrls?: Record<string, string> }) {
+export function VivierList({ candidats, clients, poeis, previsions = [], embedded }: { candidats: Candidat[]; clients: ClientLite[]; poeis: PoeiLite[]; previsions?: PrevisionLite[]; embedded?: boolean }) {
   const { toast } = useToast()
   const router = useRouter()
   const [search, setSearch] = useState('')
@@ -233,7 +233,7 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
                           <option value="">Évaluer…</option>
                           {EVALUATIONS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
                         </select>
-                        <CvButton c={c} url={c.cv_url ? cvUrls[c.cv_url] || null : null} onDone={() => router.refresh()} />
+                        <CvButton c={c} onDone={() => router.refresh()} />
                         <PastilleEntretien c={c} onClick={() => setEntretienCand(c)} />
                       </div>
                     </td>
@@ -326,8 +326,10 @@ function DSection({ title, children }: { title: string; children: React.ReactNod
   )
 }
 
-/** Vue complète (lecture seule) d'un candidat du vivier */
-function CvButton({ c, url, onDone }: { c: Candidat; url: string | null; onDone: () => void }) {
+/** Adresse qui ouvre le CV d'un candidat : lien signé à la demande (app/api/vivier/cv) */
+const lienCv = (c: Candidat) => `/api/vivier/cv/${c.id}`
+
+function CvButton({ c, onDone }: { c: Candidat; onDone: () => void }) {
   const { toast } = useToast()
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -349,7 +351,7 @@ function CvButton({ c, url, onDone }: { c: Candidat; url: string | null; onDone:
 
   if (c.cv_url) return (
     <span className="inline-flex items-center gap-1.5">
-      {url && <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-brand-600 hover:underline"><FileText className="h-3 w-3" /> Voir CV</a>}
+      <a href={lienCv(c)} target="_blank" rel="noreferrer" title={c.cv_nom || undefined} className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 hover:bg-brand-100"><FileText className="h-3 w-3" /> Voir le CV</a>
       <button type="button" onClick={del} disabled={busy} title="Supprimer le CV" className="text-surface-300 hover:text-danger-500">
         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
       </button>
@@ -366,6 +368,7 @@ function CvButton({ c, url, onDone }: { c: Candidat; url: string | null; onDone:
   )
 }
 
+/** Vue complète (lecture seule) d'un candidat du vivier */
 function CandidatDetail({ c, onEdit, onValider, onEntretien }: { c: Candidat; onEdit: () => void; onValider?: () => void; onEntretien: () => void }) {
   const sm = statutMeta(c.statut)
   const adresse = [c.adresse, [c.code_postal, c.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
@@ -404,6 +407,9 @@ function CandidatDetail({ c, onEdit, onValider, onEntretien }: { c: Candidat; on
         <DRow label="Disponibilité" value={c.disponibilite} />
         <DRow label="Poste visé" value={c.poste_vise} />
         <DRow label="Identifiant France Travail" value={c.identifiant_ft} />
+        <DRow label="CV" value={c.cv_url
+          ? <a href={lienCv(c)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline"><FileText className="h-4 w-4 shrink-0" /><span className="truncate">{c.cv_nom || 'Voir le CV'}</span></a>
+          : <span className="text-surface-500">Aucun CV déposé</span>} />
       </DSection>
 
       <DSection title="Rattachement">
