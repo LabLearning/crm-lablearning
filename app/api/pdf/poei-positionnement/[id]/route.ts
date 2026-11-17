@@ -4,6 +4,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireApiUser } from '@/lib/api-auth'
 import { PositionnementPoeiPDF, type CandidatPositionne } from '@/lib/pdf/positionnement-poei-pdf'
+import { questionnaireDuPositionnement, questionnairePourParcours } from '@/lib/poei-positionnement'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,13 +24,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const { data: poei } = await supabase
     .from('poei')
-    .select('id, numero, date_debut, date_fin, duree_heures, poste_vise, client:client_id(raison_sociale, nom_commercial)')
+    .select('id, numero, date_debut, date_fin, duree_heures, poste_vise, formation:formations(intitule), client:client_id(raison_sociale, nom_commercial)')
     .eq('id', params.id).eq('organization_id', orgId).maybeSingle()
   if (!poei) return NextResponse.json({ error: 'Parcours POEI introuvable' }, { status: 404 })
 
   const candidatId = req.nextUrl.searchParams.get('candidat') || ''
   let q = supabase.from('poei_positionnements')
-    .select('candidat_id, reponses, realise_le, commentaire')
+    .select('candidat_id, reponses, resultats, realise_le, commentaire')
     .eq('poei_id', params.id).eq('organization_id', orgId)
   if (candidatId) q = q.eq('candidat_id', candidatId)
   const { data: positions, error } = await q
@@ -45,6 +46,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .select('id, identifiant_ft, statut, apprenant:apprenants(prenom, nom, date_naissance)')
     .eq('poei_id', params.id).eq('organization_id', orgId)
   const parId = new Map((candidats || []).map((c: any) => [c.id, c]))
+  const clientPoei: any = (poei as any).client
+  const questionnaireParcours = questionnairePourParcours({
+    formation: (poei as any).formation?.intitule,
+    entreprise: clientPoei?.nom_commercial || clientPoei?.raison_sociale,
+  })
 
   const liste: CandidatPositionne[] = (positions as any[])
     .map((p) => {
@@ -55,6 +61,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         dateNaissance: c.apprenant.date_naissance || null,
         identifiantFt: c.identifiant_ft || null,
         reponses: p.reponses || {},
+        questionnaire: questionnaireDuPositionnement(p.resultats, p.reponses, questionnaireParcours).code,
         realiseLe: p.realise_le || null,
         commentaire: p.commentaire || null,
       }

@@ -4,7 +4,7 @@ import {
   PdfSectionTitle, PdfDocHeader, PdfDocFooter, shared,
   BRAND_GREEN, BRAND_LIGHT, SURFACE_50, SURFACE_200, SURFACE_400, SURFACE_500, SURFACE_700, SURFACE_900,
 } from './components'
-import { DOMAINES, QUESTIONS, estJuste, evaluerPositionnement, type Reponses } from '@/lib/poei-positionnement'
+import { estJuste, evaluerPositionnement, questionnaire as questionnaireDe, type CodeQuestionnaire, type Reponses } from '@/lib/poei-positionnement'
 
 export interface CandidatPositionne {
   nom: string
@@ -12,6 +12,8 @@ export interface CandidatPositionne {
   dateNaissance: string | null
   identifiantFt: string | null
   reponses: Reponses
+  /** Questionnaire auquel le candidat a répondu (tacos ou générique) */
+  questionnaire: CodeQuestionnaire
   realiseLe: string | null
   commentaire: string | null
 }
@@ -34,6 +36,8 @@ const jour = (d?: string | null) =>
   d ? new Date(String(d).slice(0, 10) + 'T00:00:00').toLocaleDateString('fr-FR') : 'date non renseignée'
 const pct = (n: number) => `${String(n).replace('.', ',')} %`
 const heures = (n: number) => `${String(n).replace('.', ',')} h`
+const NOMBRES = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix']
+const enLettres = (n: number) => NOMBRES[n] || String(n)
 
 /**
  * Fiche de positionnement à l'entrée, destinée à France Travail.
@@ -47,8 +51,10 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
   return (
     <Document>
       {candidats.map((c, i) => {
-        const r = evaluerPositionnement(c.reponses)
-        const dureeParcours = Number(poei.duree_heures) || r.heuresReferentiel
+        const q = questionnaireDe(c.questionnaire)
+        const r = evaluerPositionnement(c.reponses, q, poei.duree_heures)
+        const dureeParcours = r.dureeParcours
+        const planchers = r.domaines.filter((d) => d.plancher != null && d.plancherMotif)
         return (
           <Page key={i} size="A4" style={shared.page}>
             <PdfDocHeader
@@ -111,7 +117,7 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                   <View key={d.code} style={[shared.tableRow, j % 2 === 1 ? shared.tableRowAlt : {}]}>
                     <View style={{ width: '46%', paddingRight: 6 }}>
                       <Text style={[shared.tableCell, { color: SURFACE_900 }]}>{d.libelle}</Text>
-                      <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 1.5 }}>{`${d.heuresReferentiel} h au référentiel`}</Text>
+                      <Text style={{ fontSize: 7, color: SURFACE_400, marginTop: 1.5 }}>{`${d.competences ? `Compétences ${d.competences} · ` : ''}${heures(d.heuresReferentiel)} au parcours`}</Text>
                     </View>
                     <View style={{ width: '18%' }}>
                       <Text style={[shared.tableCell, { textAlign: 'right' }]}>{pct(d.maitrise)}</Text>
@@ -136,20 +142,22 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                 </View>
               </View>
               <Text style={{ fontSize: 7.5, color: SURFACE_500, lineHeight: 1.5 }}>
-                {`Règle de positionnement : en dessous de ${r.seuil} % de bonnes réponses, le parcours complet de ${r.heuresReferentiel} heures est requis. Au-delà, seul l'écart restant par domaine est à former. Le module d'hygiène alimentaire est suivi dans son volume réglementaire quel que soit le niveau d'entrée.`}
+                {`${q.referentiel}. Les heures de chaque domaine sont une part des ${dureeParcours} heures du parcours. Règle de positionnement : en dessous de ${r.seuil} % de bonnes réponses, le parcours complet de ${r.heuresReferentiel} heures est requis. Au-delà, seul l'écart restant par domaine est à former${planchers.length ? `, sans descendre sous ${planchers.map((d) => `${heures(d.plancher!)} pour le ${d.plancherMotif}`).join(' ni sous ')}` : ''}. Le questionnaire mesure les connaissances du poste ; la maîtrise des gestes s'apprécie ensuite en situation de travail, selon l'échelle du référentiel.`}
               </Text>
             </View>
 
             <View style={shared.section} break>
               <PdfSectionTitle>Détail des réponses du candidat</PdfSectionTitle>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.55, marginBottom: 8 }}>
-                {`Vingt situations de travail, réparties sur les cinq domaines du métier. Le candidat a répondu lui-même le ${jour(c.realiseLe)}. Chaque réponse juste atteste d'un acquis, chaque réponse fausse ouvre un besoin de formation.`}
+                {`${q.questions.length} situations de travail, réparties sur les ${enLettres(q.domaines.length)} domaines du référentiel${q.code === 'tacos' ? ', une par compétence' : ''}. Le candidat a répondu lui-même le ${jour(c.realiseLe)}. Chaque réponse juste atteste d'un acquis, chaque réponse fausse ouvre un besoin de formation.`}
               </Text>
-              {DOMAINES.map((d) => {
+              {q.domaines.map((d) => {
                 const dom = r.domaines.find((x) => x.code === d.code)
                 return (
-                  <View key={d.code} style={{ marginBottom: 10 }} wrap={false}>
-                    <View style={{
+                  // Un domaine peut dépasser une page (onze questions en production) : il se coupe entre
+                  // deux questions, jamais au milieu d'une, et son en-tête reste avec la première
+                  <View key={d.code} style={{ marginBottom: 10 }}>
+                    <View minPresenceAhead={70} style={{
                       backgroundColor: SURFACE_50, paddingVertical: 5, paddingHorizontal: 9,
                       borderRadius: 3, marginBottom: 3, flexDirection: 'row', justifyContent: 'space-between',
                     }}>
@@ -161,17 +169,20 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                         {dom ? `${dom.justes}/${dom.total}` : ''}
                       </Text>
                     </View>
-                    {QUESTIONS.filter((q) => q.domaine === d.code).map((q) => {
-                      const rep = c.reponses[q.code]
-                      const juste = estJuste(q, rep)
-                      const donnee = rep == null ? null : q.choix[Number(rep)]
+                    {q.questions.filter((x) => x.domaine === d.code).map((question) => {
+                      const rep = c.reponses[question.code]
+                      const juste = estJuste(question, rep)
+                      const donnee = rep == null ? null : question.choix[Number(rep)]
                       return (
-                        <View key={q.code} style={{
+                        <View key={question.code} style={{
                           paddingVertical: 3.5, paddingHorizontal: 9,
                           borderBottomWidth: 0.4, borderBottomColor: SURFACE_200,
-                        }}>
+                        }} wrap={false}>
+                          {question.competence ? (
+                            <Text style={{ fontSize: 6.5, color: SURFACE_400, marginBottom: 1 }}>{`Compétence ${question.competence}`}</Text>
+                          ) : null}
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Text style={{ fontSize: 8, color: SURFACE_900, width: '84%' }}>{q.intitule}</Text>
+                            <Text style={{ fontSize: 8, color: SURFACE_900, width: '84%' }}>{question.intitule}</Text>
                             <Text style={{
                               fontSize: 8, width: '16%', textAlign: 'right',
                               fontFamily: 'Satoshi', fontWeight: 700,
@@ -182,10 +193,10 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
                           </View>
                           <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 1.5 }}>
                             {donnee == null
-                              ? `Attendu : ${q.choix[q.correct]}`
+                              ? `Attendu : ${question.choix[question.correct]}`
                               : juste
                                 ? `Réponse : ${donnee}`
-                                : `Réponse : ${donnee}. Attendu : ${q.choix[q.correct]}`}
+                                : `Réponse : ${donnee}. Attendu : ${question.choix[question.correct]}`}
                           </Text>
                         </View>
                       )
@@ -206,7 +217,7 @@ export function PositionnementPoeiPDF({ org, poei, employeur, candidats, numero 
               <PdfSectionTitle>Conclusion</PdfSectionTitle>
               <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
                 {!r.seuilAtteint
-                  ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses sur le référentiel de compétences du poste d'équipier polyvalent. Le seuil de ${r.seuil} % n'est pas atteint : le parcours complet de ${dureeParcours} heures est requis, sur les cinq domaines du métier.`
+                  ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses sur le référentiel de compétences du poste d'équipier polyvalent. Le seuil de ${r.seuil} % n'est pas atteint : le parcours complet de ${dureeParcours} heures est requis, sur les ${enLettres(q.domaines.length)} domaines du référentiel.`
                   : r.heuresPreconisees >= dureeParcours
                     ? `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses. L'écart constaté couvre l'intégralité des ${dureeParcours} heures du parcours.`
                     : `Le questionnaire, renseigné par ${c.prenom} ${String(c.nom).toUpperCase()}, obtient ${String(r.note).replace('.', ',')} sur 20, soit ${pct(r.maitriseGlobale)} de bonnes réponses. Le seuil de ${r.seuil} % est atteint : l'écart restant justifie ${heures(r.heuresPreconisees)} de formation sur les ${dureeParcours} heures du parcours.`}

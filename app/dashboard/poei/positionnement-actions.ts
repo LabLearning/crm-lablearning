@@ -6,7 +6,7 @@ import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
 import { sendDocumentEmail } from '@/lib/email'
-import { QUESTIONS } from '@/lib/poei-positionnement'
+import { dureeEnLettres, questionnairePourParcours } from '@/lib/poei-positionnement'
 
 const MESSAGE_MIGRATION = 'Appliquez la migration 152 pour envoyer les questionnaires de positionnement.'
 const tableAbsente = (e: any) => ['PGRST205', '42P01'].includes(String(e?.code))
@@ -36,7 +36,7 @@ export async function envoyerPositionnementAction(
   const orgId = session.organization.id
 
   const { data: poei } = await supabase
-    .from('poei').select('id, numero, duree_heures, client:client_id(raison_sociale, nom_commercial)')
+    .from('poei').select('id, numero, duree_heures, formation:formations(intitule), client:client_id(raison_sociale, nom_commercial)')
     .eq('id', poeiId).eq('organization_id', orgId).maybeSingle()
   if (!poei) return { success: false, error: 'Parcours POEI introuvable' }
 
@@ -46,6 +46,11 @@ export async function envoyerPositionnementAction(
     .eq('poei_id', poeiId).eq('organization_id', orgId).in('id', candidatIds)
 
   const { data: orgRow } = await supabase.from('organizations').select('*').eq('id', orgId).single()
+  // Questionnaire du concept : tacos (Chamas Tacos, New School Tacos) ou générique
+  const employeurPoei = (poei as any).client?.nom_commercial || (poei as any).client?.raison_sociale || null
+  const questionnaire = questionnairePourParcours({ formation: (poei as any).formation?.intitule, entreprise: employeurPoei })
+  const nbQuestions = questionnaire.questions.length
+  const duree = dureeEnLettres(questionnaire.dureeMinutes)
 
   let envoyes = 0
   let ignores = 0
@@ -86,7 +91,7 @@ export async function envoyerPositionnementAction(
     // Sans email en fiche, le lien reste disponible à la copie côté gestionnaire
     if (!c.apprenant.email) { envoyes++; continue }
 
-    const employeur = (poei as any).client?.nom_commercial || (poei as any).client?.raison_sociale || null
+    const employeur = employeurPoei
     const r = await sendDocumentEmail({
       to: c.apprenant.email,
       orgName: orgRow?.name || 'Lab Learning',
@@ -96,10 +101,10 @@ export async function envoyerPositionnementAction(
       recipientName: nom,
       subject: 'Votre questionnaire de positionnement avant la formation',
       docTitle: 'Questionnaire de positionnement',
-      intro: `Avant votre entrée en formation${employeur ? ` chez ${employeur}` : ''}, merci de répondre à ce questionnaire. Il compte ${QUESTIONS.length} questions et prend moins de dix minutes. Il sert à adapter la formation à ce que vous savez déjà faire : répondez seul, sans chercher les réponses.`,
+      intro: `Avant votre entrée en formation${employeur ? ` chez ${employeur}` : ''}, merci de répondre à ce questionnaire. Il compte ${nbQuestions} questions et prend environ ${duree}. Il sert à adapter la formation à ce que vous savez déjà faire : répondez seul, sans chercher les réponses.`,
       metadata: [
-        ['Questions', `${QUESTIONS.length} questions à choix unique`],
-        ['Durée', 'Moins de 10 minutes'],
+        ['Questions', `${nbQuestions} questions à choix unique`],
+        ['Durée', `Environ ${duree}`],
         ['À faire', 'Avant le premier jour de formation'],
       ],
       ctaLabel: 'Répondre au questionnaire',

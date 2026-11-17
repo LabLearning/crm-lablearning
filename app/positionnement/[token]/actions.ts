@@ -1,7 +1,7 @@
 'use server'
 
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { evaluerPositionnement, QUESTIONS, type Reponses } from '@/lib/poei-positionnement'
+import { evaluerPositionnement, nettoyerReponses, questionnairePourParcours, type Reponses } from '@/lib/poei-positionnement'
 
 export interface ResultatEnvoi {
   success: boolean
@@ -12,28 +12,29 @@ export interface ResultatEnvoi {
 /**
  * Enregistre les réponses d'un candidat. Accès par le seul lien personnel :
  * pas de compte, pas de mot de passe. Un questionnaire déjà rendu ne se
- * réécrit pas.
+ * réécrit pas. Le questionnaire corrigé et la durée du parcours sont figés
+ * avec les résultats : un barème qui change ne réécrit pas un document transmis.
  */
 export async function repondrePositionnementAction(token: string, reponses: Reponses): Promise<ResultatEnvoi> {
   if (!token) return { success: false, error: 'Lien invalide' }
   const supabase = await createServiceRoleClient()
 
   const { data: pos } = await supabase
-    .from('poei_positionnements').select('id, statut').eq('token', token).maybeSingle()
+    .from('poei_positionnements')
+    .select('id, statut, poei:poei_id(duree_heures, formation:formations(intitule), client:client_id(raison_sociale, nom_commercial))')
+    .eq('token', token).maybeSingle()
   if (!pos) return { success: false, error: 'Questionnaire introuvable' }
   if (pos.statut === 'complete') return { success: false, error: 'Ce questionnaire a déjà été rendu' }
 
-  // On ne garde que les codes du référentiel, et des index de choix plausibles
-  const propres: Reponses = {}
-  for (const q of QUESTIONS) {
-    const v = reponses[q.code]
-    if (v === null || v === undefined) continue
-    const n = Number(v)
-    if (Number.isInteger(n) && n >= 0 && n < q.choix.length) propres[q.code] = n
-  }
+  const poei: any = (pos as any).poei
+  const q = questionnairePourParcours({
+    formation: poei?.formation?.intitule,
+    entreprise: poei?.client?.nom_commercial || poei?.client?.raison_sociale,
+  })
+  const propres = nettoyerReponses(q, reponses)
   if (Object.keys(propres).length === 0) return { success: false, error: 'Répondez à au moins une question' }
 
-  const resultat = evaluerPositionnement(propres)
+  const resultat = evaluerPositionnement(propres, q, poei?.duree_heures)
   const { error } = await supabase.from('poei_positionnements').update({
     reponses: propres,
     resultats: resultat,

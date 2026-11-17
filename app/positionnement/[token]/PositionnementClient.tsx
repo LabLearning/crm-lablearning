@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { DOMAINES, QUESTIONS, type Reponses } from '@/lib/poei-positionnement'
+import { dureeEnLettres, type DomainePublic, type QuestionPublique, type Reponses } from '@/lib/poei-positionnement'
 import { repondrePositionnementAction } from './actions'
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   ChefHat,
+  ClipboardList,
   Clock,
   Flame,
   HelpCircle,
@@ -15,18 +16,22 @@ import {
   ListChecks,
   ShieldCheck,
   ShoppingCart,
+  Repeat,
+  Store,
   Target,
+  UserCheck,
   Users,
 } from '@/components/ui/icons'
 
 /**
  * Questionnaire de positionnement POEI, côté candidat.
  *
- * Parcours en cinq chapitres (un par domaine du référentiel) : un écran
- * d'accueil plein écran qui annonce les chapitres, une question à la fois,
- * un interstitiel à l'entrée des chapitres 2 à 5 (le premier est déjà présenté
- * par l'accueil), puis un écran de fin qui confirme l'enregistrement.
- * Aucune note n'est montrée au candidat : ce n'est pas un examen.
+ * Un chapitre par domaine du référentiel : un écran d'accueil plein écran qui
+ * annonce les chapitres, une question à la fois, un interstitiel à l'entrée
+ * des chapitres suivants (le premier est déjà présenté par l'accueil), puis un
+ * écran de fin qui confirme l'enregistrement. Les questions arrivent du
+ * serveur sans leur bonne réponse. Aucune note n'est montrée au candidat :
+ * ce n'est pas un examen.
  */
 
 interface Props {
@@ -35,7 +40,12 @@ interface Props {
   employeur: string | null
   orgNom: string
   orgLogo: string | null
-  nbQuestions: number
+  questions: QuestionPublique[]
+  domaines: DomainePublic[]
+  /** Durée annoncée au candidat, en minutes. */
+  dureeMinutes: number
+  /** Aperçu pour l'équipe : le parcours est identique, rien n'est enregistré à la fin. */
+  apercu?: boolean
 }
 
 type Etape = 'accueil' | 'chapitre' | 'question' | 'envoi' | 'fin'
@@ -49,12 +59,23 @@ const DELAI_SELECTION_MS = 260
 type Icone = typeof Target
 
 const ICONES_DOMAINES: Record<string, Icone> = {
+  // Questionnaire générique
   hygiene: ShieldCheck,
   production: ChefHat,
   service: ShoppingCart,
   securite: Flame,
   posture: Users,
+  // Référentiel des concepts tacos
+  prise_poste: ClipboardList,
+  hygiene_produits: ShieldCheck,
+  accueil_client: Store,
+  service_tenue: Repeat,
+  posture_autonomie: UserCheck,
 }
+
+const NOMBRES = ['zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix']
+const enLettres = (n: number) => NOMBRES[n] || String(n)
+const majuscule = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 
 function iconeDomaine(code: string | undefined): Icone {
   return (code && ICONES_DOMAINES[code]) || Target
@@ -91,7 +112,7 @@ const LIEN = `inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium 
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo, nbQuestions }: Props) {
+export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo, questions, domaines, dureeMinutes, apercu = false }: Props) {
   const [etape, setEtape] = useState<Etape>('accueil')
   const [index, setIndex] = useState(0)
   const [direction, setDirection] = useState<Direction>('avant')
@@ -104,10 +125,11 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
   /** Réglage « réduire les animations » du téléphone : ni délai de sélection, ni défilement animé. */
   const mouvementReduitRef = useRef(false)
 
-  const total = nbQuestions || QUESTIONS.length
-  const q = QUESTIONS[index]
-  const numDomaine = Math.max(0, DOMAINES.findIndex((d) => d.code === q?.domaine))
-  const domaine = DOMAINES[numDomaine]
+  const total = questions.length
+  const q = questions[index]
+  const numDomaine = Math.max(0, domaines.findIndex((d) => d.code === q?.domaine))
+  const domaine = domaines[numDomaine]
+  const duree = dureeEnLettres(dureeMinutes)
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -128,6 +150,8 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
   }, [etape, index])
 
   async function envoyer(dernieres: Reponses) {
+    // Aperçu : aucune réponse ne part au serveur
+    if (apercu) { setEtape('fin'); return }
     setEtape('envoi')
     setEnvoi(true)
     setErreur(null)
@@ -168,10 +192,10 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
       timerRef.current = null
       setSelection(null)
       const prochain = index + 1
-      if (prochain < QUESTIONS.length) {
+      if (prochain < questions.length) {
         setDirection('avant')
         setIndex(prochain)
-        const prochaine = QUESTIONS[prochain]
+        const prochaine = questions[prochain]
         setEtape(prochaine && prochaine.domaine !== q.domaine ? 'chapitre' : 'question')
       } else {
         void envoyer(suite)
@@ -195,7 +219,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
     setDirection('arriere')
     if (etape === 'chapitre' || etape === 'envoi') {
       // Depuis un interstitiel ou l'écran d'envoi, on revient sur la dernière question vue.
-      setIndex(etape === 'envoi' ? QUESTIONS.length - 1 : Math.max(0, index - 1))
+      setIndex(etape === 'envoi' ? questions.length - 1 : Math.max(0, index - 1))
       setEtape('question')
       return
     }
@@ -207,7 +231,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
     return (
       <Fond>
         <Styles />
-        <Entete orgNom={orgNom} logo={orgLogo} />
+        <Entete orgNom={orgNom} logo={orgLogo} apercu={apercu} />
         <main className="flex-1 flex flex-col justify-center py-8">
           <svg viewBox="0 0 112 112" className="mx-auto h-28 w-28" aria-hidden="true">
             <circle cx="56" cy="56" r="50" fill="none" strokeWidth="4" className="stroke-white/15" />
@@ -222,7 +246,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
             />
           </svg>
           <h1 className="pos-in-up pos-delay-3 pos-equilibre motion-reduce:animate-none mt-8 break-words text-center font-heading text-[2rem] font-extrabold leading-[1.1] tracking-heading text-white sm:text-4xl">
-            Merci{prenom ? ` ${prenom}` : ''}, c&apos;est enregistré.
+            {apercu ? 'Fin de l\'aperçu.' : <>Merci{prenom ? ` ${prenom}` : ''}, c&apos;est enregistré.</>}
           </h1>
           <p className="pos-in-up pos-delay-4 motion-reduce:animate-none mx-auto mt-4 max-w-sm text-center text-[15px] leading-relaxed text-brand-100">
             Vos réponses servent à construire votre formation autour de ce qu&apos;il vous reste à apprendre. Votre
@@ -231,7 +255,9 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
           <div className="pos-in-up pos-delay-5 motion-reduce:animate-none mx-auto mt-8 w-full max-w-sm rounded-2xl border border-white/[0.15] bg-white/10 p-4 backdrop-blur-sm">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-300">Et maintenant</p>
             <p className="mt-1.5 break-words text-sm leading-relaxed text-white/90">
-              Rien d&apos;autre à faire de votre côté{employeur ? ` avant votre entrée chez ${employeur}` : ''}. Vous pouvez fermer cette page.
+              {apercu
+                ? `Aucune réponse n'a été enregistrée : c'est l'écran que voit le candidat à la fin. Il compte ${questions.length} questions, sans jamais voir sa note.`
+                : `Rien d'autre à faire de votre côté${employeur ? ` avant votre entrée chez ${employeur}` : ''}. Vous pouvez fermer cette page.`}
             </p>
           </div>
         </main>
@@ -245,7 +271,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
     return (
       <Fond>
         <Styles />
-        <Entete orgNom={orgNom} logo={orgLogo} />
+        <Entete orgNom={orgNom} logo={orgLogo} apercu={apercu} />
         <main className="flex-1 flex flex-col justify-center py-6">
           <p className="pos-in-up motion-reduce:animate-none text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-300">
             Questionnaire de positionnement
@@ -263,20 +289,20 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
             )}
           </h1>
           <p className="pos-in-up pos-delay-2 motion-reduce:animate-none mt-4 max-w-md break-words text-[17px] leading-relaxed text-brand-100">
-            {total} questions, dix minutes, pour construire votre formation
+            {total} questions, {duree}, pour construire votre formation
             {employeur ? ` chez ${employeur}` : ''} autour de ce qu&apos;il vous reste à apprendre.
           </p>
 
           <ul className="pos-in-up pos-delay-3 motion-reduce:animate-none mt-7 grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Repere icone={ListChecks} titre={`${total} questions`} detail="Une seule réponse à chaque fois" />
-            <Repere icone={Clock} titre="Dix minutes" detail="Sur votre téléphone, où vous voulez" />
+            <Repere icone={Clock} titre={majuscule(duree)} detail="Sur votre téléphone, où vous voulez" />
             <Repere icone={HelpCircle} titre="Pas un examen" detail="Aucune conséquence sur votre entrée" />
           </ul>
 
           <div className="pos-in-up pos-delay-4 motion-reduce:animate-none mt-7">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-300">Cinq chapitres</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-300">{majuscule(enLettres(domaines.length))} chapitres</p>
             <ol className="mt-3 flex items-center gap-1.5 sm:gap-2">
-              {DOMAINES.map((d, i) => {
+              {domaines.map((d, i) => {
                 const I = iconeDomaine(d.code)
                 return (
                   <li key={d.code} className="flex flex-1 items-center gap-1.5 sm:gap-2">
@@ -286,7 +312,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
                     >
                       <I size={22} />
                     </span>
-                    {i < DOMAINES.length - 1 && <span className="h-px flex-1 bg-white/[0.15]" aria-hidden="true" />}
+                    {i < domaines.length - 1 && <span className="h-px flex-1 bg-white/[0.15]" aria-hidden="true" />}
                   </li>
                 )
               })}
@@ -317,16 +343,16 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
     )
   }
 
-  /* ── Interstitiel de chapitre (chapitres 2 à 5) ───────────────────────── */
+  /* ── Interstitiel de chapitre (à partir du deuxième) ─────────────────── */
   if (etape === 'chapitre' && domaine) {
     const I = iconeDomaine(domaine.code)
-    const nbDansChapitre = QUESTIONS.filter((x) => x.domaine === domaine.code).length
+    const nbDansChapitre = questions.filter((x) => x.domaine === domaine.code).length
     return (
       <Fond teinte="brand-500">
         <Styles />
-        <Entete orgNom={orgNom} logo={orgLogo} />
+        <Entete orgNom={orgNom} logo={orgLogo} apercu={apercu} />
         <div className="pt-2">
-          <Progression index={index} sombre />
+          <Progression index={index} questions={questions} domaines={domaines} sombre />
         </div>
         {/* Tout l'écran est un seul bouton : un tap n'importe où fait entrer dans le chapitre. */}
         <button
@@ -338,7 +364,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
             <I size={36} strokeWidth={1.75} />
           </span>
           <span className="pos-in-up motion-reduce:animate-none mt-7 block text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-300">
-            Chapitre {numDomaine + 1} sur {DOMAINES.length}
+            Chapitre {numDomaine + 1} sur {domaines.length}
             <span className="mx-2 text-white/40">·</span>
             {nbDansChapitre} question{nbDansChapitre > 1 ? 's' : ''}
           </span>
@@ -373,7 +399,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
         <Styles />
         <Entete orgNom={orgNom} logo={orgLogo} />
         <div className="pt-2">
-          <Progression index={QUESTIONS.length} sombre />
+          <Progression index={questions.length} questions={questions} domaines={domaines} sombre />
         </div>
         <main className="flex-1 flex flex-col justify-center py-8">
           {erreur ? (
@@ -424,7 +450,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
   const I = iconeDomaine(domaine.code)
   const preselection = reponses[q.code]
   const premiere = index === 0
-  const derniere = index === QUESTIONS.length - 1
+  const derniere = index === questions.length - 1
 
   return (
     <div className="pos-screen min-h-screen bg-surface-50 text-surface-900">
@@ -461,7 +487,7 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
             </span>
           </div>
           <div className="mt-3">
-            <Progression index={index} />
+            <Progression index={index} questions={questions} domaines={domaines} />
           </div>
         </div>
       </header>
@@ -579,7 +605,7 @@ function Fond({ children, teinte = 'brand-600' }: { children: React.ReactNode; t
   )
 }
 
-function Entete({ orgNom, logo }: { orgNom: string; logo: string | null }) {
+function Entete({ orgNom, logo, apercu = false }: { orgNom: string; logo: string | null; apercu?: boolean }) {
   if (!logo && !orgNom) return null
   return (
     <div className="flex items-center justify-between">
@@ -591,7 +617,7 @@ function Entete({ orgNom, logo }: { orgNom: string; logo: string | null }) {
         <span className="font-heading text-[15px] font-bold tracking-heading text-white">{orgNom}</span>
       )}
       <span className="rounded-full border border-white/[0.15] bg-white/10 px-2.5 py-1 text-[11px] font-medium text-brand-100">
-        Positionnement
+        {apercu ? 'Aperçu, rien n\'est enregistré' : 'Positionnement'}
       </span>
     </div>
   )
@@ -623,12 +649,12 @@ function Repere({ icone: I, titre, detail }: { icone: Icone; titre: string; deta
  * Barre de progression segmentée : un tronçon par chapitre, le tronçon courant
  * se remplit question par question.
  */
-function Progression({ index, sombre = false }: { index: number; sombre?: boolean }) {
+function Progression({ index, questions, domaines, sombre = false }: { index: number; questions: QuestionPublique[]; domaines: DomainePublic[]; sombre?: boolean }) {
   return (
-    <div className="flex gap-1.5" role="progressbar" aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={Math.min(index, QUESTIONS.length)} aria-label="Avancement du questionnaire">
-      {DOMAINES.map((d) => {
-        const dansChapitre = QUESTIONS.filter((x) => x.domaine === d.code).length
-        const passees = QUESTIONS.slice(0, index).filter((x) => x.domaine === d.code).length
+    <div className="flex gap-1.5" role="progressbar" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={Math.min(index, questions.length)} aria-label="Avancement du questionnaire">
+      {domaines.map((d) => {
+        const dansChapitre = questions.filter((x) => x.domaine === d.code).length
+        const passees = questions.slice(0, index).filter((x) => x.domaine === d.code).length
         const ratio = dansChapitre ? passees / dansChapitre : 0
         const courant = ratio > 0 && ratio < 1
         return (

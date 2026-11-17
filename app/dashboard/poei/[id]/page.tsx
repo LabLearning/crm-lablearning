@@ -406,15 +406,19 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
   {
     const { data } = await supabase
       .from('poei_positionnements')
-      .select('candidat_id, token, statut, reponses, note, maitrise_globale, heures_preconisees, complete_le')
+      .select('candidat_id, token, statut, reponses, resultats, note, maitrise_globale, heures_preconisees, complete_le')
       .eq('poei_id', params.id).eq('organization_id', session.organization.id)
     positionnements = data || []
   }
   const baseLien = process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'
   const parCandidat = new Map(positionnements.map((x: any) => [x.candidat_id, x]))
+  // Questionnaire du concept (tacos ou générique) ; un candidat qui a déjà répondu garde le sien
+  const { questionnairePourParcours, questionnaireDuPositionnement } = await import('@/lib/poei-positionnement')
+  const questionnaireParcours = questionnairePourParcours({ formation: (p as any).formation?.intitule, entreprise: companyLabel(p.client) })
   const candidatsPositionnement: PositionnementCandidat[] = candidats.map((c: any) => {
     const p2: any = parCandidat.get(c.id)
     return {
+      questionnaire: questionnaireDuPositionnement(p2?.resultats, p2?.reponses, questionnaireParcours).code,
       candidatId: c.id,
       nom: `${c.apprenant?.prenom || ''} ${c.apprenant?.nom || ''}`.trim() || 'Candidat',
       email: c.apprenant?.email || null,
@@ -615,6 +619,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
           <PoeiPositionnement
             poeiId={p.id}
             dureeParcours={p.duree_heures ? Number(p.duree_heures) : null}
+            questionnaire={questionnaireParcours.code}
             candidats={candidatsPositionnement}
           />
         }

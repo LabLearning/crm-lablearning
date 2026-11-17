@@ -1,5 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { QUESTIONS } from '@/lib/poei-positionnement'
+import { questionnairePourParcours, versionPublique } from '@/lib/poei-positionnement'
 import { PositionnementClient, PositionnementCadre } from './PositionnementClient'
 
 export const dynamic = 'force-dynamic'
@@ -13,7 +13,7 @@ export default async function PositionnementPage({ params }: { params: { token: 
   const supabase = await createServiceRoleClient()
   const { data: pos } = await supabase
     .from('poei_positionnements')
-    .select('id, statut, note, organization_id, candidat:candidat_id(apprenant:apprenants(prenom, nom)), poei:poei_id(numero, date_debut, client:client_id(raison_sociale, nom_commercial))')
+    .select('id, statut, note, organization_id, candidat:candidat_id(apprenant:apprenants(prenom, nom)), poei:poei_id(numero, date_debut, formation:formations(intitule), client:client_id(raison_sociale, nom_commercial))')
     .eq('token', params.token).maybeSingle()
 
   if (!pos) {
@@ -45,6 +45,11 @@ export default async function PositionnementPage({ params }: { params: { token: 
     )
   }
 
+  // Le questionnaire du concept (tacos ou générique), sans les bonnes réponses :
+  // elles ne quittent jamais le serveur
+  const q = questionnairePourParcours({ formation: poei?.formation?.intitule, entreprise: employeur })
+  const { questions, domaines } = versionPublique(q)
+
   return (
     <PositionnementClient
       token={params.token}
@@ -52,7 +57,9 @@ export default async function PositionnementPage({ params }: { params: { token: 
       employeur={employeur}
       orgNom={org?.name || 'Lab Learning'}
       orgLogo={org?.logo_url || null}
-      nbQuestions={QUESTIONS.length}
+      questions={questions}
+      domaines={domaines}
+      dureeMinutes={q.dureeMinutes}
     />
   )
 }

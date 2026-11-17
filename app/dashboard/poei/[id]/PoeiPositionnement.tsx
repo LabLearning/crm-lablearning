@@ -3,12 +3,14 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Modal, useToast } from '@/components/ui'
-import { Target, Download, Send, Users, Check, Clock, RefreshCw, Copy } from '@/components/ui/icons'
+import { Target, Download, Send, Users, Check, Clock, RefreshCw, Copy, Eye } from '@/components/ui/icons'
 import { PoeiSection } from './PoeiSection'
-import { DOMAINES, QUESTIONS, SEUIL_REUSSITE, evaluerPositionnement, type Reponses } from '@/lib/poei-positionnement'
+import { SEUIL_REUSSITE, evaluerPositionnement, questionnaire as questionnaireDe, type CodeQuestionnaire, type Reponses } from '@/lib/poei-positionnement'
 import { envoyerPositionnementAction, reinitialiserPositionnementAction } from '../positionnement-actions'
 
 export interface PositionnementCandidat {
+  /** Questionnaire auquel le candidat répond ou a répondu */
+  questionnaire: CodeQuestionnaire
   candidatId: string
   nom: string
   email: string | null
@@ -24,17 +26,19 @@ export interface PositionnementCandidat {
 interface Props {
   poeiId: string
   dureeParcours: number | null
+  /** Questionnaire du concept du parcours : tacos (Chamas Tacos, New School Tacos) ou générique */
+  questionnaire: CodeQuestionnaire
   candidats: PositionnementCandidat[]
 }
 
 const fr = (d: string | null) => (d ? new Date(d).toLocaleDateString('fr-FR') : null)
 
 /**
- * Positionnement à l'entrée : le candidat répond lui-même à vingt questions,
- * et l'écart au référentiel de compétences justifie le volume d'heures auprès
- * de France Travail.
+ * Positionnement à l'entrée : le candidat répond lui-même au questionnaire de
+ * son concept, et l'écart au référentiel de compétences justifie le volume
+ * d'heures auprès de France Travail.
  */
-export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) {
+export function PoeiPositionnement({ poeiId, dureeParcours, questionnaire, candidats }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [envoiOuvert, setEnvoiOuvert] = useState(false)
@@ -80,15 +84,22 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
     toast('success', 'Lien copié')
   }
 
-  const resultat = detail?.reponses ? evaluerPositionnement(detail.reponses) : null
+  const qParcours = questionnaireDe(questionnaire)
+  const qDetail = detail ? questionnaireDe(detail.questionnaire) : null
+  const resultat = detail?.reponses && qDetail ? evaluerPositionnement(detail.reponses, qDetail, dureeParcours) : null
 
   return (
     <PoeiSection
       icone={Target}
       titre="Positionnement à l'entrée"
-      sous={`${repondus.length}/${candidats.length} candidats ont répondu aux ${QUESTIONS.length} questions du référentiel`}
+      sous={`${repondus.length}/${candidats.length} candidats ont répondu · questionnaire « ${qParcours.titre} », ${qParcours.questions.length} questions en ${qParcours.domaines.length} domaines`}
       actions={
         <>
+          <a href={`/positionnement/apercu/${questionnaire}`} target="_blank" rel="noreferrer"
+            title="Voir le questionnaire comme le candidat, sans rien enregistrer"
+            className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
+            <Eye className="h-4 w-4" /> Aperçu
+          </a>
           {repondus.length > 0 && (
             <a href={`/api/pdf/poei-positionnement/${poeiId}`} target="_blank" rel="noreferrer"
               className="btn-secondary inline-flex items-center gap-1.5 !py-1.5 !px-3 text-sm">
@@ -223,24 +234,28 @@ export function PoeiPositionnement({ poeiId, dureeParcours, candidats }: Props) 
       <Modal isOpen={!!detail} onClose={() => setDetail(null)} size="lg"
         title={`Réponses, ${detail?.nom || ''}`}
         description={resultat ? `${resultat.justes}/${resultat.nbQuestions} bonnes réponses · ${resultat.note}/20 · ${resultat.heuresPreconisees} h justifiées sur ${resultat.heuresReferentiel} h` : ''}>
-        {resultat && detail?.reponses && (
+        {resultat && detail?.reponses && qDetail && (
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-            {DOMAINES.map((d) => {
+            {qDetail.domaines.map((d) => {
               const dom = resultat.domaines.find((x) => x.code === d.code)!
               return (
                 <div key={d.code} className="rounded-xl border border-surface-200 overflow-hidden">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3.5 py-2.5 bg-surface-50 border-b border-surface-100">
-                    <div className="text-sm font-semibold text-surface-900">{d.libelle}</div>
+                    <div className="text-sm font-semibold text-surface-900">
+                      {d.libelle}
+                      {d.competences && <span className="ml-1.5 text-xs font-normal text-surface-500">compétences {d.competences}</span>}
+                    </div>
                     <div className="text-xs text-surface-600 tabular-nums shrink-0">
-                      {dom.justes}/{dom.total} · {dom.heuresPreconisees} h sur {d.heures} h
+                      {dom.justes}/{dom.total} · {dom.heuresPreconisees} h sur {dom.heuresReferentiel} h
                     </div>
                   </div>
                   <div className="divide-y divide-surface-100">
-                    {QUESTIONS.filter((q) => q.domaine === d.code).map((q) => {
+                    {qDetail.questions.filter((q) => q.domaine === d.code).map((q) => {
                       const rep = detail.reponses![q.code]
                       const juste = rep != null && Number(rep) === q.correct
                       return (
                         <div key={q.code} className="px-3.5 py-2.5">
+                          {q.competence && <div className="text-[11px] font-medium text-surface-400 mb-0.5">Compétence {q.competence}</div>}
                           <div className="text-sm text-surface-800">{q.intitule}</div>
                           <div className={`text-xs mt-1 ${juste ? 'text-emerald-700' : 'text-danger-600'}`}>
                             {rep == null ? 'Sans réponse' : `${juste ? 'Juste' : 'Faux'}, a répondu « ${q.choix[Number(rep)]} »`}
