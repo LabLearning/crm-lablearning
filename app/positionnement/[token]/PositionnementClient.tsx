@@ -610,9 +610,9 @@ function Entete({ orgNom, logo, apercu = false }: { orgNom: string; logo: string
   return (
     <div className="flex items-center justify-between">
       {logo ? (
-        <span className="inline-flex items-center rounded-xl bg-white px-2.5 py-1.5 shadow-[0_8px_24px_-12px_rgba(12,33,27,0.8)]">
-          <img src={logo} alt={orgNom || 'Organisme de formation'} className="h-6 w-auto max-w-[9rem] object-contain" />
-        </span>
+        // Version blanche du logo (organizations.logo_url, voir resolveEmailLogoUrl), posée
+        // directement sur le fond pine ; l'image garde une marge transparente, d'où -my-1.5
+        <img src={logo} alt={orgNom || 'Organisme de formation'} className="-my-1.5 -ml-1 h-11 w-auto max-w-[10rem] object-contain" />
       ) : (
         <span className="font-heading text-[15px] font-bold tracking-heading text-white">{orgNom}</span>
       )}

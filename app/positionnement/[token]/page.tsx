@@ -1,5 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { questionnairePourParcours, versionPublique } from '@/lib/poei-positionnement'
+import { resolveEmailLogoUrl } from '@/lib/pdf/org-logo'
 import { PositionnementClient, PositionnementCadre } from './PositionnementClient'
 
 export const dynamic = 'force-dynamic'
@@ -28,14 +29,16 @@ export default async function PositionnementPage({ params }: { params: { token: 
   }
 
   const { data: org } = await supabase.from('organizations')
-    .select('name, logo_url').eq('id', (pos as any).organization_id).maybeSingle()
+    .select('id, name, logo_url').eq('id', (pos as any).organization_id).maybeSingle()
+  // Écrans sur fond pine : version blanche du logo
+  const logo = await resolveEmailLogoUrl(supabase, org)
   const appr: any = (pos as any).candidat?.apprenant
   const poei: any = (pos as any).poei
   const employeur = poei?.client?.nom_commercial || poei?.client?.raison_sociale || null
 
   if (pos.statut === 'complete') {
     return (
-      <PositionnementCadre logo={org?.logo_url}>
+      <PositionnementCadre logo={logo}>
         <h1 className="text-xl font-heading font-bold text-surface-900">Questionnaire déjà rendu</h1>
         <p className="text-sm text-surface-600 mt-2">
           Merci, vos réponses ont bien été enregistrées. Votre formateur les reprendra avec vous au démarrage
@@ -56,7 +59,7 @@ export default async function PositionnementPage({ params }: { params: { token: 
       prenom={appr?.prenom || null}
       employeur={employeur}
       orgNom={org?.name || 'Lab Learning'}
-      orgLogo={org?.logo_url || null}
+      orgLogo={logo}
       questions={questions}
       domaines={domaines}
       dureeMinutes={q.dureeMinutes}
