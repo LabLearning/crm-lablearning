@@ -683,7 +683,7 @@ function Styles() {
 }
 
 const CSS = `
-      .pos-screen { min-height: 100dvh; }
+      .pos-screen { min-height: 100dvh; overflow-x: clip; }
       .pos-safe-b { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px)); }
       .pos-halo {
         background:
