@@ -6,7 +6,8 @@ import { getSession } from '@/lib/auth'
 import { logAudit } from '@/lib/audit'
 import type { ActionResult } from '@/lib/types'
 import { sendDocumentEmail } from '@/lib/email'
-import { dureeEnLettres, questionnairePourParcours } from '@/lib/poei-positionnement'
+import { questionnairePourParcours } from '@/lib/poei-positionnement'
+import { contenuMailPositionnement, enveloppePositionnement, lienPositionnement } from '@/lib/positionnement-mail'
 
 const MESSAGE_MIGRATION = 'Appliquez la migration 152 pour envoyer les questionnaires de positionnement.'
 const tableAbsente = (e: any) => ['PGRST205', '42P01'].includes(String(e?.code))
@@ -15,8 +16,7 @@ function canManage(role: string) {
   return ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial', 'formateur'].includes(role)
 }
 
-const lienPublic = (token: string) =>
-  `${process.env.NEXT_PUBLIC_APP_URL || 'https://crm.lab-learning.fr'}/positionnement/${token}`
+const lienPublic = lienPositionnement
 
 /**
  * Envoie le questionnaire de positionnement aux candidats sélectionnés.
@@ -49,8 +49,6 @@ export async function envoyerPositionnementAction(
   // Questionnaire du concept : tacos (Chamas Tacos, New School Tacos) ou générique
   const employeurPoei = (poei as any).client?.nom_commercial || (poei as any).client?.raison_sociale || null
   const questionnaire = questionnairePourParcours({ formation: (poei as any).formation?.intitule, entreprise: employeurPoei })
-  const nbQuestions = questionnaire.questions.length
-  const duree = dureeEnLettres(questionnaire.dureeMinutes)
 
   let envoyes = 0
   let ignores = 0
@@ -91,29 +89,14 @@ export async function envoyerPositionnementAction(
     // Sans email en fiche, le lien reste disponible à la copie côté gestionnaire
     if (!c.apprenant.email) { envoyes++; continue }
 
-    const employeur = employeurPoei
     const r = await sendDocumentEmail({
       to: c.apprenant.email,
-      orgName: orgRow?.name || 'Lab Learning',
-      orgEmail: (orgRow as any)?.email_contact || (orgRow as any)?.email || '',
-      orgLogoUrl: (orgRow as any)?.logo_url || null,
-      qualiopiCertified: (orgRow as any)?.is_qualiopi !== false,
+      ...enveloppePositionnement(orgRow),
       recipientName: nom,
-      subject: 'Votre questionnaire de positionnement avant la formation',
-      docTitle: 'Questionnaire de positionnement',
-      intro: `Avant votre entrée en formation${employeur ? ` chez ${employeur}` : ''}, merci de répondre à ce questionnaire. Il compte ${nbQuestions} questions et prend environ ${duree}. Il sert à adapter la formation à ce que vous savez déjà faire : répondez seul, sans chercher les réponses.`,
-      metadata: [
-        ['Questions', `${nbQuestions} questions à choix unique`],
-        ['Durée', `Environ ${duree}`],
-        ['À faire', 'Avant le premier jour de formation'],
-      ],
-      ctaLabel: 'Répondre au questionnaire',
-      ctaUrl: lien,
-      footerNote: "Ce questionnaire n'est pas un examen : il n'y a aucune conséquence sur votre entrée en formation.",
+      ...contenuMailPositionnement(questionnaire, employeurPoei, lien),
       organizationId: orgId,
       entityType: 'poei_candidat',
       entityId: c.id,
-      templateSlug: 'positionnement_poei',
     })
     if ((r as any)?.success !== false) envoyes++
   }

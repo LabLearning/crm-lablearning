@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { UserPlus, Search, Save, Pencil, Trash2, CheckCircle2, Users, Briefcase, FileText, Upload, Loader2, PhoneCall } from '@/components/ui/icons'
+import { UserPlus, Search, Save, Pencil, Trash2, CheckCircle2, Users, Briefcase, FileText, Upload, Loader2, PhoneCall, Target, Send } from '@/components/ui/icons'
 import { Button, Badge, Input, Select, SearchSelectField, Modal, useToast, RowMenu, AdresseGroupe, AdresseInput, CodePostalInput, VilleInput } from '@/components/ui'
 import { formatDate, companyLabel } from '@/lib/utils'
 import {
@@ -11,6 +11,8 @@ import {
   updateCandidatEvaluationAction, uploadCandidatCvAction, deleteCandidatCvAction,
 } from './actions'
 import { EntretienCandidat } from './EntretienCandidat'
+import { PositionnementVivier } from './PositionnementVivier'
+import { etatsPositionnementsVivierAction, type EtatPositionnementVivier } from './positionnement-actions'
 import { DECISIONS, libelleContrat, totalEntretien, type ContexteEntretien } from '@/lib/entretien-candidat'
 
 type BadgeVariant = 'default' | 'info' | 'success' | 'warning' | 'danger' | 'purple'
@@ -71,6 +73,23 @@ function PastilleEntretien({ c, onClick }: { c: Candidat; onClick: () => void })
     </button>
   )
 }
+/** Pastille du questionnaire de positionnement : envoyé (date), puis résultat */
+function PastillePositionnement({ etat, onClick }: { etat?: EtatPositionnementVivier; onClick: () => void }) {
+  if (!etat) return null
+  const jour = (d: string | null) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''
+  return etat.statut === 'complete' ? (
+    <button type="button" onClick={onClick} title="Voir le positionnement"
+      className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 hover:bg-brand-100">
+      <Target className="h-3 w-3" /> Positionnement {etat.justes != null && etat.total ? `${etat.justes}/${etat.total}` : ''}{etat.heures != null ? ` · ${etat.heures} h` : ''}
+    </button>
+  ) : (
+    <button type="button" onClick={onClick} title="Suivi du questionnaire"
+      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-100">
+      <Send className="h-3 w-3" /> Questionnaire envoyé le {jour(etat.envoyeLe)}
+    </button>
+  )
+}
+
 interface ClientLite { id: string; raison_sociale: string | null; nom_commercial?: string | null; sigle?: string | null }
 interface PoeiLite { id: string; numero: string | null; formation?: { intitule: string | null } | null; client?: { raison_sociale: string | null } | null }
 interface PrevisionLite { id: string; entreprise: string | null; date_debut_formation_prevue: string | null; statut?: string | null; client?: { raison_sociale: string | null } | null }
@@ -116,7 +135,15 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
   const [editCand, setEditCand] = useState<Candidat | null>(null)
   const [detailCand, setDetailCand] = useState<Candidat | null>(null)
   const [entretienCand, setEntretienCand] = useState<Candidat | null>(null)
+  const [positionnementCand, setPositionnementCand] = useState<Candidat | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  // Questionnaires de positionnement : chargés ici, pour ne dépendre d'aucune des deux pages qui affichent le vivier
+  const [etats, setEtats] = useState<Record<string, EtatPositionnementVivier>>({})
+  useEffect(() => {
+    let actif = true
+    etatsPositionnementsVivierAction().then((r) => { if (actif && r.success && r.data) setEtats(r.data.etats) }).catch(() => {})
+    return () => { actif = false }
+  }, [candidats])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -235,6 +262,7 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
                         </select>
                         <CvButton c={c} onDone={() => router.refresh()} />
                         <PastilleEntretien c={c} onClick={() => setEntretienCand(c)} />
+                        <PastillePositionnement etat={etats[c.id]} onClick={() => setPositionnementCand(c)} />
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-surface-700">{companyLabel(c.client) || <span className="text-surface-300">—</span>}</td>
@@ -265,6 +293,11 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
                     <td className="py-2.5 px-2">
                       <RowMenu items={[
                         { label: c.entretien ? 'Voir l’entretien' : 'Entretien téléphonique', icon: <PhoneCall className="h-4 w-4 text-surface-400" />, onClick: () => setEntretienCand(c) },
+                        {
+                          label: etats[c.id]?.statut === 'complete' ? 'Voir le positionnement' : etats[c.id] ? 'Suivi du questionnaire' : 'Envoyer le questionnaire',
+                          icon: <Target className="h-4 w-4 text-surface-400" />,
+                          onClick: () => setPositionnementCand(c),
+                        },
                         { label: 'Modifier', icon: <Pencil className="h-4 w-4 text-surface-400" />, onClick: () => setEditCand(c) },
                         ...(!valide ? [{ label: 'Valider (→ apprenant)', icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />, onClick: () => valider(c) }] : []),
                         { label: 'Supprimer', icon: <Trash2 className="h-4 w-4" />, onClick: () => remove(c), danger: true },
@@ -288,6 +321,8 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
         {detailCand && (
           <CandidatDetail
             c={detailCand}
+            etat={etats[detailCand.id]}
+            onPositionnement={() => { const cc = detailCand; setDetailCand(null); setPositionnementCand(cc) }}
             onEntretien={() => { const cc = detailCand; setDetailCand(null); setEntretienCand(cc) }}
             onEdit={() => { const cc = detailCand; setDetailCand(null); setEditCand(cc) }}
             onValider={!detailCand.apprenant_id && detailCand.statut !== 'valide' ? () => { const cc = detailCand; setDetailCand(null); valider(cc) } : undefined}
@@ -296,6 +331,10 @@ export function VivierList({ candidats, clients, poeis, previsions = [], embedde
       </Modal>
       <Modal isOpen={!!entretienCand} onClose={() => setEntretienCand(null)} title={entretienCand ? `Entretien · ${entretienCand.prenom} ${entretienCand.nom}` : ''} size="lg">
         {entretienCand && <EntretienCandidat candidat={entretienCand} contexte={contexteEntretien(entretienCand)} onDone={() => setEntretienCand(null)} />}
+      </Modal>
+      <Modal isOpen={!!positionnementCand} onClose={() => setPositionnementCand(null)}
+        title={positionnementCand ? `Questionnaire de positionnement · ${positionnementCand.prenom} ${positionnementCand.nom}` : ''} size="lg">
+        {positionnementCand && <PositionnementVivier vivierId={positionnementCand.id} onChange={() => router.refresh()} />}
       </Modal>
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Nouveau candidat (vivier)" size="lg">
         <CandidatForm clients={clients} poeis={poeis} previsions={previsions} onDone={() => { setCreateOpen(false); toast('success', 'Candidat ajouté au vivier'); router.refresh() }} />
@@ -369,7 +408,7 @@ function CvButton({ c, onDone }: { c: Candidat; onDone: () => void }) {
 }
 
 /** Vue complète (lecture seule) d'un candidat du vivier */
-function CandidatDetail({ c, onEdit, onValider, onEntretien }: { c: Candidat; onEdit: () => void; onValider?: () => void; onEntretien: () => void }) {
+function CandidatDetail({ c, etat, onEdit, onValider, onEntretien, onPositionnement }: { c: Candidat; etat?: EtatPositionnementVivier; onEdit: () => void; onValider?: () => void; onEntretien: () => void; onPositionnement: () => void }) {
   const sm = statutMeta(c.statut)
   const adresse = [c.adresse, [c.code_postal, c.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const cible = c.poei?.numero
@@ -435,7 +474,29 @@ function CandidatDetail({ c, onEdit, onValider, onEntretien }: { c: Candidat; on
         })() : <p className="text-sm text-surface-500">Pas encore d’entretien téléphonique.</p>}
       </DSection>
 
+      <DSection title="Questionnaire de positionnement">
+        {etat ? (
+          <>
+            <DRow label="Envoyé le" value={etat.envoyeLe ? formatDate(etat.envoyeLe, { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+            <DRow label="Répondu le" value={etat.statut === 'complete' && etat.completeLe ? formatDate(etat.completeLe, { day: 'numeric', month: 'long', year: 'numeric' }) : 'En attente de réponse'} />
+            {etat.statut === 'complete' && (
+              <>
+                <DRow label="Bonnes réponses" value={etat.justes != null && etat.total ? `${etat.justes} / ${etat.total}${etat.maitrise != null ? ` (${etat.maitrise} %)` : ''}` : null} />
+                <DRow label="Heures justifiées" value={etat.heures != null ? `${etat.heures} h` : null} />
+              </>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-surface-500">
+            {c.poei_id ? 'Pas encore envoyé.' : 'Envoi possible dès que le candidat est rattaché à un projet POEI.'}
+          </p>
+        )}
+      </DSection>
+
       <div className="flex flex-wrap justify-end gap-3 pt-3 border-t border-surface-100">
+        <Button variant="secondary" onClick={onPositionnement} icon={<Target className="h-4 w-4" />}>
+          {etat?.statut === 'complete' ? 'Voir le positionnement' : etat ? 'Suivi du questionnaire' : 'Envoyer le questionnaire'}
+        </Button>
         <Button variant="secondary" onClick={onEntretien} icon={<PhoneCall className="h-4 w-4" />}>{c.entretien ? 'Voir l’entretien' : 'Faire l’entretien'}</Button>
         {onValider && <Button variant="secondary" onClick={onValider} icon={<CheckCircle2 className="h-4 w-4" />}>Valider (→ apprenant)</Button>}
         <Button onClick={onEdit} icon={<Pencil className="h-4 w-4" />}>Modifier</Button>

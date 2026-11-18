@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Modal, useToast } from '@/components/ui'
 import { Target, Download, Send, Users, Check, Clock, RefreshCw, Copy, Eye } from '@/components/ui/icons'
 import { PoeiSection } from './PoeiSection'
+import { ReponsesPositionnement } from '../ReponsesPositionnement'
 import { SEUIL_REUSSITE, evaluerPositionnement, questionnaire as questionnaireDe, type CodeQuestionnaire, type Reponses } from '@/lib/poei-positionnement'
 import { envoyerPositionnementAction, reinitialiserPositionnementAction } from '../positionnement-actions'
 
@@ -235,39 +236,8 @@ export function PoeiPositionnement({ poeiId, dureeParcours, questionnaire, candi
         title={`Réponses, ${detail?.nom || ''}`}
         description={resultat ? `${resultat.justes}/${resultat.nbQuestions} bonnes réponses · ${resultat.note}/20 · ${resultat.heuresPreconisees} h justifiées sur ${resultat.heuresReferentiel} h` : ''}>
         {resultat && detail?.reponses && qDetail && (
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-            {qDetail.domaines.map((d) => {
-              const dom = resultat.domaines.find((x) => x.code === d.code)!
-              return (
-                <div key={d.code} className="rounded-xl border border-surface-200 overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 px-3.5 py-2.5 bg-surface-50 border-b border-surface-100">
-                    <div className="text-sm font-semibold text-surface-900">
-                      {d.libelle}
-                      {d.competences && <span className="ml-1.5 text-xs font-normal text-surface-500">compétences {d.competences}</span>}
-                    </div>
-                    <div className="text-xs text-surface-600 tabular-nums shrink-0">
-                      {dom.justes}/{dom.total} · {dom.heuresPreconisees} h sur {dom.heuresReferentiel} h
-                    </div>
-                  </div>
-                  <div className="divide-y divide-surface-100">
-                    {qDetail.questions.filter((q) => q.domaine === d.code).map((q) => {
-                      const rep = detail.reponses![q.code]
-                      const juste = rep != null && Number(rep) === q.correct
-                      return (
-                        <div key={q.code} className="px-3.5 py-2.5">
-                          {q.competence && <div className="text-[11px] font-medium text-surface-400 mb-0.5">Compétence {q.competence}</div>}
-                          <div className="text-sm text-surface-800">{q.intitule}</div>
-                          <div className={`text-xs mt-1 ${juste ? 'text-emerald-700' : 'text-danger-600'}`}>
-                            {rep == null ? 'Sans réponse' : `${juste ? 'Juste' : 'Faux'}, a répondu « ${q.choix[Number(rep)]} »`}
-                          </div>
-                          {!juste && <div className="text-xs text-surface-500 mt-0.5">Attendu : « {q.choix[q.correct]} »</div>}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
+          <div className="max-h-[60vh] overflow-y-auto pr-1">
+            <ReponsesPositionnement questionnaire={qDetail} reponses={detail.reponses} resultat={resultat} />
           </div>
         )}
       </Modal>

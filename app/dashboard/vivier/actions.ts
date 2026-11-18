@@ -143,6 +143,11 @@ export async function deleteCandidatVivierAction(id: string): Promise<ActionResu
   if (!canManage(session.user.role)) return { success: false, error: 'Accès non autorisé' }
   const supabase = await createServiceRoleClient()
 
+  // Questionnaire de positionnement envoyé depuis le vivier et pas encore relié à un candidat
+  // de projet : il part avec le candidat (colonne absente avant la migration 173, sans effet)
+  await supabase.from('poei_positionnements').delete()
+    .eq('vivier_candidat_id', id).is('candidat_id', null).eq('organization_id', session.organization.id)
+
   const { error } = await supabase
     .from('candidats_vivier')
     .delete()
@@ -210,7 +215,7 @@ export async function validerCandidatVivierAction(id: string): Promise<ActionRes
   }
 
   // 3) Candidat du projet POEI
-  await supabase.from('poei_candidats').insert({
+  const { data: pc } = await supabase.from('poei_candidats').insert({
     organization_id: orgId,
     poei_id: poei.id,
     apprenant_id: app.id,
@@ -219,7 +224,14 @@ export async function validerCandidatVivierAction(id: string): Promise<ActionRes
     poste_vise: cand.poste_vise,
     type_contrat: cand.type_contrat,
     statut: 'inscrit',
-  })
+  }).select('id').single()
+
+  // 3 bis) Questionnaire de positionnement envoyé depuis le vivier pour ce projet :
+  // il suit le candidat dans la fiche du projet (colonne absente avant la migration 173, sans effet)
+  if (pc?.id) {
+    await supabase.from('poei_positionnements').update({ candidat_id: pc.id })
+      .eq('vivier_candidat_id', id).eq('poei_id', poei.id).is('candidat_id', null).eq('organization_id', orgId)
+  }
 
   // 4) Recalcul du montant du projet (taux × heures × nb candidats)
   const { count } = await supabase

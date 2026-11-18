@@ -11,7 +11,9 @@ export const dynamic = 'force-dynamic'
 /**
  * Fiches de positionnement à l'entrée d'un parcours POEI, pour France Travail.
  *
- *   /api/pdf/poei-positionnement/<parcours>[?candidat=<uuid>]
+ *   /api/pdf/poei-positionnement/<parcours>[?candidat=<uuid>][?vivier=<uuid>]
+ *
+ * « vivier » : candidat du vivier qui a répondu avant d'être validé (migration 173).
  *
  * Un candidat par page : niveau constaté, écart au référentiel de compétences
  * et volume d'heures que cet écart justifie.
@@ -29,10 +31,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!poei) return NextResponse.json({ error: 'Parcours POEI introuvable' }, { status: 404 })
 
   const candidatId = req.nextUrl.searchParams.get('candidat') || ''
+  const vivierId = req.nextUrl.searchParams.get('vivier') || ''
   let q = supabase.from('poei_positionnements')
     .select('candidat_id, reponses, resultats, realise_le, commentaire')
     .eq('poei_id', params.id).eq('organization_id', orgId)
   if (candidatId) q = q.eq('candidat_id', candidatId)
+  if (vivierId) q = q.eq('vivier_candidat_id', vivierId)
   const { data: positions, error } = await q
   if (error) {
     return NextResponse.json({ error: "Positionnements indisponibles : appliquez la migration 152." }, { status: 503 })
@@ -46,6 +50,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     .select('id, identifiant_ft, statut, apprenant:apprenants(prenom, nom, date_naissance)')
     .eq('poei_id', params.id).eq('organization_id', orgId)
   const parId = new Map((candidats || []).map((c: any) => [c.id, c]))
+  // Candidat du vivier pas encore relié à un candidat du projet : son identité vient du vivier
+  let duVivier: any = null
+  if (vivierId) {
+    const { data: v } = await supabase.from('candidats_vivier')
+      .select('prenom, nom, date_naissance, identifiant_ft')
+      .eq('id', vivierId).eq('organization_id', orgId).maybeSingle()
+    if (v) duVivier = { identifiant_ft: v.identifiant_ft, apprenant: { prenom: v.prenom, nom: v.nom, date_naissance: v.date_naissance } }
+  }
   const clientPoei: any = (poei as any).client
   const questionnaireParcours = questionnairePourParcours({
     formation: (poei as any).formation?.intitule,
@@ -54,7 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
   const liste: CandidatPositionne[] = (positions as any[])
     .map((p) => {
-      const c: any = parId.get(p.candidat_id)
+      const c: any = parId.get(p.candidat_id) || duVivier
       if (!c?.apprenant) return null
       return {
         nom: c.apprenant.nom || '', prenom: c.apprenant.prenom || '',
@@ -84,7 +96,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }) as any,
   )
 
-  const nom = candidatId && liste[0]
+  const nom = (candidatId || vivierId) && liste[0]
     ? `Positionnement - ${liste[0].nom} ${liste[0].prenom}`
     : `Positionnements - ${(poei as any).numero || 'POEI'}`
   return new NextResponse(new Uint8Array(buffer), {
