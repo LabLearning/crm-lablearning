@@ -4,16 +4,15 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { QUESTIONNAIRES, versionPublique, type CodeQuestionnaire } from '@/lib/poei-positionnement'
 import { resolveEmailLogoUrl } from '@/lib/pdf/org-logo'
 import { PositionnementClient } from '../../[token]/PositionnementClient'
+import { ROLES_APERCU } from '../roles'
 
 export const dynamic = 'force-dynamic'
 
-/** Rôles qui envoient le questionnaire (app/dashboard/poei/positionnement-actions.ts) */
-const ROLES_APERCU = ['super_admin', 'gestionnaire', 'directeur_commercial', 'commercial', 'formateur']
-
 /**
  * Aperçu du questionnaire de positionnement, tel que le voit le candidat :
- * même écran, mêmes questions, sans bonne réponse transmise et sans rien
- * enregistrer à la fin. Réservé à l'équipe connectée.
+ * même écran, mêmes questions, sans bonne réponse transmise pendant l'essai et
+ * sans rien enregistrer. À la fin, l'équipe voit le résultat et la correction
+ * (corrigerApercuAction). Réservé à l'équipe connectée.
  */
 export default async function ApercuPositionnement({ params }: { params: { concept: string } }) {
   const user = await getOptionalSession()
@@ -41,6 +40,7 @@ export default async function ApercuPositionnement({ params }: { params: { conce
       domaines={domaines}
       dureeMinutes={q.dureeMinutes}
       apercu
+      codeQuestionnaire={q.code}
     />
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { dureeEnLettres, type DomainePublic, type QuestionPublique, type Reponses } from '@/lib/poei-positionnement'
 import { repondrePositionnementAction } from './actions'
+import { corrigerApercuAction, type CorrectionApercu } from '../apercu/actions'
 import {
   ArrowLeft,
   ArrowRight,
@@ -46,6 +47,8 @@ interface Props {
   dureeMinutes: number
   /** Aperçu pour l'équipe : le parcours est identique, rien n'est enregistré à la fin. */
   apercu?: boolean
+  /** Aperçu seulement : questionnaire à corriger à la fin, pour montrer le résultat à l'équipe */
+  codeQuestionnaire?: string
 }
 
 type Etape = 'accueil' | 'chapitre' | 'question' | 'envoi' | 'fin'
@@ -112,7 +115,7 @@ const LIEN = `inline-flex items-center gap-1 rounded-lg px-1 py-0.5 font-medium 
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo, questions, domaines, dureeMinutes, apercu = false }: Props) {
+export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo, questions, domaines, dureeMinutes, apercu = false, codeQuestionnaire }: Props) {
   const [etape, setEtape] = useState<Etape>('accueil')
   const [index, setIndex] = useState(0)
   const [direction, setDirection] = useState<Direction>('avant')
@@ -120,6 +123,9 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
   const [selection, setSelection] = useState<number | null>(null)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
+  /** Aperçu : résultat de l'essai, calculé par le serveur sans rien enregistrer */
+  const [correction, setCorrection] = useState<CorrectionApercu | null>(null)
+  const [voirCorrection, setVoirCorrection] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titreRef = useRef<HTMLHeadingElement>(null)
   /** Réglage « réduire les animations » du téléphone : ni délai de sélection, ni défilement animé. */
@@ -150,8 +156,14 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
   }, [etape, index])
 
   async function envoyer(dernieres: Reponses) {
-    // Aperçu : aucune réponse ne part au serveur
-    if (apercu) { setEtape('fin'); return }
+    // Aperçu : rien n'est enregistré ; le serveur corrige seulement l'essai pour l'équipe
+    if (apercu) {
+      setEtape('fin')
+      if (codeQuestionnaire) {
+        corrigerApercuAction(codeQuestionnaire, dernieres).then((r) => { if (r.success && r.data) setCorrection(r.data) }).catch(() => {})
+      }
+      return
+    }
     setEtape('envoi')
     setEnvoi(true)
     setErreur(null)
@@ -256,10 +268,13 @@ export function PositionnementClient({ token, prenom, employeur, orgNom, orgLogo
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-300">Et maintenant</p>
             <p className="mt-1.5 break-words text-sm leading-relaxed text-white/90">
               {apercu
-                ? `Aucune réponse n'a été enregistrée : c'est l'écran que voit le candidat à la fin. Il compte ${questions.length} questions, sans jamais voir sa note.`
+                ? `Aucune réponse n'a été enregistrée : c'est l'écran que voit le candidat à la fin, sans jamais voir sa note. Le résultat ci-dessous n'apparaît qu'en aperçu.`
                 : `Rien d'autre à faire de votre côté${employeur ? ` avant votre entrée chez ${employeur}` : ''}. Vous pouvez fermer cette page.`}
             </p>
           </div>
+          {apercu && correction && (
+            <ResultatApercu correction={correction} ouvert={voirCorrection} basculer={() => setVoirCorrection((v) => !v)} />
+          )}
         </main>
         <PiedDePage orgNom={orgNom} />
       </Fond>
@@ -620,6 +635,53 @@ function Entete({ orgNom, logo, apercu = false }: { orgNom: string; logo: string
         {apercu ? 'Aperçu, rien n\'est enregistré' : 'Positionnement'}
       </span>
     </div>
+  )
+}
+
+/** Aperçu seulement : résultat de l'essai et correction des réponses fausses, pour l'équipe */
+function ResultatApercu({ correction: c, ouvert, basculer }: { correction: CorrectionApercu; ouvert: boolean; basculer: () => void }) {
+  return (
+    <section className="pos-in-up motion-reduce:animate-none mx-auto mt-4 w-full max-w-sm rounded-2xl border border-accent-400/40 bg-white/10 p-4 backdrop-blur-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-300">Résultat de l&apos;essai</p>
+      <p className="mt-1.5 font-heading text-2xl font-extrabold tabular-nums text-white">
+        {c.justes}/{c.total} <span className="text-base font-semibold text-brand-100">· {c.maitrise} % · {c.note}/20</span>
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-white/90">
+        {c.niveau}. {c.seuilAtteint
+          ? `Seuil de ${c.seuil} % atteint : ${c.heures} h justifiées sur un parcours de ${c.duree} h.`
+          : `Sous le seuil de ${c.seuil} % : parcours complet de ${c.duree} h.`}
+      </p>
+      <ul className="mt-3 space-y-1.5">
+        {c.domaines.map((d) => (
+          <li key={d.libelle} className="flex items-center gap-2 text-xs text-white/90">
+            <span className="min-w-0 flex-1 truncate">{d.libelle}</span>
+            <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-white/15">
+              <span className="block h-full rounded-full bg-accent-400" style={{ width: `${d.total ? Math.max(4, (d.justes / d.total) * 100) : 0}%` }} />
+            </span>
+            <span className="w-8 shrink-0 text-right tabular-nums">{d.justes}/{d.total}</span>
+          </li>
+        ))}
+      </ul>
+      {c.erreurs.length > 0 && (
+        <button type="button" onClick={basculer}
+          className="mt-4 w-full rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15">
+          {ouvert ? 'Masquer la correction' : `Voir la correction (${c.erreurs.length} réponse${c.erreurs.length > 1 ? 's' : ''} fausse${c.erreurs.length > 1 ? 's' : ''})`}
+        </button>
+      )}
+      {ouvert && (
+        <ol className="mt-3 space-y-2.5">
+          {c.erreurs.map((e) => (
+            <li key={e.numero} className="rounded-xl bg-white p-3.5 text-surface-800">
+              <p className="text-[11px] font-medium text-surface-400">Question {e.numero}{e.competence ? ` · compétence ${e.competence}` : ''}</p>
+              <p className="mt-0.5 break-words text-sm font-medium text-surface-900">{e.intitule}</p>
+              <p className="mt-1.5 break-words text-xs text-danger-600">{e.repondu ? `Répondu : « ${e.repondu} »` : 'Sans réponse'}</p>
+              <p className="mt-0.5 break-words text-xs text-emerald-700">Attendu : « {e.attendu} »</p>
+              <p className="mt-1.5 break-words text-xs leading-relaxed text-surface-600">{e.explication}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }
 
