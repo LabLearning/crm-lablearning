@@ -640,15 +640,16 @@ function Entete({ orgNom, logo, apercu = false }: { orgNom: string; logo: string
 
 /** Aperçu seulement : résultat de l'essai et correction des réponses fausses, pour l'équipe */
 function ResultatApercu({ correction: c, ouvert, basculer }: { correction: CorrectionApercu; ouvert: boolean; basculer: () => void }) {
+  const fr = (n: number) => String(n).replace('.', ',')
   return (
     <section className="pos-in-up motion-reduce:animate-none mx-auto mt-4 w-full max-w-sm rounded-2xl border border-accent-400/40 bg-white/10 p-4 backdrop-blur-sm">
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent-300">Résultat de l&apos;essai</p>
       <p className="mt-1.5 font-heading text-2xl font-extrabold tabular-nums text-white">
-        {c.justes}/{c.total} <span className="text-base font-semibold text-brand-100">· {c.maitrise} % · {c.note}/20</span>
+        {c.justes}/{c.total} <span className="text-base font-semibold text-brand-100">· {fr(c.maitrise)} % · {fr(c.note)}/20</span>
       </p>
       <p className="mt-1 text-sm leading-relaxed text-white/90">
         {c.niveau}. {c.seuilAtteint
-          ? `Seuil de ${c.seuil} % atteint : ${c.heures} h justifiées sur un parcours de ${c.duree} h.`
+          ? `Seuil de ${c.seuil} % atteint : ${fr(c.heures)} h justifiées sur un parcours de ${c.duree} h.`
           : `Sous le seuil de ${c.seuil} % : parcours complet de ${c.duree} h.`}
       </p>
       <ul className="mt-3 space-y-1.5">
@@ -656,7 +657,7 @@ function ResultatApercu({ correction: c, ouvert, basculer }: { correction: Corre
           <li key={d.libelle} className="flex items-center gap-2 text-xs text-white/90">
             <span className="min-w-0 flex-1 truncate">{d.libelle}</span>
             <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-white/15">
-              <span className="block h-full rounded-full bg-accent-400" style={{ width: `${d.total ? Math.max(4, (d.justes / d.total) * 100) : 0}%` }} />
+              <span className="block h-full rounded-full bg-accent-400" style={{ width: `${d.total && d.justes ? Math.max(4, (d.justes / d.total) * 100) : 0}%` }} />
             </span>
             <span className="w-8 shrink-0 text-right tabular-nums">{d.justes}/{d.total}</span>
           </li>

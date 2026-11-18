@@ -80,7 +80,7 @@ function PastillePositionnement({ etat, onClick }: { etat?: EtatPositionnementVi
   return etat.statut === 'complete' ? (
     <button type="button" onClick={onClick} title="Voir le positionnement"
       className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 hover:bg-brand-100">
-      <Target className="h-3 w-3" /> Positionnement {etat.justes != null && etat.total ? `${etat.justes}/${etat.total}` : ''}{etat.heures != null ? ` · ${etat.heures} h` : ''}
+      <Target className="h-3 w-3" /> Positionnement {etat.justes != null && etat.total ? `${etat.justes}/${etat.total}` : ''}{etat.heures != null ? ` · ${String(etat.heures).replace('.', ',')} h` : ''}
     </button>
   ) : (
     <button type="button" onClick={onClick} title="Suivi du questionnaire"
@@ -481,8 +481,8 @@ function CandidatDetail({ c, etat, onEdit, onValider, onEntretien, onPositionnem
             <DRow label="Répondu le" value={etat.statut === 'complete' && etat.completeLe ? formatDate(etat.completeLe, { day: 'numeric', month: 'long', year: 'numeric' }) : 'En attente de réponse'} />
             {etat.statut === 'complete' && (
               <>
-                <DRow label="Bonnes réponses" value={etat.justes != null && etat.total ? `${etat.justes} / ${etat.total}${etat.maitrise != null ? ` (${etat.maitrise} %)` : ''}` : null} />
-                <DRow label="Heures justifiées" value={etat.heures != null ? `${etat.heures} h` : null} />
+                <DRow label="Bonnes réponses" value={etat.justes != null && etat.total ? `${etat.justes} / ${etat.total}${etat.maitrise != null ? ` (${String(etat.maitrise).replace('.', ',')} %)` : ''}` : null} />
+                <DRow label="Heures justifiées" value={etat.heures != null ? `${String(etat.heures).replace('.', ',')} h` : null} />
               </>
             )}
           </>

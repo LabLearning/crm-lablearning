@@ -10,6 +10,7 @@ import {
   type DetailPositionnementVivier,
 } from './positionnement-actions'
 
+const fr = (n: number) => String(n).replace('.', ',')
 const dateHeure = (d: string) =>
   new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })
 
@@ -125,9 +126,9 @@ export function PositionnementVivier({ vivierId, onChange }: { vivierId: string;
         <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-4 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Chiffre label="Bonnes réponses" valeur={`${r.justes}/${r.nbQuestions}`} />
-            <Chiffre label="Réussite" valeur={`${r.maitriseGlobale} %`} />
-            <Chiffre label="Note" valeur={`${r.note}/20`} />
-            <Chiffre label="Heures justifiées" valeur={`${r.heuresPreconisees} h`} sous={`sur ${r.heuresReferentiel} h`} accent />
+            <Chiffre label="Réussite" valeur={`${fr(r.maitriseGlobale)} %`} />
+            <Chiffre label="Note" valeur={`${fr(r.note)}/20`} />
+            <Chiffre label="Heures justifiées" valeur={`${fr(r.heuresPreconisees)} h`} sous={`sur ${fr(r.heuresReferentiel)} h`} accent />
           </div>
           <p className="text-sm text-surface-700">
             <span className="font-medium text-surface-900">{r.niveauLibelle}.</span>{' '}

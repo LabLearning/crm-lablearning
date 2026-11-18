@@ -150,7 +150,7 @@ export function PoeiPositionnement({ poeiId, dureeParcours, questionnaire, candi
                 {/* Sur téléphone le résultat se replie : la date de réponse reste lisible */}
                 <div className="text-xs text-surface-500 break-words sm:truncate">
                   {c.statut === 'complete'
-                    ? `${c.note}/20 · ${c.maitrise} % de bonnes réponses · ${(c.maitrise ?? 0) < SEUIL_REUSSITE ? `parcours complet, ${c.heures} h` : `${c.heures} h justifiées`}${fr(c.completeLe) ? ` · le ${fr(c.completeLe)}` : ''}`
+                    ? `${String(c.note).replace('.', ',')}/20 · ${String(c.maitrise).replace('.', ',')} % de bonnes réponses · ${(c.maitrise ?? 0) < SEUIL_REUSSITE ? `parcours complet, ${c.heures} h` : `${String(c.heures).replace('.', ',')} h justifiées`}${fr(c.completeLe) ? ` · le ${fr(c.completeLe)}` : ''}`
                     : c.statut === 'envoye'
                       ? `En attente de réponse${c.email ? ` · ${c.email}` : ' · pas d’email en fiche, transmettez le lien'}`
                       : 'Questionnaire pas encore envoyé'}
