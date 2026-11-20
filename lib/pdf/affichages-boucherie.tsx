@@ -5,6 +5,7 @@ import { FeuilleLibre, Pastille, ins, Icone, PIN, MENTHE_CLAIRE, TEINTE, BORD, E
 import { ALLERGENES } from './modeles-pdf'
 import { PagesLavageMains } from './modeles-pms'
 import { imagePms, TEMPERATURES_BOUCHERIE } from './pms-boucherie'
+import { ARTICLES_AFFICHAGE, TEXTES_RELEVES_LE } from './textes-affichage-salaries'
 
 /**
  * Affiches d'une boucherie-charcuterie : celles que la réglementation impose
@@ -161,7 +162,7 @@ function AfficheOrigineBovine() {
 
 function AfficheOrigineAutres() {
   return (
-    <Affiche surTitre="Information des clients · recommandé" titre="Origine de nos" accent="autres viandes" chapo="Porc, agneau, chevreau, volaille, lapin : le pays où l’animal a été élevé et celui où il a été abattu." source="Obligatoire pour les viandes préemballées (règlement d’exécution (UE) n° 1337/2013) ; recommandé pour la vente au détail sans emballage, et demandé par certaines DDPP.">
+    <Affiche surTitre="Information des clients · recommandé" titre="Origine de nos" accent="autres viandes" chapo="Porc, agneau, chevreau, volaille : le pays où l’animal a été élevé et celui où il a été abattu." source="Obligatoire pour les viandes préemballées (règlement d’exécution (UE) n° 1337/2013) ; recommandé pour la vente au détail sans emballage, et demandé par certaines DDPP.">
       <GrilleVitrine colonnes={[{ titre: 'Viande', flex: 1.4 }, { titre: 'Espèce', flex: 0.9 }, { titre: 'Élevé en' }, { titre: 'Abattu en' }]} lignes={7} hauteur={36} />
     </Affiche>
   )
@@ -169,7 +170,7 @@ function AfficheOrigineAutres() {
 
 function AffichePrix() {
   return (
-    <Affiche surTitre="Information des clients · affichage obligatoire" titre="Le tableau des prix" accent="au kilo." chapo="Exposé en permanence à la vue du public, il donne le prix au kilo de tous les morceaux vendus dans la boutique." source="Arrêté du 18 mars 1993 relatif à la publicité des prix des viandes de boucherie, articles 1 à 3 et annexes I (bœuf), II (veau), III (ovin), IV (porc), V (cheval), consultables sur Légifrance.">
+    <Affiche surTitre="Information des clients · affichage obligatoire" titre="Le tableau des prix" accent="au kilo." chapo="Exposé en permanence à la vue du public, il donne le prix au kilo de tous les morceaux vendus dans la boutique." source="Arrêté du 18 mars 1993 relatif à la publicité des prix des viandes de boucherie et de charcuterie, articles 1 à 3 et annexes I (bœuf), II (veau), III (ovin), IV (porc), V (cheval), consultables sur Légifrance.">
       <View style={{ flexDirection: 'row' }}>
         {([['liste', 'Tous les morceaux vendus', 'Dans l’ordre et sous les dénominations des annexes de l’arrêté, espèce par espèce.'], ['balance', 'Des caractères d’au moins 1,5 cm', 'Chiffres et lettres : la hauteur ne descend jamais sous 1,5 centimètre.'], ['etiquette', 'Le mode de cuisson', 'Pour les morceaux de bœuf marqués d’un astérisque : à rôtir, à griller, à braiser, à bouillir…'], ['fichier', 'Le poids et le prix total', 'Sur l’emballage ou sur le ticket remis au client, en plus de l’écriteau à l’étal.']] as [NomIcone, string, string][]).map(([icone, titre, texte], i) => (
           <View key={titre} style={{ flex: 1, backgroundColor: TEINTE, borderRadius: 12, padding: 11, marginRight: i < 3 ? 8 : 0 }}>
@@ -227,7 +228,7 @@ function AfficheContactsObligatoires() {
         <CaseAffiche icone="telephone" titre="Secours d’urgence" plein texte="SAMU : 15 · Pompiers : 18 · Police : 17 · Urgence européenne : 112 · Appel par SMS (sourds et malentendants) : 114" lignes={['Centre antipoison de la région']} source="Code du travail, article D4711-1." />
       </Rangee>
       <Rangee bas={0}>
-        <CaseAffiche icone="balance" titre="Discriminations et harcèlement" texte="Plateforme antidiscriminations du Défenseur des droits : 39 28, antidiscriminations.fr. Défenseur des droits : 09 69 39 00 00." lignes={['Référent harcèlement (à partir de 11 salariés)', 'Élus du CSE (à partir de 11 salariés)']} source="Code du travail, articles L1153-5, D1151-1 et L2314-29." />
+        <CaseAffiche icone="balance" titre="Discriminations et harcèlement" texte="Plateforme antidiscriminations du Défenseur des droits : 39 28, antidiscriminations.fr. Défenseur des droits : 09 69 39 00 00." lignes={['Référent harcèlement du CSE (s’il existe un CSE)', 'Référent harcèlement de l’employeur (dès 250 salariés)', 'Élus du CSE (à partir de 11 salariés)']} source="Code du travail, articles L1153-5, L1153-5-1, D1151-1, L2314-1 et R2314-22." />
         <CaseAffiche icone="classeur" titre="Convention collective" lignes={['Intitulé et numéro (IDCC)', 'Où la consulter dans l’entreprise']} source="Code du travail, article R2262-3." />
         <CaseAffiche icone="fichier" titre="Document unique d’évaluation des risques" lignes={['Où le consulter', 'Mis à jour le']} source="Code du travail, article R4121-4." />
       </Rangee>
@@ -252,11 +253,19 @@ function AfficheOrganisationTravail() {
           </View>
         ))}
       </View>
-      <Text style={{ fontSize: 6.4, color: GRIS, marginBottom: 8 }}>Code du travail, articles L3171-1 et D3171-2 à D3171-5 (horaire collectif) ; repos hebdomadaire donné un autre jour que le dimanche : article R3172-1.</Text>
+      <View style={{ flexDirection: 'row', gap: 9, marginBottom: 4 }}>
+        {['Horaire daté et signé le … par …', 'Copie adressée à l’inspection du travail le …'].map((l) => (
+          <View key={l} style={{ flex: 1 }}>
+            <Text style={{ fontSize: 5.8, fontWeight: 700, color: GRIS, letterSpacing: 0.6 }}>{l.toUpperCase()}</Text>
+            <View style={{ height: 14, borderBottomWidth: 0.7, borderBottomColor: '#9AA6B2' }} />
+          </View>
+        ))}
+      </View>
+      <Text style={{ fontSize: 6.4, color: GRIS, marginBottom: 8 }}>Code du travail, articles L3171-1 et D3171-1 à D3171-5 (horaire collectif) ; repos hebdomadaire donné un autre jour que le dimanche : article R3172-1.</Text>
       <Rangee bas={0}>
         <CaseAffiche icone="calendrier" titre="Congés payés" lignes={['Période de prise des congés', 'Ordre des départs communiqué le']} source="Code du travail, articles D3141-5 et D3141-6." />
         <CaseAffiche icone="horloge" titre="Repos hebdomadaire" lignes={['Jour de repos, s’il n’est pas le dimanche', 'Organisation par roulement, le cas échéant']} source="Code du travail, articles L3132-1 et R3172-1 à R3172-3." />
-        <CaseAffiche icone="liste" titre="Règlement intérieur" texte="Obligatoire à partir de 50 salariés : il est affiché avec la date de son entrée en vigueur." lignes={['Où le consulter']} source="Code du travail, articles L1311-2 et R1321-1." />
+        <CaseAffiche icone="liste" titre="Règlement intérieur" texte="Obligatoire à partir de 50 salariés, au bout de 12 mois : il est porté par tout moyen à la connaissance des salariés." lignes={['Où le consulter']} source="Code du travail, articles L1311-2 et R1321-1." />
       </Rangee>
     </Affiche>
   )
@@ -271,7 +280,7 @@ const DROITS: { icone: NomIcone; titre: string; texte: string; source: string }[
 
 function AfficheDroits() {
   return (
-    <Affiche surTitre="Information des salariés · par affichage ou tout autre moyen" titre="Vos droits" accent="au travail." chapo="Ces informations doivent être portées à la connaissance de chaque salarié. Les textes complets sont disponibles sur Légifrance.">
+    <Affiche surTitre="Information des salariés · par affichage ou tout autre moyen" titre="Vos droits" accent="au travail." chapo="Ces informations sont portées à la connaissance de chaque salarié. Le texte intégral des articles cités est reproduit dans les pages qui suivent cette affiche.">
       <View style={{ flex: 1 }}>
         {[DROITS.slice(0, 2), DROITS.slice(2)].map((rangee, r) => (
           <View key={r} style={{ flex: 1, flexDirection: 'row', marginBottom: r ? 0 : 9, gap: 9 }}>
@@ -300,22 +309,26 @@ function AfficheDroits() {
 
 function AfficheTabac() {
   return (
-    <Affiche surTitre="Signalisation obligatoire" titre="Interdiction de fumer" accent="et de vapoter." chapo="Dans tous les lieux fermés et couverts accueillant du public ou qui constituent des lieux de travail : boutique, laboratoire, réserve, vestiaires." source="Code de la santé publique, articles L3512-8, R3512-2 et R3512-7 (tabac) ; L3513-6, R3513-2 et R3513-3 (vapotage).">
+    <Affiche surTitre="Signalisation obligatoire" titre="Tabac" accent="et vapotage." chapo="Fumer est interdit dans tous les lieux fermés et couverts qui accueillent du public ou qui constituent des lieux de travail : boutique, laboratoire, réserve, vestiaires. Vapoter est interdit dans les locaux de travail fermés et couverts à usage collectif : laboratoire, réserve, vestiaires." source="Code de la santé publique, articles L3512-8, R3512-2, R3512-7 et R3515-2 (tabac) ; L3513-6, R3513-2, R3513-3 et R3515-7 (vapotage). Arrêté du 21 juillet 2025 (modèles de signalisation de l’interdiction de fumer).">
       <View style={{ flex: 1, flexDirection: 'row' }}>
-        {([['Il est interdit de fumer', 'dans cet établissement.'], ['Il est interdit de vapoter', 'dans cet établissement.']] as [string, string][]).map(([haut, bas], i) => (
-          <View key={haut} style={{ flex: 1, borderRadius: 16, backgroundColor: i ? TEINTE : '#FCE8DE', alignItems: 'center', justifyContent: 'center', marginRight: i ? 0 : 12, padding: 18 }}>
-            <View style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 9, borderColor: '#B4441B', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
-              <Icone nom={i ? 'vent' : 'cigarette'} taille={56} couleur={ENCRE} />
-              <View style={{ position: 'absolute', width: 124, height: 9, backgroundColor: '#B4441B', transform: 'rotate(-45deg)' }} />
-            </View>
-            <Text style={{ fontFamily: 'Montserrat', fontWeight: 800, fontSize: 20, color: ENCRE, marginTop: 16, textAlign: 'center' }}>{haut}</Text>
-            <Text style={{ fontSize: 13, color: GRIS_FONCE, marginTop: 3, textAlign: 'center' }}>{bas}</Text>
+        <View style={{ flex: 1, borderRadius: 16, backgroundColor: '#FCE8DE', padding: 20, marginRight: 12, justifyContent: 'center' }}>
+          <Pastille nom="cigarette" taille={46} fond="#FFFFFF" couleur="#B4441B" />
+          <Text style={{ fontFamily: 'Montserrat', fontWeight: 800, fontSize: 18, color: ENCRE, marginTop: 12 }}>Tabac : affichez le panneau officiel</Text>
+          <Text style={{ fontSize: 10.5, lineHeight: 1.45, color: GRIS_FONCE, marginTop: 6 }}>{ins('Le panneau d’interdiction de fumer doit être l’un des modèles officiels fixés par l’arrêté du 21 juillet 2025 (annexe 1), reproduit tel quel, sans aucune modification, au format A5 au moins dans un lieu fermé.')}</Text>
+          <Text style={{ fontSize: 10.5, lineHeight: 1.45, color: GRIS_FONCE, marginTop: 6 }}>{ins('Téléchargez-le sur le site du ministère chargé de la santé et placez-le à l’entrée de la boutique et dans chaque local.')}</Text>
+        </View>
+        <View style={{ flex: 1, borderRadius: 16, backgroundColor: TEINTE, alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+          <View style={{ width: 120, height: 120, borderRadius: 60, borderWidth: 9, borderColor: '#B4441B', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
+            <Icone nom="vent" taille={56} couleur={ENCRE} />
+            <View style={{ position: 'absolute', width: 124, height: 9, backgroundColor: '#B4441B', transform: 'rotate(-45deg)' }} />
           </View>
-        ))}
+          <Text style={{ fontFamily: 'Montserrat', fontWeight: 800, fontSize: 20, color: ENCRE, marginTop: 16, textAlign: 'center' }}>Il est interdit de vapoter</Text>
+          <Text style={{ fontSize: 13, color: GRIS_FONCE, marginTop: 3, textAlign: 'center' }}>dans les locaux de travail.</Text>
+        </View>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: TEINTE, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 14, marginTop: 10 }}>
         <Pastille nom="alerte" taille={22} fond="#FFFFFF" />
-        <Text style={{ flex: 1, fontSize: 10, fontWeight: 700, color: ENCRE, marginLeft: 10 }}>{ins('Le non-respect de l’interdiction de fumer est puni de l’amende prévue pour les contraventions de la troisième classe ; celui de l’interdiction de vapoter, de la deuxième classe.')}</Text>
+        <Text style={{ flex: 1, fontSize: 10, fontWeight: 700, color: ENCRE, marginLeft: 10 }}>{ins('Fumer ou vapoter là où c’est interdit est puni de l’amende prévue pour les contraventions de la quatrième classe.')}</Text>
       </View>
     </Affiche>
   )
@@ -339,10 +352,39 @@ function AfficheIncendie() {
           ))}
         </View>
         <View style={{ flex: 1, gap: 9 }}>
-          <CaseAffiche icone="epingle" titre="Dans notre boucherie" lignes={['Point de rassemblement', 'Emplacement des extincteurs', 'Coupure générale électricité et gaz', 'Responsable de l’évacuation']} source="À compléter par l’exploitant." />
+          <CaseAffiche icone="epingle" titre="Dans notre boucherie" lignes={['Point de rassemblement', 'Emplacement des extincteurs', 'Personnes chargées des extincteurs', 'Personne chargée d’appeler les pompiers', 'Moyens d’alerte', 'Adresse du centre de secours', 'Coupure générale électricité et gaz', 'Responsable de l’évacuation', 'Mesures pour les personnes handicapées']} source="Contenu de la consigne : Code du travail, article R4227-38." />
         </View>
       </View>
     </Affiche>
+  )
+}
+
+/** Texte intégral des articles que l'employeur doit porter à la connaissance des salariés (annexe de « Vos droits ») */
+function PageTextes({ titre, colonnes }: { titre: string; colonnes: string[][] }) {
+  const parNumero = Object.fromEntries(ARTICLES_AFFICHAGE.map((a) => [a.numero, a]))
+  return (
+    <FeuilleLibre pied={PIED}>
+      <View style={{ flex: 1, borderWidth: 1.2, borderColor: PIN, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 22, marginBottom: 6 }}>
+        <Text style={{ fontSize: 7.5, fontWeight: 700, color: PIN, letterSpacing: 1.4 }}>{'Information des salariés · textes de référence'.toUpperCase()}</Text>
+        <Text style={{ fontFamily: 'Montserrat', fontWeight: 800, fontSize: 18, color: ENCRE, marginTop: 3 }}>{titre}</Text>
+        <Text style={{ fontSize: 7.4, color: GRIS, marginTop: 2, marginBottom: 8 }}>{ins(`Texte en vigueur, relevé le ${TEXTES_RELEVES_LE} sur Légifrance et sur code.travail.gouv.fr.`)}</Text>
+        <View style={{ flex: 1, flexDirection: 'row', gap: 16 }}>
+          {colonnes.map((numeros, c) => (
+            <View key={c} style={{ flex: 1 }}>
+              {numeros.map((n) => {
+                const a = parNumero[n]
+                return (
+                  <View key={n} style={{ marginBottom: 4.5 }}>
+                    <Text style={{ fontFamily: 'Montserrat', fontWeight: 700, fontSize: 8, color: PIN, marginBottom: 1 }}>{`${a.code}, article ${a.numero}`}</Text>
+                    {a.texte.map((p, k) => <Text key={k} style={{ fontSize: 6.8, lineHeight: 1.24, color: GRIS_FONCE, marginBottom: 1 }}>{p}</Text>)}
+                  </View>
+                )
+              })}
+            </View>
+          ))}
+        </View>
+      </View>
+    </FeuilleLibre>
   )
 }
 
@@ -359,6 +401,8 @@ export function AffichagesBoucheriePDF() {
       <AfficheContactsObligatoires />
       <AfficheOrganisationTravail />
       <AfficheDroits />
+      <PageTextes titre="Harcèlement sexuel, harcèlement moral, discriminations" colonnes={[['222-33', '222-33-2'], ['225-1', '225-1-1', '225-1-2']]} />
+      <PageTextes titre="Discriminations (suite) et égalité de rémunération" colonnes={[['225-2', '225-3'], ['225-3-1', '225-4', 'L3221-1', 'L3221-2', 'L3221-3', 'L3221-4', 'L3221-5', 'L3221-6', 'L3221-7']]} />
       <AfficheTabac />
       <AfficheIncendie />
       <AfficheTenue />

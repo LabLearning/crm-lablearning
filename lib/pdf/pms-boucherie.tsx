@@ -639,13 +639,13 @@ function PagesHachage({ pied = PIED }: P) {
               <View style={{ marginTop: 5 }}>
                 <Text style={{ fontSize: 8.4, fontWeight: 700, color: ENCRE, marginBottom: 3 }}>Jamais :</Text>
                 <Puce>chutes de parage (sauf chutes de muscles entiers), viandes séparées mécaniquement ;</Puce>
-                <Puce>viandes avec os ou peau, viandes de tête (sauf masséters) ;</Puce>
-                <Puce>linea alba, carpe et tarse, raclage d’os, diaphragme non débarrassé de ses séreuses.</Puce>
+                <Puce>viandes contenant des fragments d’os ou de la peau, viandes de tête (sauf masséters) ;</Puce>
+                <Puce>partie non musculaire de la linea alba, région du carpe et du tarse, raclage d’os, diaphragme non débarrassé de ses séreuses.</Puce>
               </View>
               <Source>Arrêté du 21 décembre 2009, annexe VII. Règlement (CE) n° 853/2004, annexe III, section V, chapitre II.</Source>
             </Carte>
             <Carte icone="info" titre="Au client" fond={TEINTE} marge={0}>
-              <Paragraphe>Conseillez une cuisson à cœur du steak haché, en particulier pour les jeunes enfants et les personnes âgées.</Paragraphe>
+              <Paragraphe>Conseillez une cuisson à cœur du steak haché aux enfants de moins de 5 ans, aux femmes enceintes et aux personnes immunodéprimées.</Paragraphe>
             </Carte>
           </View>
           <View style={{ flex: 1, marginRight: 10 }}>
@@ -654,7 +654,7 @@ function PagesHachage({ pied = PIED }: P) {
               <Etape n={2}>Le hachoir est propre, démonté et nettoyé après usage ; la viande reste au froid jusqu’au hachage.</Etape>
               <Etape n={3}>La viande hachée est remise aussitôt au client : elle ne se garde pas en vitrine.</Etape>
               <View style={{ marginTop: 4 }}>
-                <Paragraphe>Bonne pratique du guide de la boucherie : une viande épluchée depuis un jour au plus, sans chutes ni jus, sans contact direct avec les mains.</Paragraphe>
+                <Paragraphe>Repère du guide de bonnes pratiques d’hygiène du boucher (1999) : une viande épluchée depuis un jour au plus, sans chutes ni jus, sans contact direct avec les mains.</Paragraphe>
               </View>
               <Source>Arrêté du 21 décembre 2009, annexe VII, point 2.</Source>
             </Carte>
@@ -664,7 +664,7 @@ function PagesHachage({ pied = PIED }: P) {
               <Paragraphe>Hacher à l’avance n’est permis qu’à cinq conditions, toutes réunies :</Paragraphe>
               <View style={{ marginTop: 4 }}>
                 <Etape n={1}>Une déclaration faite à la DDPP.</Etape>
-                <Etape n={2}>Des viandes à +7 °C au plus (abats +3 °C, volailles +4 °C), hachées dans les 6 jours suivant l’abattage (3 jours pour la volaille, 15 jours pour le bœuf désossé sous vide), conditionnées aussitôt et refroidies à +2 °C à cœur ou congelées à −18 °C, jamais recongelées.</Etape>
+                <Etape n={2}>Des viandes à leur température (+4 °C pour un morceau de découpe, +7 °C au plus pour une pièce de gros, +3 °C pour les abats, +4 °C pour les volailles), hachées dans les 6 jours suivant l’abattage (3 jours pour la volaille, 15 jours pour le bœuf désossé sous vide), conditionnées aussitôt et refroidies à +2 °C à cœur ou congelées à −18 °C, jamais recongelées.</Etape>
                 <Etape n={3}>Une analyse microbiologique au moins chaque semaine.</Etape>
                 <Etape n={4}>Jamais à partir de carcasses transportées avant d’avoir atteint leur température.</Etape>
                 <Etape n={5}>Une conservation à +2 °C au plus, avec une date limite que vous fixez et justifiez.</Etape>
@@ -714,7 +714,7 @@ function PagesPreparations({ pied = PIED }: P) {
             </Carte>
             <Carte icone="alerte" titre="Les additifs" marge={0}>
               <Puce>Pas de nitrites dans les préparations de viandes fraîches, sauf rares exceptions listées.</Puce>
-              <Puce>Pas de sulfites, sauf dans les « breakfast sausages » et la « burger meat » à 4 % de végétaux au moins.</Puce>
+              <Puce>Pas de sulfites, sauf dans les « breakfast sausages », la « burger meat » à 4 % de légumes ou de céréales au moins et quelques saucisses fraîches étrangères listées par le règlement.</Puce>
               <Puce>Merguez : seuls certains colorants sont permis (E100, E120, E150a à d, E160c, E162).</Puce>
               <Source>Règlement (CE) n° 1333/2008, annexe II, catégorie 08.2.</Source>
             </Carte>
@@ -773,7 +773,7 @@ function PagesPreparations({ pied = PIED }: P) {
 function PagesSousProduits({ pied = PIED }: P) {
   const categories: { cat: string; quoi: string; mention: string; ton: 'pin' | 'ambre' | 'rouge' }[] = [
     { cat: 'Catégorie 3', quoi: 'Os, graisses, suifs, parures, invendus retirés sans risque sanitaire, colonnes vertébrales des bovins français', mention: '« Non destiné à la consommation humaine »', ton: 'pin' },
-    { cat: 'Catégorie 2', quoi: 'Produits devenus impropres : corps étranger, produit retiré pour un risque sanitaire', mention: 'Conteneur séparé, remis au collecteur', ton: 'ambre' },
+    { cat: 'Catégorie 2', quoi: 'Produits devenus impropres : corps étranger, produit retiré pour un risque sanitaire', mention: '« Impropre à la consommation animale »', ton: 'ambre' },
     { cat: 'Catégorie 1', quoi: 'Matériels à risque spécifiés éventuels, et tout ce qui y a été mélangé', mention: '« Exclusivement pour élimination »', ton: 'rouge' },
   ]
   return (
@@ -801,8 +801,8 @@ function PagesSousProduits({ pied = PIED }: P) {
           </View>
           <View style={{ flex: 1.3 }}>
             <Carte icone="alerte" titre="Carcasse à bande rouge" marge={0}>
-              <Paragraphe>Une bande rouge sur l’étiquette signale un bovin de plus de 30 mois venu d’un pays à risque : sa colonne doit être retirée. En boucherie, c’est permis seulement avec une autorisation du préfet (DDPP) : outils dédiés, bac étanche marqué « MRS » ou « Catégorie 1 », os colorés, outils désinfectés après chaque désossage, enlèvement par une entreprise agréée.</Paragraphe>
-              <Source>Arrêté du 21 décembre 2009, annexe V. Documents conservés 3 ans ; ceux qui indiquent les carcasses à bande rouge, 1 an.</Source>
+              <Paragraphe>Une bande rouge sur l’étiquette signale un bovin de plus de 30 mois venu d’un pays à risque d’ESB contrôlé ou indéterminé : sa colonne doit être retirée. En boucherie, c’est permis seulement avec une autorisation du préfet (DDPP) : outils dédiés, bac étanche marqué « MRS » ou « Catégorie 1 », os colorés, outils désinfectés après chaque désossage, enlèvement par une entreprise agréée.</Paragraphe>
+              <Source>Arrêté du 21 décembre 2009, annexe V (documents des matériels à risque conservés 3 ans). Règlement (CE) n° 999/2001, annexe V, point 11.3 (bande rouge ; documents commerciaux conservés au moins 1 an).</Source>
             </Carte>
           </View>
         </View>
@@ -882,8 +882,8 @@ function PagesOrigine({ pied = PIED }: P) {
               <Source>Arrêté du 18 mars 1993 (annexes I à V).</Source>
             </Carte>
             <Carte icone="archive" titre="À conserver" fond={TEINTE} marge={0}>
-              <Paragraphe>Factures, bons de livraison, étiquettes et documents d’accompagnement, et cette fiche : au moins 6 mois pour les viandes fraîches, selon les orientations européennes sur la traçabilité.</Paragraphe>
-              <Source>Règlement (CE) n° 178/2002, article 18. Règlement d’exécution (UE) n° 931/2011.</Source>
+              <Paragraphe>Bons de livraison, étiquettes, documents d’accompagnement et cette fiche : au moins 6 mois après la livraison pour les viandes fraîches, au titre de la traçabilité. Les factures se gardent 10 ans pour la comptabilité.</Paragraphe>
+              <Source>Règlement (CE) n° 178/2002, article 18. Règlement d’exécution (UE) n° 931/2011. Note de service DGAL/SDSSA/N2012-8156.</Source>
             </Carte>
           </View>
         </View>
@@ -978,7 +978,7 @@ function PagesNonConformites({ pied = PIED }: P) {
               <View style={{ marginBottom: 6 }}><Paragraphe>Panne de froid, viande à l’odeur anormale, corps étranger (esquille d’os, éclat de lame), date dépassée, erreur d’étiquetage ou d’allergène.</Paragraphe></View>
               <Etape n={1}>Écartez le produit : dans le doute, il ne se vend pas.</Etape>
               <Etape n={2}>Cherchez la cause : matériel, livraison, geste.</Etape>
-              <Etape n={3}>Si un produit à risque a déjà été vendu, prévenez la DDPP et organisez son rappel.</Etape>
+              <Etape n={3}>Si un produit à risque a déjà été vendu, prévenez la DDPP, organisez son rappel et déclarez-le sur RappelConso.</Etape>
               <Etape n={4}>Notez-le : une anomalie traitée et notée montre que votre plan fonctionne.</Etape>
             </Carte>
           </View>
@@ -1003,7 +1003,7 @@ function PagesNonConformites({ pied = PIED }: P) {
         </View>
         <TitreSection icone="telephone" titre="Vos numéros utiles" note="À remplir aujourd’hui : le jour où il faut appeler, personne ne cherche." />
         <Champs hauteur={34} marge={5} champs={[{ libelle: 'DDPP du département (téléphone, e-mail)', flex: 1.3 }, { libelle: 'Fournisseur de viande principal' }, { libelle: 'Frigoriste' }, { libelle: 'Collecteur de sous-produits' }]} />
-        <Source>Règlement (CE) n° 178/2002, articles 18 et 19 : l’exploitant retire les denrées qui présentent un risque, en informe les autorités et, si le produit a pu atteindre le consommateur, l’informe et le rappelle.</Source>
+        <Source>Règlement (CE) n° 178/2002, articles 18 et 19 : l’exploitant retire les denrées qui présentent un risque, en informe les autorités et, si le produit a pu atteindre le consommateur, l’informe et le rappelle. Tout rappel se déclare sur rappel.conso.gouv.fr (Code de la consommation, article L423-3).</Source>
       </Feuille>
 
       <Feuille icone="fichier" surTitre="Alertes · à remplir à chaque anomalie" titre="Fiche de non-conformité" sousTitre="Ce qui a été constaté, ce qui a été fait tout de suite, et ce qui change pour que cela ne se reproduise pas." pied={pied}>
@@ -1045,7 +1045,7 @@ const ETAPES_HACCP_BOUCHERIE: string[][] = [
   ['Stockage en chambre froide', 'Multiplication des microbes, contamination croisée', 'Carcasses suspendues, viandes nues séparées, portes fermées', '+7 °C carcasses et pièces de gros ; +4 °C morceaux de découpe, volailles, préparations ; +3 °C abats', 'Relevé matin et soir', 'Contrôle à cœur, transfert ou retrait'],
   ['Découpe, désossage', 'Contamination par les mains, le matériel ; esquilles d’os', 'Mains lavées, matériel propre, viande hors du froid le moins longtemps possible', 'Pas de stockage de viande au poste', 'Plan de nettoyage', 'Viande parée, poste nettoyé'],
   ['Carcasse à bande rouge', 'Colonne vertébrale à risque non retirée (bovin d’un pays à risque)', 'Dévertébration autorisée par le préfet, sinon carcasse refusée', 'Toute colonne retirée tracée au registre', 'Registre de la partie 11', 'Lot isolé, DDPP prévenue'],
-  ['Hachage', 'Multiplication rapide des microbes dans la masse hachée', 'À la demande devant le client ; à l’avance seulement sous dérogation déclarée', 'Viande à +7 °C au plus avant hachage, haché à +2 °C au plus', 'Fiche de hachage (hachage à l’avance)', 'Viande hachée jetée'],
+  ['Hachage', 'Multiplication rapide des microbes dans la masse hachée', 'À la demande devant le client ; à l’avance seulement sous dérogation déclarée', 'Viande à +4 °C au plus avant hachage (+7 °C pour une pièce de gros), haché à +2 °C au plus', 'Fiche de hachage (hachage à l’avance)', 'Viande hachée jetée'],
   ['Préparations de viandes', 'Contamination, erreur d’allergène ou d’additif', 'Recettes écrites, ingrédients tracés', '+4 °C au plus, durée de vie fixée par écrit', 'Fiche de fabrication', 'Lot retiré, étiquetage corrigé'],
   ['Cuisson de la charcuterie', 'Survie des microbes', 'Cuisson à cœur selon la recette', 'Température à cœur fixée par la recette', 'Sonde à chaque cuisson', 'Cuisson prolongée ou produit jeté'],
   ['Refroidissement', 'Multiplication des microbes', 'Petites quantités, cellule de refroidissement', 'De +63 °C à +10 °C en moins de 2 heures (référence)', 'Fiche de refroidissement', 'Produit jeté'],
