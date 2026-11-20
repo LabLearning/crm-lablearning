@@ -105,7 +105,55 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
     } catch { return null }
   }
 
+  // Boucherie, charcuterie, triperie sans gabarit de franchise : PMS et affiches
+  // natifs de la boucherie (lib/pdf/pms-boucherie, affichages-boucherie), pré-remplis
+  const { estBoucherie, adresseComplete } = await import('@/lib/pdf/pms-boucherie')
+  const boucherie = !franchise?.pms_path && estBoucherie({
+    secteur: client.secteur_activite, raisonSociale: client.raison_sociale, nomCommercial: client.nom_commercial, formation: formation?.intitule,
+  })
+  const datesSession = sess.date_debut === sess.date_fin || !sess.date_fin
+    ? `Le ${frDate(sess.date_debut)}`
+    : `Du ${frDate(sess.date_debut)} au ${frDate(sess.date_fin)}`
+
+  const produirePmsBoucherie = async (): Promise<Uint8Array> => {
+    const [{ renderToBuffer }, { createElement }, { PmsBoucheriePDF }, { loadSignataireContact }] = await Promise.all([
+      import('@react-pdf/renderer'), import('react'), import('@/lib/pdf/pms-boucherie'), import('@/lib/pdf/convention-data'),
+    ])
+    const signataire: any = await loadSignataireContact(supabase, client.id, null).catch(() => null)
+    const responsable = signataire ? [signataire.prenom, signataire.nom].filter(Boolean).join(' ') || null : null
+    const nbJours = Array.isArray(sess.horaires_jours) && sess.horaires_jours.length ? sess.horaires_jours.length : null
+    const duree = formation?.duree_heures ? `${formation.duree_heures} h${nbJours && nbJours > 1 ? ` (${nbJours} j)` : ''}` : ''
+    const e = {
+      raisonSociale: client.raison_sociale || null,
+      enseigne: client.nom_commercial || client.raison_sociale || null,
+      adresse: adresseComplete(client.adresse, client.code_postal, client.ville),
+      siret: client.siret ? String(client.siret).replace(/(\d{3})(\d{3})(\d{3})(\d{5})/, '$1 $2 $3 $4') : null,
+      telephone: client.telephone || null,
+      referent: client.referent_haccp || null,
+      responsable,
+      qualite: signataire?.poste || signataire?.fonction || (responsable ? 'Dirigeant' : null),
+      misAJour: new Date(sess.date_fin || sess.date_debut || Date.now()).toLocaleDateString('fr-FR'),
+      formations: (inscriptions || []).map((i: any) => i.apprenant).filter(Boolean).map((a: any) => ({
+        nom: [a.prenom, a.nom].filter(Boolean).join(' '),
+        poste: a.poste || null,
+        intitule: formation?.intitule || 'Formation hygiène alimentaire',
+        organisme: nomOrg,
+        date: datesSession.replace(/^Le /, '').replace(/^Du /, ''),
+        duree,
+      })),
+    }
+    return new Uint8Array(await renderToBuffer(createElement(PmsBoucheriePDF, { e }) as any))
+  }
+
+  const produireAffichagesBoucherie = async (): Promise<Uint8Array> => {
+    const [{ renderToBuffer }, { createElement }, { AffichagesBoucheriePDF }] = await Promise.all([
+      import('@react-pdf/renderer'), import('react'), import('@/lib/pdf/affichages-boucherie'),
+    ])
+    return new Uint8Array(await renderToBuffer(createElement(AffichagesBoucheriePDF) as any))
+  }
+
   const produirePms = async (): Promise<Uint8Array | null> => {
+    if (boucherie) return produirePmsBoucherie()
     if (!gabaritPms.path) return null
     const bytes = await lireStorage(supabase, gabaritPms.path)
     if (!bytes) return null
@@ -145,7 +193,7 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
 
   const producteurs: Record<PieceId, () => Promise<Uint8Array | null>> = {
     pms: produirePms,
-    affichages: async () => (gabaritAffichages ? lireStorage(supabase, gabaritAffichages) : null),
+    affichages: async () => (boucherie && !franchise?.affichages_path ? produireAffichagesBoucherie() : gabaritAffichages ? lireStorage(supabase, gabaritAffichages) : null),
     livret: async () => (livret?.path ? lireStorage(supabase, livret.path) : livret?.url ? lireUrl(livret.url) : null),
     reglement: () => appelerRoute(reglementGET as any, '/api/pdf/reglement-interieur'),
     programme: () => (sess.formation_id ? appelerRoute(programmeGET as any, `/api/pdf/programme/${sess.formation_id}?session=${sess.id}`, sess.formation_id) : Promise.resolve(null)),

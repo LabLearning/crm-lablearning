@@ -126,12 +126,13 @@ export function FeuilleLibre({ pied, children }: { pied: string; children: React
 // ─────────────────────────────────────────────────────────── Champs à remplir
 
 /** Cases à remplir à la main, sur une ligne : le libellé est en haut de la case. */
-export function Champs({ champs, hauteur = 25, marge = 8 }: { champs: { libelle: string; flex?: number; largeur?: number }[]; hauteur?: number; marge?: number }) {
+export function Champs({ champs, hauteur = 25, marge = 8 }: { champs: { libelle: string; flex?: number; largeur?: number; valeur?: string | null }[]; hauteur?: number; marge?: number }) {
   return (
     <View style={{ flexDirection: 'row', marginBottom: marge }}>
       {champs.map((c, i) => (
         <View key={c.libelle} style={{ ...(c.largeur ? { width: c.largeur } : { flex: c.flex || 1 }), height: hauteur, borderWidth: 0.8, borderColor: BORD, borderRadius: 6, paddingHorizontal: 7, paddingTop: 3.5, marginRight: i < champs.length - 1 ? 7 : 0, backgroundColor: '#FFFFFF' }}>
           <Text style={{ fontSize: 5.6, fontWeight: 700, color: GRIS, letterSpacing: 0.7 }}>{c.libelle.toUpperCase()}</Text>
+          {c.valeur ? <Text style={{ fontSize: 8.6, color: ENCRE, marginTop: 2 }}>{c.valeur}</Text> : null}
         </View>
       ))}
     </View>
@@ -329,10 +330,12 @@ export function TitreSection({ icone, titre, note, haut = 10 }: { icone: NomIcon
 export const etiquette = { fontSize: 5.6, fontWeight: 700, color: GRIS, letterSpacing: 0.7 } as const
 
 /** Une ligne à remplir à la main, sous son libellé. */
-export const ChampLigne = ({ libelle, hauteur = 13, marge = 7 }: { libelle: string; hauteur?: number; marge?: number }) => (
+export const ChampLigne = ({ libelle, hauteur = 13, marge = 7, valeur }: { libelle: string; hauteur?: number; marge?: number; valeur?: string | null }) => (
   <View style={{ marginBottom: marge }}>
     <Text style={etiquette}>{libelle.toUpperCase()}</Text>
-    <View style={{ height: hauteur, borderBottomWidth: 0.7, borderBottomColor: SURFACE_400 }} />
+    <View style={{ minHeight: hauteur, borderBottomWidth: 0.7, borderBottomColor: SURFACE_400, justifyContent: 'flex-end', paddingBottom: 1.5 }}>
+      {valeur ? <Text style={{ fontSize: 8.6, lineHeight: 1.2, color: ENCRE }}>{valeur}</Text> : null}
+    </View>
   </View>
 )
 

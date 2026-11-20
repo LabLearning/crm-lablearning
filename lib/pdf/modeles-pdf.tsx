@@ -22,7 +22,7 @@ const etiquette = { fontSize: 5.6, fontWeight: 700, color: GRIS, letterSpacing: 
 
 // ─────────────────────────────────────────────────────────── 1. Allergènes
 
-const ALLERGENES: { court: string; long: string; exemples: string; icone: NomIcone }[] = [
+export const ALLERGENES: { court: string; long: string; exemples: string; icone: NomIcone }[] = [
   { court: 'Gluten', long: 'Céréales contenant du gluten', exemples: 'blé, seigle, orge, avoine, épeautre : pains, panures, pâtes, sauces liées à la farine', icone: 'ble' },
   { court: 'Crustacés', long: 'Crustacés', exemples: 'crevettes, crabe, langoustines, surimi qui en contient', icone: 'crevette' },
   { court: 'Œufs', long: 'Œufs', exemples: 'mayonnaise, pâtes aux œufs, dorure des pains, certaines panures', icone: 'oeuf' },
@@ -312,7 +312,7 @@ const ETAPES_NETTOYAGE: { icone: NomIcone; titre: string; texte: string }[] = [
   { icone: 'vent', titre: 'Sécher', texte: 'À l’air libre ou au papier à usage unique, jamais au torchon.' },
 ]
 
-export function PagesNettoyage({ pied = 'Plan de nettoyage et de désinfection' }: { pied?: string }) {
+export function PagesNettoyage({ pied = 'Plan de nettoyage et de désinfection', zones = ZONES_NETTOYAGE }: { pied?: string; zones?: [string, string][] }) {
   const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
   return (
     <>
@@ -327,7 +327,7 @@ export function PagesNettoyage({ pied = 'Plan de nettoyage et de désinfection' 
             { titre: 'Méthode (rinçage, séchage…)', flex: 1.2 },
             { titre: 'Qui', largeur: 74 },
           ]}
-          lignes={[...ZONES_NETTOYAGE.map(([z, f]) => [z, f, null, null, null, null]), ...vides(3, 6)]}
+          lignes={[...zones.map(([z, f]) => [z, f, null, null, null, null]), ...vides(3, 6)]}
           hauteur={20.2}
         />
       </Feuille>
@@ -336,7 +336,7 @@ export function PagesNettoyage({ pied = 'Plan de nettoyage et de désinfection' 
         <Champs champs={[{ libelle: 'Établissement', flex: 2 }, { libelle: 'Semaine du' }, { libelle: 'Au' }, { libelle: 'Visa du responsable', flex: 1.2 }]} />
         <Tableau
           colonnes={[{ titre: 'Zone ou matériel', flex: 1, gras: true }, ...jours.map((j) => ({ titre: j, largeur: 52, centre: true, coche: true })), { titre: 'Remarque', flex: 0.75 }]}
-          lignes={[...ZONES_NETTOYAGE.map(([z]) => [z, ...jours.map(() => null), null]), ...vides(2, 9)]}
+          lignes={[...zones.map(([z]) => [z, ...jours.map(() => null), null]), ...vides(2, 9)]}
           hauteur={19.4}
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: TEINTE, borderRadius: 9, paddingVertical: 7, paddingHorizontal: 10, marginTop: 8 }}>
