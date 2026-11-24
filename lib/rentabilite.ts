@@ -253,6 +253,8 @@ export interface CommissionSessionRentab {
   session_id: string; franchise_id: string | null; status: string | null
   commission_montant: Num; base_montant: Num; base_source: string | null
   cout_formateur: Num; cout_formateur_manuel: Num; commission_type: string | null; calculee_at: string | null
+  /** Taux appliqué à la ligne (figé avec elle une fois validée ou payée) */
+  commission_taux?: Num
   /** Frais déduits en budget net : parcours POEI ou déplacement du formateur d'une session (migration 166) */
   frais_annexes?: Num
 }
@@ -1271,7 +1273,7 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
         cle: `cf:${s.id}`,
         famille: 'commission_franchise',
         libelle: `Commission ${nomFr}`,
-        detail: `${commissionTypeLabel(snap.type)} · base ${euro(snap.base)}${suffixe}`,
+        detail: `${commissionTypeLabel(snap.type, existante?.commission_taux ?? franchise?.taux_commission)} · base ${euro(snap.base)}${suffixe}`,
         montant: snap.montant,
         qualite: 'fige',
         qualiteLabel: snap.status === 'payee' ? 'Payée' : 'Validée',
@@ -1311,7 +1313,7 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
       cle: `cf:${s.id}`,
       famille: 'commission_franchise',
       libelle: `Commission ${nomFr}`,
-      detail: `${commissionTypeLabel(res.type)} · base ${euro(res.base)}${res.type === 'budget_net' ? ` moins ${euro(res.coutFormateur)} de coût formateur${n(res.frais) > 0 ? ` et ${euro(n(res.frais))} de déplacement du formateur` : ''}` : ''}${suffixe}`,
+      detail: `${commissionTypeLabel(res.type, r.taux)} · base ${euro(res.base)}${res.type === 'budget_net' ? ` moins ${euro(res.coutFormateur)} de coût formateur${n(res.frais) > 0 ? ` et ${euro(n(res.frais))} de déplacement du formateur` : ''}` : ''}${suffixe}`,
       montant: res.montant,
       qualite: 'a_venir',
       sessionId: s.id,
@@ -1351,7 +1353,7 @@ export function commissionFranchiseUnite(u: Unite, d: DonneesRentabilite): Resul
         cle: `cf:${porteuse!.id}`,
         famille: 'commission_franchise',
         libelle: `Commission ${nomFr}`,
-        detail: `${commissionTypeLabel(String(ligne.commission_type || 'budget_debloque'))} · parcours de ${euro(n(ligne.base_montant))}${ligne.commission_type === 'budget_net' ? ` moins ${euro(n(ligne.cout_formateur))} de coût formateur${n(ligne.frais_annexes) > 0 ? ` et ${euro(n(ligne.frais_annexes))} de frais` : ''}` : ''}`,
+        detail: `${commissionTypeLabel(String(ligne.commission_type || 'budget_debloque'), ligne.commission_taux ?? franchise?.taux_commission)} · parcours de ${euro(n(ligne.base_montant))}${ligne.commission_type === 'budget_net' ? ` moins ${euro(n(ligne.cout_formateur))} de coût formateur${n(ligne.frais_annexes) > 0 ? ` et ${euro(n(ligne.frais_annexes))} de frais` : ''}` : ''}`,
         montant: n(ligne.commission_montant),
         qualite: 'a_venir',
         sessionId: porteuse!.id,

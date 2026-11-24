@@ -110,7 +110,7 @@ export default function FranchisesClient({
                 </div>
                 <div className="mt-3 pt-3 border-t border-surface-100 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <span className="text-xs text-surface-500 inline-flex items-center gap-1 min-w-0">
-                    <Banknote className="h-3.5 w-3.5 shrink-0" /> {f.taux_commission}% · {commissionTypeLabel(f.commission_type)}
+                    <Banknote className="h-3.5 w-3.5 shrink-0" /> {commissionTypeLabel(f.commission_type, f.taux_commission)}
                   </span>
                   <span className="text-right">
                     <span className="block text-sm font-bold text-amber-600 tabular-nums whitespace-nowrap">

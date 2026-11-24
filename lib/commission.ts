@@ -48,9 +48,22 @@ export function computeCommission(params: {
  * Les montants de commission sont des montants TTC : la franchise les facture
  * tels quels, sans ajouter de TVA par-dessus.
  */
-export function commissionTypeLabel(type: CommissionType | string | null): string {
-  if (type === 'budget_net') return '40% TTC du budget net (après coût et déplacement du formateur, et frais du parcours pour une POEI)'
-  return '10% TTC du budget débloqué'
+/** Taux appliqué, comme le calcul : celui de la franchise, à défaut 40 % (budget net) ou 10 % (budget débloqué). */
+export function tauxCommission(type: CommissionType | string | null, taux: number | string | null | undefined): number {
+  return Number(taux) || (type === 'budget_net' ? 40 : 10)
+}
+
+/**
+ * Mode de calcul en clair. Avec `taux` (celui de la franchise ou de la ligne) :
+ * « 44 % TTC du budget net… » ; sans : « TTC du budget net… », pour un écran
+ * qui affiche déjà le taux à côté. Jamais de taux écrit en dur.
+ */
+export function commissionTypeLabel(type: CommissionType | string | null, taux?: number | string | null): string {
+  const assiette = type === 'budget_net'
+    ? 'budget net (après coût et déplacement du formateur, et frais du parcours pour une POEI)'
+    : 'budget débloqué'
+  if (taux === undefined) return `TTC du ${assiette}`
+  return `${tauxCommission(type, taux).toLocaleString('fr-FR')} % TTC du ${assiette}`
 }
 
 export function commissionStatusLabel(status: CommissionStatus | string | null): string {
