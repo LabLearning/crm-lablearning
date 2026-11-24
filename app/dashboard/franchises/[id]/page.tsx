@@ -218,9 +218,10 @@ function Chiffre({ icone: Icone, label, valeur, sous, ton }: {
   const couleur = ton === 'brand' ? 'text-brand-600' : ton === 'success' ? 'text-success-700' : 'text-surface-900'
   return (
     <div className="card p-4 min-w-0">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-surface-500">
-        <Icone className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{label}</span>
+      <div className="flex items-start gap-1.5 text-xs font-medium text-surface-500">
+        <Icone className="h-3.5 w-3.5 shrink-0 mt-px" />
+        {/* Sur deux lignes au besoin : un intitulé coupé ne se lit plus sur téléphone */}
+        <span className="leading-tight">{label}</span>
       </div>
       <div className={`mt-1.5 text-xl font-heading font-bold tabular-nums ${couleur}`}>{valeur}</div>
       {sous && <div className="mt-1 text-xs text-surface-500 leading-snug">{sous}</div>}
