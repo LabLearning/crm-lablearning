@@ -41,6 +41,10 @@ export interface ReleveCommissionsProps {
   numero: string
   /** Commissions non encore dues, résumées en une ligne. */
   enCours: { nombre: number; montant: number }
+  /** validee (défaut) : à verser ; payee : déjà versées ; a_venir : prévisionnel */
+  etat?: 'validee' | 'payee' | 'a_venir'
+  /** Relevé d'un versement : sa date (AAAA-MM-JJ) */
+  verseLe?: string | null
 }
 
 // Les espaces insécables du format fr-FR (U+202F, U+00A0) n'ont pas de glyphe
@@ -63,7 +67,7 @@ const COL_DEBLOQUE = { formation: '44%', stagiaires: '12%', base: '20%', frais: 
  * Relevé des commissions dues à une franchise, dossier par dossier.
  * Sert de pièce justificative au versement : la franchise facture ce montant.
  */
-export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }: ReleveCommissionsProps) {
+export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours, etat = 'validee', verseLe = null }: ReleveCommissionsProps) {
   const total = lignes.reduce((t, l) => t + l.commission, 0)
   const totalStagiaires = lignes.reduce((t, l) => t + l.nbStagiaires, 0)
   const estNet = franchise.commission_type === 'budget_net'
@@ -76,6 +80,10 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
   const totalMarge = lignes.reduce((t, l) => t + margeDe(l), 0)
   const cellNum = { fontSize: 8, textAlign: 'right' as const }
   const aujourdhui = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  // Le libellé suit l'état : une commission versée ou à venir ne se facture pas
+  const verseLeLong = verseLe ? new Date(verseLe + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' }) : null
+  const libelleMontant = etat === 'payee' ? (verseLeLong ? `Montant versé le ${verseLeLong}` : 'Montant versé') : etat === 'a_venir' ? 'Montant prévisionnel' : 'Montant à verser'
+  const libelleTotal = etat === 'payee' ? 'Total versé' : etat === 'a_venir' ? 'Total prévisionnel' : 'Total à verser'
 
   // Regroupement par établissement, du plus gros au plus petit
   const parEtablissement = new Map<string, LigneReleve[]>()
@@ -121,7 +129,7 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         }}>
           <View>
-            <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 3 }}>Montant à verser</Text>
+            <Text style={{ fontSize: 8, color: SURFACE_500, marginBottom: 3 }}>{libelleMontant}</Text>
             <Text style={{ fontSize: 22, fontFamily: 'Montserrat', fontWeight: 700, color: BRAND_GREEN, letterSpacing: -0.4 }}>
               {euro(total)}
             </Text>
@@ -217,7 +225,7 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
               backgroundColor: BRAND_GREEN, paddingVertical: 9, paddingHorizontal: 10,
             }}>
               <Text style={{ fontSize: 9, fontFamily: 'Satoshi', fontWeight: 700, color: '#ffffff' }}>
-                Total à verser
+                {libelleTotal}
               </Text>
               <Text style={{ fontSize: 11, fontFamily: 'Satoshi', fontWeight: 700, color: '#ffffff' }}>
                 {euro(total)}
@@ -231,13 +239,18 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours }
           <PdfSectionTitle>Conditions</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Les montants indiqués sont des montants TTC : la franchise les facture tels quels, sans TVA
-            supplémentaire. Ne figurent ici que les dossiers terminés et encaissés par {org?.name || 'Lab Learning'},
-            la commission n&apos;étant due qu&apos;après règlement du financeur.
-            {enCours.nombre > 0 ? ` ${enCours.nombre} autre${enCours.nombre > 1 ? 's dossiers sont' : ' dossier est'} en attente de règlement, pour ${euro(enCours.montant)} de commission à venir : ${enCours.nombre > 1 ? 'ils figureront' : 'il figurera'} sur un prochain relevé.` : ''}
+            supplémentaire.
+            {etat === 'a_venir'
+              ? ` Ces dossiers ne sont pas encore encaissés par ${org?.name || 'Lab Learning'} : la commission n'est due qu'après règlement du financeur. Ce relevé est indicatif, il n'appelle aucune facture pour le moment.`
+              : ` Ne figurent ici que les dossiers terminés et encaissés par ${org?.name || 'Lab Learning'}, la commission n'étant due qu'après règlement du financeur.`}
+            {etat === 'validee' && enCours.nombre > 0 ? ` ${enCours.nombre} autre${enCours.nombre > 1 ? 's dossiers sont' : ' dossier est'} en attente de règlement, pour ${euro(enCours.montant)} de commission à venir : ${enCours.nombre > 1 ? 'ils figureront' : 'il figurera'} sur un prochain relevé.` : ''}
           </Text>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6, marginTop: 6 }}>
-            Relevé établi le {aujourdhui}. Merci d&apos;émettre votre facture pour {euro(total)} TTC en rappelant
-            la référence {numero}.
+            {etat === 'payee'
+              ? `Ces commissions ont été versées${verseLeLong ? ` le ${verseLeLong}` : ''}, pour ${euro(total)} TTC. Relevé édité le ${aujourdhui}, référence ${numero}.`
+              : etat === 'a_venir'
+                ? `Relevé prévisionnel établi le ${aujourdhui}, référence ${numero}.`
+                : `Relevé établi le ${aujourdhui}. Merci d'émettre votre facture pour ${euro(total)} TTC en rappelant la référence ${numero}.`}
           </Text>
         </View>
 

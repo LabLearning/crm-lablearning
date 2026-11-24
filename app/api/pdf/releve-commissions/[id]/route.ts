@@ -10,6 +10,9 @@ import { ReleveCommissionsPDF, type LigneReleve } from '@/lib/pdf/releve-commiss
 /** Rôles internes autorisés à éditer le relevé d'une franchise du CRM. */
 const ROLES_INTERNES = ['super_admin', 'admin', 'gestionnaire', 'comptable']
 
+/** Jour de paiement à Paris (AAAA-MM-JJ) : un versement noté à 23 h reste du jour. */
+const jourParis = (iso: string) => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(new Date(iso))
+
 const slug = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
@@ -17,6 +20,8 @@ const slug = (s: string) =>
  * Relevé des commissions dues à une franchise, dossier par dossier.
  * Par défaut les commissions validées (ce qui est à verser) ; `?etat=payee`
  * réédite un relevé déjà réglé, `?etat=a_venir` le prévisionnel.
+ * `?etat=payee&versement=AAAA-MM-JJ` : un seul versement (jour du paiement à
+ * Paris) ; `versement=aucune` : les commissions payées sans date enregistrée.
  */
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const auth = await requireApiUser()
@@ -40,10 +45,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!['validee', 'payee', 'a_venir'].includes(etat)) {
     return NextResponse.json({ error: 'État inconnu' }, { status: 400 })
   }
+  const versement = etat === 'payee' ? new URL(req.url).searchParams.get('versement') : null
+  if (versement && versement !== 'aucune' && !/^\d{4}-\d{2}-\d{2}$/.test(versement)) {
+    return NextResponse.json({ error: 'Date de versement invalide' }, { status: 400 })
+  }
 
   await syncFranchiseCommissions(supabase, params.id, auth.user.organizationId)
   const toutes = await getFranchiseCommissionLines(supabase, params.id, auth.user.organizationId)
   const retenues = toutes.filter((l) => l.status === etat && Number(l.commission_montant || 0) > 0)
+    .filter((l) => !versement || (versement === 'aucune' ? !l.payee_at : !!l.payee_at && jourParis(l.payee_at) === versement))
   if (!retenues.length) {
     return NextResponse.json({ error: 'Aucune commission à relever pour cet état' }, { status: 404 })
   }
@@ -83,15 +93,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const org = await withDocumentLogo(supabase, orgRaw)
 
   const d = new Date()
-  const numero = `COM-${slug(franchise.nom || 'franchise').toUpperCase().slice(0, 12)}-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+  // Un versement garde la même référence à chaque réédition : celle de son jour
+  const verseLe = versement && versement !== 'aucune' ? versement : null
+  const jourRef = verseLe || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const numero = `COM-${slug(franchise.nom || 'franchise').toUpperCase().slice(0, 12)}-${jourRef.replace(/-/g, '')}`
 
   const buffer = await renderToBuffer(
-    createElement(ReleveCommissionsPDF, { org, franchise, lignes, numero, enCours }) as any,
+    createElement(ReleveCommissionsPDF, { org, franchise, lignes, numero, enCours, etat: etat as 'validee' | 'payee' | 'a_venir', verseLe }) as any,
   )
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="releve-commissions-${slug(franchise.nom || 'franchise')}-${d.toISOString().slice(0, 10)}.pdf"`,
+      'Content-Disposition': `attachment; filename="releve-commissions-${etat === 'payee' ? 'versees-' : etat === 'a_venir' ? 'previsionnel-' : ''}${slug(franchise.nom || 'franchise')}-${jourRef}.pdf"`,
     },
   })
 }

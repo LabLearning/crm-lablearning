@@ -18,6 +18,7 @@ import {
   syncFranchiseCommissionsAction,
 } from '../session-commission-actions'
 import type { LigneCommissionSession } from '@/lib/franchise-data'
+import { CommissionsPayees } from './CommissionsPayees'
 
 type CommissionType = 'budget_debloque' | 'budget_net'
 type CommStatus = 'a_venir' | 'validee' | 'payee' | 'annulee'
@@ -216,6 +217,11 @@ export default function FranchiseDetailClient({
           <div>
             <div className="text-xs text-surface-500">Payées</div>
             <div className="text-lg font-heading font-bold text-emerald-600 tabular-nums mt-1">{fmtEuro(commPayee)}</div>
+            {commPayee > 0 && (
+              <a href="#commissions-payees" className="text-[11px] font-medium text-brand-600 hover:text-brand-700">
+                Voir les versements
+              </a>
+            )}
           </div>
           {commValidee > 0 && (
             <button
@@ -226,6 +232,9 @@ export default function FranchiseDetailClient({
           )}
         </div>
       </div>
+
+      {/* Ce qui a déjà été versé, versement par versement */}
+      <CommissionsPayees franchiseId={franchiseId} lignes={lignes} />
 
       {/* Commissions par établissement, session par session */}
       <div>

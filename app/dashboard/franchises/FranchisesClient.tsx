@@ -41,7 +41,9 @@ export default function FranchisesClient({
     const ca = cs.reduce((s, c) => s + Number(c.base_montant || 0), 0)
     const commAVenir = cs.filter((c) => c.status === 'a_venir' || c.status === 'validee')
       .reduce((s, c) => s + Number(c.commission_montant || 0), 0)
-    return { etabs, formes, sessions: cs.length, ca, commAVenir }
+    const commPayee = cs.filter((c) => c.status === 'payee')
+      .reduce((s, c) => s + Number(c.commission_montant || 0), 0)
+    return { etabs, formes, sessions: cs.length, ca, commAVenir, commPayee }
   }
 
   const totalEtabs = clients.length
@@ -110,8 +112,15 @@ export default function FranchisesClient({
                   <span className="text-xs text-surface-500 inline-flex items-center gap-1 min-w-0">
                     <Banknote className="h-3.5 w-3.5 shrink-0" /> {f.taux_commission}% · {commissionTypeLabel(f.commission_type)}
                   </span>
-                  <span className="text-sm font-bold text-amber-600 tabular-nums whitespace-nowrap">
-                    {fmtEuro(st.commAVenir)} <span className="text-[11px] font-normal text-surface-400">à verser</span>
+                  <span className="text-right">
+                    <span className="block text-sm font-bold text-amber-600 tabular-nums whitespace-nowrap">
+                      {fmtEuro(st.commAVenir)} <span className="text-[11px] font-normal text-surface-400">à verser</span>
+                    </span>
+                    {st.commPayee > 0 && (
+                      <span className="block text-xs font-semibold text-emerald-600 tabular-nums whitespace-nowrap">
+                        {fmtEuro(st.commPayee)} <span className="text-[11px] font-normal text-surface-400">payées</span>
+                      </span>
+                    )}
                   </span>
                 </div>
               </Link>
