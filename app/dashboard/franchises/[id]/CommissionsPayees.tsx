@@ -20,6 +20,8 @@ interface Versement {
   jour: string
   lignes: LigneCommissionSession[]
   total: number
+  /** Sessions payées à 0 € (marge nulle) : absentes du relevé PDF */
+  aZero: number
   etablissements: number
 }
 
@@ -44,6 +46,7 @@ export function CommissionsPayees({ franchiseId, lignes }: { franchiseId: string
           (a.client?.raison_sociale || '').localeCompare(b.client?.raison_sociale || '') ||
           String(a.session?.date_debut || '').localeCompare(String(b.session?.date_debut || ''))),
         total: ls.reduce((t, l) => t + (Number(l.commission_montant) || 0), 0),
+        aZero: ls.filter((l) => !(Number(l.commission_montant) > 0)).length,
         etablissements: new Set(ls.map((l) => l.client?.id || 'sans')).size,
       }))
       // Le plus récent d'abord ; les paiements sans date à la fin
@@ -109,7 +112,10 @@ export function CommissionsPayees({ franchiseId, lignes }: { franchiseId: string
                         {v.jour === 'aucune' ? 'Payées, date non enregistrée' : `Versé le ${dateLongue(v.jour)}`}
                       </div>
                       <div className="text-xs text-surface-500">
-                        {v.lignes.length} session{v.lignes.length > 1 ? 's' : ''} · {v.etablissements} établissement{v.etablissements > 1 ? 's' : ''}
+                        {v.lignes.length} session{v.lignes.length > 1 ? 's' : ''}
+                        {/* Le relevé PDF ne reprend que les sessions avec une commission */}
+                        {v.aZero > 0 && <>, dont {v.aZero} à 0 €</>}
+                        {' · '}{v.etablissements} établissement{v.etablissements > 1 ? 's' : ''}
                       </div>
                     </div>
                     <span className="text-sm font-semibold text-success-700 tabular-nums whitespace-nowrap">{euro(v.total)}</span>
