@@ -29,6 +29,8 @@ export interface CandidatDoc {
   /** Durée prévue du candidat (la sienne, sinon celle du parcours). */
   heuresParcours?: number | null
   abandon?: boolean
+  /** Attestation d'hygiène due : candidat actif, ou parti après le module hygiène (les deux premiers jours) */
+  hygieneAttestable?: boolean
 }
 
 /**
@@ -71,6 +73,7 @@ export function PoeiDocuments({
   const nbFactures = candidats.filter((c) => c.facture).length
   const nbGrilles = candidats.filter((c) => c.aGrille).length
   const nbCertifs = candidats.filter((c) => c.certificatSigne).length
+  const nbHygiene = candidats.filter((c) => c.hygieneAttestable !== false).length
 
   const familles = [
     {
@@ -111,11 +114,13 @@ export function PoeiDocuments({
       cle: 'hygiene',
       icone: ShieldCheck,
       titre: "Attestations d'hygiène alimentaire",
-      sous: 'Module de 14 heures, arrêté du 12 février 2024',
-      compte: `${nb}/${nb}`,
-      complet: nb > 0,
-      zip: nb > 0 ? `/api/pdf/attestation-hygiene?poei=${poeiId}` : null,
-      lien: (c: CandidatDoc) => ({ href: `/api/pdf/attestation-hygiene?poei=${poeiId}&candidat=${c.id}`, texte: 'Télécharger' }),
+      sous: nbHygiene < nb
+        ? 'Module de 14 heures, arrêté du 12 février 2024. Un candidat parti avant la fin du module n’en reçoit pas'
+        : 'Module de 14 heures, arrêté du 12 février 2024',
+      compte: `${nbHygiene}/${nbHygiene}`,
+      complet: nbHygiene > 0,
+      zip: nbHygiene > 0 ? `/api/pdf/attestation-hygiene?poei=${poeiId}` : null,
+      lien: (c: CandidatDoc) => (c.hygieneAttestable === false ? null : { href: `/api/pdf/attestation-hygiene?poei=${poeiId}&candidat=${c.id}`, texte: 'Télécharger' }),
     },
     {
       cle: 'diplome',

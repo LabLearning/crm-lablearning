@@ -432,6 +432,12 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
     }
   })
 
+  // Candidats partis après le module hygiène (les deux premiers jours) : leur attestation leur est due
+  const { moduleHygienePoei } = await import('@/lib/poei-hygiene')
+  const hygieneAbandons = (candidats as any[]).some((c) => c.statut === 'abandonne')
+    ? (await moduleHygienePoei(supabase, session.organization.id, p as any, candidats as any[])).abandonsAttestables
+    : new Set<string>()
+
   const candidatsDocs: CandidatDoc[] = candidats.map((c: any) => {
     const aid = c.apprenant?.id || c.apprenant_id || null
     return {
@@ -445,6 +451,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
       heuresEffectuees: c.heures_effectuees != null ? Number(c.heures_effectuees) : null,
       heuresParcours: Number(c.duree_heures) || Number((p as any).duree_heures) || null,
       abandon: c.statut === 'abandonne',
+      hygieneAttestable: c.statut !== 'abandonne' || hygieneAbandons.has(c.id),
     }
   })
 

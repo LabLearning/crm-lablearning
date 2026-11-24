@@ -151,26 +151,42 @@ async function attestationsPoei(
 
   const [{ data: orgRow }, { data: poei }] = await Promise.all([
     supabase.from('organizations').select('*').eq('id', orgId).maybeSingle(),
-    supabase.from('poei').select('id, numero, date_debut, date_fin').eq('id', poeiId).eq('organization_id', orgId).maybeSingle(),
+    supabase.from('poei').select('id, numero, date_debut, date_fin, session_id').eq('id', poeiId).eq('organization_id', orgId).maybeSingle(),
   ])
   if (!poei) return NextResponse.json({ error: 'Parcours POEI introuvable' }, { status: 404 })
 
   let q = supabase.from('poei_candidats')
-    .select('id, statut, apprenant:apprenants(id, civilite, prenom, nom, date_naissance, entreprise)')
+    .select('id, statut, date_abandon, apprenant_id, apprenant:apprenants(id, civilite, prenom, nom, date_naissance, entreprise)')
     .eq('poei_id', poeiId).eq('organization_id', orgId)
   if (candidatId) q = q.eq('id', candidatId)
   const { data: candidats } = await q
 
-  const apprenants = (candidats || [])
-    .filter((c: any) => c.statut !== 'abandonne' && c.apprenant)
-    .map((c: any) => c.apprenant)
-    .sort((a: any, b: any) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr'))
+  // Un candidat parti après le module hygiène (les deux premiers jours) l'a
+  // suivi en entier : son attestation lui est due, aux dates du module.
+  const { moduleHygienePoei } = await import('@/lib/poei-hygiene')
+  const moduleHyg = (candidats || []).some((c: any) => c.statut === 'abandonne')
+    ? await moduleHygienePoei(supabase, orgId, poei as any, (candidats || []) as any[])
+    : null
+  const retenus = ((candidats || []) as any[])
+    .filter((c) => c.apprenant && (c.statut !== 'abandonne' || moduleHyg?.abandonsAttestables.has(c.id)))
+    .sort((a, b) => String(a.apprenant.nom || '').localeCompare(String(b.apprenant.nom || ''), 'fr'))
+  const apprenants = retenus.map((c) => c.apprenant)
   if (!apprenants.length) {
-    return NextResponse.json({ error: 'Aucun candidat actif sur ce parcours' }, { status: 404 })
+    return NextResponse.json({
+      error: candidatId && (candidats || []).some((c: any) => c.statut === 'abandonne')
+        ? "Ce candidat a quitté le parcours avant la fin du module hygiène : pas d'attestation"
+        : 'Aucun candidat actif sur ce parcours',
+    }, { status: 404 })
   }
 
   const heuresParApprenant: Record<string, number> = {}
   for (const a of apprenants) heuresParApprenant[a.id] = heures
+  const periodeParApprenant: Record<string, { debut: string; fin: string }> = {}
+  if (moduleHyg) {
+    for (const c of retenus) {
+      if (c.statut === 'abandonne') periodeParApprenant[c.apprenant.id] = { debut: moduleHyg.jours[0], fin: moduleHyg.jours[moduleHyg.jours.length - 1] }
+    }
+  }
 
   const org = await withDocumentLogo(supabase, orgRow)
   const buffer = await renderToBuffer(
@@ -178,7 +194,7 @@ async function attestationsPoei(
       apprenants,
       session: { reference: (poei as any).numero, date_debut: (poei as any).date_debut, date_fin: (poei as any).date_fin } as any,
       formation: { intitule: INTITULE_MODULE_HYGIENE, duree_heures: heures },
-      org, heuresParApprenant,
+      org, heuresParApprenant, periodeParApprenant,
     }) as any,
   )
 

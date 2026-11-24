@@ -44,7 +44,7 @@ function civilite(v?: string | null): string {
  * Un exemplaire par stagiaire, sur une page.
  */
 export function AttestationHygienePDF({
-  apprenants, session, formation, org, heuresParApprenant,
+  apprenants, session, formation, org, heuresParApprenant, periodeParApprenant,
 }: {
   apprenants: ApprenantHygiene[]
   session: { reference?: string | null; date_debut: string; date_fin?: string | null }
@@ -52,6 +52,11 @@ export function AttestationHygienePDF({
   org: any
   /** Heures suivies par apprenant, indexées par leur identifiant. */
   heuresParApprenant?: Record<string, number>
+  /**
+   * Dates propres à un apprenant (AAAA-MM-JJ) : celles du module hygiène d'un
+   * candidat POEI parti après le module, au lieu de celles du parcours.
+   */
+  periodeParApprenant?: Record<string, { debut: string; fin: string }>
 }) {
   const signataire = [
     org?.representant_legal_civilite, org?.representant_legal_prenom, org?.representant_legal_nom,
@@ -59,13 +64,15 @@ export function AttestationHygienePDF({
   const fonction = String(org?.representant_legal_fonction || 'représentant légal').toLowerCase()
   const adresseOrg = [org?.address, [org?.postal_code, org?.city].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ')
-  const debut = jour(session.date_debut)
-  const fin = jour(session.date_fin || session.date_debut)
   const dureePrevue = Number(formation?.duree_heures || 0)
 
   return (
     <Document>
       {apprenants.map((a, i) => {
+        const periode = periodeParApprenant?.[a.id || '']
+        const debut = jour(periode?.debut || session.date_debut)
+        const finIso = periode?.fin || session.date_fin || session.date_debut
+        const fin = jour(finIso)
         const heures = heuresParApprenant?.[a.id || ''] ?? dureePrevue
         const nom = `${(a.nom || '').toUpperCase()} ${a.prenom || ''}`.trim() || 'Le stagiaire'
         const identite = [civilite(a.civilite), nom].filter(Boolean).join(' ')
@@ -88,7 +95,7 @@ export function AttestationHygienePDF({
             <PdfDocHeader
               docTitle="Attestation d'hygiène alimentaire"
               numero={numero}
-              date={jourLong(session.date_fin || session.date_debut)}
+              date={jourLong(finIso)}
               org={org}
             />
 
@@ -147,7 +154,7 @@ export function AttestationHygienePDF({
 
             <View style={{ marginTop: 24 }}>
               <Text style={{ fontSize: 8, color: SURFACE_500 }}>
-                Fait à {org?.city || '___________'}, le {jourLong(session.date_fin || session.date_debut)},
+                Fait à {org?.city || '___________'}, le {jourLong(finIso)},
                 pour servir et valoir ce que de droit.
               </Text>
 
