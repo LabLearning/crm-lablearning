@@ -6,8 +6,12 @@ import {
 } from './components'
 
 export interface LigneReleve {
+  /** Fiche client de l'établissement : deux établissements homonymes restent séparés */
+  etablissementId?: string | null
   etablissement: string
   ville: string | null
+  /** SIRET de l'établissement, imprimé sous son nom */
+  siret?: string | null
   formation: string
   reference: string | null
   dateDebut: string | null
@@ -56,6 +60,12 @@ const jour = (d?: string | null) =>
   d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''
 const periode = (debut?: string | null, fin?: string | null) =>
   !debut ? '' : (!fin || fin === debut) ? jour(debut) : `${jour(debut)} au ${jour(fin)}`
+/** SIRET lisible : 123 456 789 00012 ; une saisie hors format reste telle quelle */
+const siretLisible = (s?: string | null) => {
+  const brut = String(s || '').trim()
+  const chiffres = brut.replace(/\D/g, '')
+  return chiffres.length === 14 ? chiffres.replace(/^(\d{3})(\d{3})(\d{3})(\d{5})$/, '$1 $2 $3 $4') : brut
+}
 
 // Largeurs de colonnes, en pourcentage de la largeur utile. Budget net :
 // budget, frais, marge et commission, pour que chaque montant se refasse ;
@@ -88,14 +98,16 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours, 
   // Regroupement par établissement, du plus gros au plus petit
   const parEtablissement = new Map<string, LigneReleve[]>()
   for (const l of lignes) {
-    const cle = l.etablissement
+    const cle = l.etablissementId || l.etablissement
     if (!parEtablissement.has(cle)) parEtablissement.set(cle, [])
     parEtablissement.get(cle)!.push(l)
   }
   const groupes = [...parEtablissement.entries()]
-    .map(([nom, ls]) => ({
-      nom,
+    .map(([cle, ls]) => ({
+      cle,
+      nom: ls[0]?.etablissement || 'Établissement',
       ville: ls[0]?.ville || null,
+      siret: siretLisible(ls[0]?.siret),
       lignes: ls.slice().sort((a, b) => String(a.dateDebut).localeCompare(String(b.dateDebut))),
       total: ls.reduce((t, l) => t + l.commission, 0),
     }))
@@ -160,17 +172,22 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours, 
             </View>
 
             {groupes.map((g, ig) => (
-              <View key={g.nom}>
-                {/* Bandeau établissement */}
+              <View key={g.cle}>
+                {/* Bandeau établissement : nom, ville et SIRET */}
                 <View minPresenceAhead={56} style={{
                   flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
                   backgroundColor: SURFACE_50, paddingVertical: 6, paddingHorizontal: 10,
                   borderBottomWidth: 0.5, borderBottomColor: SURFACE_200,
                   borderTopWidth: ig === 0 ? 0 : 0.5, borderTopColor: SURFACE_200,
                 }}>
-                  <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>
-                    {g.nom}{g.ville ? ` — ${g.ville}` : ''}
-                  </Text>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: SURFACE_900 }}>
+                      {g.nom}{g.ville ? ` — ${g.ville}` : ''}
+                    </Text>
+                    {g.siret ? (
+                      <Text style={{ fontSize: 7.5, color: SURFACE_500, marginTop: 1.5 }}>SIRET {g.siret}</Text>
+                    ) : null}
+                  </View>
                   <Text style={{ fontSize: 8.5, fontFamily: 'Satoshi', fontWeight: 700, color: BRAND_GREEN }}>
                     {euro(g.total)}
                   </Text>
@@ -235,7 +252,8 @@ export function ReleveCommissionsPDF({ org, franchise, lignes, numero, enCours, 
           </View>
         </View>
 
-        <View style={shared.section}>
+        {/* Insécable : le titre ne reste jamais seul en bas de page */}
+        <View style={shared.section} wrap={false}>
           <PdfSectionTitle>Conditions</PdfSectionTitle>
           <Text style={{ fontSize: 8, color: SURFACE_700, lineHeight: 1.6 }}>
             Les montants indiqués sont des montants TTC : la franchise les facture tels quels, sans TVA

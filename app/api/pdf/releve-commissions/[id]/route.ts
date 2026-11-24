@@ -68,8 +68,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   const lignes: LigneReleve[] = retenues.map((l) => ({
+    etablissementId: l.client?.id || null,
     etablissement: l.client?.raison_sociale || 'Établissement',
     ville: (l.client as any)?.ville || null,
+    siret: l.client?.siret || null,
     formation: l.session?.formation?.intitule || l.session?.intitule || 'Formation',
     reference: l.session?.reference || null,
     dateDebut: l.session?.date_debut || null,
