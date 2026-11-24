@@ -443,26 +443,71 @@ function SectionEtat({ icone: Icone, ton, titre, texte, nb, total, vide, avertis
   )
 }
 
-/** Sessions d'un état sous le nom de leur établissement, avec son sous-total. */
+/**
+ * Sessions d'un état sous le nom de leur établissement, avec son sous-total.
+ * Chaque établissement se déplie d'un clic sur sa flèche ; replié, il signale
+ * encore ce qui demande une action (montant ou coût à renseigner, écart).
+ */
 function Groupes({ lignes, rendu }: { lignes: LigneCommissionSession[]; rendu: (l: LigneCommissionSession) => React.ReactNode }) {
   const groupes = useMemo(() => parEtablissement(lignes), [lignes])
+  const [ouverts, setOuverts] = useState<Set<string>>(new Set())
+  const toutOuvert = groupes.length > 0 && groupes.every((g) => ouverts.has(g.cle))
+  const basculer = (cle: string) => setOuverts((prev) => {
+    const next = new Set(prev)
+    if (next.has(cle)) next.delete(cle)
+    else next.add(cle)
+    return next
+  })
+
   return (
     <div className="border-t border-surface-100">
-      {groupes.map((g) => (
-        <div key={g.cle} className="border-b border-surface-100 last:border-0">
-          <div className="flex items-center justify-between gap-3 bg-surface-50/70 px-4 py-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Building2 className="h-3.5 w-3.5 text-surface-400 shrink-0" />
-              {g.clientId ? (
-                <Link href={`/dashboard/clients/${g.clientId}`} className="text-xs font-semibold text-surface-800 hover:text-brand-600 truncate">{g.nom}</Link>
-              ) : <span className="text-xs font-semibold text-surface-800 truncate">{g.nom}</span>}
-              <span className="text-[11px] text-surface-400 shrink-0">{g.lignes.length} session{g.lignes.length > 1 ? 's' : ''}</span>
-            </div>
-            <span className="text-xs font-semibold text-surface-700 tabular-nums shrink-0">{euro(g.total)}</span>
-          </div>
-          <div className="divide-y divide-surface-100">{g.lignes.map(rendu)}</div>
+      {groupes.length > 1 && (
+        <div className="flex justify-end px-4 py-1.5 border-b border-surface-100">
+          <button type="button" onClick={() => setOuverts(toutOuvert ? new Set() : new Set(groupes.map((g) => g.cle)))}
+            className="text-[11px] font-medium text-surface-500 hover:text-surface-800">
+            {toutOuvert ? 'Tout replier' : 'Tout déplier'}
+          </button>
         </div>
-      ))}
+      )}
+      {groupes.map((g) => {
+        const ouvert = ouverts.has(g.cle)
+        const aCompleter = g.lignes.filter((l) => l.status === 'a_venir' && (
+          !(Number(l.base_montant) > 0) ||
+          (l.commission_type === 'budget_net' && !(Number(l.cout_formateur) > 0) && l.cout_source !== 'fige')
+        )).length
+        const ecarts = g.lignes.filter((l) => l.ecart_fige && l.status === 'validee').length
+        return (
+          <div key={g.cle} className="border-b border-surface-100 last:border-0">
+            <div className={cn('flex items-center gap-1 pr-3', ouvert ? 'bg-surface-50/70' : 'hover:bg-surface-50/60')}>
+              <button type="button" onClick={() => basculer(g.cle)} aria-expanded={ouvert}
+                className="flex-1 min-w-0 flex items-center gap-2 pl-4 py-2.5 text-left">
+                <ChevronRight className={cn('h-4 w-4 text-surface-400 shrink-0 transition-transform', ouvert && 'rotate-90')} />
+                <Building2 className="h-3.5 w-3.5 text-surface-400 shrink-0" />
+                <span className="text-sm font-medium text-surface-900 truncate">{g.nom}</span>
+                <span className="text-[11px] text-surface-400 shrink-0">{g.lignes.length} dossier{g.lignes.length > 1 ? 's' : ''}</span>
+                {aCompleter > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning-700 shrink-0">
+                    <AlertTriangle className="h-3 w-3" /> {aCompleter} à compléter
+                  </span>
+                )}
+                {ecarts > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning-700 shrink-0">
+                    <AlertTriangle className="h-3 w-3" /> coûts modifiés
+                  </span>
+                )}
+                <span className="ml-auto text-sm font-semibold text-surface-900 tabular-nums shrink-0 pl-3">{euro(g.total)}</span>
+              </button>
+              {g.clientId && (
+                <Link href={`/dashboard/clients/${g.clientId}`} aria-label={`Fiche ${g.nom}`}
+                  className="p-1.5 rounded-md text-surface-400 hover:text-brand-600 hover:bg-brand-50 shrink-0">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
+            {ouvert && <div className="divide-y divide-surface-100 border-t border-surface-100">{g.lignes.map(rendu)}</div>}
+          </div>
+        )
+      })}
     </div>
   )
 }
