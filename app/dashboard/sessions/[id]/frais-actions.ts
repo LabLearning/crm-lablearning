@@ -252,6 +252,58 @@ export async function supprimerFraisAction(fraisId: string): Promise<ActionResul
   return { success: true }
 }
 
+const MESSAGE_MIGRATION_PAIEMENT = 'Le suivi des paiements attend la migration 174 (supabase/migrations/174_frais_paiement.sql).'
+
+/** Date du jour à Paris (AAAA-MM-JJ) : un frais payé ce soir reste daté d'aujourd'hui. */
+function aujourdhuiParis(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+}
+
+/**
+ * Note le règlement d'un frais (date, aujourd'hui par défaut) ou le remet à
+ * payer (null). La marge et les commissions comptent déjà le frais : rien à
+ * recalculer.
+ */
+export async function marquerFraisPayeAction(fraisId: string, payeLe: string | null): Promise<ActionResult<{ paye_le: string | null }>> {
+  const ctx = await contexte()
+  if (!ctx) return { success: false, error: 'Accès non autorisé' }
+  const { session, supabase, orgId } = ctx
+
+  let date: string | null = null
+  if (payeLe !== null) {
+    const aujourdhui = aujourdhuiParis()
+    date = payeLe === '' ? aujourdhui : String(payeLe)
+    const valide = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date + 'T00:00:00Z'))
+      && new Date(date + 'T00:00:00Z').toISOString().slice(0, 10) === date
+    if (!valide) return { success: false, error: 'Date de paiement invalide' }
+    if (date > aujourdhui) return { success: false, error: 'La date de paiement ne peut pas être dans le futur' }
+    if (date < '2020-01-01') return { success: false, error: 'Date de paiement invalide' }
+  }
+
+  const { data: frais, error: eLecture } = await supabase.from('session_frais')
+    .select('id, session_id, libelle, montant').eq('id', fraisId).eq('organization_id', orgId).maybeSingle()
+  if (eLecture && tableAbsente(eLecture)) return { success: false, error: MESSAGE_MIGRATION_FRAIS }
+  if (!frais) return { success: false, error: 'Frais introuvable' }
+
+  const { error } = await supabase.from('session_frais')
+    .update({ paye_le: date, paye_par: date ? session.user.id : null })
+    .eq('id', fraisId).eq('organization_id', orgId)
+  if (error) {
+    if (String(error.code) === '42703') return { success: false, error: MESSAGE_MIGRATION_PAIEMENT }
+    console.error('[frais paiement]', error)
+    return { success: false, error: 'Enregistrement impossible' }
+  }
+
+  await logAudit({
+    action: date ? 'frais_paye' : 'frais_non_paye',
+    entity_type: 'session_frais',
+    entity_id: fraisId,
+    details: { session_id: frais.session_id, libelle: frais.libelle, montant: Number(frais.montant), paye_le: date },
+  })
+  revalider()
+  return { success: true, data: { paye_le: date } }
+}
+
 /** Lien temporaire (1 h) vers le justificatif d'un frais. */
 export async function lienJustificatifFraisAction(fraisId: string): Promise<ActionResult<{ url: string }>> {
   const ctx = await contexte()

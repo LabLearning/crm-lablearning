@@ -129,6 +129,7 @@ function VueUnite({ vue, sessionId }: { vue: VueRentabiliteSession; sessionId: s
             sessions={vue.sessionsFrais}
             formateurs={vue.formateursFrais}
             disponible={vue.fraisDisponibles}
+            paiementDisponible={vue.paiementFraisDisponible}
           />
         </SectionDetail>
 
@@ -231,6 +232,7 @@ function VueIntervention({ vue, sessionId }: { vue: VueRentabiliteSession; sessi
           sessions={moi}
           formateurs={vue.formateursFrais}
           disponible={vue.fraisDisponibles}
+          paiementDisponible={vue.paiementFraisDisponible}
         />
       </SectionDetail>
 

@@ -121,9 +121,12 @@ export async function chargerDonneesRentabilite(
   const interIds = Array.from(interventionsTouchees)
 
   // ── Étape 2 : tout ce qui se rattache aux sessions du périmètre ──
+  const SEL_FRAIS = 'id, session_id, categorie, libelle, montant, date_frais, formateur_id, justificatif_path, justificatif_nom, notes'
+  const lireFrais = (colonnes: string) => L.parIds<FraisRentab>(ids, (p, from, to) => supabase.from('session_frais')
+    .select(colonnes).eq('organization_id', orgId).in('session_id', p).order('created_at').order('id').range(from, to))
   const [
     facturesSessions, facturesPoei, lignesSessions, contratsSessions, contratsInterventions,
-    facturesFormateur, commissionsSessions, fraisRes, conventions, ageficeRes, inscriptionsBrutes,
+    facturesFormateur, commissionsSessions, fraisPayesRes, conventions, ageficeRes, inscriptionsBrutes,
   ] = await Promise.all([
     L.parIds<FactureRentab>(ids, (p, from, to) => supabase.from('factures').select(SEL_FACTURE)
       .eq('organization_id', orgId).in('session_id', p).order('id').range(from, to)),
@@ -145,9 +148,8 @@ export async function chargerDonneesRentabilite(
     L.parIds<CommissionSessionRentab>(ids, (p, from, to) => supabase.from('commissions_sessions')
       .select('*')
       .eq('organization_id', orgId).in('session_id', p).order('id').range(from, to)),
-    tolerant(L.parIds<FraisRentab>(ids, (p, from, to) => supabase.from('session_frais')
-      .select('id, session_id, categorie, libelle, montant, date_frais, formateur_id, justificatif_path, justificatif_nom, notes')
-      .eq('organization_id', orgId).in('session_id', p).order('created_at').order('id').range(from, to)), TABLE_ABSENTE),
+    // paye_le n'existe qu'après la migration 174 : relu sans elle si besoin (plus bas)
+    tolerant(lireFrais(SEL_FRAIS + ', paye_le'), [...TABLE_ABSENTE, COLONNE_ABSENTE]),
     L.parIds<ConventionRentab>(ids, (p, from, to) => supabase.from('conventions')
       .select('id, numero, session_id, client_id, status, montant_ht, montant_ttc')
       .eq('organization_id', orgId).in('session_id', p).order('id').range(from, to)),
@@ -172,6 +174,10 @@ export async function chargerDonneesRentabilite(
   ])
   for (const f of facturesLignes) facturesConnues.set(f.id, f)
 
+  // Sans la colonne paye_le (migration 174 non appliquée), relecture sans elle ;
+  // absente là aussi, c'est la table entière qui manque (migration 149)
+  const paiementFraisDisponible = !fraisPayesRes.absent
+  const fraisRes = paiementFraisDisponible ? fraisPayesRes : await tolerant(lireFrais(SEL_FRAIS), TABLE_ABSENTE)
   const contrats = [...contratsSessions, ...contratsInterventions]
   const frais = fraisRes.rows
   const inscriptions: InscriptionRentab[] = inscriptionsBrutes.map((i: any) => ({
@@ -253,6 +259,7 @@ export async function chargerDonneesRentabilite(
     apporteurs,
     clients,
     fraisDisponibles: !fraisRes.absent,
+    paiementFraisDisponible,
     tvaFormateurDisponible: !formateursRes.absent,
     sessionsMemeDossier: opts.onglet ? (voisinsDossier || []) : undefined,
     sessionsMemeJour: opts.onglet ? (voisinsJour || []) : undefined,
@@ -311,6 +318,7 @@ export async function rentabiliteSession(
         justificatif_nom: f.justificatif_nom,
         aJustificatif: !!f.justificatif_path,
         notes: f.notes,
+        paye_le: f.paye_le || null,
       }))
     }
     const idsFormateurs = unique([
@@ -336,6 +344,7 @@ export async function rentabiliteSession(
       formateursFrais,
       fraisParSession,
       fraisDisponibles: d.fraisDisponibles,
+      paiementFraisDisponible: !!d.paiementFraisDisponible,
       peutRecalculerCommission: ['super_admin', 'gestionnaire'].includes(role),
     }
   } catch (e) {

@@ -188,6 +188,8 @@ export interface FraisVue {
   justificatif_nom: string | null
   aJustificatif: boolean
   notes: string | null
+  /** Date du règlement (migration 174) ; null = encore à payer */
+  paye_le: string | null
 }
 
 /** Props sérialisables de l'onglet Facturation (aucune Map). */
@@ -201,6 +203,8 @@ export interface VueRentabiliteSession {
   formateursFrais: { id: string; nom: string }[]
   fraisParSession: Record<string, FraisVue[]>
   fraisDisponibles: boolean
+  /** Colonne paye_le présente (migration 174) : la pastille Payé s'affiche */
+  paiementFraisDisponible: boolean
   peutRecalculerCommission: boolean
 }
 
@@ -256,6 +260,8 @@ export interface FraisRentab {
   id: string; session_id: string; categorie: string; libelle: string; montant: Num
   date_frais: string | null; formateur_id: string | null
   justificatif_path: string | null; justificatif_nom: string | null; notes: string | null
+  /** Absent avant la migration 174 */
+  paye_le?: string | null
 }
 export interface ConventionRentab { id: string; numero: string | null; session_id: string | null; client_id: string | null; status: string | null; montant_ht: Num; montant_ttc?: Num }
 export interface DossierAgeficeRentab { id: string; session_id: string | null; statut: string | null; cout_pedagogique: Num; montant_accorde: Num; montant_demande: Num; facture_id: string | null }
@@ -292,6 +298,8 @@ export interface DonneesBrutes {
   apporteurs: ApporteurRentab[]
   clients: ClientRentab[]
   fraisDisponibles: boolean
+  /** Colonne session_frais.paye_le présente (migration 174) */
+  paiementFraisDisponible?: boolean
   tvaFormateurDisponible: boolean
   /** Onglet : sessions de l'org au même numéro de dossier OPCO. Synthèse : absent, on lit `sessions`. */
   sessionsMemeDossier?: SessionVoisine[]
