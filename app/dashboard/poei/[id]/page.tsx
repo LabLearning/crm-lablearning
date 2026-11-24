@@ -652,6 +652,7 @@ export default async function PoeiDetailPage({ params }: { params: { id: string 
         evaluations={
           <PoeiEvaluations
             poeiId={p.id}
+            remiseAZero
             candidats={candidats.map((c: any) => {
               const aid = c.apprenant?.id || c.apprenant_id || null
               const h = aid ? heures.get(String(aid)) : null

@@ -45,8 +45,10 @@ function complementsPoei(c: Cand): ComplementFiche[] {
 }
 interface Grille { id: string; apprenant_id: string; semaine: number | null; statut: string; date_evaluation: string; items: any; [k: string]: any }
 
-export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur = null }: {
+export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur = null, remiseAZero = false }: {
   poeiId: string
+  /** Équipe POEI : une grille enregistrée peut être vidée pour être refaite */
+  remiseAZero?: boolean
   candidats: Cand[]
   grilles: Grille[]
   /** Signature de l'employeur sur l'attestation : envoyée, signée, ou à demander. */
@@ -398,7 +400,8 @@ export function PoeiEvaluations({ poeiId, candidats, grilles, signatureEmployeur
             <GrilleEvaluation poeiId={poeiId} apprenantId={open.apprenantId} apprenantNom={open.nom}
               semaine={open.semaine} initial={gridOf(open.apprenantId, open.semaine)} onSaved={() => setOpen(null)}
               dureeBilan={candidats.find((c) => c.apprenant_id === open.apprenantId)?.duree || null}
-              bilanFt={candidats.find((c) => c.apprenant_id === open.apprenantId)?.bilanFt || null} />
+              bilanFt={candidats.find((c) => c.apprenant_id === open.apprenantId)?.bilanFt || null}
+              remiseAZero={remiseAZero} />
           </div>
         )}
       </Modal>

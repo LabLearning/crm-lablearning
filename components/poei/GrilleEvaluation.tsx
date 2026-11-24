@@ -2,15 +2,15 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, CheckCircle2, ClipboardCheck, Sparkles, Loader2 } from '@/components/ui/icons'
+import { Save, CheckCircle2, ClipboardCheck, Sparkles, Loader2, RotateCcw } from '@/components/ui/icons'
 import { Button, Badge, useToast } from '@/components/ui'
 import { GRILLE_SECTIONS, NIVEAUX, APPRECIATIONS, AVIS_FINAL, grilleProgress, type NiveauAcquis } from '@/lib/poei-grille'
-import { saveGrilleAction, detaillerBilanAction } from '@/app/dashboard/poei/grille-actions'
+import { saveGrilleAction, detaillerBilanAction, remettreGrilleAZeroAction } from '@/app/dashboard/poei/grille-actions'
 import { APPRECIATIONS_STAGIAIRE, CHAMPS_BILAN_FT, SIGNATURE_BILAN, avisCentreParDefaut, niveauParDefaut, type BilanFt } from '@/lib/poei-bilan-ft'
 
 type Items = Record<string, { n?: NiveauAcquis; o?: string }>
 
-export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, initial, onSaved, dureeBilan = null, bilanFt = null }: {
+export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, initial, onSaved, dureeBilan = null, bilanFt = null, remiseAZero = false }: {
   poeiId: string
   apprenantId: string
   apprenantNom: string
@@ -21,6 +21,8 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
   dureeBilan?: { heures: number; prevues: number } | null
   /** Bilan de fin de formation France Travail : ce que le CRM remplit déjà (équipe interne seulement) */
   bilanFt?: BilanFt | null
+  /** L'équipe POEI peut vider une grille enregistrée pour la faire refaire (jamais le formateur) */
+  remiseAZero?: boolean
 }) {
   const { toast } = useToast()
   const router = useRouter()
@@ -34,7 +36,21 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
   })
   const [saving, setSaving] = useState(false)
   const [detailling, setDetailling] = useState(false)
+  const [confirmerRaz, setConfirmerRaz] = useState(false)
+  const [razEnCours, setRazEnCours] = useState(false)
   const isFinale = semaine === null
+  // Un bilan signé par le stagiaire ne se remet pas à zéro
+  const bilanSigne = !!(initial?.appreciations || {})[SIGNATURE_BILAN.signeLe]
+
+  async function remettreAZero() {
+    setRazEnCours(true)
+    const r = await remettreGrilleAZeroAction(poeiId, apprenantId, semaine)
+    setRazEnCours(false)
+    if (r.success) {
+      toast('success', isFinale ? 'Évaluation finale remise à zéro' : `Semaine ${semaine} remise à zéro`)
+      router.refresh(); onSaved?.()
+    } else toast('error', r.error || 'Erreur')
+  }
 
   // Rédige les cinq rubriques en une passe, à partir des notes du formateur et
   // des constats de la grille. Le texte reste modifiable avant enregistrement.
@@ -348,7 +364,28 @@ export function GrilleEvaluation({ poeiId, apprenantId, apprenantNom, semaine, i
         </>
       )}
 
-      <div className="flex justify-end gap-3 pt-1 border-t border-surface-100">
+      {confirmerRaz && (
+        <div className="rounded-xl border border-danger-100 bg-danger-50 p-3">
+          <p className="text-sm font-medium text-danger-700">
+            Remettre à zéro {isFinale ? 'l’évaluation finale' : `la semaine ${semaine}`} de {apprenantNom} ?
+          </p>
+          <p className="mt-1 text-xs text-danger-700/90 leading-snug">
+            Toutes les réponses de cette grille sont effacées : elle repart vide, à refaire. Une copie reste dans le journal d’audit.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="danger" onClick={remettreAZero} isLoading={razEnCours} icon={<RotateCcw className="h-4 w-4" />}>Confirmer la remise à zéro</Button>
+            <Button variant="secondary" onClick={() => setConfirmerRaz(false)} disabled={razEnCours}>Annuler</Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-end gap-3 pt-1 border-t border-surface-100">
+        {remiseAZero && initial?.id && !bilanSigne && !confirmerRaz && (
+          <button type="button" onClick={() => setConfirmerRaz(true)}
+            className="mr-auto inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-surface-500 hover:bg-danger-50 hover:text-danger-600">
+            <RotateCcw className="h-3.5 w-3.5" /> Remettre à zéro
+          </button>
+        )}
         <Button variant="secondary" onClick={() => save('brouillon')} isLoading={saving} icon={<Save className="h-4 w-4" />}>Enregistrer</Button>
         <Button onClick={() => save('validee')} isLoading={saving} icon={<CheckCircle2 className="h-4 w-4" />}>Valider l'évaluation</Button>
       </div>

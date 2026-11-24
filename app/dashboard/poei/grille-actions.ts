@@ -144,6 +144,47 @@ export async function saveGrilleAction(p: GrillePayload): Promise<ActionResult> 
 }
 
 /**
+ * Remet à zéro la grille d'un candidat (une semaine, ou l'évaluation finale
+ * quand `semaine` est vide) : la grille est retirée et repart vide, à refaire.
+ * Réservé à l'équipe POEI, jamais au formateur. Un bilan signé par le
+ * stagiaire ne se remet pas à zéro. La grille retirée est gardée en entier
+ * dans le journal d'audit, pour pouvoir la retrouver.
+ */
+export async function remettreGrilleAZeroAction(poeiId: string, apprenantId: string, semaine: number | null): Promise<ActionResult> {
+  const session = await getSession()
+  if (session.user.role === 'formateur') return { success: false, error: 'Accès non autorisé' }
+  const supabase = await createServiceRoleClient()
+  const droit = await peutEvaluer(supabase, session, poeiId, apprenantId)
+  if (!droit) return { success: false, error: 'Accès non autorisé' }
+  if (semaine !== null && !(Number.isInteger(semaine) && semaine >= 1 && semaine <= 52)) {
+    return { success: false, error: 'Semaine invalide' }
+  }
+
+  let q = supabase.from('poei_grilles').select('*')
+    .eq('organization_id', session.organization.id).eq('poei_id', poeiId).eq('apprenant_id', apprenantId)
+  q = semaine === null ? q.is('semaine', null) : q.eq('semaine', semaine)
+  const { data: grille } = await q.maybeSingle()
+  if (!grille) return { success: false, error: 'Cette évaluation est déjà vide' }
+
+  const { SIGNATURE_BILAN } = await import('@/lib/poei-bilan-ft')
+  if (objet((grille as any).appreciations)[SIGNATURE_BILAN.signeLe]) {
+    return { success: false, error: 'Ce bilan est signé par le stagiaire : il ne se remet pas à zéro' }
+  }
+
+  const { error } = await supabase.from('poei_grilles').delete()
+    .eq('id', (grille as any).id).eq('organization_id', session.organization.id)
+  if (error) { console.error('[grille poei remise à zéro]', error); return { success: false, error: 'La remise à zéro a échoué' } }
+
+  await logAudit({
+    action: 'grille_remise_a_zero', entity_type: 'poei_grille', entity_id: apprenantId,
+    details: { poei: poeiId, semaine, sauvegarde: grille },
+  })
+  revalidatePath(`/dashboard/poei/${poeiId}`)
+  revalidatePath('/mon-espace/poei')
+  return { success: true }
+}
+
+/**
  * Rédige EN UNE PASSE les cinq rubriques du bilan à partir des notes du
  * formateur et des constats réels de la grille. L'IA propose : le gestionnaire
  * ou le formateur relit et ajuste avant enregistrement.
