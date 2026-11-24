@@ -33,6 +33,12 @@ export default function FranchiseAccessClient({
   const [error, setError] = useState<string | null>(null)
   /** Lien d'activation, à transmettre à la main si le mail n'arrive pas. */
   const [lien, setLien] = useState<string | null>(null)
+  // Les comptes révoqués restent consultables, repliés sous les accès en cours
+  const [voirRevoques, setVoirRevoques] = useState(false)
+  const ordre: Record<string, number> = { active: 0, invited: 1, inactive: 2, suspended: 3 }
+  const tries = users.slice().sort((a, b) => (ordre[a.status] ?? 2) - (ordre[b.status] ?? 2))
+  const revoques = tries.filter((u) => u.status === 'suspended')
+  const visibles = voirRevoques ? tries : tries.filter((u) => u.status !== 'suspended')
 
   const handleImpersonate = (userId: string) => {
     startTransition(async () => {
@@ -90,7 +96,10 @@ export default function FranchiseAccessClient({
       {/* Liste users */}
       {users.length > 0 && (
         <div className="space-y-2 mb-4">
-          {users.map((u) => {
+          {visibles.length === 0 && (
+            <p className="text-xs text-surface-500">Aucun accès en cours.</p>
+          )}
+          {visibles.map((u) => {
             const meta = STATUS_META[u.status] || STATUS_META.inactive
             const name = `${u.first_name || ''} ${u.last_name || ''}`.trim()
             return (
@@ -120,6 +129,11 @@ export default function FranchiseAccessClient({
               </div>
             )
           })}
+          {revoques.length > 0 && (
+            <button type="button" onClick={() => setVoirRevoques((v) => !v)} className="text-xs font-medium text-surface-500 hover:text-surface-800">
+              {voirRevoques ? 'Masquer les accès révoqués' : `Afficher ${revoques.length > 1 ? `les ${revoques.length} accès révoqués` : 'l’accès révoqué'}`}
+            </button>
+          )}
         </div>
       )}
 

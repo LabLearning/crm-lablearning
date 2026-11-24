@@ -55,14 +55,8 @@ export default function FranchisePhases({
       </div>
     )
   }
-  const total = groupes.reduce((t, g) => t + g.etablissements.length, 0)
-
   return (
     <div className="space-y-4">
-      <div className="text-sm font-heading font-semibold text-surface-900">
-        Où en est le réseau ({total} établissement{total > 1 ? 's' : ''})
-      </div>
-
       {bilanAudits && bilanAudits.nbAudits > 0 && <BandeauAudits bilan={bilanAudits} />}
 
       {groupes.map((g) => {
@@ -85,12 +79,11 @@ export default function FranchisePhases({
                   </div>
                 </div>
               </div>
-              {(g.due > 0 || g.aVenir > 0) && (
-                <div className="text-right shrink-0">
-                  <div className={`text-lg font-heading font-bold tabular-nums ${g.due > 0 ? 'text-brand-600' : 'text-surface-500'}`}>
-                    {euro(g.due > 0 ? g.due : g.aVenir)}
-                  </div>
-                  <div className="text-[11px] text-surface-400">{g.due > 0 ? 'à payer' : 'à venir'}</div>
+              {(g.due > 0 || g.verse > 0 || g.aVenir > 0) && (
+                <div className="text-right shrink-0 space-y-0.5">
+                  {g.due > 0 && <Montant valeur={g.due} libelle="à verser" ton="brand" />}
+                  {g.verse > 0 && <Montant valeur={g.verse} libelle="versés" ton="success" />}
+                  {g.aVenir > 0 && <Montant valeur={g.aVenir} libelle="à venir" ton="neutre" />}
                 </div>
               )}
             </div>
@@ -122,10 +115,9 @@ export default function FranchisePhases({
                       </div>
                     </div>
                     <div className="text-right shrink-0 hidden sm:block">
-                      <div className="text-xs text-surface-500 tabular-nums">{e.base > 0 ? euroCourt(e.base) : '—'}</div>
-                      <div className={`text-sm font-semibold tabular-nums ${e.due > 0 ? 'text-brand-600' : 'text-surface-400'}`}>
-                        {e.commission > 0 ? euro(e.commission) : '—'}
-                      </div>
+                      <div className="text-[11px] text-surface-400 tabular-nums">{e.base > 0 ? `${euroCourt(e.base)} de budget` : 'budget non renseigné'}</div>
+                      <div className="text-sm font-semibold text-surface-900 tabular-nums">{e.commission > 0 ? euro(e.commission) : '—'}</div>
+                      {e.commission > 0 && <EtatCommission e={e} />}
                     </div>
                   </Link>
                   <HorsPartenariatToggle clientId={e.id} hors={e.horsPartenariat} />
@@ -136,6 +128,29 @@ export default function FranchisePhases({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function Montant({ valeur, libelle, ton }: { valeur: number; libelle: string; ton: 'brand' | 'success' | 'neutre' }) {
+  const couleur = ton === 'brand' ? 'text-brand-600' : ton === 'success' ? 'text-success-700' : 'text-surface-500'
+  return (
+    <div className="flex items-baseline justify-end gap-1.5">
+      <span className={`text-sm font-heading font-bold tabular-nums ${couleur}`}>{euro(valeur)}</span>
+      <span className="text-[11px] text-surface-400 w-14 text-left">{libelle}</span>
+    </div>
+  )
+}
+
+/** Où en est la commission d'un établissement : à verser, versée, à venir (ou un mélange). */
+function EtatCommission({ e }: { e: { due: number; verse: number; aVenir: number } }) {
+  const parts: { t: string; c: string }[] = []
+  if (e.due > 0) parts.push({ t: `${euroCourt(e.due)} à verser`, c: 'text-brand-600' })
+  if (e.verse > 0) parts.push({ t: e.due === 0 && e.aVenir === 0 ? 'versée' : `${euroCourt(e.verse)} versés`, c: 'text-success-700' })
+  if (e.aVenir > 0) parts.push({ t: e.due === 0 && e.verse === 0 ? 'à venir' : `${euroCourt(e.aVenir)} à venir`, c: 'text-surface-500' })
+  return (
+    <div className="text-[11px] leading-tight">
+      {parts.map((p, i) => <span key={p.t} className={p.c}>{i > 0 && <span className="text-surface-300"> · </span>}{p.t}</span>)}
     </div>
   )
 }

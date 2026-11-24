@@ -160,6 +160,7 @@ export interface LigneCommissionSession {
   commission_montant: number
   commission_taux: number
   commission_type: string
+  validee_at?: string | null
   payee_at: string | null
   client: { id: string; raison_sociale: string; ville: string | null } | null
   session: {
@@ -258,7 +259,10 @@ export interface EtablissementPhase {
   derniere: string | null
   base: number
   commission: number
+  /** Commission validée, pas encore versée */
   due: number
+  /** Commission déjà versée */
+  verse: number
   aVenir: number
   nbSansMontant: number
   nbPoei: number
@@ -274,6 +278,7 @@ export interface GroupePhase {
   etablissements: EtablissementPhase[]
   base: number
   due: number
+  verse: number
   aVenir: number
   nbSessions: number
   nbParticipants: number
@@ -286,8 +291,8 @@ export const ORDRE_PHASES: PhaseFranchise[] = [
 
 export const LIBELLES_PHASES: Record<PhaseFranchise, { titre: string; texte: string }> = {
   regle: {
-    titre: 'Réglés, commission due',
-    texte: "Dossiers terminés et encaissés, commission validée : c'est ce qui est dû à la franchise aujourd'hui.",
+    titre: 'Encaissés, commission validée ou versée',
+    texte: 'Dossiers terminés et encaissés : leur commission est validée (à verser) ou déjà versée à la franchise.',
   },
   attente: {
     titre: 'Terminés, en attente de règlement',
@@ -392,13 +397,14 @@ export async function getFranchiseParcours(
       ? ss.slice()
       : debutPartenariat ? ss.filter((s) => s.date && s.date < debutPartenariat) : []
     const eligibles = ss.filter((s) => (!s.poei || s.porteCommission) && !avant.includes(s))
-    const due = ss.filter((s) => ['validee', 'payee'].includes(s.statutCommission)).reduce((t, s) => t + s.commission, 0)
+    const due = ss.filter((s) => s.statutCommission === 'validee').reduce((t, s) => t + s.commission, 0)
+    const verse = ss.filter((s) => s.statutCommission === 'payee').reduce((t, s) => t + s.commission, 0)
     const aVenir = ss.filter((s) => s.statutCommission === 'a_venir').reduce((t, s) => t + s.commission, 0)
 
     let phase: PhaseFranchise
     if (!ss.length) phase = horsPerimetre ? 'avant_partenariat' : 'jamais'
     else if (!eligibles.length) phase = avant.length ? 'avant_partenariat' : 'poei'
-    else if (due > 0) phase = 'regle'
+    else if (due > 0 || verse > 0) phase = 'regle'
     // En cours ou programmée, au sens des dates (le statut n'est pas tenu au jour le jour)
     else if (eligibles.some((s) => s.etat === 'en_cours' || s.etat === 'a_venir')) phase = 'encours'
     else if (aVenir > 0) phase = 'attente'
@@ -412,7 +418,7 @@ export async function getFranchiseParcours(
       derniere: ss[ss.length - 1]?.date || null,
       base: ss.reduce((t, s) => t + s.base, 0),
       commission: ss.reduce((t, s) => t + s.commission, 0),
-      due, aVenir,
+      due, verse, aVenir,
       nbSansMontant: eligibles.filter((s) => s.base === 0).length,
       nbPoei: ss.filter((s) => s.poei && !s.porteCommission).length,
       nbAvantPartenariat: avant.length,
@@ -429,6 +435,7 @@ export async function getFranchiseParcours(
       phase, etablissements: l,
       base: l.reduce((t, e) => t + e.base, 0),
       due: l.reduce((t, e) => t + e.due, 0),
+      verse: l.reduce((t, e) => t + e.verse, 0),
       aVenir: l.reduce((t, e) => t + e.aVenir, 0),
       nbSessions: l.reduce((t, e) => t + e.nbSessions, 0),
       nbParticipants: l.reduce((t, e) => t + e.nbParticipants, 0),

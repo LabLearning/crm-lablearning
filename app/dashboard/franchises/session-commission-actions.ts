@@ -133,3 +133,116 @@ export async function payAllValidatedSessionsAction(franchiseId: string): Promis
   revalidatePath('/dashboard/franchises')
   return { success: true, data: { total } }
 }
+
+// ─── Versements datés ───────────────────────────────────────────────────────
+
+const JOUR = /^\d{4}-\d{2}-\d{2}$/
+/** Jour à Paris (AAAA-MM-JJ) d'un instant. */
+const jourParis = (d: Date) => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(d)
+/** Un jour de versement stocké à midi UTC : il reste le même jour à Paris, été comme hiver. */
+const instantDuJour = (jour: string) => `${jour}T12:00:00Z`
+const dateFr = (jour: string) => new Date(instantDuJour(jour)).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })
+
+function verifierJour(jour: string): string | null {
+  if (!JOUR.test(jour) || jourParis(new Date(instantDuJour(jour))) !== jour) return 'Date invalide'
+  if (jour > jourParis(new Date())) return 'La date du versement ne peut pas être dans le futur'
+  if (jour < '2024-01-01') return 'Date invalide'
+  return null
+}
+
+/**
+ * Note un versement : les commissions choisies (validées, de cette franchise)
+ * passent en « versées » au jour indiqué, aujourd'hui ou plus tôt pour un
+ * paiement déjà fait. La franchise n'est prévenue par mail que si on le demande.
+ */
+export async function noterVersementAction(
+  franchiseId: string,
+  saisie: { sessionIds: string[]; jour: string; prevenir: boolean },
+): Promise<Result> {
+  const session = await getSession()
+  if (!peutGerer(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  const ids = Array.from(new Set((saisie?.sessionIds || []).filter((x) => typeof x === 'string')))
+  if (!ids.length) return { success: false, error: 'Choisissez au moins une commission' }
+  if (ids.length > 500) return { success: false, error: 'Trop de commissions en une fois' }
+  const erreurJour = verifierJour(String(saisie?.jour || ''))
+  if (erreurJour) return { success: false, error: erreurJour }
+
+  const supabase = await createServiceRoleClient()
+  const { data: lignes, error: eLecture } = await supabase.from('commissions_sessions')
+    .select('id, session_id, commission_montant')
+    .eq('organization_id', orgId).eq('franchise_id', franchiseId).eq('status', 'validee').in('session_id', ids)
+  if (eLecture) return { success: false, error: 'Lecture des commissions impossible' }
+  if ((lignes || []).length !== ids.length) {
+    return { success: false, error: 'Certaines commissions ne sont plus à verser : rechargez la page.' }
+  }
+
+  const { error } = await supabase.from('commissions_sessions')
+    .update({ status: 'payee', payee_at: instantDuJour(saisie.jour), updated_at: new Date().toISOString() })
+    .in('id', (lignes || []).map((l: any) => l.id)).eq('organization_id', orgId).eq('status', 'validee')
+  if (error) return { success: false, error: 'Enregistrement impossible' }
+
+  const total = (lignes || []).reduce((t: number, l: any) => t + Number(l.commission_montant || 0), 0)
+  if (saisie.prevenir && total > 0) {
+    await notifyFranchiseUsers(supabase, franchiseId, orgId, {
+      titre: 'Commissions versées',
+      message: `Un versement de ${fmtEuro(total)} TTC de commissions a été effectué le ${dateFr(saisie.jour)}.`,
+      type: 'success',
+      lienUrl: '/franchise/financier',
+      lienLabel: 'Voir mes commissions',
+      email: {
+        subject: `Versement de commissions — ${fmtEuro(total)}`,
+        docTitle: 'Versement de commissions',
+        intro: `Un versement vient d'être effectué pour ${ids.length > 1 ? `${ids.length} commissions` : 'une commission'} de votre réseau.`,
+        metadata: [['Montant total', fmtEuro(total)], ['Date du versement', dateFr(saisie.jour)]],
+        ctaLabel: 'Voir mes commissions',
+      },
+    })
+  }
+
+  await logAudit({
+    action: 'commissions_sessions_payees', entity_type: 'franchise', entity_id: franchiseId,
+    details: { total, lignes: ids.length, verse_le: saisie.jour, franchise_prevenue: !!saisie.prevenir },
+  })
+  revalidatePath(`/dashboard/franchises/${franchiseId}`)
+  revalidatePath('/dashboard/franchises')
+  return { success: true, data: { total, lignes: ids.length } }
+}
+
+/**
+ * Corrige la date d'un versement déjà noté (toutes ses commissions), par
+ * exemple un paiement fait le 8 septembre mais noté plus tard. Aucun mail.
+ * `ancienJour` : 'aucune' pour des commissions versées sans date.
+ */
+export async function changerDateVersementAction(franchiseId: string, ancienJour: string, nouveauJour: string): Promise<Result> {
+  const session = await getSession()
+  if (!peutGerer(session.user.role)) return { success: false, error: 'Accès non autorisé' }
+  const orgId = session.organization.id
+  if (ancienJour !== 'aucune' && !JOUR.test(String(ancienJour))) return { success: false, error: 'Versement introuvable' }
+  const erreurJour = verifierJour(String(nouveauJour || ''))
+  if (erreurJour) return { success: false, error: erreurJour }
+  if (ancienJour === nouveauJour) return { success: true, data: { lignes: 0 } }
+
+  const supabase = await createServiceRoleClient()
+  const { data: payees, error: eLecture } = await supabase.from('commissions_sessions')
+    .select('id, payee_at, commission_montant')
+    .eq('organization_id', orgId).eq('franchise_id', franchiseId).eq('status', 'payee')
+  if (eLecture) return { success: false, error: 'Lecture des commissions impossible' }
+  const visees = ((payees || []) as any[]).filter((l) =>
+    ancienJour === 'aucune' ? !l.payee_at : !!l.payee_at && jourParis(new Date(l.payee_at)) === ancienJour)
+  if (!visees.length) return { success: false, error: 'Versement introuvable : rechargez la page.' }
+
+  const { error } = await supabase.from('commissions_sessions')
+    .update({ payee_at: instantDuJour(nouveauJour), updated_at: new Date().toISOString() })
+    .in('id', visees.map((l) => l.id)).eq('organization_id', orgId).eq('status', 'payee')
+  if (error) return { success: false, error: 'Enregistrement impossible' }
+
+  const total = visees.reduce((t, l) => t + Number(l.commission_montant || 0), 0)
+  await logAudit({
+    action: 'commissions_versement_date', entity_type: 'franchise', entity_id: franchiseId,
+    details: { ancien: ancienJour, nouveau: nouveauJour, lignes: visees.length, total },
+  })
+  revalidatePath(`/dashboard/franchises/${franchiseId}`)
+  revalidatePath('/dashboard/franchises')
+  return { success: true, data: { lignes: visees.length } }
+}
